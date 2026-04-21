@@ -1,0 +1,22 @@
+# Environments
+env/
+venv/
+.venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE & OS Metadata
+.vscode/
+.idea/
+.git/
+.gitignore
+.DS_Store
+
+# Local Secrets (Keep your Sleeper API keys local!)
+*.env
+*.env.*
+env.*
