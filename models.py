@@ -59,22 +59,10 @@ class Transaction(Base):
 class Draft(Base):
     __tablename__ = "drafts"
     league = relationship("League", back_populates="drafts")
-    id = Column(Integer, primary_key=True)
-    draft_id = Column(String, index=True) 
+    draft_id = Column(String, primary_key=True) 
     league_id = Column(String, ForeignKey("leagues.league_id"), index=True) 
     draft_order = Column(JSONB, nullable=True, default={})
     slot_to_roster_id = Column(JSONB, nullable=True, default={})
-
-# class Trade(Base):
-#     __tablename__ = "trades"
-#     league = relationship("League", back_populates="trades")
-#     id = Column(Integer, primary_key=True)
-#     league_id = Column(String, ForeignKey("leagues.league_id"), index=True)
-#     type = Column(String)
-#     roster_ids = Column(ARRAY(Integer), nullable=True)
-#     waiver_budget = Column(JSONB, default=[])
-#     draft_picks = Column(JSONB, default=[])
-#     status_updated = Column(Integer)
 
 class Movement(Base):
     __tablename__ = "movements"
