@@ -11,8 +11,12 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # 4. Install system dependencies (if needed for PostgreSQL/Psychopg2)
-RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
-
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+    
 # 5. Copy only the requirements file first
 # This allows Docker to cache your 'pip install' layer
 COPY requirements.txt .

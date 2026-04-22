@@ -3,7 +3,6 @@
     "dockerComposeFile": "../docker-compose.yml",
     "service": "api", // Must match your YML service name
     "workspaceFolder": "/app", // Must match the 'target' in your YML volumes
-    "overrideCommand": false, 
     "postCreateCommand": "",
     "shutdownAction": "stopCompose",
     "customizations": {

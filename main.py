@@ -17,7 +17,7 @@ models.Base.metadata.create_all(bind=engine)
 @app.post("/sync/{username}")
 async def sync_user_endpoint(username: str, db: Session = Depends(get_db)):
     try:
-        leagues, txs = await service.sync_league_trades(db, username)
-        return f"Successfully synced {len(txs)} transactions in {len(leagues)} leagues for {username}"
+        leagues, drafts = await service.sync_league_drafts(db, username)
+        return f"Successfully synced {len(drafts)} draft(s) in {len(leagues)} leagues for {username}"
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
