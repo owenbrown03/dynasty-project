@@ -55,7 +55,6 @@ class Transaction(Base):
     time_ms = Column(BigInteger)
     league_id = Column(String, ForeignKey("leagues.league_id"), nullable=False, index=True)
 
-
 class Draft(Base):
     __tablename__ = "drafts"
     league = relationship("League", back_populates="drafts")
