@@ -2,8 +2,8 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 import models
 
-# -- GENERIC SYNC --
-def sync(db: Session, model):
+# -- GENERIC --
+def create(db: Session, model):
     try:
         db_entry = db.merge(model)
         db.commit()
@@ -22,6 +22,9 @@ def sync(db: Session, model):
         print(f"PK Value: {pk_display}")
         print(f"Error: {e}")
         return None
+
+def read_all(db: Session, model):
+    return db.query(model).all()
 
 # -- LEAGUE --
 def get_league(db: Session, league_id: str):

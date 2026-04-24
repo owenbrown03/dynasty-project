@@ -14,6 +14,7 @@ class League(Base):
     draft_id = Column(String, unique=True, nullable=True, index=True)
     avatar = Column(String)
     season = Column(String)
+    dynasty = Column(Boolean)
     best_ball = Column(Boolean)
     trade_deadline = Column(Integer)
     bonus_rec_te = Column(Integer)

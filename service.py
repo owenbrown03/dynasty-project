@@ -1,61 +1,101 @@
 from sqlalchemy.orm import Session
 import sleeper, schemas, models, crud, mappers
 
-async def sync_user_data(db: Session, username: str):
+async def create_user_data(db: Session, username: str):
     user = schemas.SleeperUser(**await sleeper.get_username_details(username))
-    crud.sync(db, models.User(**user.model_dump()))
+    await create_user(db, user)
     state = schemas.NFLState(**await sleeper.get_NFL_state())
-    #leagues = [schemas.SleeperLeague(**l) for l in await sleeper.get_leagues(user.user_id, state.season)]
+    db_lgs = {row[0] for row in crud.read_all(db, models.League.league_id)}
     leaguesJSON = await sleeper.get_leagues(user.user_id, state.season)
-    leauge_ct = roster_ct = trade_ct = draft_ct = 0
+    user_ct = leauge_ct = roster_ct = trade_ct = draft_ct = 0
     for l in leaguesJSON:
-        league = schemas.SleeperLeague(**l)
-        crud.sync(db, models.League(**mappers.league_to_db(league)))
-        leauge_ct += 1
-        roster_ct += await sync_user_rosters(db, league, user)
-        trade_ct += await sync_league_trades(db, league)
-        draft_ct += await sync_league_drafts(db, league)
-    return leauge_ct, roster_ct, trade_ct, draft_ct
+        if l['league_id'] not in db_lgs:
+            league = schemas.SleeperLeague(**l)
+            crud.create(db, models.League(**mappers.league_to_db(league)))
+            leauge_ct += 1
+            user_ct += await create_user_lm(db, league)
+            # print(f"DEBUG: Successfully committed {user_ct} users.")
+            # check = db.query(models.User).filter_by(user_id="655830556696727552").first()
+            # if check:
+            #     print("DEBUG: The missing user IS in the DB. This is a ghost error.")
+            # else:
+            #     print("DEBUG: The missing user is NOT in the DB. create_user_lm skipped them.")
+            roster_ct += await create_league_rosters(db, league)
+            trade_ct += await create_league_trades(db, league)
+            draft_ct += await create_league_drafts(db, league)
+    return user_ct, leauge_ct, roster_ct, trade_ct, draft_ct
 
-async def sync_user_rosters(db: Session, league: schemas.SleeperLeague, user: schemas.SleeperUser):
-    #rosters = [schemas.SleeperRoster(**r) for r in await sleeper.get_rosters(league.league_id)]
+async def create_user(db: Session, user: schemas.SleeperUser):
+    crud.create(db, models.User(**mappers.schema_to_db(user)))
+
+async def create_user_lm(db: Session, league: schemas.SleeperLeague, ):
+    usersJSON = await sleeper.get_users(league.league_id)
+    user_ct = 0
+    for u in usersJSON:
+        user = schemas.SleeperUser(**u)
+        await create_user(db, user)
+        user_ct += 1
+    return user_ct
+
+async def create_user_leagues(db: Session, user_id: str, season: str):
+    db_lgs = {row[0] for row in crud.read_all(db, models.League.league_id)}
+    leaguesJSON = await sleeper.get_leagues(user_id, season)
+    leauge_ct = 0
+    for l in leaguesJSON:
+        if l['league_id'] not in db_lgs:
+            league = schemas.SleeperLeague(**l)
+            crud.create(db, models.League(**mappers.league_to_db(league)))
+    return leauge_ct
+
+async def create_league_rosters(db: Session, league: schemas.SleeperLeague):
     rostersJSON = await sleeper.get_rosters(league.league_id)
     roster_ct = 0
-    #crud.sync(db, models.Roster(**mappers.roster_to_db(next((r for r in rosters if r.owner_id == user.user_id), None))))
     for r in rostersJSON:
-        if r.get('owner_id') == user.user_id:
+        roster = schemas.SleeperRoster(**r)
+        crud.create(db, models.Roster(**mappers.roster_to_db(roster)))
+        roster_ct += 1
+    return roster_ct
+
+async def create_user_rosters(db: Session, league: schemas.SleeperLeague, user: schemas.SleeperUser):
+    rostersJSON = await sleeper.get_rosters(league.league_id)
+    roster_ct = 0
+    for r in rostersJSON:
+        if r['owner_id'] == user.user_id:
             roster = schemas.SleeperRoster(**r)
-            crud.sync(db, models.Roster(**mappers.roster_to_db(roster)))
+            crud.create(db, models.Roster(**mappers.roster_to_db(roster)))
             roster_ct += 1
     return roster_ct
 
-async def sync_league_trades(db: Session, league: schemas.SleeperLeague): # stores all trades in users leagues
-    #txs = [schemas.SleeperTransaction(**t) for t in await sleeper.get_transactions(league.league_id, 1)]
+async def create_league_trades(db: Session, league: schemas.SleeperLeague): # stores all trades in users leagues
     txsJSON = await sleeper.get_transactions(league.league_id, 1) # NEED TO UPDATE TO DO ALL WEEKS    
     trade_ct = 0
     for t in txsJSON:
-        if t.get('type') == "trade":
+        if t['type'] == "trade":
             trade = schemas.SleeperTransaction(**t)
             transaction, movements, waivers, picks = mappers.tx_to_db(trade, league)
-            crud.sync(db, models.Transaction(**transaction))
+            crud.create(db, models.Transaction(**transaction))
             trade_ct += 1
             for m in movements:
-                crud.sync(db, models.Movement(**m))
+                crud.create(db, models.Movement(**m))
             for w in waivers:
-                crud.sync(db, models.WaiverBudget(**w))
+                crud.create(db, models.WaiverBudget(**w))
             for p in picks:
-                crud.sync(db, models.TradedPick(**p))
+                crud.create(db, models.TradedPick(**p))
     return trade_ct
 
-async def sync_league_drafts(db: Session, league: schemas.SleeperLeague): # stores all drafts in users leagues
-    #drafts = [schemas.SleeperDraft(**d) for d in await sleeper.get_drafts_league(league.league_id)]
+async def create_league_drafts(db: Session, league: schemas.SleeperLeague): # stores all drafts in users leagues
     lgdraftJSON = await sleeper.get_drafts_league(league.league_id)
     draft_ct = 0
     for ld in lgdraftJSON:
         lgdraft = schemas.SleeperDraft(**ld)
-        #new_draft = [schemas.SleeperDraft(**d) for d in await sleeper.get_draft(draft.draft_id)]
         draftJSON = await sleeper.get_draft(lgdraft.draft_id)
         draft = schemas.SleeperDraft(**draftJSON)
-        crud.sync(db, models.Draft(**mappers.schema_to_db(draft)))
+        crud.create(db, models.Draft(**mappers.schema_to_db(draft)))
         draft_ct += 1
     return draft_ct
+
+async def create_lm_lgs(db: Session): # stores all leaguemate's leagues in users leagues
+    state = schemas.NFLState(**await sleeper.get_NFL_state())
+    db_users = {row[0] for row in crud.read_all(db, models.User.user_id)}
+    for u in db_users:
+        await create_user_leagues(db, u, state.season)
