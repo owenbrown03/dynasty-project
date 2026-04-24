@@ -13,8 +13,9 @@ class SleeperUser(SleeperBase):
     is_owner: bool | None = None
 
 class LeagueSettings(SleeperBase):
-    best_ball: bool
+    best_ball: bool | None = False
     trade_deadline: int | None = None
+    type: int
 
 class ScoringSettings(SleeperBase):
     bonus_rec_te: float = 0.0
@@ -30,7 +31,7 @@ class SleeperLeague(SleeperBase):
     season: str    
     settings: LeagueSettings
     scoring_settings: ScoringSettings
-    roster_positions: list[str]
+    roster_positions: list[str] | None = None
 
 class RosterSettings(SleeperBase):
     fpts: int | None = 0

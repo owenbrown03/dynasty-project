@@ -7,6 +7,8 @@ def league_to_db(schema: schemas.SleeperLeague) -> dict:
     flat_data = schema.model_dump(exclude={'settings', 'scoring_settings', 'roster_positions'})
     flat_data.update(schema.settings.model_dump())
     flat_data.update(schema.scoring_settings.model_dump())
+    flat_data['dynasty'] = schema.settings.type == 2
+    flat_data.pop('type', None)
     flat_data['roster_positions'] = schema.roster_positions
     return flat_data
 

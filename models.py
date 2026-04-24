@@ -14,6 +14,7 @@ class League(Base):
     draft_id = Column(String, unique=True, nullable=True, index=True)
     avatar = Column(String)
     season = Column(String)
+    dynasty = Column(Boolean)
     best_ball = Column(Boolean)
     trade_deadline = Column(Integer)
     bonus_rec_te = Column(Integer)
@@ -54,7 +55,6 @@ class Transaction(Base):
     type = Column(String)
     time_ms = Column(BigInteger)
     league_id = Column(String, ForeignKey("leagues.league_id"), nullable=False, index=True)
-
 
 class Draft(Base):
     __tablename__ = "drafts"
