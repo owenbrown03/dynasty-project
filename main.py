@@ -10,7 +10,7 @@ models.Base.metadata.create_all(bind=engine)
 async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
     try:
         user_ct, leauge_ct, roster_ct, trade_ct, draft_ct = await service.create_user_data(db, username)
-        await service.create_lm_lgs(db)
+        await service.create_lm_rosters(db)
         return f"Successfully synced {user_ct} users(s), {roster_ct} roster(s), {trade_ct} trades(s), and {draft_ct} draft(s) in {leauge_ct} leagues for {username}"
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
