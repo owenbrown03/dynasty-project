@@ -13,7 +13,7 @@ async def create_user_data(db: Session, username: str):
             league = schemas.SleeperLeague(**l)
             crud.create(db, models.League(**mappers.league_to_db(league)))
             leauge_ct += 1
-            user_ct += await create_user_lm(db, league)
+            user_ct += await create_league_lm(db, league)
             # print(f"DEBUG: Successfully committed {user_ct} users.")
             # check = db.query(models.User).filter_by(user_id="655830556696727552").first()
             # if check:
@@ -28,7 +28,7 @@ async def create_user_data(db: Session, username: str):
 async def create_user(db: Session, user: schemas.SleeperUser):
     crud.create(db, models.User(**mappers.schema_to_db(user)))
 
-async def create_user_lm(db: Session, league: schemas.SleeperLeague, ):
+async def create_league_lm(db: Session, league: schemas.SleeperLeague, ):
     usersJSON = await sleeper.get_users(league.league_id)
     user_ct = 0
     for u in usersJSON:
@@ -45,7 +45,19 @@ async def create_user_leagues(db: Session, user_id: str, season: str):
         if l['league_id'] not in db_lgs:
             league = schemas.SleeperLeague(**l)
             crud.create(db, models.League(**mappers.league_to_db(league)))
+            leauge_ct += 1
     return leauge_ct
+
+async def create_user_rosters(db: Session, user_id: str, season: str):
+    db_lgs = {row[0] for row in crud.read_all(db, models.League.league_id)}
+    leaguesJSON = await sleeper.get_leagues(user_id, season)
+    roster_ct = 0
+    for l in leaguesJSON:
+        if l['league_id'] not in db_lgs:
+            league = schemas.SleeperLeague(**l)
+            crud.create(db, models.League(**mappers.league_to_db(league)))
+            roster_ct += await create_user_roster(db, league, user_id)
+    return roster_ct
 
 async def create_league_rosters(db: Session, league: schemas.SleeperLeague):
     rostersJSON = await sleeper.get_rosters(league.league_id)
@@ -56,11 +68,11 @@ async def create_league_rosters(db: Session, league: schemas.SleeperLeague):
         roster_ct += 1
     return roster_ct
 
-async def create_user_rosters(db: Session, league: schemas.SleeperLeague, user: schemas.SleeperUser):
+async def create_user_roster(db: Session, league: schemas.SleeperLeague, user_id: str):
     rostersJSON = await sleeper.get_rosters(league.league_id)
     roster_ct = 0
     for r in rostersJSON:
-        if r['owner_id'] == user.user_id:
+        if r['owner_id'] == user_id:
             roster = schemas.SleeperRoster(**r)
             crud.create(db, models.Roster(**mappers.roster_to_db(roster)))
             roster_ct += 1
@@ -99,3 +111,9 @@ async def create_lm_lgs(db: Session): # stores all leaguemate's leagues in users
     db_users = {row[0] for row in crud.read_all(db, models.User.user_id)}
     for u in db_users:
         await create_user_leagues(db, u, state.season)
+
+async def create_lm_rosters(db: Session): # stores all leaguemate's leagues in users leagues
+    state = schemas.NFLState(**await sleeper.get_NFL_state())
+    db_users = {row[0] for row in crud.read_all(db, models.User.user_id)}
+    for u in db_users:
+        await create_user_rosters(db, u, state.season)
