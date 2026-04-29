@@ -1,22 +1,27 @@
-import httpx, logging
+import httpx, logging, asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def fetch_sleeper(endpoint: str):
-    url = f"https://api.sleeper.app/v1/{endpoint}"
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(url)
-            response.raise_for_status() 
-            return response.json()            
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP Error {e.response.status_code} for {url}: {e.response.text}")
-            raise e
-        except httpx.RequestError as e:
-            logger.error(f"Network error occurred while requesting {url}: {e}")
-            raise e
+client: httpx.AsyncClient = None
 
+async def fetch_sleeper(endpoint: str, limit: int = 10, retries: int = 3):
+    url = f"https://api.sleeper.app/v1/{endpoint}"
+    async with asyncio.Semaphore(limit):
+        for attempt in range(retries):
+            try:
+                response = await client.get(url) 
+                response.raise_for_status() 
+                return response.json()
+            
+            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                if attempt < retries - 1:
+                    wait_time = 2 ** (attempt + 1)
+                    logger.warning(f"Sleeper error for {endpoint}. Retry {attempt+1} in {wait_time}s.")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise e
+        
 # User
 async def get_username_details(username):
     return await fetch_sleeper(f"user/{username}")

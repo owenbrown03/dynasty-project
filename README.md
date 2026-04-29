@@ -18,3 +18,6 @@ so when i was doing from . it was erroring because i was running main:app inside
 -ran into some relationship issues due to misunderstanding of how it worked and what it was used for
 
 my process was to make individual functions to make sure i had the process of sleeper -> database (just upsert in CRUD) down for each section (leagues, rosters, transactions) before moving into more of a cohesive unit
+
+code started taking way too long so we need to start issuing some runtime improvements
+lets start with asyncio

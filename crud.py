@@ -1,9 +1,51 @@
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
-import models
+import models, mappers, logging
+
+logger = logging.getLogger(__name__)
+
+
 
 # -- GENERIC --
-def create(db: Session, model):
+def create_many(db: Session, models: list):
+    try:
+        db.add_all(models)
+        db.commit()
+        return len(models)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Sync failed: {e}", exc_info=True)
+        return 0
+
+def read_all(db: Session, *columns, **filters):
+    query = db.query(*columns)
+    if filters:
+        query = query.filter_by(**filters)
+    results = query.all()
+    if len(columns) == 1:
+        return {row[0] for row in results}
+    else:
+        return {tuple(row) for row in results}
+
+def upsert(db: Session, model):
+    try:
+        db.merge(model)
+        db.commit()
+    except Exception as e:
+        db.rollback()   
+        try:
+            pk_columns = inspect(model.__class__).primary_key
+            pk_values = [getattr(model, col.name) for col in pk_columns]
+            pk_display = ", ".join(map(str, pk_values))
+        except Exception:
+            pk_display = "Unknown PK"
+        print(f"--- [SYNC ERROR] ---")
+        print(f"Model: {model.__class__.__name__}")
+        print(f"PK Value: {pk_display}")
+        print(f"Error: {e}")
+        return None
+
+def slow_update(db: Session, model):
     try:
         db_entry = db.merge(model)
         db.commit()
@@ -22,9 +64,6 @@ def create(db: Session, model):
         print(f"PK Value: {pk_display}")
         print(f"Error: {e}")
         return None
-
-def read_all(db: Session, model):
-    return db.query(model).all()
 
 # -- LEAGUE --
 def get_league(db: Session, league_id: str):
