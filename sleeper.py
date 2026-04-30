@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 client: httpx.AsyncClient = None
 
 async def fetch_sleeper(endpoint: str, limit: int = 10, retries: int = 3):
+    if client is None:
+        raise RuntimeError("Sleeper client not initialized in lifespan!")
     url = f"https://api.sleeper.app/v1/{endpoint}"
     async with asyncio.Semaphore(limit):
         for attempt in range(retries):

@@ -5,6 +5,9 @@ from database import engine, get_db
 import logger as log_config
 import httpx, logging, service, sleeper, models
 
+log_config.setup_logging()
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     sleeper.client = httpx.AsyncClient(timeout=httpx.Timeout(10.0))
@@ -13,10 +16,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 models.Base.metadata.create_all(bind=engine)
-
-log_config.setup_logging()
-logger = logging.getLogger(__name__)
-logger.info("Service initialized. System ready.")
 
 @app.post("/sync/{username}")
 async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
@@ -35,3 +34,15 @@ def re_init_db():
     msg = "Tables created (if they didn't exist)"
     logger.info(msg)
     return msg
+
+@app.get("/admin/set-debug/{status}")
+def set_debug_mode(status: bool):
+    level = logging.INFO if status else logging.WARNING
+    
+    # Update the library loggers dynamically
+    logging.getLogger("httpx").setLevel(level)
+    logging.getLogger("sqlalchemy.engine").setLevel(level)
+    
+    msg = f"Debug mode {'enabled' if status else 'disabled'}"
+    logger.info(msg)
+    return {"message": msg}
