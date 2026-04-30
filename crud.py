@@ -4,8 +4,6 @@ import models, mappers, logging
 
 logger = logging.getLogger(__name__)
 
-
-
 # -- GENERIC --
 def create_many(db: Session, models: list):
     try:
@@ -26,6 +24,23 @@ def read_all(db: Session, *columns, **filters):
         return {row[0] for row in results}
     else:
         return {tuple(row) for row in results}
+
+def get_leaguemates(db: Session, main_user_id: str):
+    my_leagues = (
+        db.query(models.Roster.league_id)
+        .filter(models.Roster.owner_id == main_user_id)
+        .subquery()
+    )
+    results = (
+        db.query(models.User.user_id)
+        .join(models.Roster, models.User.user_id == models.Roster.owner_id)
+        .filter(models.Roster.league_id.in_(my_leagues))
+        .filter(models.User.user_id != main_user_id)
+        .distinct()
+        .all()
+    )
+
+    return [row[0] for row in results]
 
 def upsert(db: Session, model):
     try:

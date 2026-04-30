@@ -3,25 +3,48 @@ import httpx, logging, asyncio
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-client: httpx.AsyncClient = None
+MAX_CONCURRENT_REQUESTS = 20
+limit = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
-async def fetch_sleeper(endpoint: str, limit: int = 10, retries: int = 3):
+client: httpx.AsyncClient = None
+error_count = 0
+
+async def fetch_sleeper(endpoint: str, retries: int = 3):
+    global error_count, client
+    
     if client is None:
-        raise RuntimeError("Sleeper client not initialized in lifespan!")
+        raise RuntimeError("Sleeper client not initialized!")
+
     url = f"https://api.sleeper.app/v1/{endpoint}"
-    async with asyncio.Semaphore(limit):
+
+    async with limit:
+        if error_count > 50:
+            logger.error("Circuit breaker tripped!")
+            raise RuntimeError("Too many API failures.")
+
         for attempt in range(retries):
             try:
-                response = await client.get(url) 
-                response.raise_for_status() 
+                response = await client.get(url)
+                response.raise_for_status()
+                
+                if error_count > 0:
+                    error_count -= 1 
                 return response.json()
-            
+
             except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                error_count += 1
+                
+                status_code = getattr(e.response, "status_code", None)
+                if status_code == 429:
+                    logger.warning(f"Rate limited by Sleeper. Cooling down...")
+                    await asyncio.sleep(10)
+
                 if attempt < retries - 1:
-                    wait_time = 2 ** (attempt + 1)
+                    wait_time = (2 ** attempt) + 1
                     logger.warning(f"Sleeper error for {endpoint}. Retry {attempt+1} in {wait_time}s.")
                     await asyncio.sleep(wait_time)
                 else:
+                    logger.error(f"Final failure for {endpoint}: {e}")
                     raise e
         
 # User
