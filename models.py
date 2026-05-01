@@ -3,6 +3,11 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from database import Base
 
+class InternalState(Base):
+    __tablename__ = "internal_state"
+    key = Column(String, primary_key=True)
+    value = Column(String)
+
 class League(Base):
     __tablename__ = "leagues"
     rosters = relationship("Roster", back_populates="league")
@@ -91,3 +96,13 @@ class TradedPick(Base):
     round = Column(Integer)
     new_owner_id = Column(Integer)
     old_owner_id = Column(Integer)
+
+class Player(Base):
+    __tablename__ = "players"
+    player_id = Column(String, primary_key=True)
+    position = Column(String)
+    team = Column(String)
+    first_name = Column(String)
+    last_name = Column(String)
+    age = Column(Integer)
+    years_exp = Column(Integer)

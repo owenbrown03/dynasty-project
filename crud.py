@@ -21,7 +21,10 @@ def read_all(db: Session, *columns, **filters):
         query = query.filter_by(**filters)
     results = query.all()
     if len(columns) == 1:
-        return {row[0] for row in results}
+        if isinstance(columns[0], type):
+            return results
+        else:
+            return {row[0] for row in results}
     else:
         return {tuple(row) for row in results}
 
