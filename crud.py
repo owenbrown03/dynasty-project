@@ -1,6 +1,6 @@
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
-import models, mappers, logging
+import models, logging
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +20,12 @@ def read_all(db: Session, *columns, **filters):
     if filters:
         query = query.filter_by(**filters)
     results = query.all()
+    if not results:
+        return set()
+    if len(columns) == 1 and isinstance(columns[0], type):
+        return results
     if len(columns) == 1:
-        if isinstance(columns[0], type):
-            return results
-        else:
-            return {row[0] for row in results}
+        return {row[0] for row in results}
     else:
         return {tuple(row) for row in results}
 
@@ -32,13 +33,17 @@ def get_leaguemates(db: Session, main_user_id: str):
     my_leagues = (
         db.query(models.Roster.league_id)
         .filter(models.Roster.owner_id == main_user_id)
-        .subquery()
+        .all()
     )
+    my_leagues_list = [league[0] for league in my_leagues]
+
     results = (
-        db.query(models.User.user_id)
-        .join(models.Roster, models.User.user_id == models.Roster.owner_id)
-        .filter(models.Roster.league_id.in_(my_leagues))
-        .filter(models.User.user_id != main_user_id)
+        db.query(models.Roster.owner_id)
+        .filter(
+            models.Roster.league_id.in_(my_leagues_list),
+            models.Roster.owner_id != main_user_id,
+            models.Roster.owner_id != None
+        )
         .distinct()
         .all()
     )

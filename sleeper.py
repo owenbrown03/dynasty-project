@@ -43,15 +43,17 @@ async def fetch_sleeper(endpoint: str, retries: int = 3):
 
             except (httpx.HTTPStatusError, httpx.RequestError) as e:
                 error_count += 1
-                
-                status_code = getattr(e.response, "status_code", None)
+                response = getattr(e, "response", None)
+                status_code = getattr(response, "status_code", None) if response else None
+
                 if status_code == 429:
                     logger.warning(f"Rate limited by Sleeper. Cooling down...")
                     await asyncio.sleep(10)
 
                 if attempt < retries - 1:
                     wait_time = (2 ** attempt) + 1
-                    logger.warning(f"Sleeper error for {endpoint}. Retry {attempt+1} in {wait_time}s.")
+                    error_type = "Timeout" if isinstance(e, httpx.ReadTimeout) else "Error"
+                    logger.warning(f"Sleeper {error_type} for {endpoint}. Retry {attempt+1} in {wait_time}s.")
                     await asyncio.sleep(wait_time)
                 else:
                     logger.error(f"Final failure for {endpoint}: {e}")
@@ -61,15 +63,13 @@ def handle_sleeper_error(response: httpx.Response):
     status = response.status_code
     if status == 200:
         return response.json()
-    if status == 400:
-        logger.error("400 Bad Request: Check your league/user IDs.")
-    elif status == 404:
-        logger.warning("404 Not Found: That resource (kitten/league) doesn't exist.")
-    elif status == 429:
-        logger.warning("429 Too Many Requests: Sleeper is throttling us!")
-    elif status >= 500:
-        logger.error(f"{status} Server Error: Sleeper is having a bad day.")
+    if status == 404:
+        logger.warning(f"Resource not found (404).")
         return None
+    if status == 400:
+        logger.error(f"Bad Request (400). Check params.")
+        return None
+    response.raise_for_status()
  
 # User
 async def get_username_details(username):

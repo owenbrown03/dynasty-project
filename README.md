@@ -21,3 +21,8 @@ my process was to make individual functions to make sure i had the process of sl
 
 code started taking way too long so we need to start issuing some runtime improvements
 lets start with asyncio
+
+weaving though all the different relationships and stuff in my database seemed very overwhelming
+but i was able to use my knowledge of data structs to make all the structs i needed up front so that i could use them easily later
+
+i was also thinking pretty hard about which way i wanted to do things but finally decided to stop thinking and just time it and do it

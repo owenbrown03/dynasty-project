@@ -1,47 +1,45 @@
 from sqlalchemy.orm import Session
-from dataclasses import dataclass
-from typing import Set, Tuple
 from datetime import datetime, timedelta
-import asyncio, logging, sleeper, schemas, models, crud, mappers
+from models import Info
+import asyncio, logging, sleeper, schemas, models, crud, mappers, trades
 
 logger = logging.getLogger(__name__)
-
-@dataclass
-class Info:
-    main_user: schemas.SleeperUser
-    state: schemas.NFLState
-    player_map: schemas.PlayerMap
-    db_leagues: Set[str]
-    db_users: Set[str]
-    db_rosters: Set[Tuple[str, str]] # roster_id, owner_id
-    db_txs: Set[str]
-    db_drafts: Set[str]
 
 async def info_sync(db, username: str) -> Info:
     user_task = sleeper.get_username_details(username)
     state_task = sleeper.get_NFL_state()
     user_data, state_data = await asyncio.gather(user_task, state_task)
+    main_user = schemas.SleeperUser(**user_data)
 
     info = Info(
-        main_user=schemas.SleeperUser(**user_data),
-        state=schemas.NFLState(**state_data),
-        player_map={p.player_id: p for p in crud.read_all(db, models.Player)},
-        db_leagues=set(crud.read_all(db, models.League.league_id)),
-        db_users=set(crud.read_all(db, models.User.user_id)),
-        db_rosters=set(crud.read_all(db, models.Roster.league_id, models.Roster.owner_id)),
-        db_txs=set(crud.read_all(db, models.Transaction.transaction_id)),
-        db_drafts=set(crud.read_all(db, models.Draft.draft_id))
+        main_user,
+        state = schemas.NFLState(**state_data),
+        player_map = {p.player_id: p for p in crud.read_all(db, models.Player)},
+        lms = set(crud.get_leaguemates(db, main_user.user_id)),
+        db_leagues = set(crud.read_all(db, models.League.league_id)),
+        db_users = set(crud.read_all(db, models.User.user_id)),
+        db_rosters = set(crud.read_all(db, models.Roster.league_id, models.Roster.owner_id)),
+        db_txs = set(crud.read_all(db, models.Transaction.transaction_id)),
+        db_drafts = set(crud.read_all(db, models.Draft.draft_id))
     )
 
     await init_players(db, info)
 
     return info
 
-async def create_lm_data(db: Session, info: 'Info'):
-    await create_user_data(db, info, info.main_user.user_id)
-    lms = crud.get_leaguemates(db, info.main_user.user_id)
-    logger.info(f'Found {len(lms)} leaguemates.')
-    tasks = [create_user_data(db, info, u) for u in lms]
+async def get_lm_data(db: Session, info: Info):
+    await create_lm_data(db, info)
+    lm_trades = await trades.read_trades(db, info)
+    # start_time = time.perf_counter()
+    # end_time = time.perf_counter()
+    # print(f"Time elapsed: {end_time - start_time:.4f}s")
+    # players_traded = {m['player_id'] for m in movements_by_tx[tx_id]}
+    # my_players = info.my_player_set # from your info block
+    # overlap = players_traded.intersection(my_players)
+
+async def create_lm_data(db: Session, info: Info):
+    logger.info(f'Found {len(info.lms)} leaguemates.')
+    tasks = [create_user_data(db, info, u) for u in info.lms]
     await asyncio.gather(*tasks)
     
     try:
@@ -52,7 +50,7 @@ async def create_lm_data(db: Session, info: 'Info'):
         logger.error(f'Failed to save sync results: {e}', exc_info=True)
         raise
 
-async def create_user_data(db: Session, info: 'Info', user_id: str):
+async def create_user_data(db: Session, info: Info, user_id: str):
     leagues_json = await sleeper.get_leagues(user_id, info.state.season)
     tasks = []
     for l in leagues_json:
@@ -82,7 +80,7 @@ async def get_league_data(league: dict):
         'drafts_json': drafts
     }
 
-async def sync_league_data(db: Session, info: 'Info', league_data: list):
+async def sync_league_data(db: Session, info: Info, league_data: list):
     leagues = []
     users = []
     rosters = []
@@ -143,7 +141,7 @@ async def sync_league_data(db: Session, info: 'Info', league_data: list):
         f"{len(transactions)} Transactions ({len(movements)} Movements), {len(drafts)} Drafts"
     )
 
-async def init_players(db: Session, info: 'Info'):
+async def init_players(db: Session, info: Info):
     state = db.query(models.InternalState).filter_by(key="last_player_map_update").first()
     last_update = None
     if state:

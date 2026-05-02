@@ -21,7 +21,8 @@ models.Base.metadata.create_all(bind=engine)
 async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
     try:
         info = await service.info_sync(db, username)
-        await service.create_lm_data(db, info)
+        await service.create_user_data(db, info, info.main_user.user_id)
+        await service.get_lm_data(db, info)
         return "Successfully synced user"
     except Exception as e:
         logger.error(traceback.format_exc())
