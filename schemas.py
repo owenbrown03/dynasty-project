@@ -95,13 +95,13 @@ class SleeperDraft(SleeperBase):
     slot_to_roster_id: dict[str, int] | None = {}
 
 class SleeperPlayer(SleeperBase):
-    position: str
+    player_id: str
+    position: str | None = None
     team: str | None = None
     first_name: str
     last_name: str
-    age: int
-    player_id: str
-    years_exp: str
+    age: int | None = None
+    years_exp: int | None = None
 
 type PlayerMap = dict[str, SleeperPlayer]
 

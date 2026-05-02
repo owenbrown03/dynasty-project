@@ -19,34 +19,58 @@ async def fetch_sleeper(endpoint: str, retries: int = 3):
 
     async with limit:
         if error_count > 50:
-            logger.error("Circuit breaker tripped!")
-            raise RuntimeError("Too many API failures.")
+            raise RuntimeError("Error count exceeded!")
 
         for attempt in range(retries):
             try:
                 response = await client.get(url)
+
+                if response.status_code == 429:
+                    error_count += 5 
+                    await asyncio.sleep(10)
+                    continue 
+
+                result = handle_sleeper_error(response)
+  
+                if response.status_code in [400, 404]:
+                    return None
+
                 response.raise_for_status()
                 
                 if error_count > 0:
                     error_count -= 1 
-                return response.json()
+                return result
 
             except (httpx.HTTPStatusError, httpx.RequestError) as e:
                 error_count += 1
-                
-                status_code = getattr(e.response, "status_code", None)
+                response = getattr(e, "response", None)
+                status_code = getattr(response, "status_code", None) if response else None
+
                 if status_code == 429:
                     logger.warning(f"Rate limited by Sleeper. Cooling down...")
                     await asyncio.sleep(10)
 
                 if attempt < retries - 1:
                     wait_time = (2 ** attempt) + 1
-                    logger.warning(f"Sleeper error for {endpoint}. Retry {attempt+1} in {wait_time}s.")
+                    error_type = "Timeout" if isinstance(e, httpx.ReadTimeout) else "Error"
+                    logger.warning(f"Sleeper {error_type} for {endpoint}. Retry {attempt+1} in {wait_time}s.")
                     await asyncio.sleep(wait_time)
                 else:
                     logger.error(f"Final failure for {endpoint}: {e}")
                     raise e
-        
+
+def handle_sleeper_error(response: httpx.Response):
+    status = response.status_code
+    if status == 200:
+        return response.json()
+    if status == 404:
+        logger.warning(f"Resource not found (404).")
+        return None
+    if status == 400:
+        logger.error(f"Bad Request (400). Check params.")
+        return None
+    response.raise_for_status()
+ 
 # User
 async def get_username_details(username):
     return await fetch_sleeper(f"user/{username}")
@@ -94,7 +118,7 @@ async def get_traded_picks(draft_id):
     return await fetch_sleeper(f"draft/{draft_id}/traded_picks")
 
 # Players
-async def get_all_players(draft_id):
+async def get_all_players():
     return await fetch_sleeper(f"players/nfl")
 async def get_trending_players(type, lookback = 24, limit = 25):
     return await fetch_sleeper(f"players/nfl/trending/{type}?lookback_hours={lookback}&limit={limit}")
