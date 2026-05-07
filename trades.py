@@ -163,6 +163,23 @@ async def trade_signals(db: Session, info: Info):
                     name=asset,
                     signal=signal_text
             ))
+        for w in tx['waivers']:
+            signal_text = ""
+            user_id = user_ids[league_id][w['receiver']]
+            old_user_id = user_ids[league_id][w['sender']]
+            asset = f"${w['amount']}"
+            if user_id not in users_dict:
+                users_dict[user_id] = {"adds": [], "drops": []}
+            users_dict[user_id]["adds"].append(schemas.Movement(
+                    name=asset,
+                    signal=signal_text
+            ))
+            if old_user_id not in users_dict:
+                users_dict[old_user_id] = {"adds": [], "drops": []}
+            users_dict[old_user_id]["drops"].append(schemas.Movement(
+                    name=asset,
+                    signal=signal_text
+            ))
         if signals:
             users = []
             for user_id, data in users_dict.items():
