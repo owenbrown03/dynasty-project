@@ -26,3 +26,6 @@ weaving though all the different relationships and stuff in my database seemed v
 but i was able to use my knowledge of data structs to make all the structs i needed up front so that i could use them easily later
 
 i was also thinking pretty hard about which way i wanted to do things but finally decided to stop thinking and just time it and do it
+
+
+dealing with sleeper api makes you deal with a lot of interesting mapping and problem solving questions along the way, particularly with how they handle drafts as well as roster/user/owner ids

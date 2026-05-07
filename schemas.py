@@ -94,6 +94,7 @@ class SleeperTransaction(BaseSchema):
 class SleeperDraft(BaseSchema):
     draft_id: str
     league_id: str
+    season: str
     draft_order: dict[str, int] | None = {}
     slot_to_roster_id: dict[str, int] | None = {}
 
