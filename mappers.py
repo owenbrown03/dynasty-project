@@ -56,8 +56,9 @@ def tx_to_db(schema: schemas.SleeperTransaction, league: schemas.SleeperLeague) 
             "transaction_id": schema.transaction_id,
             "season": pick.season,
             "round": pick.round,
-            "new_owner_id": pick.owner_id,
-            "old_owner_id": pick.previous_owner_id
+            "new_roster_id": pick.owner_id,
+            "old_roster_id": pick.previous_owner_id,
+            "og_roster_id": pick.roster_id
         })
 
     return transaction, movements, waivers, picks

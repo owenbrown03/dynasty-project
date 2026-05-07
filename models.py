@@ -81,6 +81,7 @@ class Draft(Base):
     league = relationship("League", back_populates="drafts", lazy="joined")
     draft_id = Column(String, primary_key=True) 
     league_id = Column(String, ForeignKey("leagues.league_id"), index=True) 
+    season = Column(String, index=True)
     draft_order = Column(JSONB, nullable=True, default={})
     slot_to_roster_id = Column(JSONB, nullable=True, default={})
 
@@ -109,8 +110,9 @@ class TradedPick(Base):
     transaction_id = Column(String, ForeignKey("transactions.transaction_id"), index=True)
     season = Column(String, index=True)
     round = Column(Integer, index=True)
-    new_owner_id = Column(Integer, index=True)
-    old_owner_id = Column(Integer, index=True)
+    new_roster_id = Column(Integer, index=True)
+    old_roster_id = Column(Integer, index=True)
+    og_roster_id = Column(Integer, index=True)
 
 class Player(Base):
     __tablename__ = "players"
