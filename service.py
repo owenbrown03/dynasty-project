@@ -30,7 +30,8 @@ async def info_sync(db, username: str) -> Info:
 async def get_lm_data(db: Session, info: Info):
     await create_lm_data(db, info)
     trade_signals = await trades.trade_signals(db, info)
-    logger.info(f'Found {len(trade_signals)} trade signals.')
+    return trade_signals
+    # logger.info(f'Found {len(trade_signals)} trade signals.')
     # start_time = time.perf_counter()
     # end_time = time.perf_counter()
     # print(f"Time elapsed: {end_time - start_time:.4f}s")

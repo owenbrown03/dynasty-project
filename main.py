@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from database import engine, get_db
 import logger as log_config
 import httpx, logging, service, sleeper, models, traceback
+from fastapi.middleware.cors import CORSMiddleware
 
 log_config.setup_logging()
 logger = logging.getLogger(__name__)
@@ -17,13 +18,20 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 models.Base.metadata.create_all(bind=engine)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.post("/users/{username}/sync")
 async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
     try:
         info = await service.info_sync(db, username)
         await service.create_user_data(db, info, info.main_user.user_id)
-        await service.get_lm_data(db, info)
-        return "Successfully synced user"
+        trade_signals = await service.get_lm_data(db, info)
+        return trade_signals
     except Exception as e:
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
