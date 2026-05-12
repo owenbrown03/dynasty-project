@@ -1,0 +1,43 @@
+.user-card {
+  background: #252525;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #444;
+}
+
+.user-header{
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+.adds, .drops {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.adds { color: #b9ffd0; }
+.drops { color: #ffb8b8; }
+
+.has-signal {
+  margin-top: 4px;
+}
+
+.sell, .buy {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: bold;
+}
+
+.sell {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+.buy {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}

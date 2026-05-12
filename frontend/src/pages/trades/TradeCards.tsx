@@ -1,5 +1,6 @@
 import type { Transaction } from '../types';
 import TradeCard from './TradeCard';
+import './TradeCards.css';
 
 interface Props {
   transactions: Transaction[];

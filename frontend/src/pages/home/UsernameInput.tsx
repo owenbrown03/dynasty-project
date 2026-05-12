@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import './UsernameInput.css';
 
 interface Props {
   setUsername: (name: string) => void;
