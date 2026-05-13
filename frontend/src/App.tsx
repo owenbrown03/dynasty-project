@@ -1,9 +1,9 @@
 import AppRoutes from './Routes';
 import Sidebar from './components/Sidebar';
-import usernameLookup from './hooks/usernameLookup.ts';
+import { usernameLookup } from './hooks/usernameHandler.ts';
 
 function App() {
-  const { transactions, username, loading, handleUserSubmit } = usernameLookup(); 
+  const { username, loading, handleUserSubmit } = usernameLookup(); 
 
   return (
     <div className="app-container">
@@ -14,7 +14,6 @@ function App() {
       <main>
         <AppRoutes 
           handleUserSubmit={handleUserSubmit}
-          transactions={transactions}
           loading={loading}
           username={username}
         />

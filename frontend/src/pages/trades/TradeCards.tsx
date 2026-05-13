@@ -1,15 +1,15 @@
-import type { Transaction } from '../types';
+import type { Transaction } from '../../types';
 import TradeCard from './TradeCard';
 import './TradeCards.css';
 
 interface Props {
-  transactions: Transaction[];
+  trades: Transaction[];
 }
 
-function TradeCards({ transactions }: Props) {
+function TradeCards({ trades }: Props) {
   return (
     <div className="trade-cards">
-      {transactions.map((tx) => (
+      {trades.map((tx) => (
         <TradeCard 
           tx={tx} 
         />

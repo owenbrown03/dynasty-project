@@ -16,3 +16,8 @@ export interface Transaction {
   time_ms: number;
   users: User[];
 }
+
+export interface Roster {
+  league_name: string;
+  players: string[];
+}

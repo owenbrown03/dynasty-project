@@ -1,9 +1,14 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import select, func
+from collections import defaultdict
 from datetime import datetime, timedelta
 from models import Info
 import asyncio, logging, sleeper, schemas, models, crud, mappers, trades
 
 logger = logging.getLogger(__name__)
+# start_time = time.perf_counter()
+# end_time = time.perf_counter()
+# print(f"Time elapsed: {end_time - start_time:.4f}s")
 
 async def info_sync(db, username: str) -> Info:
     user_task = sleeper.get_username_details(username)
@@ -27,14 +32,32 @@ async def info_sync(db, username: str) -> Info:
 
     return info
 
-async def get_lm_data(db: Session, info: Info):
+async def get_user_rosters(db: Session, info: Info):    
+    stmt = (
+        select(models.League.name, models.Roster.players)
+        .join(models.League, models.Roster.league_id == models.League.league_id)
+        .where(models.Roster.owner_id == info.main_user.user_id)
+    )
+    raw_results = db.execute(stmt).all()
+    
+    pos_order = {"QB": 0, "RB": 1, "WR": 2, "TE": 3, "K": 4, "DEF": 5}
+    formatted_rosters = []
+    for league_name, player_ids in raw_results:
+        id_list = player_ids or []
+        current_roster_objects = [info.player_map[pid] for pid in id_list if pid in info.player_map]
+        current_roster_objects.sort(key=lambda p: (pos_order.get(p.position, 99), p.last_name))
+        names = [f"{p.position} {p.first_name} {p.last_name}" for p in current_roster_objects]
+        formatted_rosters.append({
+            "league_name": league_name,
+            "players": names
+        })
+        
+    return formatted_rosters
+
+async def get_trade_signals(db: Session, info: Info):
     await create_lm_data(db, info)
     trade_signals = await trades.trade_signals(db, info)
     return trade_signals
-    # logger.info(f'Found {len(trade_signals)} trade signals.')
-    # start_time = time.perf_counter()
-    # end_time = time.perf_counter()
-    # print(f"Time elapsed: {end_time - start_time:.4f}s")
 
 async def create_lm_data(db: Session, info: Info):
     logger.info(f'Found {len(info.lms)} leaguemates.')

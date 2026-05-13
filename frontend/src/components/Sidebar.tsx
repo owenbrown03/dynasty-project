@@ -19,8 +19,8 @@ const Sidebar = () => {
           <Link to="/" className="sidebar-link">
             <div>home</div>
           </Link>
-          <Link to="/leagues" className="sidebar-link">
-            <div>leagues</div>
+          <Link to="/rosters" className="sidebar-link">
+            <div>rosters</div>
           </Link>
           <Link to="/trades" className="sidebar-link">
             <div>trades</div>
