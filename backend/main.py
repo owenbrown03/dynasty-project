@@ -34,12 +34,30 @@ async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
     try:
         info = await service.info_sync(db, username)
         await service.create_user_data(db, info, info.main_user.user_id)
-        trade_signals = await service.get_lm_data(db, info)
-        return trade_signals
     except Exception as e:
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/users/{username}/rosters")
+async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
+    try:
+        info = await service.info_sync(db, username)
+        rosters = await service.get_user_rosters(db, info)
+        return rosters
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/users/{username}/trades")
+async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
+    try:
+        info = await service.info_sync(db, username)
+        trade_signals = await service.get_trade_signals(db, info)
+        return trade_signals
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.post("/players/sync")
 async def sync_players_endpoint(db: Session = Depends(get_db)):
     try:
