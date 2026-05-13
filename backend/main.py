@@ -1,12 +1,14 @@
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-from contextlib import asynccontextmanager
-from database import engine, get_db
-import logger as log_config
-import os, debugpy, httpx, logging, service, sleeper, models, traceback
+# app/main.py
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import httpx, logging, os, debugpy
+from contextlib import asynccontextmanager
 
-log_config.setup_logging()
+from app.api.v1.api import api_router
+from app.services import sleeper
+from app.core.logger import setup_logging
+
+setup_logging()
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
@@ -15,8 +17,9 @@ async def lifespan(app: FastAPI):
     yield
     await sleeper.client.aclose()
 
-app = FastAPI(lifespan=lifespan)
-models.Base.metadata.create_all(bind=engine)
+app = FastAPI(title="Dynasty Database", lifespan=lifespan)
+
+app.include_router(api_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,49 +30,3 @@ app.add_middleware(
 
 if os.getenv("DEBUG_MODE") == "true":
     debugpy.listen(("0.0.0.0", 5678))
-    print("Debugger is listening on port 5678...")
-
-@app.post("/users/{username}/sync")
-async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
-    try:
-        info = await service.info_sync(db, username)
-        await service.create_user_data(db, info, info.main_user.user_id)
-    except Exception as e:
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/users/{username}/rosters")
-async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
-    try:
-        info = await service.info_sync(db, username)
-        rosters = await service.get_user_rosters(db, info)
-        return rosters
-    except Exception as e:
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.get("/users/{username}/trades")
-async def create_user_endpoint(username: str, db: Session = Depends(get_db)):
-    try:
-        info = await service.info_sync(db, username)
-        trade_signals = await service.get_trade_signals(db, info)
-        return trade_signals
-    except Exception as e:
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.post("/players/sync")
-async def sync_players_endpoint(db: Session = Depends(get_db)):
-    try:
-        await service.sync_players(db)
-        return "Successfully synced players"
-    except Exception as e:
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/admin/db-init")
-def re_init_db():
-    models.Base.metadata.create_all(bind=engine)
-    msg = "Tables created (if they didn't exist)"
-    logger.info(msg)
-    return msg

@@ -1,4 +1,4 @@
-import schemas
+from app.schemas import schemas
 
 def schema_to_db(schema) -> dict:
     return schema.model_dump()

@@ -2,9 +2,9 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from dataclasses import dataclass
-from database import Base
+from app.core.database import Base
 from typing import Set, Tuple
-import schemas
+from app.schemas import schemas
 
 @dataclass
 class Info:
@@ -121,5 +121,5 @@ class Player(Base):
     team = Column(String, index=True)
     first_name = Column(String, index=True)
     last_name = Column(String, index=True)
-    age = Column(Integer, index=True)
     years_exp = Column(Integer, index=True)
+    birth_date = Column(String, index=True)

@@ -22,8 +22,8 @@ services:
     container_name: pgadmin_gui
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: password
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     volumes:
       - ./pgadmin_data:/var/lib/pgadmin
     ports:
@@ -39,9 +39,9 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - ENV=development
-      - DEBUG_MODE=true
+      DATABASE_URL: ${DATABASE_URL}
+      ENV: development
+      DEBUG_MODE: "true"
     ports:
       - "8000:8000"
       - "5678:5678"
