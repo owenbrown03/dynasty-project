@@ -1,9 +1,10 @@
 import './Trades.css';
 import TradeCards from './TradeCards';
-import { tradeLoader } from '../../hooks/usernameHandler';
+import { useRouteUsername, useTradeLoader } from '../../hooks/usernameHandler';
 
-const Trades = ({ username }) => {
-  const { trades, loading } = tradeLoader(username);
+const Trades = () => {
+  const username = useRouteUsername();
+  const { trades, loading } = useTradeLoader(username);
   return (
     <div className="trades-container">
       {loading && <p>Fetching data...</p>}

@@ -1,12 +1,13 @@
 import './Rosters.css';
 import RosterCards from './RosterCards';
-import { rosterLoader } from '../../hooks/usernameHandler';
+import { useRosterLoader, useRouteUsername } from '../../hooks/usernameHandler';
 
-const Rosters = ({ username }) => {
-  const { rosters, loading } = rosterLoader(username);
+const Rosters = () => {
+  const username = useRouteUsername();
+  const { rosters, loading } = useRosterLoader(username);
   return (
-<div className="rosters-container">
-      {loading && <p>Fetching data...</p>}      
+    <div className="rosters-container">
+      {loading && <p>Fetching data...</p>}
       {!loading && rosters && rosters.length > 0 && (
         <RosterCards rosters={rosters} />
       )}

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useParams } from 'react-router';
 import api from '../api/client.ts';
+import { useUsername } from '../context/usernameContext';
 import type { Roster, Transaction } from '../types/index.ts';
 
-export function usernameLookup() {
+export function useUsernameLookup() {
   const [loading, setLoading] = useState(false);
-  const [username, setUsername] = useState('');
+  const { username, setUsername } = useUsername();
 
   const handleUserSubmit = async (inputName: string) => {
     if (!inputName || inputName === username) return;
@@ -22,7 +24,20 @@ export function usernameLookup() {
   return { username, loading, handleUserSubmit };
 }
 
-export function rosterLoader(username: string) {
+export function useRouteUsername() {
+  const { routeUsername } = useParams();
+  const { username, setUsername } = useUsername();
+
+  useEffect(() => {
+    if (routeUsername && routeUsername !== username) {
+      setUsername(routeUsername);
+    }
+  }, [routeUsername, setUsername, username]);
+
+  return routeUsername ?? username;
+}
+
+export function useRosterLoader(username: string) {
   const [loading, setLoading] = useState(false);
   const [rosters, setRosters] = useState<Roster[]>([]);
 
@@ -47,7 +62,7 @@ export function rosterLoader(username: string) {
   return { rosters, loading };
 }
 
-export function tradeLoader(username: string) {
+export function useTradeLoader(username: string) {
   const [loading, setLoading] = useState(false);
   const [trades, setTrades] = useState<Transaction[]>([]);
 

@@ -3,25 +3,15 @@ import Home from './pages/home/Home';
 import Trades from './pages/trades/Trades';
 import Rosters from './pages/leagues/Rosters';
 
-const AppRoutes = ({ handleUserSubmit, loading, username }) => {
+const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={
-        <Home 
-          onSubmit={handleUserSubmit} 
-          loading={loading}
-        />
-      } />
-      <Route path="/trades" element={
-        <Trades 
-          username={username}
-        />
-      } />
-      <Route path="/rosters" element={
-        <Rosters 
-          username={username}
-        />
-      } />
+      <Route path="/" element={<Home />} />
+      <Route path="/:routeUsername" element={<Home />} />
+      <Route path="/trades" element={<Trades />} />
+      <Route path="/rosters" element={<Rosters />} />
+      <Route path="/:routeUsername/trades" element={<Trades />} />
+      <Route path="/:routeUsername/rosters" element={<Rosters />} />
     </Routes>
   );
 };
