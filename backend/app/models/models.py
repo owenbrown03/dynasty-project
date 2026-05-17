@@ -1,125 +1,122 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, BigInteger
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from dataclasses import dataclass
-from app.core.database import Base
-from typing import Set, Tuple
-from app.schemas import schemas
+from sqlmodel import BigInteger, SQLModel, Field, Column, Relationship
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import String, JSON, UniqueConstraint, Index
+from typing import List, Dict, Optional
 
-@dataclass
-class Info:
-    main_user: schemas.SleeperUser
-    state: schemas.NFLState
-    player_map: schemas.PlayerMap
-    lms: Set[str]
-    db_leagues: Set[str]
-    db_users: Set[str]
-    db_rosters: Set[Tuple[str, str]] # roster_id, owner_id
-    db_txs: Set[str]
-    db_drafts: Set[str]
+class InternalState(SQLModel, table=True):
+    key: str = Field(primary_key=True)
+    value: str
 
-class InternalState(Base):
-    __tablename__ = "internal_state"
-    key = Column(String, primary_key=True)
-    value = Column(String)
-
-class League(Base):
-    __tablename__ = "leagues"
-    rosters = relationship("Roster", back_populates="league", lazy="selectin")
-    transactions = relationship("Transaction", back_populates="league", lazy="selectin")
-    drafts = relationship("Draft", back_populates="league", lazy="joined")
-    league_id = Column(String, primary_key=True)
-    name = Column(String)
-    total_rosters = Column(Integer)
-    draft_id = Column(String, unique=True, nullable=True, index=True)
-    avatar = Column(String)
-    season = Column(String)
-    dynasty = Column(Boolean)
-    best_ball = Column(Boolean)
-    trade_deadline = Column(Integer)
-    bonus_rec_te = Column(Integer)
-    rec = Column(Integer)
-    pass_td = Column(Integer)
-    roster_positions = Column(ARRAY(String), nullable=True)
-
-class Roster(Base):
-    __tablename__ = "rosters"
-    league = relationship("League", back_populates="rosters", lazy="joined")
-    users = relationship("User", back_populates="rosters", lazy="selectin")
-    id = Column(Integer, primary_key=True)
-    roster_id = Column(Integer, index=True)
-    owner_id = Column(String, ForeignKey("users.user_id"), index=True, nullable=True) # also known as user_id
-    league_id = Column(String, ForeignKey("leagues.league_id"), index=True)
-    players = Column(ARRAY(String), nullable=True)
-    fpts = Column(Integer, default=0)
-    fpts_against = Column(Integer, default=0)
-    wins = Column(Integer, default=0)
-    ties = Column(Integer, default=0)
-    losses = Column(Integer, default=0)
-
-class User(Base):
-    __tablename__ = "users"
-    rosters = relationship("Roster", back_populates="users", lazy="joined")
-    user_id = Column(String, primary_key=True)
-    display_name = Column(String)
-    avatar = Column(String)
-    is_owner = Column(Boolean)
+class League(SQLModel, table=True):
+    league_id: str = Field(primary_key=True)
+    name: str
+    total_rosters: int
+    draft_id: str = Field(unique=True, index=True)
+    avatar: Optional[str] = Field(default=None, nullable=True)
+    season: str
+    dynasty: bool
+    best_ball: Optional[bool] = Field(default=False, nullable=True)
+    trade_deadline: Optional[int] = Field(default=None, nullable=True)
+    bonus_rec_te: int
+    rec: int
+    pass_td: int
     
-class Transaction(Base):
-    __tablename__ = "transactions"
-    league = relationship("League", back_populates="transactions", lazy="joined")
-    movements = relationship("Movement", back_populates="transactions", lazy="selectin")
-    draft_picks = relationship("TradedPick", back_populates="transactions", lazy="selectin")
-    waiver_budget = relationship("WaiverBudget", back_populates="transactions", lazy="selectin")
-    transaction_id = Column(String, primary_key=True)
-    type = Column(String, index=True)
-    time_ms = Column(BigInteger)
-    league_id = Column(String, ForeignKey("leagues.league_id"), nullable=False, index=True)
+    roster_positions: list[str] = Field(sa_column=Column(ARRAY(String)))
 
-class Draft(Base):
-    __tablename__ = "drafts"
-    league = relationship("League", back_populates="drafts", lazy="joined")
-    draft_id = Column(String, primary_key=True) 
-    league_id = Column(String, ForeignKey("leagues.league_id"), index=True) 
-    season = Column(String, index=True)
-    draft_order = Column(JSONB, nullable=True, default={})
-    slot_to_roster_id = Column(JSONB, nullable=True, default={})
+    roster: List["Roster"] = Relationship(back_populates="league", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    transaction: List["Transaction"] = Relationship(back_populates="league")
+    draft: List["Draft"] = Relationship(back_populates="league")
 
-class Movement(Base):
-    __tablename__ = "movements"
-    transactions = relationship("Transaction", back_populates="movements", lazy="joined")
-    id = Column(Integer, primary_key=True)
-    transaction_id = Column(String, ForeignKey("transactions.transaction_id"), index=True)
-    player_id = Column(String, index=True)
-    roster_id = Column(Integer, index=True)
-    action = Column(String, index=True)
+class Roster(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    roster_id: Optional[int] = Field(default=None, index=True, nullable=True)
+    owner_id: Optional[str] = Field(default=None, foreign_key="user.user_id", index=True)
+    league_id: str = Field(foreign_key="league.league_id", index=True)
+    
+    players: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
+    
+    fpts: int = Field(default=0)
+    fpts_against: int = Field(default=0)
+    wins: int = Field(default=0)
+    ties: int = Field(default=0)
+    losses: int = Field(default=0)
 
-class WaiverBudget(Base):
-    __tablename__ = "waiver_transfers"
-    transactions = relationship("Transaction", back_populates="waiver_budget", lazy="joined")
-    id = Column(Integer, primary_key=True)
-    transaction_id = Column(String, ForeignKey("transactions.transaction_id"), index=True)
-    sender = Column(Integer, index=True)
-    receiver = Column(Integer, index=True)
-    amount = Column(Integer)
+    league: "League" = Relationship(back_populates="roster")
+    user: Optional["User"] = Relationship(back_populates="roster")
 
-class TradedPick(Base):
-    __tablename__ = "traded_picks"
-    transactions = relationship("Transaction", back_populates="draft_picks", lazy="joined")
-    id = Column(Integer, primary_key=True)
-    transaction_id = Column(String, ForeignKey("transactions.transaction_id"), index=True)
-    season = Column(String, index=True)
-    round = Column(Integer, index=True)
-    new_roster_id = Column(Integer, index=True)
-    old_roster_id = Column(Integer, index=True)
-    og_roster_id = Column(Integer, index=True)
+    __table_args__ = (
+        UniqueConstraint("league_id", "roster_id", name="uq_roster_league_roster_id"),
+        Index("idx_roster_owner_league", "owner_id", "league_id"),
+        {"sqlite_autoincrement": True},
+    )
 
-class Player(Base):
-    __tablename__ = "players"
-    player_id = Column(String, primary_key=True)
-    position = Column(String, index=True)
-    team = Column(String, index=True)
-    first_name = Column(String, index=True)
-    last_name = Column(String, index=True)
-    years_exp = Column(Integer, index=True)
-    birth_date = Column(String, index=True)
+class User(SQLModel, table=True):
+    user_id: str = Field(primary_key=True)
+    display_name: str
+    avatar: Optional[str] = Field(default=None, nullable=True)
+    is_owner: Optional[bool] = Field(default=None, nullable=True)
+    is_placeholder: bool = Field(default=False, nullable=False)
+
+    roster: List["Roster"] = Relationship(back_populates="user")
+
+class Transaction(SQLModel, table=True):
+    transaction_id: str = Field(primary_key=True)
+    type: str = Field(index=True)
+    time_ms: int = Field(sa_column=Column(BigInteger, nullable=False))
+    league_id: str = Field(foreign_key="league.league_id", index=True)
+
+    league: "League" = Relationship(back_populates="transaction")
+    movement: List["Movement"] = Relationship(back_populates="transaction")
+    draft_pick: List["TradedPick"] = Relationship(back_populates="transaction")
+    waiver_budget: List["WaiverBudget"] = Relationship(back_populates="transaction")
+
+class Draft(SQLModel, table=True):
+    draft_id: str = Field(primary_key=True)
+    league_id: str = Field(foreign_key="league.league_id", index=True)
+    season: str = Field(index=True)
+    draft_order: Optional[Dict[str, int]] = Field(default_factory=dict, sa_type=JSON, nullable=True)
+    slot_to_roster_id: Optional[Dict[str, int]] = Field(default_factory=dict, sa_type=JSON, nullable=True)
+
+    league: "League" = Relationship(back_populates="draft")
+
+class Movement(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    transaction_id: str = Field(foreign_key="transaction.transaction_id", index=True)
+    player_id: Optional[str] = Field(default=None, index=True, nullable=True)
+    roster_id: Optional[int] = Field(default=None, index=True, nullable=True)
+    action: Optional[str] = Field(default=None, index=True, nullable=True)
+
+    transaction: "Transaction" = Relationship(back_populates="movement")
+
+    __table_args__ = (
+        Index("idx_movement_roster_tx", "roster_id", "transaction_id"),
+    )
+
+class WaiverBudget(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    transaction_id: str = Field(foreign_key="transaction.transaction_id", index=True)
+    sender: int = Field(index=True)
+    receiver: int = Field(index=True)
+    amount: int
+
+    transaction: "Transaction" = Relationship(back_populates="waiver_budget")
+
+class TradedPick(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    transaction_id: str = Field(foreign_key="transaction.transaction_id", index=True)
+    season: str = Field(index=True)
+    round: int = Field(index=True)
+    new_roster_id: int = Field(index=True)
+    old_roster_id: int = Field(index=True)
+    og_roster_id: int = Field(index=True)
+
+    transaction: "Transaction" = Relationship(back_populates="draft_pick")
+
+class Player(SQLModel, table=True):
+    player_id: str = Field(primary_key=True)
+    position: Optional[str] = Field(default=None, nullable=True, index=True)
+    team: Optional[str] = Field(default=None, nullable=True, index=True)
+    first_name: str = Field(index=True)
+    last_name: str = Field(index=True)
+    years_exp: Optional[int] = Field(default=None, nullable=True, index=True)
+    birth_date: Optional[str] = Field(default=None, nullable=True, index=True)

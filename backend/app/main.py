@@ -1,4 +1,3 @@
-# app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import httpx, logging, os, debugpy
@@ -29,4 +28,11 @@ app.add_middleware(
 )
 
 if os.getenv("DEBUG_MODE") == "true":
-    debugpy.listen(("0.0.0.0", 5678))
+    try:
+        debugpy.listen(("0.0.0.0", 5678))
+        print("??? Debugger listening on port 5678")
+    except RuntimeError as e:
+        if "Address already in use" in str(e):
+            print("??? Debugger already running in parent process, skipping duplicate bind.")
+        else:
+            raise e

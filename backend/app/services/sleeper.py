@@ -1,4 +1,6 @@
-import httpx, logging, asyncio
+import httpx
+import logging
+import asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -9,7 +11,7 @@ limit = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 client: httpx.AsyncClient = None
 error_count = 0
 
-async def fetch_sleeper(endpoint: str, retries: int = 3):
+async def fetch_sleeper(endpoint: str, retries: int = 3) -> getattr:
     global error_count, client
     
     if client is None:
@@ -19,57 +21,51 @@ async def fetch_sleeper(endpoint: str, retries: int = 3):
 
     async with limit:
         if error_count > 50:
+            logger.critical("Circuit breaker tripped: error count exceeded 50!")
             raise RuntimeError("Error count exceeded!")
 
         for attempt in range(retries):
             try:
                 response = await client.get(url)
-
+                
+                # Handle Explicit Missing/Bad Input States Cleanly
+                if response.status_code == 404:
+                    logger.warning(f"Resource not found (404) for: {endpoint}")
+                    return None
+                if response.status_code == 400:
+                    logger.error(f"Bad Request (400) for: {endpoint}. Check parameters.")
+                    return None
+                
+                # Handle Rate Limiting
                 if response.status_code == 429:
                     error_count += 5 
+                    logger.warning(f"Rate limited (429) by Sleeper on {endpoint}. Cooling down 10s...")
                     await asyncio.sleep(10)
                     continue 
 
-                result = handle_sleeper_error(response)
-  
-                if response.status_code in [400, 404]:
-                    return None
-
+                # Throw an exception for any other bad status (500s, etc) to trigger the retry loop
                 response.raise_for_status()
                 
+                # If we made it here, it's a 200 OK success
                 if error_count > 0:
                     error_count -= 1 
-                return result
+                return response.json()
 
             except (httpx.HTTPStatusError, httpx.RequestError) as e:
                 error_count += 1
-                response = getattr(e, "response", None)
-                status_code = getattr(response, "status_code", None) if response else None
+                
+                # Check if it was a server status error vs network timeout
+                status_code = e.response.status_code if isinstance(e, httpx.HTTPStatusError) else None
 
-                if status_code == 429:
-                    logger.warning(f"Rate limited by Sleeper. Cooling down...")
-                    await asyncio.sleep(10)
-
+                # Backoff Retry Logic
                 if attempt < retries - 1:
                     wait_time = (2 ** attempt) + 1
-                    error_type = "Timeout" if isinstance(e, httpx.ReadTimeout) else "Error"
-                    logger.warning(f"Sleeper {error_type} for {endpoint}. Retry {attempt+1} in {wait_time}s.")
+                    error_type = "Timeout/Connection" if status_code is None else f"Server Error ({status_code})"
+                    logger.warning(f"Sleeper {error_type} for {endpoint}. Retry {attempt+1}/{retries} in {wait_time}s.")
                     await asyncio.sleep(wait_time)
                 else:
-                    logger.error(f"Final failure for {endpoint}: {e}")
+                    logger.error(f"Final catastrophic failure for {endpoint} after {retries} attempts: {e}")
                     raise e
-
-def handle_sleeper_error(response: httpx.Response):
-    status = response.status_code
-    if status == 200:
-        return response.json()
-    if status == 404:
-        logger.warning(f"Resource not found (404).")
-        return None
-    if status == 400:
-        logger.error(f"Bad Request (400). Check params.")
-        return None
-    response.raise_for_status()
  
 # User
 async def get_username_details(username):
