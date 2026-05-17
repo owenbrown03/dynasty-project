@@ -6,3 +6,7 @@ httpx
 asyncio
 debugpy
 pydantic
+alembic
+pydantic_settings
+sqlmodel
+rich

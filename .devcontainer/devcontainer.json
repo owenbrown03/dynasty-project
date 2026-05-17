@@ -1,0 +1,44 @@
+{
+  "name": "Dynasty Project",
+
+  "dockerComposeFile": [
+    "../docker-compose.yml"
+  ],
+
+  "service": "api",
+
+  "workspaceFolder": "/workspace",
+
+  "shutdownAction": "stopCompose",
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {
+        "version": "os-provided"
+    }
+  },
+  
+  "forwardPorts": [
+    8000,
+    5173,
+    5432,
+    5050
+  ],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "ms-azuretools.vscode-docker",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next"
+      ]
+    }
+  },
+
+  "postCreateCommand": "echo 'Dev container ready'",
+
+  "remoteUser": "root"
+}
