@@ -1,9 +1,12 @@
 import './Sidebar.css';
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { useUsername } from '../context/usernameContext';
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { username } = useUsername();
+  const userPrefix = username ? `/${encodeURIComponent(username)}` : '';
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -19,10 +22,10 @@ const Sidebar = () => {
           <Link to="/" className="sidebar-link">
             <div>home</div>
           </Link>
-          <Link to="/rosters" className="sidebar-link">
+          <Link to={`${userPrefix}/rosters`} className="sidebar-link">
             <div>rosters</div>
           </Link>
-          <Link to="/trades" className="sidebar-link">
+          <Link to={`${userPrefix}/trades`} className="sidebar-link">
             <div>trades</div>
           </Link>
         </div>
