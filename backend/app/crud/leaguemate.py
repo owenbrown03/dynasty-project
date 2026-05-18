@@ -47,7 +47,8 @@ async def sync_leaguemates(main_user_id: str, season: str) -> dict:
             return {"status": "skipped", "synced_count": 0}
 
         processed_lms = 0
-        log_milestone = max(1, total_leaguemates // 4)
+        progress_interval = 10
+        log_milestone = max(1, total_leaguemates // progress_interval)
 
         async def fetch_leagues_with_progress(lm_id):
             nonlocal processed_lms
@@ -55,7 +56,7 @@ async def sync_leaguemates(main_user_id: str, season: str) -> dict:
                 return await sleeper.get_leagues(lm_id, season)
             finally:
                 processed_lms += 1
-                if total_leaguemates >= 4 and processed_lms % log_milestone == 0:
+                if total_leaguemates >= progress_interval and processed_lms % log_milestone == 0:
                     logger.info(f"[Leaguemate Discovery] Discovered league rosters for {processed_lms}/{total_leaguemates} leaguemates.")
 
         api_tasks = [fetch_leagues_with_progress(lm_id) for lm_id in lm_ids]

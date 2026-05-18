@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_session
 from app.crud.user import sync_user_data
@@ -9,10 +9,13 @@ router = APIRouter()
 
 @router.post("/{username}/sync")
 async def sync_user_data_endpoint(username: str, db: Session = Depends(get_session)):
-    username_details = await sleeper.get_username_details(username)
+    clean_username = username.strip()
+    username_details = await sleeper.get_username_details(clean_username)
     if not username_details:
-        raise HTTPException(status_code=404, detail="User not found")
-
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User '{clean_username}' could not be located in core schemas."
+        )
     await sync_user_data(db, username_details['user_id'], "2026") #TODO: season should be dynamic
     return {"status": "success"}
 

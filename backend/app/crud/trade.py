@@ -154,7 +154,7 @@ async def get_trade_signals(db: Session, main_user_id: str) -> List[schemas.Disp
 
                 if m.action == "DROP":
                     shared_with_this_lm = player_to_leagues[user_id][m.player_id].intersection(shared_leagues[user_id])
-                    if shared_with_this_lm:
+                    if shared_with_this_lm and user_id != main_user_id:
                         signals = [league_map[lid] for lid in shared_with_this_lm if lid in league_map]
                         signal_text = f"Buy opportunity ({', '.join(signals)})"
                         has_signal = True
@@ -162,7 +162,7 @@ async def get_trade_signals(db: Session, main_user_id: str) -> List[schemas.Disp
 
                 elif m.action == "ADD":
                     my_ownership = player_to_leagues[main_user_id][m.player_id].intersection(shared_leagues[user_id])
-                    if my_ownership:
+                    if my_ownership and user_id != main_user_id:
                         signals = [league_map[lid] for lid in my_ownership if lid in league_map]
                         signal_text = f"Sell opportunity ({', '.join(signals)})"
                         has_signal = True
