@@ -147,6 +147,20 @@ def save_league_bundle_to_db(db: Session, bundle: dict, commit: bool = True) -> 
             for u in (bundle.get("users_json") or []) if u
         ]
 
+        known_user_ids = {str(u["user_id"]) for u in db_user_dicts}
+
+        for roster in db_roster_dicts:
+            owner_id = roster.get("owner_id")
+            if owner_id and str(owner_id) not in known_user_ids:
+                db_user_dicts.append({
+                    "user_id": str(owner_id),
+                    "username": f"orphan_{owner_id[:8]}",
+                    "display_name": "Orphan Roster Placeholder",
+                    "avatar": None,
+                    "is_owner": False
+                })
+                known_user_ids.add(str(owner_id))
+
         db_transaction_dicts = []
         db_movement_dicts = []
         db_waiver_dicts = []
