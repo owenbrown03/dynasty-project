@@ -1,9 +1,13 @@
-import './Rosters.css';
-import RosterCards from './RosterCards';
-import { rosterLoader } from '../../hooks/usernameHandler';
+import { useParams } from 'react-router';
 
-const Rosters = ({ username }) => {
-  const { rosters, loading } = rosterLoader(username);
+import './Rosters.css';
+import { RosterCards } from './RosterCards';
+import { useRosterLoader } from '../../hooks/usernameHandler';
+
+export const Rosters = () => {
+  const { username } = useParams<{ username: string }>();
+  const { rosters, loading } = useRosterLoader(username);
+  
   return (
 <div className="rosters-container">
       {loading && <p>Fetching data...</p>}      
@@ -16,5 +20,3 @@ const Rosters = ({ username }) => {
     </div>
   );
 };
-
-export default Rosters;

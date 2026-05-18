@@ -1,12 +1,12 @@
-import type { Transaction } from '../../types';
-import UserCard from './UserCard';
 import './TradeCard.css';
+import type { Transaction } from '../../types';
+import { UserCard } from './UserCard';
 
 interface Props {
   tx: Transaction;
 }
 
-function TradeCard({ tx }: Props) {
+export function TradeCard({ tx }: Props) {
   return (
     <div className="trade-card">
       <header className="league-header">{tx.league_name}</header>      
@@ -21,5 +21,3 @@ function TradeCard({ tx }: Props) {
     </div>
   );
 }
-
-export default TradeCard;

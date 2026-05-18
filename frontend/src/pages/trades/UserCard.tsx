@@ -5,7 +5,7 @@ interface Props {
   user: User;
 }
 
-function UserCard({ user }: Props) {
+export function UserCard({ user }: Props) {
   return (
     <div className="user-card">
       <header className="user-header">{user.display_name}</header>
@@ -26,5 +26,3 @@ function UserCard({ user }: Props) {
     </div>
   );
 }
-
-export default UserCard;
