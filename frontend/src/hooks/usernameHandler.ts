@@ -1,28 +1,14 @@
 import { useEffect, useState } from 'react';
+
 import api from '../api/client.ts';
 import type { Roster, Transaction } from '../types/index.ts';
 
-export function usernameLookup() {
-  const [loading, setLoading] = useState(false);
-  const [username, setUsername] = useState('');
+// TODO: need to implement these apis
+// /api/v1/users/{username}/sync
+// /api/v1/trades/{username}/sync-leaguemates
+// /api/v1/players/sync
 
-  const handleUserSubmit = async (inputName: string) => {
-    if (!inputName || inputName === username) return;
-    setUsername(inputName);
-    setLoading(true);
-    try {
-      await api.post(`/users/${inputName}/sync`);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { username, loading, handleUserSubmit };
-}
-
-export function rosterLoader(username: string) {
+export function useRosterLoader(username: string | undefined) {
   const [loading, setLoading] = useState(false);
   const [rosters, setRosters] = useState<Roster[]>([]);
 
@@ -32,7 +18,7 @@ export function rosterLoader(username: string) {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/users/${username}/rosters`);
+        const res = await api.get(`/api/v1/users/${username}/rosters`);
         setRosters(res.data);
       } catch (err) {
         console.error(err);
@@ -42,12 +28,12 @@ export function rosterLoader(username: string) {
     };
 
     fetchData();
-  }, [username]); // Refetch whenever username changes
+  }, [username]);
 
   return { rosters, loading };
 }
 
-export function tradeLoader(username: string) {
+export function useTradeLoader(username: string | undefined) {
   const [loading, setLoading] = useState(false);
   const [trades, setTrades] = useState<Transaction[]>([]);
 
@@ -57,7 +43,7 @@ export function tradeLoader(username: string) {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/users/${username}/trades`);
+        const res = await api.get(`/api/v1/trades/${username}/trade-signals`);
         setTrades(res.data);
       } catch (err) {
         console.error(err);
@@ -67,7 +53,7 @@ export function tradeLoader(username: string) {
     };
 
     fetchData();
-  }, [username]); // Refetch whenever username changes
+  }, [username]);
 
   return { trades, loading };
 }

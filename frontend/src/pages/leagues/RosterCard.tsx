@@ -5,7 +5,7 @@ interface Props {
   roster: Roster;
 }
 
-function RosterCard({ roster }: Props) {
+export function RosterCard({ roster }: Props) {
   return (
     <div className="trade-card">
       <header className="league-header">{roster.league_name}</header>      
@@ -22,5 +22,3 @@ function RosterCard({ roster }: Props) {
     </div>
   );
 }
-
-export default RosterCard;

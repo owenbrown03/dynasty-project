@@ -1,25 +1,20 @@
-import AppRoutes from './Routes';
-import Sidebar from './components/Sidebar';
-import { usernameLookup } from './hooks/usernameHandler.ts';
+import { AppRoutes } from './Routes';
+import { Sidebar } from './layouts/Sidebar.tsx';
+import { UserProvider } from './context/UserContext.tsx';
 
-function App() {
-  const { username, loading, handleUserSubmit } = usernameLookup(); 
-
+export function App() {
   return (
-    <div className="app-container">
-      <nav className="sidebar-container">
-        <Sidebar />
-      </nav>
-      
-      <main>
-        <AppRoutes 
-          handleUserSubmit={handleUserSubmit}
-          loading={loading}
-          username={username}
-        />
-      </main>
-    </div>
+    <UserProvider>
+      <div className="app-container">
+        <nav className="sidebar-container">
+          <Sidebar />
+        </nav>
+        
+        <main>
+          <AppRoutes />
+        </main>
+      </div>
+    </UserProvider>
   );
 
 }
-export default App;

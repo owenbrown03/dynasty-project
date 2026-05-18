@@ -1,8 +1,11 @@
-import './Sidebar.css';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
-const Sidebar = () => {
+import './Sidebar.css';
+import { useUserContext } from '../context/UserContext';
+
+export const Sidebar = () => {
+  const { username } = useUserContext();
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleSidebar = () => {
@@ -16,21 +19,17 @@ const Sidebar = () => {
       </button>
       {isOpen &&
         <div className='sidebar'>
-          <Link to="/" className="sidebar-link">
+          <Link to={`/dashboard/${username}`} className="sidebar-link">            
             <div>home</div>
           </Link>
-          <Link to="/rosters" className="sidebar-link">
-            <div>rosters</div>
+          <Link to={`/leagues/${username}`} className="sidebar-link">            
+            <div>leagues</div>
           </Link>
-          <Link to="/trades" className="sidebar-link">
+          <Link to={`/trades/${username}`} className="sidebar-link">            
             <div>trades</div>
           </Link>
         </div>
       }
     </div>
-
-
   );
 };
-
-export default Sidebar;

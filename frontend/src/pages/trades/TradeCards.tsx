@@ -1,12 +1,12 @@
-import type { Transaction } from '../../types';
-import TradeCard from './TradeCard';
 import './TradeCards.css';
+import type { Transaction } from '../../types';
+import { TradeCard } from './TradeCard';
 
 interface Props {
   trades: Transaction[];
 }
 
-function TradeCards({ trades }: Props) {
+export function TradeCards({ trades }: Props) {
   return (
     <div className="trade-cards">
       {trades.map((tx) => (
@@ -17,5 +17,3 @@ function TradeCards({ trades }: Props) {
     </div>
   );
 }
-
-export default TradeCards;
