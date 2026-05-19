@@ -1,9 +1,8 @@
-from sqlmodel import Session
-
-from app.crud.player import get_player_map
-
-def format_players(db: Session, player_ids):
-    player_map = get_player_map(db)
+def format_players(player_ids: list[str], player_map: dict[str, dict]) -> list[str]:
+    """
+    Takes a pre-loaded player map and a list of IDs, filtering and sorting
+    them into a position-prioritized text manifest.
+    """
     pos_order = {"QB": 0, "RB": 1, "WR": 2, "TE": 3, "K": 4, "DEF": 5}    
     
     current_roster_dicts = [
@@ -15,9 +14,7 @@ def format_players(db: Session, player_ids):
         key=lambda p: (pos_order.get(p.get("position"), 99), p.get("last_name", ""))
     )
     
-    formatted_players = [
+    return [
         f"{p.get('position')} {p.get('first_name')} {p.get('last_name')}" 
         for p in current_roster_dicts
     ]
-        
-    return formatted_players

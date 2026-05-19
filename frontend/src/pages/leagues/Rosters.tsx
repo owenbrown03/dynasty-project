@@ -1,11 +1,10 @@
-import { useParams } from 'react-router';
-
 import './Rosters.css';
 import { RosterCards } from './RosterCards';
 import { useRosterLoader } from '../../hooks/usernameHandler';
+import { useUserContext } from '../../context/UserContext';
 
 export const Rosters = () => {
-  const { username } = useParams<{ username: string }>();
+  const { username } = useUserContext();
   const { rosters, loading } = useRosterLoader(username);
   
   return (

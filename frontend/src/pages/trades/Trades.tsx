@@ -1,11 +1,10 @@
-import { useParams } from 'react-router';
-
 import './Trades.css';
 import { TradeCards } from './TradeCards';
 import { useTradeLoader } from '../../hooks/usernameHandler';
+import { useUserContext } from '../../context/UserContext';
 
 export const Trades = () => {
-  const { username } = useParams<{ username: string }>();
+  const { username } = useUserContext();
   const { trades, loading } = useTradeLoader(username);
 
   if (loading) {

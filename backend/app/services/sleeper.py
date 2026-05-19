@@ -66,7 +66,11 @@ async def fetch_sleeper(endpoint: str, retries: int = 3) -> getattr:
                 else:
                     logger.error(f"Final catastrophic failure for {endpoint} after {retries} attempts: {e}")
                     raise e
- 
+
+# General
+async def get_NFL_state():
+    return await fetch_sleeper(f"state/nfl")
+
 # User
 async def get_username_details(username):
     return await fetch_sleeper(f"user/{username}")
@@ -98,8 +102,6 @@ async def get_transactions(league_id, week):
     return await fetch_sleeper(f"league/{league_id}/transactions/{week}")
 async def get_traded_picks(league_id):
     return await fetch_sleeper(f"league/{league_id}/traded_picks")
-async def get_NFL_state():
-    return await fetch_sleeper(f"state/nfl")
 
 # Drafts
 async def get_drafts_user(user_id, season):

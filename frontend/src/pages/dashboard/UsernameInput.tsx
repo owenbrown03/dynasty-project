@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router'; 
 
 import './UsernameInput.css';
-import { useUserContext } from '../../context/UserContext'; 
+import { useUserContext } from '../../context/UserContext';
+import { useUserSync, useLeaguemateSync } from '../../hooks/usernameHandler'
 
 export function UsernameInput() {
   const [inputText, setInputText] = useState('');
   const navigate = useNavigate();
-  const { setUsername } = useUserContext(); 
+  const { username, setUsername } = useUserContext(); 
+  const { loading: userSyncing } = useUserSync(username ?? undefined);
+  const { loading: matesSyncing } = useLeaguemateSync(username ?? undefined);
 
   function saveUsername(event: React.ChangeEvent<HTMLInputElement>) {
     setInputText(event.target.value);
@@ -20,22 +23,39 @@ export function UsernameInput() {
     navigate(`/dashboard/${trimmedUsername}`);
   }
 
+  const isSyncing = userSyncing || matesSyncing;
+  
   return (
-    <div className="input-container">
-      <input
-        placeholder="Sleeper username"
-        size={30}
-        onChange={saveUsername}
-        value={inputText}
-        className="username-input"
-        onKeyDown={(e) => e.key === 'Enter' && submitUsername()} 
-      />
-      <button
-        onClick={submitUsername}
-        className="submit-button"
-      >
-        Submit
-      </button>
-    </div>
+     <div>
+      <div className="input-container">
+        <input
+          placeholder="Sleeper username"
+          size={30}
+          onChange={saveUsername}
+          value={inputText}
+          className="username-input"
+          onKeyDown={(e) => e.key === 'Enter' && submitUsername()} 
+        />
+        <button
+          onClick={submitUsername}
+          className="submit-button"
+        >
+          Submit
+        </button>
+      </div>
+      <div>
+        {isSyncing && (
+          <p>
+            ⏳ Pulling league profiles and checking rosters for "{inputText.trim() || username}"...
+          </p>
+        )}
+        
+        {!isSyncing && username && (
+          <p >
+            ✅ Connected profile: <strong>{username}</strong>
+          </p>
+        )}
+      </div>
+    </div> 
   );
 }

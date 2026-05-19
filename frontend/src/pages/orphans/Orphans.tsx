@@ -1,11 +1,10 @@
-import { useParams } from 'react-router';
-
 import './Orphans.css';
 import { OrphanCards } from './OrphanCards';
 import { useOrphanLoader } from '../../hooks/usernameHandler';
+import { useUserContext } from '../../context/UserContext';
 
 export const Orphans = () => {
-  const { username } = useParams<{ username: string }>();
+  const { username } = useUserContext();
   const { orphans, loading } = useOrphanLoader(username);
   
   return (
