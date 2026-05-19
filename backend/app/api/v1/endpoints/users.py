@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
+from app.services import sleeper
 from app.api.deps import get_session
 from app.crud.user import sync_user_data
-from app.crud.roster import get_user_rosters
-from app.services import sleeper
+from app.crud.roster import get_user_rosters, get_user_orphans
 
 router = APIRouter()
 
@@ -23,3 +24,8 @@ async def sync_user_data_endpoint(username: str, db: Session = Depends(get_sessi
 async def get_user_rosters_endpoint(username: str, db: Session = Depends(get_session)):
     username_details = await sleeper.get_username_details(username)
     return await get_user_rosters(db, username_details['user_id'])
+
+@router.get("/{username}/orphans")
+async def get_user_orphans_endpoint(username: str, db: Session = Depends(get_session)):
+    username_details = await sleeper.get_username_details(username)
+    return await get_user_orphans(db, username_details['user_id'])
