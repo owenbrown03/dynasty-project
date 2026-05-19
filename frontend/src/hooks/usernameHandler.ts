@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import api from '../api/client.ts';
-import type { Roster, Transaction } from '../types/index.ts';
+import type { Roster, Transaction, Orphan } from '../types/index.ts';
 
 // TODO: need to implement these apis
 // /api/v1/users/{username}/sync
@@ -56,4 +56,29 @@ export function useTradeLoader(username: string | undefined) {
   }, [username]);
 
   return { trades, loading };
+}
+
+export function useOrphanLoader(username: string | undefined) {
+  const [loading, setLoading] = useState(false);
+  const [orphans, setOrphans] = useState<Orphan[]>([]);
+
+  useEffect(() => {
+    if (!username) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get(`/api/v1/users/${username}/orphans`);
+        setOrphans(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [username]);
+
+  return { orphans, loading };
 }

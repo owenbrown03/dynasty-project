@@ -5,6 +5,7 @@ import { UsernameInput } from './pages/dashboard/UsernameInput';
 import { Analytics } from './pages/dashboard/Analytics';
 import { Trades } from './pages/trades/Trades';
 import { Rosters } from './pages/leagues/Rosters';
+import { Orphans } from './pages/orphans/Orphans'
 
 export const AppRoutes = () => {
   return (
@@ -14,6 +15,7 @@ export const AppRoutes = () => {
         <Route path="/dashboard/:username" element={<Analytics />} />
         <Route path="/trades/:username" element={<Trades />} />
         <Route path="/leagues/:username" element={<Rosters />} />
+        <Route path="/orphans/:username" element={<Orphans />} />
       </Route>
     </Routes>
   );

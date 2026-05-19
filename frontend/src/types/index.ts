@@ -21,3 +21,9 @@ export interface Roster {
   league_name: string;
   players: string[];
 }
+
+export interface Orphan {
+  league_name: string;
+  roster_name: string;
+  players: string[];
+}
