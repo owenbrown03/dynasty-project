@@ -1,15 +1,17 @@
 import asyncio
 import logging
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import engine
 from app.services import sleeper
+from app.schemas import schemas
 from app.models import models
-from app.crud.league import sync_new_leagues
+from app.crud.league import sync_leagues
 
 logger = logging.getLogger(__name__)
 
-def get_leaguemate_ids(db: Session, main_user_id: str):
+async def get_leaguemate_ids(db: AsyncSession, main_user_id: str):
     """Returns list[str]: A list of unique owner_ids (Sleeper IDs)."""
     my_leagues = (
         select(models.Roster.league_id)
@@ -27,18 +29,22 @@ def get_leaguemate_ids(db: Session, main_user_id: str):
         .distinct()
     )
 
-    return db.exec(stmt).all()
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
-async def sync_leaguemates(main_user_id: str, season: str) -> dict:
+async def sync_leaguemates(main_user_id: str) -> dict:
     """
     Orchestrates discovery and synchronization of leagues belonging to all leaguemates.
     Utilizes structured milestone logs for tracking high-concurrency API loops.
     """
-    db = Session(engine)
+    state = await sleeper.get_NFL_state()
+    season = schemas.NFLState(**state).season
+
+    db = AsyncSession(engine)
     logger.info(f"Starting master leaguemate sync discovery workflow for user: {main_user_id}")
     
     try:
-        lm_ids = get_leaguemate_ids(db, main_user_id)
+        lm_ids = await get_leaguemate_ids(db, main_user_id)
         total_leaguemates = len(lm_ids)
         logger.info(f"Context verified: Identified {total_leaguemates} leaguemates to process.")
 
@@ -71,7 +77,7 @@ async def sync_leaguemates(main_user_id: str, season: str) -> dict:
 
         logger.info(f"Discovery phase complete: Scraped {len(all_discovered_leagues)} total league instances from network pools.")
 
-        result = await sync_new_leagues(db, all_discovered_leagues)
+        result = await sync_leagues(db, all_discovered_leagues)
         return result
 
     except Exception as e:
@@ -80,9 +86,9 @@ async def sync_leaguemates(main_user_id: str, season: str) -> dict:
         
     finally:
         try:
-            db.rollback()
+            await db.rollback()
         except Exception:
             pass
             
-        db.close()
+        await db.close()
         logger.info("Database session cleanly closed and returned to pool.")

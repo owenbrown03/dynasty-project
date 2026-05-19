@@ -1,7 +1,7 @@
-from sqlmodel import Session
-from app.core.database import engine
-from typing import Generator
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import AsyncSessionLocal
 
-def get_session() -> Generator[Session, None, None]:
-    with Session(engine) as session:
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
         yield session

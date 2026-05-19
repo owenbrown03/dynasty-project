@@ -3,7 +3,7 @@ export interface Movement {
   signal: string;
 }
 
-export interface User {
+export interface UserMovements {
   display_name: string;
   avatar: string;
   adds: Movement[];
@@ -14,7 +14,7 @@ export interface Transaction {
   transaction_id: string;
   league_name: string;
   time_ms: number;
-  users: User[];
+  users: UserMovements[];
 }
 
 export interface Roster {

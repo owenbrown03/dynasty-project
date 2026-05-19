@@ -1,10 +1,14 @@
 import './Analytics.css';
+import { UsernameInput } from './UsernameInput';
 
 export function Analytics() {
 
   return (
-    <>
-      Coming soon
-    </>
-  );
+    <div>
+      <UsernameInput />
+      <>
+        ANALYTICS HERE
+      </>
+    </div>
+      );
 }

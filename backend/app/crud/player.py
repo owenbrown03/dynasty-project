@@ -1,9 +1,9 @@
 import logging
 from typing import Any
 from datetime import datetime, timedelta
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
-from functools import lru_cache
 
 from app.models import models 
 from app.schemas import schemas
@@ -11,15 +11,28 @@ from app.services import sleeper, transformers
 
 logger = logging.getLogger(__name__)
 
-@lru_cache(maxsize=1)
-def get_player_map(db: Session) -> dict[str, dict[str, Any]]:
-    """Fetches all players and caches them as plain dictionaries without DB session leaks."""
-    players = db.exec(select(models.Player)).all()
-    return {p.player_id: p.model_dump() for p in players}
+_PLAYER_MAP_CACHE: dict[str, dict[str, Any]] = {}
 
-async def sync_players(db: Session, force_update: bool = False):
+async def get_player_map(db: AsyncSession) -> dict[str, dict[str, Any]]:
+    """Fetches all players and caches them as plain dictionaries without DB session leaks."""
+    global _PLAYER_MAP_CACHE
+    
+    if _PLAYER_MAP_CACHE:
+        return _PLAYER_MAP_CACHE
+
+    result = await db.execute(select(models.Player))
+    players = result.scalars().all()
+    
+    _PLAYER_MAP_CACHE = {p.player_id: p.model_dump() for p in players}
+    return _PLAYER_MAP_CACHE
+
+async def sync_players(db: AsyncSession, force_update: bool = False):
+    global _PLAYER_MAP_CACHE
+    
     state_statement = select(models.InternalState).where(models.InternalState.key == "last_player_map_update")
-    state = db.exec(state_statement).first()
+    
+    result = await db.execute(state_statement)
+    state = result.scalars().first()
     
     last_update = datetime.fromisoformat(state.value) if state else None
     threshold = datetime.now() - timedelta(days=30)
@@ -58,15 +71,15 @@ async def sync_players(db: Session, force_update: bool = False):
                     "birth_date": stmt.excluded.birth_date
                 }
             )
-            db.exec(stmt)
+            await db.execute(stmt)
 
     if not state:
         state = models.InternalState(key="last_player_map_update")
         db.add(state)
     
     state.value = datetime.now().isoformat()
-    db.commit()
+    await db.commit()
     
-    get_player_map.cache_clear()
+    _PLAYER_MAP_CACHE.clear()
     
-    logger.info(f"Player Sync Complete: Processed {len(player_dicts)} players. LRU cache cleared.")
+    logger.info(f"Player Sync Complete: Processed {len(player_dicts)} players. Cache cleared.")

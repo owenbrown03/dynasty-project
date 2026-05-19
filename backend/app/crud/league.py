@@ -1,6 +1,7 @@
 import asyncio
-from typing import List, Set, Optional, Any
-from sqlmodel import Session, select
+from typing import List, Set, Optional
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import inspect
 import logging
 
@@ -12,54 +13,46 @@ from app.crud.base import _bulk_upsert
 
 logger = logging.getLogger(__name__)
 
-def get_league_map(db: Session) -> dict[str, str]:
+async def get_league_map(db: AsyncSession) -> dict[str, str]:
     """Returns a dict of {league_id: league_name}"""
     result = db.exec(select(models.League.league_id, models.League.name)).all()
     return {l.league_id: l.name for l in result}
 
-def get_existing_leagues(db: Session, league_ids: List[str]) -> Set[str]:
+async def get_existing_leagues(db: AsyncSession, league_ids: List[str]) -> Set[str]:
     """Given a list of league IDs, returns a set of IDs that already exist in the DB."""
     statement = select(models.League.league_id).where(models.League.league_id.in_(league_ids))
     existing_leagues = db.exec(statement).all()
     return {l for l in existing_leagues}
 
-async def sync_new_leagues(db: Session, raw_leagues: list[dict]) -> dict:
+async def sync_leagues(db: AsyncSession, raw_leagues: list[dict]) -> dict:
+    state = await sleeper.get_NFL_state()
+    curr_week = schemas.NFLState(**state).week
+    if curr_week < 1:
+        curr_week = 1
+    
     unique_leagues = {l['league_id']: l for l in raw_leagues if l}
-    incoming_ids = list(unique_leagues.keys())
-    
-    loop = asyncio.get_running_loop()
-    existing_ids = await loop.run_in_executor(
-        None, 
-        get_existing_leagues, 
-        db, 
-        incoming_ids
-    )
-    
-    leagues_to_sync = [
-        l for l_id, l in unique_leagues.items() 
-        if l_id not in existing_ids
-    ]
+    leagues_to_sync = list(unique_leagues.values())
 
     if not leagues_to_sync:
-        logger.info("Sync verification skipped: All incoming leagues are already tracked in the database.")
+        logger.info("Sync leagues skipped: No valid leagues provided in payload.")
         return {"status": "skipped", "synced_count": 0}
 
     total_leagues = len(leagues_to_sync)
-    logger.info(f"Initiating network scrape workflow for {total_leagues} un-tracked leagues.")
+    logger.info(f"Initiating network scrape workflow for {total_leagues} leagues.")
     
     status_result = {"status": "failed", "synced_count": 0}
     
     try:
         processed_fetches = 0
-        
+        progress_interval = 10
         async def fetch_with_progress(league_data):
             nonlocal processed_fetches
             try:
-                return await fetch_league_bundle(league_data)
+                return await fetch_league_bundle(league_data, curr_week)
             finally:
                 processed_fetches += 1
-                if total_leagues >= 4 and processed_fetches % max(1, total_leagues // 4) == 0:
-                    logger.info(f"[Network Ingestion] Scraped {processed_fetches}/{total_leagues} leagues from Sleeper API.")
+                if total_leagues >= progress_interval and processed_fetches % max(1, total_leagues // progress_interval) == 0:
+                    logger.info(f"[Network Ingestion] Scraped {processed_fetches}/{total_leagues} leagues from Sleeper API ({(processed_fetches / total_leagues) * 100:.1f}%)")
 
         api_tasks = [fetch_with_progress(l) for l in leagues_to_sync]
         bundles = await asyncio.gather(*api_tasks, return_exceptions=True)
@@ -78,22 +71,22 @@ async def sync_new_leagues(db: Session, raw_leagues: list[dict]) -> dict:
         
         for i in range(0, total_valid, batch_size):
             chunk = valid_bundles[i : i + batch_size]
-            nested = db.begin_nested()
+            nested = await db.begin_nested()
             try:
                 for bundle in chunk:
-                    success = save_league_bundle_to_db(db, bundle, commit=False)
+                    success = await save_league_bundle_to_db(db, bundle, commit=False)
                     if not success:
                         logger.warning("Aborting sub-transaction chunk due to internal parsing layout failure.")
-                        nested.rollback()
+                        await nested.rollback()
                         break
                 else:
-                    nested.commit()
+                    await nested.commit()
                     success_count += len(chunk)
             except Exception as chunk_err:
                 logger.error(f"Nested transactional context crash encountered: {chunk_err}", exc_info=True)
-                nested.rollback()
+                await nested.rollback()
                         
-            db.commit()
+            await db.commit()
             
             current_processed = min(i + batch_size, total_valid)
             logger.info(f"[Database Commit] Flushed {current_processed}/{total_valid} packages down to storage tier.")
@@ -107,31 +100,64 @@ async def sync_new_leagues(db: Session, raw_leagues: list[dict]) -> dict:
 
     return status_result
 
-async def fetch_league_bundle(league_dict: dict) -> Optional[dict]:
-    """Pure network request worker. Fetches the detailed league metadata along with sub-assets."""
+async def fetch_league_bundle(league_dict: dict, curr_week: int) -> Optional[dict]:
+    """
+    Two-Stage Concurrent Network Worker.
+    Pulls core league metadata first, then uses it to scrape all trade transactions 
+    from Week 1 through the current week concurrently.
+    """
     league_id = league_dict.get("league_id")
+    if not league_id:
+        logger.error("Network download aborted: Missing 'league_id' in payload.")
+        return None
+
     try:
-        tasks = [
+        core_tasks = [
             sleeper.get_league(league_id),
             sleeper.get_users(league_id),
             sleeper.get_rosters(league_id),
-            sleeper.get_transactions(league_id, 1),
             sleeper.get_drafts_league(league_id)
         ]
-        full_league, users, rosters, trades, drafts = await asyncio.gather(*tasks)
         
+        core_results = await asyncio.gather(*core_tasks, return_exceptions=True)
+        
+        for idx, res in enumerate(core_results):
+            if isinstance(res, Exception):
+                logger.error(f"[Core API Failure] Task index {idx} failed for league {league_id}: {str(res)}")
+
+        league = core_results[0] if not isinstance(core_results[0], Exception) else None
+        users = core_results[1] if not isinstance(core_results[1], Exception) else []
+        rosters = core_results[2] if not isinstance(core_results[2], Exception) else []
+        drafts = core_results[3] if not isinstance(core_results[3], Exception) else []
+
+        if not league or not isinstance(league, dict):
+            logger.warning(f"Aborting downstream steps: Failed to fetch valid league metadata object for {league_id}.")
+            return None
+        
+        trade_tasks = [sleeper.get_transactions(league_id, week) for week in range(1, curr_week + 1)]
+        trade_results = await asyncio.gather(*trade_tasks, return_exceptions=True)
+        
+        trades = []
+        for week_idx, week_res in enumerate(trade_results, start=1):
+            if isinstance(week_res, Exception):
+                logger.error(f"[Trade API Failure] Could not pull Week {week_idx} transactions for league {league_id}: {week_res}")
+                continue
+            if isinstance(week_res, list):
+                trades.extend(week_res)
+
         return {
-            "league_json": full_league or league_dict, 
+            "league_json": league, 
             "users_json": users,
             "rosters_json": rosters,
             "trades_json": trades,
             "drafts_json": drafts
         }
+        
     except Exception as e:
-        logger.error(f"Sleeper API download failed for league {league_id}: {e}")
+        logger.error(f"Sleeper API historical download failed for league {league_id}: {e}", exc_info=True)
         return None
 
-def save_league_bundle_to_db(db: Session, bundle: dict, commit: bool = True) -> bool:
+async def save_league_bundle_to_db(db: AsyncSession, bundle: dict, commit: bool = True) -> bool:
     league_id = bundle["league_json"].get("league_id")
     try:
         league_schema = schemas.SleeperLeague.model_validate(bundle["league_json"])
@@ -148,7 +174,6 @@ def save_league_bundle_to_db(db: Session, bundle: dict, commit: bool = True) -> 
         ]
 
         known_user_ids = {str(u["user_id"]) for u in db_user_dicts}
-
         for roster in db_roster_dicts:
             owner_id = roster.get("owner_id")
             if owner_id and str(owner_id) not in known_user_ids:
@@ -175,7 +200,8 @@ def save_league_bundle_to_db(db: Session, bundle: dict, commit: bool = True) -> 
             statement = select(models.Transaction.transaction_id).where(
                 models.Transaction.transaction_id.in_(incoming_tx_ids)
             )
-            existing_tx_ids = set(db.exec(statement).all())
+            result = await db.execute(statement)
+            existing_tx_ids = set(result.scalars().all())
 
         for t_json in (bundle.get("trades_json") or []):
             if not t_json or t_json.get('type') != 'trade':
@@ -191,30 +217,30 @@ def save_league_bundle_to_db(db: Session, bundle: dict, commit: bool = True) -> 
             db_movement_dicts.extend(movements)
             db_waiver_dicts.extend(waivers)
             db_pick_dicts.extend(picks)
-
-        _bulk_upsert(db, models.League, [db_league_dict], "league_id")
         
+        if db_league_dict:
+            await _bulk_upsert(db, models.League, [db_league_dict], "league_id")
         if db_user_dicts:
-            _bulk_upsert(db, models.User, db_user_dicts, "user_id")
-            
-        _bulk_upsert(db, models.Roster, db_roster_dicts, ["league_id", "roster_id"])
-        _bulk_upsert(db, models.Transaction, db_transaction_dicts, "transaction_id")
-                
+            await _bulk_upsert(db, models.User, db_user_dicts, "user_id")
+        if db_roster_dicts:
+            await _bulk_upsert(db, models.Roster, db_roster_dicts, ["league_id", "roster_id"])
+        if db_transaction_dicts:
+            await _bulk_upsert(db, models.Transaction, db_transaction_dicts, "transaction_id")
         if db_movement_dicts: 
-            db.bulk_insert_mappings(inspect(models.Movement), db_movement_dicts)
+            await db.bulk_insert_mappings(inspect(models.Movement), db_movement_dicts)
         if db_waiver_dicts: 
-            db.bulk_insert_mappings(inspect(models.WaiverBudget), db_waiver_dicts)
+            await db.bulk_insert_mappings(inspect(models.WaiverBudget), db_waiver_dicts)
         if db_pick_dicts: 
-            db.bulk_insert_mappings(inspect(models.TradedPick), db_pick_dicts)
+            await db.bulk_insert_mappings(inspect(models.TradedPick), db_pick_dicts)
 
         if commit:
-            db.commit()
+            await db.commit()
         else:
-            db.flush()
+            await db.flush()
         return True
     
     except Exception as e:
         if commit:
-            db.rollback()
+            await db.rollback()
         logger.exception(f"CRITICAL DATA MATRIX ALIGNMENT FAULT for league {league_id}")
         return False

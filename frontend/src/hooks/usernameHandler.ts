@@ -3,10 +3,53 @@ import { useEffect, useState } from 'react';
 import api from '../api/client.ts';
 import type { Roster, Transaction, Orphan } from '../types/index.ts';
 
-// TODO: need to implement these apis
-// /api/v1/users/{username}/sync
-// /api/v1/trades/{username}/sync-leaguemates
-// /api/v1/players/sync
+// TODO: need to implement /api/v1/players/sync
+
+export function useUserSync(username: string | undefined) {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!username) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        await api.post(`/api/v1/users/${username}/sync`);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [username]);
+
+  return { loading };
+}
+
+export function useLeaguemateSync(username: string | undefined) {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!username) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        await api.post(`/api/v1/trades/${username}/sync-leaguemates`);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [username]);
+
+  return { loading };
+}
 
 export function useRosterLoader(username: string | undefined) {
   const [loading, setLoading] = useState(false);

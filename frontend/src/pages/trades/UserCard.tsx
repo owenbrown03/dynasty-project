@@ -1,8 +1,8 @@
 import './UserCard.css';
-import type { User } from '../../types';
+import type { UserMovements } from '../../types';
 
 interface Props {
-  user: User;
+  user: UserMovements;
 }
 
 export function UserCard({ user }: Props) {

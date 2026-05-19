@@ -1,9 +1,9 @@
 import logging
-import asyncio
 from collections import defaultdict
 from typing import Any, List, Dict
-from sqlmodel import Session, select
+from sqlmodel import select
 from sqlalchemy import func, or_, and_
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import models
 from app.schemas import schemas
@@ -13,21 +13,27 @@ from app.crud.player import get_player_map
 
 logger = logging.getLogger(__name__)
 
-def get_user_meta_map(db: Session) -> Dict[str, dict]:
+async def get_user_meta_map(db: AsyncSession) -> Dict[str, dict]:
     """Fetches high-level metadata maps for displaying names and user avatars."""
-    result: Any = db.exec(
-        select(models.User.user_id, models.User.display_name, models.User.avatar, models.User.is_placeholder)
-    ).all()
+    stmt = select(
+        models.User.user_id, 
+        models.User.display_name, 
+        models.User.avatar, 
+        models.User.is_placeholder
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+    
     return {
         user_id: {
             "name": display_name,
             "avatar": avatar,
             "is_placeholder": is_placeholder,
         }
-        for user_id, display_name, avatar, is_placeholder in result
+        for user_id, display_name, avatar, is_placeholder in rows
     }
 
-async def read_trades(db: Session, lms: list) -> Dict[str, dict]:
+async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
     """
     Fetches raw database rows and groups them safely by transaction_id.
     Leverages the new lazy-loaded models and composite database indexes 
@@ -46,16 +52,23 @@ async def read_trades(db: Session, lms: list) -> Dict[str, dict]:
         .where(models.Roster.owner_id.in_(lms))
         .distinct()
     )
-    
-    trade_ids = list(db.exec(trade_ids_stmt).all())
+    result = await db.execute(trade_ids_stmt)
+    trade_ids = list(result.scalars().all())
 
     if not trade_ids:
         return {}
 
-    trades_rows = db.exec(select(models.Transaction).where(models.Transaction.transaction_id.in_(trade_ids))).unique().all()
-    movements_rows = db.exec(select(models.Movement).where(models.Movement.transaction_id.in_(trade_ids))).unique().all()
-    picks_rows = db.exec(select(models.TradedPick).where(models.TradedPick.transaction_id.in_(trade_ids))).unique().all()
-    waivers_rows = db.exec(select(models.WaiverBudget).where(models.WaiverBudget.transaction_id.in_(trade_ids))).unique().all()
+    t_res = await db.execute(select(models.Transaction).where(models.Transaction.transaction_id.in_(trade_ids)))
+    trades_rows = t_res.scalars().unique().all()
+
+    m_res = await db.execute(select(models.Movement).where(models.Movement.transaction_id.in_(trade_ids)))
+    movements_rows = m_res.scalars().unique().all()
+
+    p_res = await db.execute(select(models.TradedPick).where(models.TradedPick.transaction_id.in_(trade_ids)))
+    picks_rows = p_res.scalars().unique().all()
+
+    w_res = await db.execute(select(models.WaiverBudget).where(models.WaiverBudget.transaction_id.in_(trade_ids)))
+    waivers_rows = w_res.scalars().unique().all()
 
     lm_trades = defaultdict(lambda: {'trade': None, 'movements': [], 'picks': [], 'waivers': []})
     
@@ -73,7 +86,7 @@ async def read_trades(db: Session, lms: list) -> Dict[str, dict]:
 
     return lm_trades
 
-async def get_trade_signals(db: Session, main_user_id: str) -> List[schemas.DisplayTransaction]:
+async def get_trade_signals(db: AsyncSession, main_user_id: str) -> List[schemas.DisplayTransaction]:
     """
     Evaluates historical trade records to find high-value cross-league strategies.
     Uses structured milestone logging for stateless engine auditing.
@@ -81,7 +94,7 @@ async def get_trade_signals(db: Session, main_user_id: str) -> List[schemas.Disp
     logger.info(f"Initiating trade signal calculation matrix for user: {main_user_id}")
     
     try:
-        lm_ids = get_leaguemate_ids(db, main_user_id)
+        lm_ids = await get_leaguemate_ids(db, main_user_id)
         logger.info(f"Context loaded: Identified {len(lm_ids)} unique leaguemates.")
 
         lm_trades_data = await read_trades(db, lm_ids)
@@ -92,26 +105,31 @@ async def get_trade_signals(db: Session, main_user_id: str) -> List[schemas.Disp
         total_trades = len(lm_trades_data)
         logger.info(f"Dataset compiled: Processing {total_trades} historical transactions.")
 
-        league_map = get_league_map(db)
-        user_meta = get_user_meta_map(db)
+        league_map = await get_league_map(db)
+        user_meta = await get_user_meta_map(db)
 
         trade_league_ids = {tx_data['trade'].league_id for tx_data in lm_trades_data.values() if tx_data['trade']}
         roster_owner_map = defaultdict(dict)
         
-        roster_rows: Any = db.exec(
+        r_stmt = (
             select(models.Roster.league_id, models.Roster.owner_id, models.Roster.roster_id)
             .where(models.Roster.league_id.in_(trade_league_ids))
-        ).all()
+        )
+        r_res = await db.execute(r_stmt)
+        roster_rows = r_res.all()
+        
         for l_id, o_id, r_id in roster_rows:
             roster_owner_map[l_id][r_id] = o_id
 
         my_leagues = select(models.Roster.league_id).where(models.Roster.owner_id == main_user_id).scalar_subquery()
-        
-        intersect_query: Any = db.exec(
+
+        intersect_stmt = (
             select(models.Roster.league_id, models.Roster.owner_id, func.unnest(models.Roster.players))
             .where(models.Roster.league_id.in_(my_leagues))
             .where(or_(models.Roster.owner_id.in_(lm_ids), models.Roster.owner_id == main_user_id))
-        ).all()
+        )
+        int_res = await db.execute(intersect_stmt)
+        intersect_query = int_res.all()
         
         player_to_leagues = defaultdict(lambda: defaultdict(set))
         shared_leagues = defaultdict(set)
@@ -121,11 +139,13 @@ async def get_trade_signals(db: Session, main_user_id: str) -> List[schemas.Disp
                 shared_leagues[o_id].add(l_id)
 
         draft_orders = defaultdict(dict)
-        raw_drafts: Any = db.exec(select(models.Draft.draft_id, models.Draft.season, models.Draft.draft_order)).all()
+        d_res = await db.execute(select(models.Draft.draft_id, models.Draft.season, models.Draft.draft_order))
+        raw_drafts = d_res.all()
+        
         for d_id, season, d_order in raw_drafts:
             draft_orders[d_id][season] = d_order or {}
 
-        player_map = get_player_map(db)
+        player_map = await get_player_map(db)
         
         final_trades = []
         log_milestone = max(1, total_trades // 10)
