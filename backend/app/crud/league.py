@@ -1,9 +1,8 @@
-import asyncio
+import logging, asyncio
 from typing import List, Set, Optional
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import inspect
-import logging
+from sqlalchemy.dialects.postgresql import insert
 
 from app.schemas import schemas 
 from app.services import transformers
@@ -15,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 async def get_league_map(db: AsyncSession) -> dict[str, str]:
     """Returns a dict of {league_id: league_name}"""
-    result = db.exec(select(models.League.league_id, models.League.name)).all()
-    return {l.league_id: l.name for l in result}
+    result = await db.execute(select(models.League.league_id, models.League.name))
+    return {l.league_id: l.name for l in result.all()}
 
 async def get_existing_leagues(db: AsyncSession, league_ids: List[str]) -> Set[str]:
     """Given a list of league IDs, returns a set of IDs that already exist in the DB."""
-    statement = select(models.League.league_id).where(models.League.league_id.in_(league_ids))
-    existing_leagues = db.exec(statement).all()
-    return {l for l in existing_leagues}
+    stmt = select(models.League.league_id).where(models.League.league_id.in_(league_ids))
+    result = await db.execute(stmt)
+    return {l for l in result.scalars().all()}
 
 async def sync_leagues(db: AsyncSession, raw_leagues: list[dict]) -> dict:
     state = await sleeper.get_NFL_state()
@@ -71,26 +70,27 @@ async def sync_leagues(db: AsyncSession, raw_leagues: list[dict]) -> dict:
         
         for i in range(0, total_valid, batch_size):
             chunk = valid_bundles[i : i + batch_size]
-            nested = await db.begin_nested()
-            try:
-                for bundle in chunk:
-                    success = await save_league_bundle_to_db(db, bundle, commit=False)
-                    if not success:
-                        logger.warning("Aborting sub-transaction chunk due to internal parsing layout failure.")
-                        await nested.rollback()
-                        break
-                else:
-                    await nested.commit()
+            
+            async with db.begin_nested():
+                try:
+                    for bundle in chunk:
+                        success = await save_league_bundle_to_db(db, bundle, commit=False)
+                        if not success:
+                            raise Exception("Sub-transaction bundle failure. Rolling back chunk.")
+                    
                     success_count += len(chunk)
-            except Exception as chunk_err:
-                logger.error(f"Nested transactional context crash encountered: {chunk_err}", exc_info=True)
-                await nested.rollback()
-                        
-            await db.commit()
+                    
+                    await db.flush()
+                    
+                except Exception as chunk_err:
+                    logger.error(f"Nested context crash encountered, rolling back this chunk of {batch_size}: {chunk_err}")
+                    continue 
             
             current_processed = min(i + batch_size, total_valid)
-            logger.info(f"[Database Commit] Flushed {current_processed}/{total_valid} packages down to storage tier.")
+            logger.info(f"[Database Batch] Flushed {current_processed}/{total_valid} packages down to storage tier.")
         
+        await db.commit()
+            
         status_result = {"status": "completed", "synced_count": success_count}
         logger.info(f"Sync event complete. Successfully integrated {success_count} leagues into core database schemas.")
             
@@ -101,11 +101,6 @@ async def sync_leagues(db: AsyncSession, raw_leagues: list[dict]) -> dict:
     return status_result
 
 async def fetch_league_bundle(league_dict: dict, curr_week: int) -> Optional[dict]:
-    """
-    Two-Stage Concurrent Network Worker.
-    Pulls core league metadata first, then uses it to scrape all trade transactions 
-    from Week 1 through the current week concurrently.
-    """
     league_id = league_dict.get("league_id")
     if not league_id:
         logger.error("Network download aborted: Missing 'league_id' in payload.")
@@ -226,21 +221,16 @@ async def save_league_bundle_to_db(db: AsyncSession, bundle: dict, commit: bool 
             await _bulk_upsert(db, models.Roster, db_roster_dicts, ["league_id", "roster_id"])
         if db_transaction_dicts:
             await _bulk_upsert(db, models.Transaction, db_transaction_dicts, "transaction_id")
+            
         if db_movement_dicts: 
-            await db.bulk_insert_mappings(inspect(models.Movement), db_movement_dicts)
+            await db.execute(insert(models.Movement).values(db_movement_dicts))
         if db_waiver_dicts: 
-            await db.bulk_insert_mappings(inspect(models.WaiverBudget), db_waiver_dicts)
+            await db.execute(insert(models.WaiverBudget).values(db_waiver_dicts))
         if db_pick_dicts: 
-            await db.bulk_insert_mappings(inspect(models.TradedPick), db_pick_dicts)
+            await db.execute(insert(models.TradedPick).values(db_pick_dicts))
 
-        if commit:
-            await db.commit()
-        else:
-            await db.flush()
+        await db.flush()
         return True
     
     except Exception as e:
-        if commit:
-            await db.rollback()
-        logger.exception(f"CRITICAL DATA MATRIX ALIGNMENT FAULT for league {league_id}")
         return False

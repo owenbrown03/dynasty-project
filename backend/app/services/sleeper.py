@@ -1,8 +1,6 @@
-import httpx
-import logging
-import asyncio
+import logging, asyncio, httpx
+from typing import Optional
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 MAX_CONCURRENT_REQUESTS = 20
@@ -11,11 +9,24 @@ limit = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 client: httpx.AsyncClient = None
 error_count = 0
 
-async def fetch_sleeper(endpoint: str, retries: int = 3) -> getattr:
-    global error_count, client
+async def open_client():
+    global client
+    if client is None:
+        client = httpx.AsyncClient(timeout=10.0)
+        logger.info("Sleeper API client initialized.")
+
+async def close_client():
+    global client
+    if client:
+        await client.aclose()
+        client = None
+
+async def fetch_sleeper(endpoint: str, retries: int = 3) -> Optional[dict]:
+    global error_count
     
     if client is None:
-        raise RuntimeError("Sleeper client not initialized!")
+        logger.warning("Emergency lazy-init of Sleeper client.")
+        await open_client()
 
     url = f"https://api.sleeper.app/v1/{endpoint}"
 
