@@ -1,18 +1,20 @@
+import logging
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import logging
 
 from app.models import models
 from app.crud.player import get_player_map
 from app.services.format import format_players
+from app.crud.user import user_id_lookup
 
 logger = logging.getLogger(__name__)
 
-async def get_user_rosters(db: AsyncSession, user_id: str) -> list[dict]:
+async def get_user_rosters(db: AsyncSession, username: str) -> list[dict]:
     """
     Fetches all leagues an owner belongs to, unrolls their rostered player lists, 
     and returns a position-sorted manifest.
     """
+    user_id = await user_id_lookup(db, username)
     stmt = (
         select(models.League.name, models.Roster.players)
         .join(models.League, models.Roster.league_id == models.League.league_id)
@@ -33,11 +35,12 @@ async def get_user_rosters(db: AsyncSession, user_id: str) -> list[dict]:
 
     return formatted_rosters
 
-async def get_user_orphans(db: AsyncSession, user_id: str) -> list[dict]:
+async def get_user_orphans(db: AsyncSession, username: str) -> list[dict]:
     """
     Fetches all orphaned rosters in leagues of a specific user, 
     and returns a position-sorted manifest.
     """
+    user_id = await user_id_lookup(db, username)
     my_leagues = (
         select(models.Roster.league_id)
         .where(models.Roster.owner_id == user_id)

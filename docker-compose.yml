@@ -72,6 +72,35 @@ services:
     depends_on:
       - api
 
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: taskiq worker --no-configure-logging app.core.worker:broker
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: "redis://redis:6379"
+    deploy:
+      replicas: 4
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    working_dir: /workspace/backend
+    volumes:
+      - .:/workspace
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   postgres_data:
   pgadmin_data:

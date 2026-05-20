@@ -1,6 +1,6 @@
-import logging
+import logging, asyncio
 from collections import defaultdict
-from typing import Any, List, Dict
+from typing import List, Dict
 from sqlmodel import select
 from sqlalchemy import func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,7 @@ from app.schemas import schemas
 from app.crud.league import get_league_map
 from app.crud.leaguemate import get_leaguemate_ids
 from app.crud.player import get_player_map
+from app.crud.user import user_id_lookup
 
 logger = logging.getLogger(__name__)
 
@@ -58,16 +59,18 @@ async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
     if not trade_ids:
         return {}
 
-    t_res = await db.execute(select(models.Transaction).where(models.Transaction.transaction_id.in_(trade_ids)))
+    tasks = [
+        db.execute(select(models.Transaction).where(models.Transaction.transaction_id.in_(trade_ids))),
+        db.execute(select(models.Movement).where(models.Movement.transaction_id.in_(trade_ids))),
+        db.execute(select(models.TradedPick).where(models.TradedPick.transaction_id.in_(trade_ids))),
+        db.execute(select(models.WaiverBudget).where(models.WaiverBudget.transaction_id.in_(trade_ids)))
+    ]
+    
+    t_res, m_res, p_res, w_res = await asyncio.gather(*tasks)
+
     trades_rows = t_res.scalars().unique().all()
-
-    m_res = await db.execute(select(models.Movement).where(models.Movement.transaction_id.in_(trade_ids)))
     movements_rows = m_res.scalars().unique().all()
-
-    p_res = await db.execute(select(models.TradedPick).where(models.TradedPick.transaction_id.in_(trade_ids)))
     picks_rows = p_res.scalars().unique().all()
-
-    w_res = await db.execute(select(models.WaiverBudget).where(models.WaiverBudget.transaction_id.in_(trade_ids)))
     waivers_rows = w_res.scalars().unique().all()
 
     lm_trades = defaultdict(lambda: {'trade': None, 'movements': [], 'picks': [], 'waivers': []})
@@ -86,14 +89,15 @@ async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
 
     return lm_trades
 
-async def get_trade_signals(db: AsyncSession, main_user_id: str) -> List[schemas.DisplayTransaction]:
+async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.DisplayTransaction]:
     """
     Evaluates historical trade records to find high-value cross-league strategies.
     Uses structured milestone logging for stateless engine auditing.
     """
-    logger.info(f"Initiating trade signal calculation matrix for user: {main_user_id}")
-    
+
     try:
+        main_user_id = await user_id_lookup(db, username)
+        logger.info(f"Initiating trade signal calculation matrix for user: {username}")
         lm_ids = await get_leaguemate_ids(db, main_user_id)
         logger.info(f"Context loaded: Identified {len(lm_ids)} unique leaguemates.")
 

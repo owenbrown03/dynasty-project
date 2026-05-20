@@ -11,3 +11,8 @@ pydantic_settings
 sqlmodel
 rich
 asyncpg
+taskiq
+taskiq-redis
+redis
+greenlet
+loguru
