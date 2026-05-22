@@ -1,29 +1,23 @@
 {
   "name": "Dynasty Project",
-
   "dockerComposeFile": [
-    "../docker-compose.yml"
+    "../docker-compose.yml",
+    "../docker-compose.workers.yml"
   ],
-
   "service": "api",
-
   "workspaceFolder": "/workspace",
-
   "shutdownAction": "stopCompose",
-
   "features": {
     "ghcr.io/devcontainers/features/git:1": {
         "version": "os-provided"
     }
   },
-  
   "forwardPorts": [
     8000,
     5173,
     5432,
     5050
   ],
-
   "customizations": {
     "vscode": {
       "extensions": [
@@ -37,8 +31,6 @@
       ]
     }
   },
-
   "postCreateCommand": "echo 'Dev container ready'",
-
-  "remoteUser": "root"
+  "remoteUser": "appuser"
 }

@@ -1,15 +1,21 @@
 FROM python:3.12-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /workspace/backend
 
-RUN apt-get update && apt-get install -y \
-    libpq-dev gcc postgresql-client postgresql-client-common \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
+
+RUN useradd -m appuser
+COPY --chown=appuser:appuser . .
+USER appuser
 
 COPY . .
 
-CMD ["sh", "./start.sh"]
+CMD ["./start.sh"]

@@ -7,12 +7,12 @@ interface Props {
 
 export function OrphanCard({ orphan }: Props) {
   return (
-    <div className="trade-card">
+    <div className="orphan-card">
       <header className="league-header">
         <span className="header-line-1">{orphan.league_name}</span>
         <span className="header-line-2">{orphan.roster_name}</span>
       </header>      
-      <div className="trade-users-row">
+      <div className="orphan-players-row">
         {orphan.players.map((player, index) => (
           <div 
             key={`${orphan.league_name}-${index}`}

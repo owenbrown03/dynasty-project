@@ -27,3 +27,8 @@ export interface Orphan {
   roster_name: string;
   players: string[];
 }
+
+export interface Login {
+  email: string;
+  password: string;
+}

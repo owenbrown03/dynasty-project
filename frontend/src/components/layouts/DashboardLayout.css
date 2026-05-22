@@ -1,0 +1,12 @@
+.main-wrapper {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: row; 
+  height: calc(100vh - 60px);
+}
+
+.content {
+  flex-grow: 1;
+  padding: 20px;
+  overflow-y: auto;
+}

@@ -1,24 +1,24 @@
 from typing import Any
-from app.schemas import schemas
-from app.models import models
+from app.schemas import sleeper as schema
+from app.models import sleeper as model
 
-def user_to_db(schema: schemas.SleeperUser, return_dict: bool = False) -> models.User | dict[str, Any]:
+def user_to_db(schema: schema.User, return_dict: bool = False) -> model.User | dict[str, Any]:
     """Transforms a nested Sleeper User payload into a flat User database entry."""
     data_map = schema.model_dump()
     
     if return_dict:
         return data_map
-    return models.User(**data_map)
+    return model.User(**data_map)
 
-def player_to_db(schema: schemas.SleeperPlayer, return_dict: bool = False) -> models.Player | dict[str, Any]:
+def player_to_db(schema: schema.Player, return_dict: bool = False) -> model.Player | dict[str, Any]:
     """Transforms a raw Sleeper Player payload into a flat database entity or raw dictionary."""
     data_map = schema.model_dump()
     
     if return_dict:
         return data_map
-    return models.Player(**data_map)
+    return model.Player(**data_map)
 
-def league_to_db(schema: schemas.SleeperLeague, return_dict: bool = False) -> models.League | dict[str, Any]:
+def league_to_db(schema: schema.League, return_dict: bool = False) -> model.League | dict[str, Any]:
     """Transforms a nested Sleeper API payload into a flat League database entity safely."""
     full_data = schema.model_dump()
     
@@ -39,9 +39,9 @@ def league_to_db(schema: schemas.SleeperLeague, return_dict: bool = False) -> mo
     
     if return_dict:
         return data_map
-    return models.League(**data_map)
+    return model.League(**data_map)
 
-def roster_to_db(schema: schemas.SleeperRoster, return_dict: bool = False) -> models.Roster | dict[str, Any]:
+def roster_to_db(schema: schema.Roster, return_dict: bool = False) -> model.Roster | dict[str, Any]:
     """Transforms a nested Sleeper Roster schema into a flat database entity or raw dictionary."""
     data_map = schema.model_dump(exclude={'id'}) # Just keep the original map
     if "players" not in data_map or not data_map["players"]:
@@ -49,10 +49,10 @@ def roster_to_db(schema: schemas.SleeperRoster, return_dict: bool = False) -> mo
         
     if return_dict:
         return data_map
-    return models.Roster(**data_map)
+    return model.Roster(**data_map)
 
 def tx_to_db(
-    schema: schemas.SleeperTransaction, 
+    schema: schema.Transaction, 
     league_id: str,
     return_dict: bool = False
 ) -> tuple[Any, list[Any], list[Any], list[Any]]:
@@ -93,8 +93,8 @@ def tx_to_db(
         return tx_data, movements_data, waivers_data, picks_data
         
     return (
-        models.Transaction(**tx_data),
-        [models.Movement(**m) for m in movements_data],
-        [models.WaiverBudget(**w) for w in waivers_data],
-        [models.TradedPick(**p) for p in picks_data]
+        model.Transaction(**tx_data),
+        [model.Movement(**m) for m in movements_data],
+        [model.WaiverBudget(**w) for w in waivers_data],
+        [model.TradedPick(**p) for p in picks_data]
     )

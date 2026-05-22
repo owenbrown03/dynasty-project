@@ -1,30 +1,50 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router'; 
+import { useNavigate, useOutletContext } from 'react-router'; 
+import toast from 'react-hot-toast';
 
 import './UsernameInput.css';
 import { useUserContext } from '../../context/UserContext';
-import { useUserSync, useLeaguemateSync } from '../../hooks/usernameHandler'
+import { useSleeperSync } from '@/hooks/useSleeperSync';
+import { notify } from '@/utils/notify';
+
+interface DashboardContext {
+  pendingSync: string | null;
+  handleSyncAttempt: (name: string | null) => boolean;
+}
 
 export function UsernameInput() {
   const [inputText, setInputText] = useState('');
-  const navigate = useNavigate();
   const { username, setUsername } = useUserContext(); 
-  const { loading: userSyncing } = useUserSync(username ?? undefined);
-  const { loading: matesSyncing } = useLeaguemateSync(username ?? undefined);
+  const { pendingSync, handleSyncAttempt } = useOutletContext<DashboardContext>();
+  const navigate = useNavigate();
+
+  const { performSync, isSyncing } = useSleeperSync();
+  async function submitUsername() {
+    const trimmed = inputText.trim();
+    if (!trimmed || isSyncing) return;   
+    const loadingToast = notify.loading("Syncing profile...");
+    try {
+      await performSync(trimmed);
+      setUsername(trimmed);
+      const isSyncComplete = handleSyncAttempt(trimmed);
+      
+      if (isSyncComplete) {
+        notify.success("Connected successfully!");
+        navigate(`/dashboard`);
+      } else {
+        notify.success("Profile synced! Please log in to finalize.");
+      }
+    } catch (err) {
+      notify.error("Failed to sync. Please try again.");
+    } finally {
+      toast.dismiss(loadingToast);
+    }
+  }
 
   function saveUsername(event: React.ChangeEvent<HTMLInputElement>) {
     setInputText(event.target.value);
   }
 
-  function submitUsername() {
-    const trimmedUsername = inputText.trim();
-    if (!trimmedUsername) return;
-    setUsername(trimmedUsername);
-    navigate(`/dashboard/${trimmedUsername}`);
-  }
-
-  const isSyncing = userSyncing || matesSyncing;
-  
   return (
      <div>
       <div className="input-container">
@@ -39,8 +59,9 @@ export function UsernameInput() {
         <button
           onClick={submitUsername}
           className="submit-button"
+          disabled={isSyncing}
         >
-          Submit
+          {isSyncing ? "Syncing..." : "Submit"}
         </button>
       </div>
       <div>
@@ -49,9 +70,15 @@ export function UsernameInput() {
             ⏳ Pulling league profiles and checking rosters for "{inputText.trim() || username}"...
           </p>
         )}
-        
-        {!isSyncing && username && (
-          <p >
+
+        {!isSyncing && pendingSync && (
+          <p className="auth-prompt">
+            🔐 Please log in to complete the sync for "<strong>{pendingSync}</strong>".
+          </p>
+        )}
+              
+        {!isSyncing && !pendingSync && username && (
+          <p>
             ✅ Connected profile: <strong>{username}</strong>
           </p>
         )}

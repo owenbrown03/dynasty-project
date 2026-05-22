@@ -59,6 +59,32 @@ input, select, button {
   box-shadow: none;
 }
 
+.tooltip {
+  position: absolute;
+  background-color: gray;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 2px;
+  font-size: 12px;
+  bottom: -30px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.tooltip-container:hover .tooltip {
+  opacity: 1;
+}
+
+.tooltip-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* These styles will limit text to 2 lines. Anything
    beyond 2 lines will be replaced with "..."
    You can find this code by using an A.I. tool or by
@@ -102,6 +128,6 @@ input:focus {
 
 .app-container {
   display: flex;
-  align-items: stretch;
+  flex-direction: column;
   min-height: 100vh;
 }
