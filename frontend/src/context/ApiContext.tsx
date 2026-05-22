@@ -19,23 +19,20 @@ export const ApiProvider = ({ children }: ApiProviderProps) => {
     apiCallFunction: () => Promise<any>
   ) => {
 
-    if (activeCalls[syncKey]) {
-      console.warn(`[Guard] Blocked duplicate sync request for key: ${syncKey}`);
-      return null;
-    }
-
-    setActiveCalls(prev => ({ ...prev, [syncKey]: true }));
+    setActiveCalls(prev => {
+      if (prev[syncKey]) return prev; // Guard
+      return { ...prev, [syncKey]: true };
+    });
 
     try {
-      const response = await apiCallFunction();
-      return response;
+      return await apiCallFunction();
     } catch (error) {
       console.error(`[Guard] Api call failed for ${syncKey}:`, error);
       throw error;
     } finally {
       setActiveCalls(prev => ({ ...prev, [syncKey]: false }));
     }
-  }, [activeCalls]);
+  }, []);
 
   return (
     <ApiContext.Provider value={{ isCalling: (key: string) => !!activeCalls[key], executeCall }}>

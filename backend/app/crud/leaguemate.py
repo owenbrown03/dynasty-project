@@ -3,8 +3,8 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services import sleeper
-from app.schemas import schemas
-from app.models import models
+from app.schemas import sleeper as schema
+from app.models import sleeper as model
 from app.crud.league import sync_leagues
 from app.crud.user import user_id_lookup
 
@@ -14,17 +14,17 @@ async def get_leaguemate_ids(db: AsyncSession, username: str):
     """Returns list[str]: A list of unique owner_ids (Sleeper IDs)."""
     main_user_id = await user_id_lookup(db, username)
     my_leagues = (
-        select(models.Roster.league_id)
-        .where(models.Roster.owner_id == main_user_id)
+        select(model.Roster.league_id)
+        .where(model.Roster.owner_id == main_user_id)
         .scalar_subquery()
     )
 
     stmt = (
-        select(models.Roster.owner_id)
+        select(model.Roster.owner_id)
         .where(
-            models.Roster.league_id.in_(my_leagues),
-            models.Roster.owner_id != main_user_id,
-            models.Roster.owner_id.is_not(None)
+            model.Roster.league_id.in_(my_leagues),
+            model.Roster.owner_id != main_user_id,
+            model.Roster.owner_id.is_not(None)
         )
         .distinct()
     )
@@ -38,7 +38,7 @@ async def sync_leaguemates(db: AsyncSession, username: str) -> dict:
     Optimized to minimize database connection hold-times during massive network I/O operations.
     """
     state = await sleeper.get_NFL_state()
-    season = schemas.NFLState(**state).season
+    season = schema.NFLState(**state).season
 
     try:
         main_user_id = await user_id_lookup(db, username)

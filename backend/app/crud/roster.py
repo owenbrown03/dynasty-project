@@ -2,7 +2,7 @@ import logging
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import models
+from app.models import sleeper
 from app.crud.player import get_player_map
 from app.services.format import format_players
 from app.crud.user import user_id_lookup
@@ -16,9 +16,9 @@ async def get_user_rosters(db: AsyncSession, username: str) -> list[dict]:
     """
     user_id = await user_id_lookup(db, username)
     stmt = (
-        select(models.League.name, models.Roster.players)
-        .join(models.League, models.Roster.league_id == models.League.league_id)
-        .where(models.Roster.owner_id == user_id)
+        select(sleeper.League.name, sleeper.Roster.players)
+        .join(sleeper.League, sleeper.Roster.league_id == sleeper.League.league_id)
+        .where(sleeper.Roster.owner_id == user_id)
     )
     result = await db.execute(stmt)
     raw_results = result.all()
@@ -42,15 +42,15 @@ async def get_user_orphans(db: AsyncSession, username: str) -> list[dict]:
     """
     user_id = await user_id_lookup(db, username)
     my_leagues = (
-        select(models.Roster.league_id)
-        .where(models.Roster.owner_id == user_id)
+        select(sleeper.Roster.league_id)
+        .where(sleeper.Roster.owner_id == user_id)
         .scalar_subquery()
     )
 
     stmt = (
-        select(models.League.name, models.Roster.roster_id, models.Roster.players)
-        .join(models.League, models.Roster.league_id == models.League.league_id)
-        .where(models.Roster.league_id.in_(my_leagues), models.Roster.owner_id == None)
+        select(sleeper.League.name, sleeper.Roster.roster_id, sleeper.Roster.players)
+        .join(sleeper.League, sleeper.Roster.league_id == sleeper.League.league_id)
+        .where(sleeper.Roster.league_id.in_(my_leagues), sleeper.Roster.owner_id == None)
         .distinct()
     )
 

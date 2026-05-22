@@ -13,16 +13,14 @@
   font-size: 14px;
 }
 
-/* This targets the new wrapper we added */
 .roster-users-row {
-  display: flex;       /* This puts them side-by-side */
+  display: flex;
   flex-direction: row; 
-  gap: 15px;           /* Space between manager A and manager B */
-  align-items: stretch; /* Keeps cards same height if one has more players */
+  gap: 15px;
+  align-items: stretch;
 }
 
-/* This ensures each UserCard grows to fill the row equally */
 .roster-users-row > .roster-player {
   flex: 1; 
-  min-width: 0;        /* Prevents long names from breaking the flexbox */
+  min-width: 0;
 }

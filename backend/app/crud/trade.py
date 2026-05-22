@@ -5,8 +5,8 @@ from sqlmodel import select
 from sqlalchemy import func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import models
-from app.schemas import schemas
+from app.models import sleeper as model
+from app.schemas import sleeper as schema
 from app.crud.league import get_league_map
 from app.crud.leaguemate import get_leaguemate_ids
 from app.crud.player import get_player_map
@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 async def get_user_meta_map(db: AsyncSession) -> Dict[str, dict]:
     """Fetches high-level metadata maps for displaying names and user avatars."""
     stmt = select(
-        models.User.user_id, 
-        models.User.display_name, 
-        models.User.avatar, 
-        models.User.is_placeholder
+        model.User.user_id, 
+        model.User.display_name, 
+        model.User.avatar, 
+        model.User.is_placeholder
     )
     result = await db.execute(stmt)
     rows = result.all()
@@ -41,16 +41,16 @@ async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
     for sub-second data extraction.
     """
     trade_ids_stmt = (
-        select(models.Transaction.transaction_id)
-        .join(models.Movement, models.Movement.transaction_id == models.Transaction.transaction_id)
+        select(model.Transaction.transaction_id)
+        .join(model.Movement, model.Movement.transaction_id == model.Transaction.transaction_id)
         .join(
-            models.Roster, 
+            model.Roster, 
             and_(
-                models.Roster.roster_id == models.Movement.roster_id, 
-                models.Roster.league_id == models.Transaction.league_id
+                model.Roster.roster_id == model.Movement.roster_id, 
+                model.Roster.league_id == model.Transaction.league_id
             )
         )
-        .where(models.Roster.owner_id.in_(lms))
+        .where(model.Roster.owner_id.in_(lms))
         .distinct()
     )
     result = await db.execute(trade_ids_stmt)
@@ -60,10 +60,10 @@ async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
         return {}
 
     tasks = [
-        db.execute(select(models.Transaction).where(models.Transaction.transaction_id.in_(trade_ids))),
-        db.execute(select(models.Movement).where(models.Movement.transaction_id.in_(trade_ids))),
-        db.execute(select(models.TradedPick).where(models.TradedPick.transaction_id.in_(trade_ids))),
-        db.execute(select(models.WaiverBudget).where(models.WaiverBudget.transaction_id.in_(trade_ids)))
+        db.execute(select(model.Transaction).where(model.Transaction.transaction_id.in_(trade_ids))),
+        db.execute(select(model.Movement).where(model.Movement.transaction_id.in_(trade_ids))),
+        db.execute(select(model.TradedPick).where(model.TradedPick.transaction_id.in_(trade_ids))),
+        db.execute(select(model.WaiverBudget).where(model.WaiverBudget.transaction_id.in_(trade_ids)))
     ]
     
     t_res, m_res, p_res, w_res = await asyncio.gather(*tasks)
@@ -89,7 +89,7 @@ async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
 
     return lm_trades
 
-async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.DisplayTransaction]:
+async def get_trade_signals(db: AsyncSession, username: str) -> List[schema.DisplayTransaction]:
     """
     Evaluates historical trade records to find high-value cross-league strategies.
     Uses structured milestone logging for stateless engine auditing.
@@ -116,8 +116,8 @@ async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.Dis
         roster_owner_map = defaultdict(dict)
         
         r_stmt = (
-            select(models.Roster.league_id, models.Roster.owner_id, models.Roster.roster_id)
-            .where(models.Roster.league_id.in_(trade_league_ids))
+            select(model.Roster.league_id, model.Roster.owner_id, model.Roster.roster_id)
+            .where(model.Roster.league_id.in_(trade_league_ids))
         )
         r_res = await db.execute(r_stmt)
         roster_rows = r_res.all()
@@ -125,12 +125,12 @@ async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.Dis
         for l_id, o_id, r_id in roster_rows:
             roster_owner_map[l_id][r_id] = o_id
 
-        my_leagues = select(models.Roster.league_id).where(models.Roster.owner_id == main_user_id).scalar_subquery()
+        my_leagues = select(model.Roster.league_id).where(model.Roster.owner_id == main_user_id).scalar_subquery()
 
         intersect_stmt = (
-            select(models.Roster.league_id, models.Roster.owner_id, func.unnest(models.Roster.players))
-            .where(models.Roster.league_id.in_(my_leagues))
-            .where(or_(models.Roster.owner_id.in_(lm_ids), models.Roster.owner_id == main_user_id))
+            select(model.Roster.league_id, model.Roster.owner_id, func.unnest(model.Roster.players))
+            .where(model.Roster.league_id.in_(my_leagues))
+            .where(or_(model.Roster.owner_id.in_(lm_ids), model.Roster.owner_id == main_user_id))
         )
         int_res = await db.execute(intersect_stmt)
         intersect_query = int_res.all()
@@ -143,7 +143,7 @@ async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.Dis
                 shared_leagues[o_id].add(l_id)
 
         draft_orders = defaultdict(dict)
-        d_res = await db.execute(select(models.Draft.draft_id, models.Draft.season, models.Draft.draft_order))
+        d_res = await db.execute(select(model.Draft.draft_id, model.Draft.season, model.Draft.draft_order))
         raw_drafts = d_res.all()
         
         for d_id, season, d_order in raw_drafts:
@@ -182,7 +182,7 @@ async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.Dis
                         signals = [league_map[lid] for lid in shared_with_this_lm if lid in league_map]
                         signal_text = f"Buy opportunity ({', '.join(signals)})"
                         has_signal = True
-                    users_dict[user_id]["drops"].append(schemas.DisplayMovement(name=asset_name, signal=signal_text))
+                    users_dict[user_id]["drops"].append(schema.DisplayMovement(name=asset_name, signal=signal_text))
 
                 elif m.action == "ADD":
                     my_ownership = player_to_leagues[main_user_id][m.player_id].intersection(shared_leagues[user_id])
@@ -190,7 +190,7 @@ async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.Dis
                         signals = [league_map[lid] for lid in my_ownership if lid in league_map]
                         signal_text = f"Sell opportunity ({', '.join(signals)})"
                         has_signal = True
-                    users_dict[user_id]["adds"].append(schemas.DisplayMovement(name=asset_name, signal=signal_text))
+                    users_dict[user_id]["adds"].append(schema.DisplayMovement(name=asset_name, signal=signal_text))
 
             for p in tx['picks']:
                 signal_text = ""
@@ -211,11 +211,11 @@ async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.Dis
                     
                 if user_id not in users_dict:
                     users_dict[user_id] = {"adds": [], "drops": []}
-                users_dict[user_id]["adds"].append(schemas.DisplayMovement(name=asset, signal=signal_text))
+                users_dict[user_id]["adds"].append(schema.DisplayMovement(name=asset, signal=signal_text))
                 
                 if old_user_id not in users_dict:
                     users_dict[old_user_id] = {"adds": [], "drops": []}
-                users_dict[old_user_id]["drops"].append(schemas.DisplayMovement(name=asset, signal=signal_text))
+                users_dict[old_user_id]["drops"].append(schema.DisplayMovement(name=asset, signal=signal_text))
 
             for w in tx['waivers']:
                 signal_text = ""
@@ -225,17 +225,17 @@ async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.Dis
                 
                 if user_id not in users_dict:
                     users_dict[user_id] = {"adds": [], "drops": []}
-                users_dict[user_id]["adds"].append(schemas.DisplayMovement(name=asset, signal=signal_text))
+                users_dict[user_id]["adds"].append(schema.DisplayMovement(name=asset, signal=signal_text))
                 
                 if old_user_id not in users_dict:
                     users_dict[old_user_id] = {"adds": [], "drops": []}
-                users_dict[old_user_id]["drops"].append(schemas.DisplayMovement(name=asset, signal=signal_text))
+                users_dict[old_user_id]["drops"].append(schema.DisplayMovement(name=asset, signal=signal_text))
 
             if has_signal:
                 ui_users = []
                 for u_id, data in users_dict.items():
                     meta = user_meta.get(u_id, {"name": "Unknown", "avatar": None, "is_placeholder": False})
-                    ui_users.append(schemas.DisplayUser(
+                    ui_users.append(schema.DisplayUser(
                         display_name=meta["name"],
                         avatar=meta["avatar"],
                         is_placeholder=meta["is_placeholder"],
@@ -243,7 +243,7 @@ async def get_trade_signals(db: AsyncSession, username: str) -> List[schemas.Dis
                         drops=data["drops"]
                     ))
                 
-                final_trades.append(schemas.DisplayTransaction(
+                final_trades.append(schema.DisplayTransaction(
                     transaction_id=tx_id,
                     time_ms=trade_obj.time_ms or 0,
                     league_name=league_map.get(league_id, "Unknown League"),

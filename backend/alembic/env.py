@@ -2,13 +2,13 @@ import asyncio
 import sys
 from os.path import abspath, dirname
 from logging.config import fileConfig
-
+from sqlmodel import SQLModel
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 
 from app.core.config import settings
-from app.models.models import SQLModel
+from app.models.base import SQLModel
 
 sys.path.insert(0, abspath(dirname(dirname(__file__))))
 
