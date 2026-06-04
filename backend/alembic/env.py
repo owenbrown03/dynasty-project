@@ -7,8 +7,8 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 
+import app.models
 from app.core.config import settings
-from app.models.base import SQLModel
 
 sys.path.insert(0, abspath(dirname(dirname(__file__))))
 

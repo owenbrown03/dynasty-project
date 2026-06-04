@@ -1,10 +1,10 @@
-import httpx, logging, os, debugpy
+import os, logging, debugpy
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.api.v1.api import api_router
-from app.services import sleeper
+from app.integrations.sleeper.client import SleeperClientManager
 from app.core.logger import setup_logging
 
 setup_logging()
@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    sleeper.client = httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0))
+    app.state.sleeper = SleeperClientManager.get()
     yield
-    await sleeper.client.aclose()
+    await app.state.sleeper.close()
 
 app = FastAPI(title="Dynasty Database", lifespan=lifespan)
 
@@ -31,9 +31,9 @@ app.add_middleware(
 if os.getenv("DEBUG_MODE") == "true":
     try:
         debugpy.listen(("0.0.0.0", 5678))
-        print("??? Debugger listening on port 5678")
+        print("Debugger listening on port 5678")
     except RuntimeError as e:
         if "Address already in use" in str(e):
-            print("??? Debugger already running in parent process, skipping duplicate bind.")
+            print("Debugger already running, skipping.")
         else:
-            raise e
+            raise

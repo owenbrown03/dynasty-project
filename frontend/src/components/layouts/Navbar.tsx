@@ -1,42 +1,45 @@
 import './Navbar.css';
+import { useAppState } from '@/hooks/app/useAppState';
 
-interface NavbarProps {
-  onLoginClick: () => void;
-  isLoggedIn: boolean;
-  onLogoutClick: () => void | Promise<void>;
-  sleeperUsername: string | undefined;
-}
+export const Navbar = ({ onSleeperAuthClick }: { onSleeperAuthClick: () => void }) => {
+  const app = useAppState();
 
-export const Navbar = ({ onLoginClick, isLoggedIn, onLogoutClick, sleeperUsername }: NavbarProps) => {
   return (
-    <nav className="navbar" aria-label="Primary Navigation">
-      <div className="navbar-left">
-        Dynasty App
-      </div>
+    <nav className="navbar">
+      <div className="navbar-left">Dynasty App</div>
+
       <div className="navbar-middle">
-        {isLoggedIn && sleeperUsername ? (
-          <span>{sleeperUsername}</span>
-        ) : (
-          <span>Sleeper not linked</span>
+        {app.state === 'anonymous' && (
+          <span>Not logged in</span>
+        )}
+
+        {app.state === 'authenticated-no-sleeper' && (
+          <span>
+            Logged in — no Sleeper linked
+          </span>
+        )}
+
+        {app.state === 'sleeper-linked-read-only' && (
+          <span>
+            Read-only: {app.sleeperUsername}
+            <button onClick={onSleeperAuthClick}>
+              Enable Write Access
+            </button>
+          </span>
+        )}
+
+        {app.state === 'sleeper-linked-write' && (
+          <span>
+            Write access: {app.sleeperUsername}
+          </span>
         )}
       </div>
+
       <div className="navbar-right">
-        {isLoggedIn ? (
-          <button 
-            className="login-button" 
-            onClick={onLogoutClick}
-            aria-label="Log out"
-          >
-            Log out
-          </button>
+        {app.isLoggedIn ? (
+          <button onClick={app.logout}>Log out</button>
         ) : (
-          <button 
-            className="login-button" 
-            onClick={onLoginClick}
-            aria-label="Open Login or Register"
-          >
-            Login / Register
-          </button>
+          <button onClick={app.openAuth}>Login</button>
         )}
       </div>
     </nav>

@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router';
 
 import './index.css'
 import { App } from './App.jsx'
-import { UserProvider } from './context/UserContext.tsx';
+import { UserProvider } from './context/SleeperContext.tsx';
 
 const rootElement = document.getElementById('root')!
 

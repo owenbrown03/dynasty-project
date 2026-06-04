@@ -42,6 +42,7 @@ services:
     #command: tail -f /dev/null
     environment:
       DATABASE_URL: ${DATABASE_URL}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       ENV: development
       DEBUG_MODE: "true"
       PYTHONUNBUFFERED: "1"
@@ -63,6 +64,7 @@ services:
     working_dir: /workspace/frontend
     volumes:
       - .:/workspace
+      - /workspace/frontend/node_modules
     environment:
       CHOKIDAR_USEPOLLING: "true"
     ports:

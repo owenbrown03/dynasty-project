@@ -19,4 +19,5 @@ loguru
 pydantic[email]
 argon2-cffi
 passlib[argon2]
-#passlib[bcrypt]
+requests
+cryptography

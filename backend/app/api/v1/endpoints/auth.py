@@ -1,14 +1,19 @@
-from fastapi import APIRouter, Response, Request, Depends
+from fastapi import APIRouter, Response, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.auth import UserSession
 from app.schemas.auth import Login
-from app.api.deps import get_session
-from app.services.auth import register, login, logout, validate, sync_sleeper, get_sleeper
+from app.api.deps import get_db, get_current_session
+from app.services.auth import register, login, logout, validate
 
 router = APIRouter()
 
 @router.post("/register")
-async def register_endpoint(credentials: Login, response: Response, db: AsyncSession = Depends(get_session)):
+async def register_endpoint(
+    credentials: Login,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
     await register(credentials, db)
     await login(credentials, response, db)
     return {
@@ -18,7 +23,11 @@ async def register_endpoint(credentials: Login, response: Response, db: AsyncSes
     } 
 
 @router.post("/login")
-async def login_endpoint(credentials: Login, response: Response, db: AsyncSession = Depends(get_session)):
+async def login_endpoint(
+    credentials: Login,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
     await login(credentials, response, db)
     return {
         "status": "queued", 
@@ -27,8 +36,12 @@ async def login_endpoint(credentials: Login, response: Response, db: AsyncSessio
     } 
 
 @router.post("/logout")
-async def logout_endpoint(request: Request, response: Response, db: AsyncSession = Depends(get_session)):
-    site_user_id = await logout(request, response, db)
+async def logout_endpoint(
+    response: Response,
+    session: UserSession = Depends(get_current_session),
+    db: AsyncSession = Depends(get_db),
+):
+    site_user_id = await logout(response, session, db)
     return {
         "status": "queued", 
         "message": "Logging out...",
@@ -36,27 +49,13 @@ async def logout_endpoint(request: Request, response: Response, db: AsyncSession
     } 
 
 @router.get("/validate")
-async def validate_endpoint(request: Request, response: Response, db: AsyncSession = Depends(get_session)):
-    result = await validate(request, response, db)
+async def validate_endpoint(
+    response: Response,
+    session: UserSession = Depends(get_current_session),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await validate(response, session, db)
     return {
         "status": "success", 
         "data": result
-    }
-
-@router.post("/{sleeper_username}/sync-sleeper")
-async def sync_sleeper_endpoint(sleeper_username: str, request: Request, db: AsyncSession = Depends(get_session)):
-    await sync_sleeper(sleeper_username, request, db)
-    return {
-        "status": "queued", 
-        "message": "Syncing sleeper...",
-        "username": sleeper_username
-    } 
-
-@router.get("/sleeper")
-async def get_sleeper_endpoint(request: Request, db: AsyncSession = Depends(get_session)):
-    sleeper_data = await get_sleeper(request, db)
-    return {
-        "status": "success",
-        "message": "Getting sleeper username",
-        "data": sleeper_data
     }

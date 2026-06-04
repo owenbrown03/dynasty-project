@@ -1,6 +1,6 @@
 import './TradesPage.css';
 import { TradeCards } from './TradeCards';
-import { useUserContext } from '../../context/UserContext';
+import { useUserContext } from '../../context/SleeperContext';
 import { useQuery } from '@/hooks/useQuery';
 import { api } from '@/api/v1/endpoints';
 import { type Transaction } from '@/types/index';
