@@ -13,7 +13,7 @@ async def propose_trade(
 ):
     return await sleeper.write.propose_trade(
         league_id=body.league_id,
-        variables=body.model_dump(exclude={"league_id"})
+        **body.to_variables()
     )
 
 @router.post("/waivers/claim")
@@ -23,5 +23,5 @@ async def submit_waiver_claim(
 ):
     return await sleeper.write.submit_waiver_claim(
         league_id=body.league_id,
-        variables=body.model_dump(exclude={"league_id"})
+        **body.to_variables()
     )

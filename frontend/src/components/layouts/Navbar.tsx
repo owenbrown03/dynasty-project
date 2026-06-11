@@ -1,45 +1,57 @@
 import './Navbar.css';
-import { useAppState } from '@/hooks/app/useAppState';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuthContext } from '@/context/AuthContext'
+import { useSleeperAuthContext } from '@/context/SleeperAuthContext';
+import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
-export const Navbar = ({ onSleeperAuthClick }: { onSleeperAuthClick: () => void }) => {
-  const app = useAppState();
+export const Navbar = () => {
+  const auth = useAuth();
+  const authContext = useAuthContext();
+  const sleeperContext = useSleeperAuthContext();
+  const connection = useSleeperConnection();
 
   return (
     <nav className="navbar">
-      <div className="navbar-left">Dynasty App</div>
+      {/* LEFT */}
+      <div className="navbar-left">
+        Sleeper App
+      </div>
 
+      {/* MIDDLE */}
       <div className="navbar-middle">
-        {app.state === 'anonymous' && (
-          <span>Not logged in</span>
-        )}
-
-        {app.state === 'authenticated-no-sleeper' && (
+        {!connection.canRead ? (
+          <span>Sleeper not linked</span>
+        ) : !auth.isLoggedIn ? (
           <span>
-            Logged in — no Sleeper linked
-          </span>
-        )}
-
-        {app.state === 'sleeper-linked-read-only' && (
-          <span>
-            Read-only: {app.sleeperUsername}
-            <button onClick={onSleeperAuthClick}>
-              Enable Write Access
+            Read access: {connection.username}
+            <button className="login-button" onClick={authContext.open}>
+            Log in to link
             </button>
           </span>
-        )}
-
-        {app.state === 'sleeper-linked-write' && (
+        ) : !connection.canWrite ? (
           <span>
-            Write access: {app.sleeperUsername}
+            Read access: {connection.username}
+            <button className="login-button" onClick={sleeperContext.open}>
+              Enable write access
+            </button>
+          </span>
+        ) : (
+          <span>
+            Write access: {connection.username}
           </span>
         )}
       </div>
 
+      {/* RIGHT */}
       <div className="navbar-right">
-        {app.isLoggedIn ? (
-          <button onClick={app.logout}>Log out</button>
+        {auth.isLoggedIn ? (
+          <button className="login-button" onClick={auth.logout}>
+            Logout
+          </button>
         ) : (
-          <button onClick={app.openAuth}>Login</button>
+          <button className="login-button" onClick={authContext.open}>
+            Login
+          </button>
         )}
       </div>
     </nav>

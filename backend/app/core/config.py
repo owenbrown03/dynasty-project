@@ -1,12 +1,20 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from app.integrations.sleeper.config import SleeperConfig
+
 
 class Settings(BaseSettings):
+    ENVIRONMENT: str
     DATABASE_URL: str
-    sleeper: SleeperConfig = SleeperConfig()
+    ENCRYPTION_KEY: str
+
+    REDIS_URL: str
+
+    SLEEPER_REST_BASE: str = "https://api.sleeper.app/v1"
+    SLEEPER_GRAPHQL_URL: str = "https://sleeper.com/graphql"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
     )
+
 
 settings = Settings()

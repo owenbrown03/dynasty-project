@@ -14,12 +14,10 @@ async def get_trade_signals_endpoint(
     sleeper: SleeperClient = Depends(get_user_sleeper_client),
     db: AsyncSession = Depends(get_db),
 ):
-    return await get_trade_signals(db, username, sleeper)
+    return await get_trade_signals(db, sleeper, username)
 
 @router.post("/{username}/sync-leaguemates")
-async def sync_leaguemates_endpoint(
-    username: str,
-):
+async def sync_leaguemates_endpoint(username: str):
     await sync_leaguemates_task.kiq(username)
     return {
         "status": "queued",

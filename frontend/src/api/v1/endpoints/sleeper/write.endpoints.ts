@@ -5,9 +5,13 @@ export const writeEndpoints = (
   client: AxiosInstance,
   prefix: string,
 ) => ({
-  proposeTrade: (payload: TradeRequest) =>
-    client.post(`${prefix}/trades/propose`, payload),
+  proposeTrade: async (payload: TradeRequest) => {
+    const res = await client.post(`${prefix}/trades/propose`, payload);
+    return res.data;
+  },
 
-  submitWaiverClaim: (payload: WaiverRequest) =>
-    client.post(`${prefix}/waivers/claim`, payload),
+  submitWaiverClaim: async (payload: WaiverRequest) => {
+    const res = await client.post(`${prefix}/waivers/claim`, payload);
+    return res.data;
+  },
 });

@@ -1,3 +1,6 @@
+networks:
+  app-network:
+    driver: bridge
 services:
   db:
     image: postgres:16-alpine
@@ -16,6 +19,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
 
   pgadmin:
     image: dpage/pgadmin4
@@ -30,19 +35,21 @@ services:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - db
+    networks:
+      - app-network
 
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: fastapi_app
+    restart: unless-stopped
     working_dir: /workspace/backend
     volumes:
       - .:/workspace
-    #command: tail -f /dev/null
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       ENV: development
       DEBUG_MODE: "true"
       PYTHONUNBUFFERED: "1"
@@ -55,29 +62,36 @@ services:
         condition: service_healthy
     stdin_open: true
     tty: true
-
+    networks:
+      - app-network
+  
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: react_app
+    restart: unless-stopped
     working_dir: /workspace/frontend
     volumes:
       - .:/workspace
       - /workspace/frontend/node_modules
     environment:
       CHOKIDAR_USEPOLLING: "true"
+      VITE_HCAPTCHA_SITE_KEY: ${VITE_HCAPTCHA_SITE_KEY}
     ports:
       - "5173:5173"
     stdin_open: true
     tty: true
     depends_on:
       - api
-
+    networks:
+      - app-network
+      
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: unless-stopped
     command: taskiq worker --no-configure-logging app.core.worker:broker
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -90,9 +104,12 @@ services:
     working_dir: /workspace/backend
     volumes:
       - .:/workspace
+    networks:
+      - app-network
 
   redis:
     image: redis:alpine
+    restart: unless-stopped
     ports:
       - "6379:6379"
     healthcheck:
@@ -100,7 +117,12 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
   pgadmin_data:
+  redis_data:

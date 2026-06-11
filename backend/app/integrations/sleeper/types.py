@@ -35,3 +35,6 @@ class WaiverRequest(Base):
 
 class WaiverResponse(Base):
     transaction_id: str
+
+class UpsertSleeperRequest(Base):
+    sleeper_username: str

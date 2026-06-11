@@ -1,34 +1,44 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.auth import UserSession, SiteUser
-from app.integrations.sleeper.client import SleeperClientManager
-from app.crud.sleeper.connection import upsert_sleeper_connection
-from app.api.deps import get_db, get_current_session, get_current_user, get_user_sleeper_client
-from app.services.sleeper.connection import get
+from app.integrations.sleeper import types
+from app.schemas.sleeper.connection import SleeperConnectionResponse
+from app.core.context import Context
+from app.api.deps import get_context
+from app.services.sleeper.connection import get, upsert
+from app.tasks.user import sync_user_data_task
+from app.tasks.trade import sync_leaguemates_task
+from app.crud.sleeper.connection import reconcile
 
 router = APIRouter()
 
-@router.get('')
+@router.get('', response_model=SleeperConnectionResponse)
 async def get_endpoint(
-    session: UserSession = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    ctx: Context = Depends(get_context)
 ):
-    sleeper = SleeperClientManager.get()
-    return await get(sleeper, session, db)
+    return await get(ctx)
 
-@router.post('/upsert/{sleeper_username}/')
+@router.post('/upsert')
 async def upsert_endpoint(
-    sleeper_username: str,
-    user: SiteUser = Depends(get_current_session),
-    session: UserSession = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    body: types.UpsertSleeperRequest,
+    ctx: Context = Depends(get_context)
 ):
-    sleeper = SleeperClientManager.get()
-    return await upsert_sleeper_connection(
-        db=db,
-        sleeper=sleeper,
-        user=user,
-        session=session,
-        sleeper_username=sleeper_username,
-    )
+
+    await sync_user_data_task.kiq(body.sleeper_username)
+    await sync_leaguemates_task.kiq(body.sleeper_username)
+    return await upsert(ctx, sleeper_username=body.sleeper_username)
+
+    # job_id = generate_job_id()
+
+    # sync_user_data_task.kiq(body.sleeper_username, job_id)
+    # sync_leaguemates_task.kiq(body.sleeper_username, job_id)
+
+    # return {
+    # "connection": conn,
+    # "sync_job_id": job_id,
+    # }
+
+@router.post("/reconcile")
+async def login_endpoint(
+    ctx: Context = Depends(get_context),
+):
+    return await reconcile(ctx)

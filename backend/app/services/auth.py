@@ -1,48 +1,53 @@
-from fastapi import HTTPException, APIRouter, Response, status
+from fastapi import HTTPException, APIRouter, status
 from passlib.context import CryptContext
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
 from app.schemas.auth import Login
-from app.models.auth import UserSession
+from app.core.context import Context
 from app.crud.auth.user import get_user_by_credentials, insert_user
-from app.crud.auth.session import insert_session_by_userid, delete_session
+from app.crud.auth.session import create_session_by_userid, insert_session_by_userid, delete_session
 
 router = APIRouter()
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
-async def register(credentials: Login, db: AsyncSession):
-    db_user = await get_user_by_credentials(credentials, db)
+async def register(credentials: Login, ctx: Context):
+    db_user = await get_user_by_credentials(credentials, ctx.db)
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Username already taken"
         )
-    return await insert_user(credentials, db)
+    return await insert_user(credentials, ctx.db)
 
-async def login(credentials: Login, response: Response, db: AsyncSession):
-    db_user = await get_user_by_credentials(credentials, db)
+async def login(credentials: Login, ctx: Context):
+    db_user = await get_user_by_credentials(credentials, ctx.db)
     if not db_user or not pwd_context.verify(credentials.password, db_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Incorrect username or password"
         )
-    return await insert_session_by_userid(db_user.id, response, db)
+    return await insert_session_by_userid(db_user.id, ctx.session, ctx.db)
 
-async def logout(response: Response, session: UserSession, db: AsyncSession):
-    if not session or not session.site_user_id:
+async def logout(ctx: Context):
+    if not ctx.session or not ctx.session.site_user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
-    await delete_session(session, response, db)
-    return session.site_user_id
+    await delete_session(ctx.session, ctx.response, ctx.db)
+    return ctx.session.site_user_id
 
-async def validate(response: Response, session: UserSession, db: AsyncSession):
+async def validate(ctx: Context):
     try:
-        if session and session.site_user_id:
-            await insert_session_by_userid(session.site_user_id, response, db)
-            return {"authenticated": True, "user_id": session.site_user_id}
-        response.delete_cookie("session_id")
+        if ctx.session and ctx.session.site_user_id:
+            await create_session_by_userid(ctx.session.site_user_id, ctx.response, ctx.db)
+            return {"authenticated": True, "user_id": ctx.session.site_user_id}
+        ctx.response.delete_cookie("session_id")
         return {"authenticated": False, "user_id": None}
     except Exception as e:
         print(f"Validation error: {e}")
         return {"authenticated": False, "user_id": None}
+    
+
+async def me(ctx: Context):
+    if not ctx.site_user:
+        return {"authenticated": False}
+
+    return {"authenticated": True}

@@ -1,28 +1,20 @@
 import './OrphansPage.css';
 import { OrphanCards } from './OrphanCards';
-import { useUserContext } from '../../context/SleeperContext';
-import { useQuery } from '@/hooks/useQuery';
-import { api } from '@/api/v1/endpoints';
-import { type Orphan } from '@/types/index'
+import { useOrphans } from '@/hooks/sleeper/useUsers';
 
 export const OrphansPage = () => {
-  const { username } = useUserContext();
-  const { data: orphans, loading } = useQuery<Orphan[]>(
-    `orphan-${username}`, 
-    () => api.users.getOrphans(username!),
-    [username]
-  );
+  const orphans = useOrphans();
   
   return (
     <div className="orphans-container">
-      {loading && <p>Fetching data...</p>}      
-  
-      {!loading && orphans && orphans.length > 0 && (
-        <OrphanCards orphans={orphans} />
+      {orphans.loading && <p>Fetching data...</p>}      
+      
+      {!orphans.loading && Array.isArray(orphans.data) && orphans.data.length > 0 && (
+        <OrphanCards orphans={orphans.data} />
       )}
-  
-      {!loading && username && orphans && orphans.length === 0 && (
-        <p>No orphans found for "{username}".</p>
+      
+      {!orphans.loading && orphans.username && Array.isArray(orphans.data) && orphans.data.length === 0 && (
+        <p>No orphans found for "{orphans.username}".</p>
       )}
     </div>
   );

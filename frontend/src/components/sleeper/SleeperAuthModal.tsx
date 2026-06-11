@@ -1,76 +1,36 @@
-import { useEffect, useRef } from 'react';
-
 import './SleeperAuthModal.css';
 import { SendForm } from './SendForm';
 import { VerifyForm } from './VerifyForm';
-import { useSleeperAuth } from '@/hooks/sleeper/useSleeperAuth';
+import { useSleeperAuth } from '@/hooks/sleeper/useAuth';
+import { useSleeperAuthContext } from '@/context/SleeperAuthContext';
+import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-}
+export const SleeperAuthModal = () => {
+  const auth = useSleeperAuth();
+  const authContext = useSleeperAuthContext();
+  const connection = useSleeperConnection();
 
-export const SleeperAuthModal = ({ isOpen, onClose }: Props) => {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  const {
-    step,
-    sendCode,
-    verifyCode,
-    reset,
-    isSending,
-    isVerifying,
-  } = useSleeperAuth();
-
-  // -----------------------------
-  // sync dialog open/close
-  // -----------------------------
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (isOpen && !dialog.open) {
-      dialog.showModal();
-    }
-
-    if (!isOpen && dialog.open) {
-      dialog.close();
-    }
-  }, [isOpen]);
-
-  // -----------------------------
-  // reset state when opened
-  // -----------------------------
-  useEffect(() => {
-    if (isOpen) {
-      reset();
-    }
-  }, [isOpen]);
-
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
-
+  if (!authContext.isOpen) return null;
+  
   return (
-    <dialog
-      ref={dialogRef}
-      onClose={handleClose}
-      className="auth-modal"
-    >
-      <button onClick={handleClose} className="close-btn">
-        ×
-      </button>
+    <div className="auth-modal">
+      <div className="modal-content">
+        <button onClick={authContext.close}>×</button>
 
-      {step === 'send' ? (
-        <SendForm onSend={sendCode} loading={isSending} />
-      ) : (
-        <VerifyForm
-          onVerify={verifyCode}
-          onSwitchView={reset}
-          loading={isVerifying}
-        />
-      )}
-    </dialog>
+        {authContext.step === 'send' ? (
+          <SendForm
+            initialUsername={connection.username}
+            onSend={auth.send}
+            loading={auth.isSending}
+          />
+        ) : (
+          <VerifyForm
+            onVerify={auth.verify}
+            onBack={authContext.reset}
+            loading={auth.isVerifying}
+          />
+        )}
+      </div>
+    </div>
   );
 };

@@ -1,39 +1,39 @@
-export interface Movement {
+export type Movement = {
   name: string;
   signal: string;
-}
+};
 
-export interface UserMovements {
+export type UserMovements = {
   display_name: string;
   avatar: string;
   adds: Movement[];
   drops: Movement[];
-}
+};
 
-export interface Transaction {
+export type Transaction = {
   transaction_id: string;
   league_name: string;
   time_ms: number;
   users: UserMovements[];
-}
+};
 
-export interface Roster {
+export type Roster = {
   league_name: string;
   players: string[];
-}
+};
 
-export interface Orphan {
+export type Orphan = {
   league_name: string;
   roster_name: string;
   players: string[];
-}
+};
 
-export interface Login {
+export type Login = {
   email: string;
   password: string;
-}
+};
 
-export interface TradeRequest {
+export type TradeRequest = {
   league_id: string;
   k_adds: string[];
   v_adds: number[];
@@ -42,9 +42,9 @@ export interface TradeRequest {
   draft_picks: string[];
   waiver_budget?: number[];
   expires_at?: number;
-}
+};
 
-export interface WaiverRequest {
+export type WaiverRequest = {
   league_id: string;
   k_adds: string[];
   v_adds: number[];
@@ -53,15 +53,35 @@ export interface WaiverRequest {
   draft_picks: string[];
   k_settings?: number[];
   v_settings?: number[];
-}
+};
 
-export interface SendCodeRequest {
+export type SendCodeRequest = {
   username: string;
-  captcha?: string;
-}
+  captcha: string;
+};
 
-export interface VerifyCodeRequest {
-  username: string;
+export type SendCodeResponse = {
+  connect_id: string;
+};
+
+export type VerifyCodeRequest = {
+  connect_id: string;
   code: string;
   captcha?: string;
-}
+};
+
+export type VerifyCodeResponse = {
+  sleeper_token: string;
+};
+
+export type SleeperConnection = {
+  sleeper_user_id: string | null;
+  username: string | null;
+  can_read: boolean;
+  can_write: boolean;
+};
+
+export type MeRequest = {
+  authenticated: boolean;
+  user: string | null;
+};

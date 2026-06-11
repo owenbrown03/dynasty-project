@@ -21,7 +21,7 @@ async def get_user_rosters_endpoint(
     sleeper: SleeperClient = Depends(get_user_sleeper_client),
     db: AsyncSession = Depends(get_db)
 ):
-    return await get_user_rosters(db, username, sleeper)
+    return await get_user_rosters(db, sleeper, username)
 
 @router.get("/{username}/orphans")
 async def get_user_orphans_endpoint(
@@ -29,4 +29,4 @@ async def get_user_orphans_endpoint(
     sleeper: SleeperClient = Depends(get_user_sleeper_client),
     db: AsyncSession = Depends(get_db)
 ):
-    return await get_user_orphans(db, username, sleeper)
+    return await get_user_orphans(db, sleeper, username)

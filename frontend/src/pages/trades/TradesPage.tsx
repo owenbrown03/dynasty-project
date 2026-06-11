@@ -1,20 +1,11 @@
 import './TradesPage.css';
 import { TradeCards } from './TradeCards';
-import { useUserContext } from '../../context/SleeperContext';
-import { useQuery } from '@/hooks/useQuery';
-import { api } from '@/api/v1/endpoints';
-import { type Transaction } from '@/types/index';
+import { useTrades } from '@/hooks/sleeper/useTrades';
 
 export const TradesPage = () => {
-  const { username } = useUserContext();
-  
-  const { data: trades, loading } = useQuery<Transaction[]>(
-    `trades-${username}`, 
-    () => api.trades.getTradeSignals(username!), 
-    [username]
-  );
+  const trades = useTrades();
 
-  if (loading) {
+  if (trades.fetching) {
     return (
       <div className="trades-container">
         <p className="loading-text">Fetching trade signals...</p>
@@ -22,18 +13,18 @@ export const TradesPage = () => {
     );
   }
 
-  if (Array.isArray(trades) && trades.length > 0) {
+  if (Array.isArray(trades.data) && trades.data.length > 0) {
     return (
       <div className="trades-container">
-        <TradeCards trades={trades} />
+        <TradeCards trades={trades.data} />
       </div>
     );
   }
 
   return (
     <div className="trades-container">
-      {username ? (
-        <p className="no-results-text">No transaction history found for "{username}".</p>
+      {trades.username ? (
+        <p className="no-results-text">No transaction history found for "{trades.username}".</p>
       ) : (
         <p className="no-results-text">Please enter a username to search trades.</p>
       )}

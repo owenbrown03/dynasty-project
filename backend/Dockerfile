@@ -13,9 +13,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN useradd -m appuser
-COPY --chown=appuser:appuser . .
-USER appuser
 
-COPY . .
+COPY --chown=appuser:appuser . .
+
+RUN chmod +x ./start.sh
+
+USER appuser
 
 CMD ["./start.sh"]

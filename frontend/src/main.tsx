@@ -4,16 +4,13 @@ import { BrowserRouter } from 'react-router';
 
 import './index.css'
 import { App } from './App.jsx'
-import { UserProvider } from './context/SleeperContext.tsx';
 
 const rootElement = document.getElementById('root')!
 
 createRoot(rootElement).render(
   <StrictMode>
     <BrowserRouter>
-      <UserProvider>
-        <App />
-      </UserProvider>
+      <App />
     </BrowserRouter>
   </StrictMode>,
 )

@@ -31,6 +31,7 @@ class UserSession(SQLModel, table=True):
 
     session_token: str = Field(
         index=True,
+        unique=True,
     )
 
     site_user_id: Optional[uuid.UUID] = Field(
@@ -38,3 +39,5 @@ class UserSession(SQLModel, table=True):
         sa_type=UUID(as_uuid=True),
         foreign_key="siteuser.id",
     )
+
+    sleeper_username: Optional[str] = None

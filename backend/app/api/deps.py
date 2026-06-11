@@ -1,33 +1,37 @@
-from fastapi import HTTPException, status, Cookie, Depends
+from fastapi import HTTPException, Request, Response, Cookie, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.core.database import AsyncSessionLocal
-from app.integrations.sleeper.client import SleeperClient
 from app.models.auth import UserSession, SiteUser
 from app.models.sleeper.connection import SleeperConnection
+from app.integrations.sleeper.manager import SleeperClientManager
+from app.integrations.sleeper.client import SleeperClient
+from app.integrations.redis.client import RedisClient
+from app.core.context import Context
 from app.core.security import decrypt_token
 from app.crud.auth.user import get_user_by_session
-from app.crud.auth.session import get_session_by_token
-from app.crud.sleeper.connection import get_connection_by_session, get_connection_by_user
-
+from app.crud.auth.session import get_session_by_token, create_session_by_userid
 
 async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
+    async with AsyncSessionLocal() as db:
+        yield db
 
 
 async def get_current_session(
+    response: Response,
     db: AsyncSession = Depends(get_db),
     session_token: str | None = Cookie(None),
-) -> UserSession | None:
+) -> UserSession:
+    
+    if session_token:
+        session = await get_session_by_token(session_token, db)
+        if session:
+            return session
 
-    if not session_token:
-        return None
-
-    return await get_session_by_token(
-        session_token,
-        db,
-    )
+    new_session = await create_session_by_userid(None, response, db)
+    await db.refresh(new_session)
+    return new_session
 
 
 async def get_current_user(
@@ -36,21 +40,12 @@ async def get_current_user(
 ) -> SiteUser:
 
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-        )
+        raise HTTPException(401, "Authentication required")
 
-    user = await get_user_by_session(
-        session,
-        db,
-    )
+    user = await get_user_by_session(session, db)
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid session",
-        )
+        raise HTTPException(401, "Invalid session")
 
     return user
 
@@ -63,70 +58,74 @@ async def get_optional_user(
     if not session:
         return None
 
-    return await get_user_by_session(
-        session,
-        db,
-    )
+    return await get_user_by_session(session, db)
 
 
 async def get_sleeper_connection(
-    session: UserSession | None = Depends(get_current_session),
     db: AsyncSession = Depends(get_db),
+    session: UserSession = Depends(get_current_session),
+    user: SiteUser | None = Depends(get_optional_user),
 ) -> SleeperConnection | None:
 
-    if not session:
-        return None
+    if user:
+        stmt = select(SleeperConnection).where(
+            SleeperConnection.site_user_id == user.id
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
 
-    connection = await get_connection_by_session(
-        session,
-        db,
+    stmt = select(SleeperConnection).where(
+        SleeperConnection.session_id == session.id
     )
+    result = await db.execute(stmt)
 
-    if connection:
-        return connection
+    return result.scalar_one_or_none()
+    
 
-    user = await get_user_by_session(
-        session,
-        db,
-    )
-
-    if not user:
-        return None
-
-    return await get_connection_by_user(
-        user,
-        db,
-    )
+async def get_sleeper_client() -> SleeperClient:
+    return await SleeperClientManager.get()
 
 
 async def get_user_sleeper_client(
     connection: SleeperConnection | None = Depends(
-        get_sleeper_connection
+        get_sleeper_connection,
     ),
 ) -> SleeperClient:
 
-    token = None
+    sleeper = await SleeperClientManager.get()
 
-    if connection and connection.encrypted_token:
-        token = decrypt_token(
-            connection.encrypted_token
-        )
+    if not connection:
+        return sleeper
 
-    return SleeperClient(
-        token=token,
+    token = decrypt_token(
+        connection.encrypted_token,
     )
 
+    return sleeper.with_token(token)
 
-async def require_sleeper_token(
-    sleeper: SleeperClient = Depends(
-        get_user_sleeper_client
-    ),
-) -> SleeperClient:
 
-    if not sleeper.token:
-        raise HTTPException(
-            status_code=400,
-            detail="Sleeper account not connected",
-        )
+async def get_redis_client(
+    request: Request,
+) -> RedisClient:
+    return RedisClient(request.app.state.redis)
 
-    return sleeper
+
+async def get_context(
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    session: UserSession = Depends(get_current_session),
+    site_user: SiteUser | None = Depends(get_optional_user),
+    connection: SleeperConnection | None = Depends(get_sleeper_connection),
+    sleeper: SleeperClient | None = Depends(get_user_sleeper_client),
+    redis: RedisClient | None = Depends(get_redis_client),
+) -> Context:
+
+    return Context(
+        response=response,
+        db=db,
+        session=session,
+        site_user=site_user,
+        connection=connection,
+        sleeper=sleeper,
+        redis=redis,
+    )

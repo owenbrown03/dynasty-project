@@ -1,26 +1,48 @@
 from fastapi import HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.auth import UserSession
-from app.integrations.sleeper.client import SleeperClient
-from app.crud.sleeper.connection import get_connection_by_session
+from app.schemas.sleeper.connection import SleeperConnectionResponse
+from app.core.context import Context
+from app.core.security import encrypt_token
+from app.crud.sleeper.connection import upsert_connection
+from app.crud.sleeper.user import get_userid_by_username
 
-async def get(
-    sleeper: SleeperClient,
-    session: UserSession,
-    db: AsyncSession,
+async def get(ctx: Context) -> SleeperConnectionResponse:
+
+    if not ctx.connection or not ctx.connection.sleeper_user_id:
+        raise HTTPException(400, "Not linked")
+
+    user = await ctx.sleeper.read.get_user_details_by_user_id(
+        ctx.connection.sleeper_user_id
+    )
+
+    return SleeperConnectionResponse(
+        sleeper_user_id=ctx.connection.sleeper_user_id,
+        username=user.display_name,
+        can_read=True,
+        can_write=ctx.can_write
+    )
+
+async def upsert(
+    ctx: Context,
+    *,
+    sleeper_username: str | None = None,
+    token: str | None = None,
 ):
-    if not session:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required",
+    sleeper_user_id = None
+    encrypted_token = None
+
+    if sleeper_username:
+        sleeper_user_id = await get_userid_by_username(
+            ctx.db, 
+            ctx.sleeper,
+            sleeper_username,
         )
 
-    connection = await get_connection_by_session(session, db)
+    if token:
+        encrypted_token = encrypt_token(token)
 
-    return {
-        "sleeper_user_id": connection.sleeper_user_id,
-        "username": await sleeper.read.get_user_details_by_user_id(connection.sleeper_user_id).display_name,
-        "can_read": connection.sleeper_user_id is not None,
-        "can_write": connection.encrypted_token is not None,
-    }
+    return await upsert_connection(
+        ctx,
+        sleeper_user_id=sleeper_user_id,
+        encrypted_token=encrypted_token,
+    )

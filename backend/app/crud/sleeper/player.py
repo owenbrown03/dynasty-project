@@ -30,30 +30,18 @@ async def get_player_map(db: AsyncSession) -> dict[str, dict[str, Any]]:
 async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: bool = False):
     global _PLAYER_MAP_CACHE
     
-    stmt = select(model.InternalState).where(model.InternalState.key == "last_player_map_update")
-    
-    result = await db.execute(stmt)
+    result = await db.execute(select(model.InternalState).where(model.InternalState.key == "last_player_map_update"))
     state = result.scalars().first()
     
-    last_update = datetime.fromisoformat(state.value) if state else None
-    threshold = datetime.now() - timedelta(days=30)
-    
-    if not force_update and last_update and last_update > threshold:
-        logger.info(f"Player map is current (Last updated: {last_update.date()})")
+    last_update = datetime.fromisoformat(state.value) if state and state.value else None
+    if not force_update and last_update and last_update > (datetime.now() - timedelta(days=30)):
         return
 
     logger.info("Starting full Sleeper player sync...")
+
+    players_map = await sleeper.read.get_all_players()
     
-    players_json = await sleeper.read.get_all_players()
-    
-    player_dicts = []
-    for p_json in players_json.values():
-        if not p_json:
-            continue
-        p_schema = schema.Player.model_validate(p_json)
-        
-        p_dict = transformers.player_to_db(p_schema, return_dict=True)
-        player_dicts.append(p_dict)
+    player_dicts = transformers.player_to_db(players_map, return_dict=True)
 
     if player_dicts:
         chunk_size = 2000
@@ -63,24 +51,15 @@ async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: b
             stmt = insert(model.Player).values(chunk)
             stmt = stmt.on_conflict_do_update(
                 index_elements=['player_id'],
-                set_={
-                    "position": stmt.excluded.position,
-                    "team": stmt.excluded.team,
-                    "first_name": stmt.excluded.first_name,
-                    "last_name": stmt.excluded.last_name,
-                    "years_exp": stmt.excluded.years_exp,
-                    "birth_date": stmt.excluded.birth_date
-                }
+                set_={k: getattr(stmt.excluded, k) for k in chunk[0].keys() if k != 'player_id'}
             )
             await db.execute(stmt)
 
     if not state:
         state = model.InternalState(key="last_player_map_update")
         db.add(state)
-    
     state.value = datetime.now().isoformat()
+    
     await db.commit()
-    
     _PLAYER_MAP_CACHE.clear()
-    
-    logger.info(f"Player Sync Complete: Processed {len(player_dicts)} players. Cache cleared.")
+    logger.info(f"Player Sync Complete: Processed {len(player_dicts)} players.")

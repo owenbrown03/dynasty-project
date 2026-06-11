@@ -1,61 +1,41 @@
-from fastapi import APIRouter, Response, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends
 
-from app.models.auth import UserSession
 from app.schemas.auth import Login
-from app.api.deps import get_db, get_current_session
-from app.services.auth import register, login, logout, validate
+from app.core.context import Context
+from app.api.deps import get_context
+from app.services.auth import register, login, logout, validate, me
 
 router = APIRouter()
 
 @router.post("/register")
 async def register_endpoint(
     credentials: Login,
-    response: Response,
-    db: AsyncSession = Depends(get_db),
+    ctx: Context = Depends(get_context),
 ):
-    await register(credentials, db)
-    await login(credentials, response, db)
-    return {
-        "status": "queued", 
-        "message": "Registering...",
-        "username": credentials.email
-    } 
+    await register(credentials, ctx)
+    await login(credentials, ctx)
 
 @router.post("/login")
 async def login_endpoint(
     credentials: Login,
-    response: Response,
-    db: AsyncSession = Depends(get_db),
+    ctx: Context = Depends(get_context),
 ):
-    await login(credentials, response, db)
-    return {
-        "status": "queued", 
-        "message": "Logging in...",
-        "username": credentials.email
-    } 
+    await login(credentials, ctx)
 
 @router.post("/logout")
 async def logout_endpoint(
-    response: Response,
-    session: UserSession = Depends(get_current_session),
-    db: AsyncSession = Depends(get_db),
+    ctx: Context = Depends(get_context),
 ):
-    site_user_id = await logout(response, session, db)
-    return {
-        "status": "queued", 
-        "message": "Logging out...",
-        "username": site_user_id
-    } 
+    await logout(ctx)
 
 @router.get("/validate")
 async def validate_endpoint(
-    response: Response,
-    session: UserSession = Depends(get_current_session),
-    db: AsyncSession = Depends(get_db),
+    ctx: Context = Depends(get_context),
 ):
-    result = await validate(response, session, db)
-    return {
-        "status": "success", 
-        "data": result
-    }
+    return await validate(ctx)
+
+@router.get("/me")
+async def me_endpoint(
+    ctx: Context = Depends(get_context),
+):
+    return await me(ctx)

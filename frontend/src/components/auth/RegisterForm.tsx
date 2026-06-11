@@ -1,39 +1,36 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
 
 import './AuthModal.css';
-import { api } from '@/api/v1/endpoints';
-import { type AuthFormProps } from '@/components/auth/AuthModal';
-import { type Login } from '@/types/index';
 
-export const RegisterForm = ({onSwitchView, onClose}: AuthFormProps) => {
+interface Props {
+  onRegister: (
+    username: string,
+    password: string,
+  ) => Promise<void> | void;
+
+  onSwitchView: () => void;
+
+  loading?: boolean;
+}
+
+export const RegisterForm = ({
+  onRegister,
+  onSwitchView,
+  loading,
+}: Props) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const registerMutation = useMutation({
-    mutationFn: api.auth.register,
-    onSuccess: () => {
-      onClose();
-    },
-  });
-
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    e: React.SubmitEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault();
 
-    try {
-      await registerMutation.mutateAsync(getLoginPayload);
-    } catch (err) {
-      console.error('Registration failed', err);
-    }
+    await onRegister(email, password);
   };
 
-  const getLoginPayload = (): Login => ({
-    email,
-    password,
-  });
-
   return (
-    <form className="auth-form" onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="auth-form">
       <h2>Create Account</h2>
 
       <input
@@ -52,13 +49,18 @@ export const RegisterForm = ({onSwitchView, onClose}: AuthFormProps) => {
         required
       />
 
-      <button type="submit" disabled={registerMutation.isPending}>
-        {registerMutation.isPending ? 'Creating...' : 'Register'}
+      <button
+        type="submit"
+        disabled={loading}
+      >
+        {loading
+          ? 'Creating account...'
+          : 'Register'}
       </button>
 
       <p>
-        Already have an account?
-        <span onClick={onSwitchView} className="link"> Login</span>
+        Don't have an account?
+        <span onClick={onSwitchView} className="link"> Register</span>
       </p>
     </form>
   );

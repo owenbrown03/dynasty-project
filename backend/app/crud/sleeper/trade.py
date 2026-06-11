@@ -91,16 +91,16 @@ async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
 
     return lm_trades
 
-async def get_trade_signals(db: AsyncSession, username: str, sleeper: SleeperClient) -> List[schema.Transaction]:
+async def get_trade_signals(db: AsyncSession, sleeper: SleeperClient, username: str) -> List[schema.Transaction]:
     """
     Evaluates historical trade records to find high-value cross-league strategies.
     Uses structured milestone logging for stateless engine auditing.
     """
 
     try:
-        main_user_id = await get_userid_by_username(db, username, sleeper)
+        main_user_id = await get_userid_by_username(db, sleeper, username)
         logger.info(f"Initiating trade signal calculation matrix for user: {username}")
-        lm_ids = await get_leaguemate_ids(db, main_user_id, sleeper)
+        lm_ids = await get_leaguemate_ids(db, main_user_id)
         logger.info(f"Context loaded: Identified {len(lm_ids)} unique leaguemates.")
 
         lm_trades_data = await read_trades(db, lm_ids)

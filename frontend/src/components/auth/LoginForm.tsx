@@ -1,36 +1,33 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
 
 import './AuthModal.css';
-import { api } from '@/api/v1/endpoints';
-import { type AuthFormProps } from '@/components/auth/AuthModal';
-import { type Login } from '@/types/index';
 
-export const LoginForm = ({ onSwitchView, onClose }: AuthFormProps) => {
+interface Props {
+  onLogin: (
+    username: string,
+    password: string,
+  ) => Promise<void> | void;
+
+  onSwitchView: () => void;
+
+  loading?: boolean;
+}
+
+export const LoginForm = ({
+  onLogin,
+  onSwitchView,
+  loading,
+}: Props) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const loginMutation = useMutation({
-    mutationFn: api.auth.login,
-    onSuccess: () => {
-      onClose();
-    },
-  });
-
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    e: React.SubmitEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault();
 
-    try {
-      await loginMutation.mutateAsync(getLoginPayload());
-    } catch (err) {
-      console.error('Login failed', err);
-    }
+    await onLogin(email, password);
   };
-
-  const getLoginPayload = (): Login => ({
-    email,
-    password,
-  });
 
   return (
     <form onSubmit={handleSubmit} className="auth-form">
@@ -52,8 +49,13 @@ export const LoginForm = ({ onSwitchView, onClose }: AuthFormProps) => {
         required
       />
 
-      <button type="submit" disabled={loginMutation.isPending}>
-        {loginMutation.isPending ? 'Signing In...' : 'Sign In'}
+      <button
+        type="submit"
+        disabled={loading}
+      >
+        {loading
+          ? 'Logging in...'
+          : 'Log in'}
       </button>
 
       <p>

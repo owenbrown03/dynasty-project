@@ -1,41 +1,55 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 
+import { useSleeperAuthContext } from '@/context/SleeperAuthContext';
+
 interface Props {
-  onSend: (username: string, captcha: string) => Promise<void> | void;
+  initialUsername?: string | null;
+  onSend: (username: string, captcha: string) => Promise<void>;
   loading?: boolean;
 }
 
-export const SendForm = ({ onSend, loading }: Props) => {
-  const [username, setUsername] = useState('');
-  const [captcha, setCaptcha] = useState<string | null>(null);
+export const SendForm = ({
+  initialUsername,
+  onSend,
+  loading,
+}: Props) => {
+  const [username, setUsername] = useState(
+    initialUsername ?? '',
+  );
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const authContext = useSleeperAuthContext();
+
+  useEffect(() => {
+    setUsername(initialUsername ?? '');
+  }, [initialUsername]);
+
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
-
-    if (!captcha) return;
-
-    await onSend(username, captcha);
+    if (!authContext.captcha) {
+      throw new Error("Captcha not solved");
+    }
+    await onSend(username, authContext.captcha!);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form">
+    <form onSubmit={handleSubmit}>
       <h2>Connect Sleeper</h2>
 
       <input
-        type="text"
-        placeholder="Sleeper Username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
+        placeholder="Sleeper username"
         required
       />
 
       <HCaptcha
-        sitekey="ecc67a72-2e44-4722-a788-9e7070282f72"
-        onVerify={(token) => setCaptcha(token)}
+        sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY}
+        onVerify={(token) => authContext.setCaptcha(token)}
+        onExpire={() => authContext.setCaptcha(null)}
       />
 
-      <button type="submit" disabled={!captcha || loading}>
+      <button disabled={loading}>
         {loading ? 'Sending...' : 'Send Code'}
       </button>
     </form>

@@ -1,47 +1,44 @@
 import uuid
-from sqlmodel import SQLModel, Field
-from sqlalchemy.dialects.postgresql import UUID
-from typing import Optional
 from datetime import datetime
-from enum import Enum
+from typing import Optional
 
-class ConnectionSource(str, Enum):
-    SESSION = "session"
-    USER = "user"
+from sqlmodel import SQLModel, Field
+from sqlalchemy import Column, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
+
 
 class SleeperConnection(SQLModel, table=True):
-    id: Optional[int] = Field(
+    __tablename__ = "sleeperconnection"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    # nullable → supports anon users
+    site_user_id: Optional[uuid.UUID] = Field(
         default=None,
-        primary_key=True,
+        sa_column=Column(
+            UUID(as_uuid=True),
+            ForeignKey("siteuser.id", ondelete="CASCADE"),
+            nullable=True,
+            index=True,
+        ),
     )
 
+    # session ownership (anon tracking)
+    session_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            ForeignKey("usersession.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
+    )
+
+    # sleeper identity (can be shared across users)
     sleeper_user_id: Optional[str] = Field(
         default=None,
         index=True,
-        unique=True,
     )
 
-    encrypted_token: Optional[str] = Field(
-        default=None,
-    )
+    encrypted_token: Optional[str] = Field(default=None)
 
-    site_user_id: Optional[uuid.UUID] = Field(
-        default=None,
-        sa_type=UUID(as_uuid=True),
-        foreign_key="siteuser.id",
-        index=True,
-    )
-
-    session_id: Optional[int] = Field(
-        default=None,
-        foreign_key="usersession.id",
-        index=True,
-    )
-
-    source: ConnectionSource = Field(
-        default=ConnectionSource.SESSION,
-    )
-
-    linked_at: datetime = Field(
-        default_factory=lambda: datetime.now(),
-    )
+    linked_at: datetime = Field(default_factory=datetime.utcnow)

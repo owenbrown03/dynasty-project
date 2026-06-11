@@ -1,58 +1,34 @@
-import { useEffect, useRef, useState } from 'react';
-
 import './AuthModal.css';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
+import { useAuthContext } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/auth/useAuth';
 
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+export const AuthModal = () => {
+  const authContext = useAuthContext();
+  const auth = useAuth();
 
-export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const [view, setView] = useState<'login' | 'register'>('login');
-
-  useEffect(() => {
-    if (isOpen) {
-      setView('login');
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (isOpen && !dialog.open) {
-      dialog.showModal();
-    }
-
-    if (!isOpen && dialog.open) {
-      dialog.close();
-    }
-  }, [isOpen]);
-
-  const handleClose = () => {
-    onClose();
-  };
+  if (!authContext.isOpen) return null;
 
   return (
-    <dialog ref={dialogRef} className="auth-modal" onClose={handleClose}>
-      <button onClick={handleClose} className="close-btn">
-        ×
-      </button>
+    <div className="auth-modal">
+      <div className="modal-content">
+        <button className="close-btn" onClick={authContext.close}>×</button>
 
-      {view === 'login' ? (
-        <LoginForm
-          onSwitchView={() => setView('register')}
-          onClose={handleClose}
-        />
-      ) : (
-        <RegisterForm
-          onSwitchView={() => setView('login')}
-          onClose={handleClose}
-        />
-      )}
-    </dialog>
+        {authContext.view === 'login' ? (
+          <LoginForm
+            onLogin={auth.login}
+            onSwitchView={authContext.switchView}
+            loading={auth.isLoggingIn}
+          />
+        ) : (
+          <RegisterForm
+            onRegister={auth.register}
+            onSwitchView={authContext.switchView}
+            loading={auth.isRegistering}
+          />
+        )}
+      </div>
+    </div>
   );
 };
