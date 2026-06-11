@@ -1,41 +1,56 @@
 import './Navbar.css';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuthContext } from '@/context/AuthContext'
+import { useSleeperAuthContext } from '@/context/SleeperAuthContext';
+import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
-interface NavbarProps {
-  onLoginClick: () => void;
-  isLoggedIn: boolean;
-  onLogoutClick: () => void | Promise<void>;
-  sleeperUsername: string | undefined;
-}
+export const Navbar = () => {
+  const auth = useAuth();
+  const authContext = useAuthContext();
+  const sleeperContext = useSleeperAuthContext();
+  const connection = useSleeperConnection();
 
-export const Navbar = ({ onLoginClick, isLoggedIn, onLogoutClick, sleeperUsername }: NavbarProps) => {
   return (
-    <nav className="navbar" aria-label="Primary Navigation">
+    <nav className="navbar">
+      {/* LEFT */}
       <div className="navbar-left">
-        Dynasty App
+        Sleeper App
       </div>
+
+      {/* MIDDLE */}
       <div className="navbar-middle">
-        {isLoggedIn && sleeperUsername ? (
-          <span>{sleeperUsername}</span>
-        ) : (
+        {!connection.canRead ? (
           <span>Sleeper not linked</span>
+        ) : !auth.isLoggedIn ? (
+          <span>
+            Read access: {connection.username}
+            <button className="login-button" onClick={authContext.open}>
+            Log in to link
+            </button>
+          </span>
+        ) : !connection.canWrite ? (
+          <span>
+            Read access: {connection.username}
+            <button className="login-button" onClick={sleeperContext.open}>
+              Enable write access
+            </button>
+          </span>
+        ) : (
+          <span>
+            Write access: {connection.username}
+          </span>
         )}
       </div>
+
+      {/* RIGHT */}
       <div className="navbar-right">
-        {isLoggedIn ? (
-          <button 
-            className="login-button" 
-            onClick={onLogoutClick}
-            aria-label="Log out"
-          >
-            Log out
+        {auth.isLoggedIn ? (
+          <button className="login-button" onClick={auth.logout}>
+            Logout
           </button>
         ) : (
-          <button 
-            className="login-button" 
-            onClick={onLoginClick}
-            aria-label="Open Login or Register"
-          >
-            Login / Register
+          <button className="login-button" onClick={authContext.open}>
+            Login
           </button>
         )}
       </div>

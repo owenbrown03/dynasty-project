@@ -1,12 +1,18 @@
 import { client } from '../client';
 import { authEndpoints } from './auth.endpoints';
-import { userEndpoints } from './user.endpoints';
-import { tradeEndpoints } from './trade.endpoints';
-import { playerEndpoints } from './player.endpoints';
+import { authEndpoints as sleeperAuthEndpoints } from './sleeper/auth.endpoints';
+import { connectionEndpoints } from './sleeper/connection.endpoints';
+import { playerEndpoints } from './sleeper/player.endpoints';
+import { tradeEndpoints } from './sleeper/trade.endpoints';
+import { userEndpoints } from './sleeper/user.endpoints';
+import { writeEndpoints } from './sleeper/write.endpoints';
 
 export const api = {
   auth: authEndpoints(client, '/auth'),
-  users: userEndpoints(client, '/users'),
-  trades: tradeEndpoints(client, '/trades'),
-  players: playerEndpoints(client, '/players'),
+  sleeper_auth: sleeperAuthEndpoints(client, '/sleeper/auth'),
+  connection: connectionEndpoints(client, '/sleeper/connection'),
+  players: playerEndpoints(client, '/sleeper/players'),
+  trades: tradeEndpoints(client, '/sleeper/trades'),
+  users: userEndpoints(client, '/sleeper/users'),
+  write: writeEndpoints(client, '/sleeper/write'),
 };

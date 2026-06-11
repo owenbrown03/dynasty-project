@@ -1,16 +1,13 @@
 import { Toaster } from 'react-hot-toast';
 
 import { AppRoutes } from './Routes';
-import { UserProvider } from './context/UserContext.tsx';
-import { ApiProvider } from './context/ApiContext.tsx';
+import { AppProviders } from '@/components/providers/AppProviders';
 
 export function App() {
   return (
-    <UserProvider>
-      <ApiProvider>
-        <Toaster position="bottom-right" />
-        <AppRoutes />
-      </ApiProvider>
-    </UserProvider>
+    <AppProviders>
+      <Toaster position="bottom-right" />
+      <AppRoutes />
+    </AppProviders>
   );
 }

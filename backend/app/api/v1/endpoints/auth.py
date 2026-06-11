@@ -1,62 +1,41 @@
-from fastapi import APIRouter, Response, Request, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends
 
 from app.schemas.auth import Login
-from app.api.deps import get_session
-from app.services.auth import register, login, logout, validate, sync_sleeper, get_sleeper
+from app.core.context import Context
+from app.api.deps import get_context
+from app.services.auth import register, login, logout, validate, me
 
 router = APIRouter()
 
 @router.post("/register")
-async def register_endpoint(credentials: Login, response: Response, db: AsyncSession = Depends(get_session)):
-    await register(credentials, db)
-    await login(credentials, response, db)
-    return {
-        "status": "queued", 
-        "message": "Registering...",
-        "username": credentials.email
-    } 
+async def register_endpoint(
+    credentials: Login,
+    ctx: Context = Depends(get_context),
+):
+    await register(credentials, ctx)
+    await login(credentials, ctx)
 
 @router.post("/login")
-async def login_endpoint(credentials: Login, response: Response, db: AsyncSession = Depends(get_session)):
-    await login(credentials, response, db)
-    return {
-        "status": "queued", 
-        "message": "Logging in...",
-        "username": credentials.email
-    } 
+async def login_endpoint(
+    credentials: Login,
+    ctx: Context = Depends(get_context),
+):
+    await login(credentials, ctx)
 
 @router.post("/logout")
-async def logout_endpoint(request: Request, response: Response, db: AsyncSession = Depends(get_session)):
-    site_user_id = await logout(request, response, db)
-    return {
-        "status": "queued", 
-        "message": "Logging out...",
-        "username": site_user_id
-    } 
+async def logout_endpoint(
+    ctx: Context = Depends(get_context),
+):
+    await logout(ctx)
 
 @router.get("/validate")
-async def validate_endpoint(request: Request, response: Response, db: AsyncSession = Depends(get_session)):
-    result = await validate(request, response, db)
-    return {
-        "status": "success", 
-        "data": result
-    }
+async def validate_endpoint(
+    ctx: Context = Depends(get_context),
+):
+    return await validate(ctx)
 
-@router.post("/{sleeper_username}/sync-sleeper")
-async def sync_sleeper_endpoint(sleeper_username: str, request: Request, db: AsyncSession = Depends(get_session)):
-    await sync_sleeper(sleeper_username, request, db)
-    return {
-        "status": "queued", 
-        "message": "Syncing sleeper...",
-        "username": sleeper_username
-    } 
-
-@router.get("/sleeper")
-async def get_sleeper_endpoint(request: Request, db: AsyncSession = Depends(get_session)):
-    sleeper_data = await get_sleeper(request, db)
-    return {
-        "status": "success",
-        "message": "Getting sleeper username",
-        "data": sleeper_data
-    }
+@router.get("/me")
+async def me_endpoint(
+    ctx: Context = Depends(get_context),
+):
+    return await me(ctx)

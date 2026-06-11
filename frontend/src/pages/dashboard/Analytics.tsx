@@ -7,7 +7,7 @@ export function Analytics() {
     <div>
       <UsernameInput />
       <>
-        ANALYTICS HERE
+        ANALYTICS COMING SOON
       </>
     </div>
       );
