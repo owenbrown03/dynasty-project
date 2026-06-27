@@ -94,7 +94,7 @@ async def get_user_sleeper_client(
 
     sleeper = await SleeperClientManager.get()
 
-    if not connection:
+    if not connection or not connection.encrypted_token:
         return sleeper
 
     token = decrypt_token(

@@ -2,7 +2,7 @@ import './AuthModal.css';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 import { useAuthContext } from '@/context/AuthContext';
-import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 export const AuthModal = () => {
   const authContext = useAuthContext();

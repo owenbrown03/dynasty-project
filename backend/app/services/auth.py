@@ -6,8 +6,6 @@ from app.core.context import Context
 from app.crud.auth.user import get_user_by_credentials, insert_user
 from app.crud.auth.session import create_session_by_userid, insert_session_by_userid, delete_session
 
-router = APIRouter()
-
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 async def register(credentials: Login, ctx: Context):

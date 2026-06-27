@@ -1,21 +1,14 @@
 from fastapi import APIRouter, Depends
 
 from app.integrations.sleeper import types
-from app.schemas.sleeper.connection import SleeperConnectionResponse
 from app.core.context import Context
 from app.api.deps import get_context
-from app.services.sleeper.connection import get, upsert
+from app.services.sleeper.connection import upsert
 from app.tasks.user import sync_user_data_task
 from app.tasks.trade import sync_leaguemates_task
 from app.crud.sleeper.connection import reconcile
 
 router = APIRouter()
-
-@router.get('', response_model=SleeperConnectionResponse)
-async def get_endpoint(
-    ctx: Context = Depends(get_context)
-):
-    return await get(ctx)
 
 @router.post('/upsert')
 async def upsert_endpoint(

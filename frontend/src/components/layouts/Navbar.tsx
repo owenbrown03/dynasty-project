@@ -1,5 +1,5 @@
 import './Navbar.css';
-import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useAuthContext } from '@/context/AuthContext'
 import { useSleeperAuthContext } from '@/context/SleeperAuthContext';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
