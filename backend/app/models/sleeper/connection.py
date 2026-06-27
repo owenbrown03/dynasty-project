@@ -12,7 +12,6 @@ class SleeperConnection(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    # nullable → supports anon users
     site_user_id: Optional[uuid.UUID] = Field(
         default=None,
         sa_column=Column(
@@ -23,7 +22,6 @@ class SleeperConnection(SQLModel, table=True):
         ),
     )
 
-    # session ownership (anon tracking)
     session_id: Optional[int] = Field(
         default=None,
         sa_column=Column(
@@ -33,7 +31,11 @@ class SleeperConnection(SQLModel, table=True):
         ),
     )
 
-    # sleeper identity (can be shared across users)
+    sleeper_username: Optional[str] = Field(
+        default=None,
+        index=True,
+    )
+
     sleeper_user_id: Optional[str] = Field(
         default=None,
         index=True,

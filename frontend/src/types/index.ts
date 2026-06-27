@@ -74,14 +74,21 @@ export type VerifyCodeResponse = {
   sleeper_token: string;
 };
 
-export type SleeperConnection = {
+export type BootstrapUser = {
+  id: string;
+  email: string;
+};
+
+export type BootstrapSleeper = {
+  linked: boolean;
+  sleeper_username: string | null;
   sleeper_user_id: string | null;
-  username: string | null;
   can_read: boolean;
   can_write: boolean;
 };
 
-export type MeRequest = {
+export type Bootstrap = {
   authenticated: boolean;
-  user: string | null;
+  site_user: BootstrapUser | null;
+  sleeper: BootstrapSleeper;
 };

@@ -27,15 +27,3 @@ async def logout_endpoint(
     ctx: Context = Depends(get_context),
 ):
     await logout(ctx)
-
-@router.get("/validate")
-async def validate_endpoint(
-    ctx: Context = Depends(get_context),
-):
-    return await validate(ctx)
-
-@router.get("/me")
-async def me_endpoint(
-    ctx: Context = Depends(get_context),
-):
-    return await me(ctx)

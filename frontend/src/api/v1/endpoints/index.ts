@@ -1,5 +1,6 @@
 import { client } from '../client';
 import { authEndpoints } from './auth.endpoints';
+import { bootstrapEndpoints } from './bootstrap.endpoints';
 import { authEndpoints as sleeperAuthEndpoints } from './sleeper/auth.endpoints';
 import { connectionEndpoints } from './sleeper/connection.endpoints';
 import { playerEndpoints } from './sleeper/player.endpoints';
@@ -9,6 +10,7 @@ import { writeEndpoints } from './sleeper/write.endpoints';
 
 export const api = {
   auth: authEndpoints(client, '/auth'),
+  bootstrap: bootstrapEndpoints(client, '/bootstrap'),
   sleeper_auth: sleeperAuthEndpoints(client, '/sleeper/auth'),
   connection: connectionEndpoints(client, '/sleeper/connection'),
   players: playerEndpoints(client, '/sleeper/players'),

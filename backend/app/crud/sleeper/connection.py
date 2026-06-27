@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 async def upsert_connection(
     ctx: Context,
     *,
+    sleeper_username: str | None = None,
     sleeper_user_id: str | None = None,
     encrypted_token: str | None = None,
 ):
@@ -30,12 +31,16 @@ async def upsert_connection(
         conn = SleeperConnection(
             site_user_id=ctx.site_user.id if ctx.site_user else None,
             session_id=ctx.session.id if ctx.session else None,
+            sleeper_username=sleeper_username,
             sleeper_user_id=sleeper_user_id,
             encrypted_token=encrypted_token,
         )
         ctx.db.add(conn)
 
     else:
+        if sleeper_username is not None:
+            conn.sleeper_username = sleeper_username
+        
         if sleeper_user_id is not None:
             conn.sleeper_user_id = sleeper_user_id
 
