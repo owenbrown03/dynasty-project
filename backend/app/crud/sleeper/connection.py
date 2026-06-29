@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlmodel import select
  
 from app.core.context import Context
-from app.models.sleeper.connection import SleeperConnection
+from app.models.db.sleeper.connection import SleeperConnection
 
 logger = logging.getLogger(__name__)
 

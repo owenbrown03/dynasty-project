@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.sleeper import api as model
+from app.models.db.sleeper import api as model
 from app.integrations.sleeper.client import SleeperClient
 from app.crud.sleeper.league import sync_leagues
 

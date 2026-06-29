@@ -6,9 +6,9 @@ from sqlalchemy import func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations.sleeper.client import SleeperClient
-from app.models.sleeper import api as model
-from app.schemas.sleeper import api as schema
-from app.schemas.sleeper import display
+from app.models.db.sleeper import api as model
+from app.integrations.sleeper.schemas import api as schema
+from app.integrations.sleeper.schemas import display
 from app.crud.sleeper.league import get_league_map
 from app.crud.sleeper.leaguemate import get_leaguemate_ids
 from app.crud.sleeper.player import get_player_map

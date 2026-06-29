@@ -3,12 +3,15 @@ import time
 
 
 class TokenBucket:
-    def __init__(self, rate: int, per: float):
-        self.capacity = rate
-        self.tokens = float(rate)
-        self.per = per
-        self.fill_rate = rate / per
-
+    def __init__(
+        self,
+        *,
+        capacity: int,
+        refill_rate: float,
+    ):
+        self.capacity = capacity
+        self.tokens = capacity
+        self.refill_rate = refill_rate
         self.updated = time.monotonic()
         self.lock = asyncio.Lock()
 
@@ -16,23 +19,19 @@ class TokenBucket:
         async with self.lock:
             now = time.monotonic()
             elapsed = now - self.updated
-            self.updated = now
 
-            # refill tokens
             self.tokens = min(
                 self.capacity,
-                self.tokens + elapsed * self.fill_rate
+                self.tokens + elapsed * self.refill_rate,
             )
 
+            self.updated = now
+
             if self.tokens < 1:
-                # compute exact wait time instead of fixed sleep
-                deficit = 1 - self.tokens
-                wait = deficit / self.fill_rate
+                wait_time = (1 - self.tokens) / self.refill_rate
+                await asyncio.sleep(wait_time)
 
-                await asyncio.sleep(wait)
+                self.tokens = 0
 
-                # after waiting, assume 1 token consumed
-                self.tokens = max(0.0, self.tokens - 1.0)
-                return
-
-            self.tokens -= 1.0
+            else:
+                self.tokens -= 1

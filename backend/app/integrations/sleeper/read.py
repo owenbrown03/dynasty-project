@@ -1,4 +1,4 @@
-from app.schemas.sleeper.api import (
+from app.integrations.sleeper.schemas.api import (
     NFLState,
     User,
     League,
@@ -9,6 +9,7 @@ from app.schemas.sleeper.api import (
     Draft,
     Player,
     TrendingPlayer,
+    Projection,
 )
 
 class SleeperRead:
@@ -205,5 +206,26 @@ class SleeperRead:
 
         return [
             TrendingPlayer.model_validate(x)
+            for x in data
+        ]
+
+    # --------------------
+    # Projections
+    # --------------------
+    async def get_projections(
+        self,
+        season: int,
+    ) -> Projection:
+
+        data = await self.transport.get(
+            f"projections/nfl/{season}",
+            alt=True,
+            params={
+                "season_type": "regular",
+            },
+        )
+
+        return [
+            Projection.model_validate(x)
             for x in data
         ]

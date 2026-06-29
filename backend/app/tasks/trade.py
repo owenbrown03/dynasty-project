@@ -6,7 +6,7 @@ from app.integrations.sleeper.singleton import get_worker_sleeper_client
 @broker.task
 async def sync_leaguemates_task(username: str):
     async with AsyncSessionLocal() as db:
-        sleeper = get_worker_sleeper_client()
+        sleeper = await get_worker_sleeper_client()
 
         result = await sync_leaguemates(
             db,

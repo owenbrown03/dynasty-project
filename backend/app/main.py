@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.api.v1.api import api_router
-from app.integrations.http.manager import HTTPClientManager
-from app.integrations.redis.manager import RedisManager
+from app.infrastructure.http.manager import HTTPClientManager
+from app.infrastructure.redis.manager import RedisManager
 from app.core.logger import setup_logging
 
 

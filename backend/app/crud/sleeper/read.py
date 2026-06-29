@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.models.auth import SiteUser
+from app.models.db.auth import SiteUser
 
 async def insert_sleeper_id(sleeper_id: str, site_user_id: str, db: AsyncSession):
     result = await db.execute(select(SiteUser).where(SiteUser.id == site_user_id))

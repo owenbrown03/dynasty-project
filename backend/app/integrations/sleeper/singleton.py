@@ -1,12 +1,13 @@
-from app.integrations.sleeper.client import SleeperClient
+from .factory import get_sleeper_client
 
-_sleeper_client: SleeperClient | None = None
+_sleeper = None
 
 
-def get_worker_sleeper_client() -> SleeperClient:
-    global _sleeper_client
+async def get_worker_sleeper_client():
 
-    if _sleeper_client is None:
-        _sleeper_client = SleeperClient()
+    global _sleeper
 
-    return _sleeper_client
+    if _sleeper is None:
+        _sleeper = await get_sleeper_client()
+
+    return _sleeper

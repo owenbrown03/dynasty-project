@@ -2,7 +2,7 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations.sleeper.client import SleeperClient
-from app.models.sleeper import api
+from app.models.db.sleeper import api
 from app.crud.sleeper.player import get_player_map
 from app.services.sleeper.format import format_players
 from app.crud.sleeper.user import get_userid_by_username

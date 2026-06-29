@@ -2,7 +2,7 @@ from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.models.auth import SiteUser, UserSession
+from app.models.db.auth import SiteUser, UserSession
 from app.schemas.auth import Login
 from app.crud.auth.session import get_session_by_token
 

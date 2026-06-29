@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.schemas.sleeper import auth
+from app.integrations.sleeper.schemas import auth
 from app.core.context import Context
 from app.api.deps import get_context
 from app.services.sleeper.auth import send_code, verify_code

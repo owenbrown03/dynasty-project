@@ -5,7 +5,7 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
-from app.models.sleeper import api as model
+from app.models.db.sleeper import api as model
 from app.services.sleeper import transformers
 from app.crud.base import _bulk_upsert
 from app.core.concurrency import bounded_gather

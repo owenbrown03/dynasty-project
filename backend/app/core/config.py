@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     REDIS_URL: str
 
     SLEEPER_REST_BASE: str = "https://api.sleeper.app/v1"
+    SLEEPER_REST_ALT: str = "https://api.sleeper.app"
     SLEEPER_GRAPHQL_URL: str = "https://sleeper.com/graphql"
 
     model_config = SettingsConfigDict(

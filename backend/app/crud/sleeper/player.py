@@ -5,8 +5,7 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
-from app.models.sleeper import api as model
-from app.schemas.sleeper import api as schema
+from app.models.db.sleeper import api as model
 from app.integrations.sleeper.client import SleeperClient
 from app.services.sleeper import transformers 
 
@@ -39,9 +38,12 @@ async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: b
 
     logger.info("Starting full Sleeper player sync...")
 
-    players_map = await sleeper.read.get_all_players()
+    players_map = await sleeper.read.get_all_players() 
     
-    player_dicts = transformers.player_to_db(players_map, return_dict=True)
+    player_dicts = [
+        transformers.player_to_db(p_data, return_dict=True) 
+        for p_data in players_map.values()
+    ]
 
     if player_dicts:
         chunk_size = 2000

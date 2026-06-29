@@ -3,15 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.core.database import AsyncSessionLocal
-from app.models.auth import UserSession, SiteUser
-from app.models.sleeper.connection import SleeperConnection
-from app.integrations.sleeper.manager import SleeperClientManager
+from app.models.db.auth import UserSession, SiteUser
+from app.models.db.sleeper.connection import SleeperConnection
 from app.integrations.sleeper.client import SleeperClient
-from app.integrations.redis.client import RedisClient
+from app.infrastructure.redis.client import RedisClient
 from app.core.context import Context
 from app.core.security import decrypt_token
 from app.crud.auth.user import get_user_by_session
 from app.crud.auth.session import get_session_by_token, create_session_by_userid
+from app.integrations.sleeper.factory import get_sleeper_client
 
 async def get_db():
     async with AsyncSessionLocal() as db:
@@ -80,10 +80,6 @@ async def get_sleeper_connection(
     result = await db.execute(stmt)
 
     return result.scalar_one_or_none()
-    
-
-async def get_sleeper_client() -> SleeperClient:
-    return await SleeperClientManager.get()
 
 
 async def get_user_sleeper_client(
@@ -92,7 +88,7 @@ async def get_user_sleeper_client(
     ),
 ) -> SleeperClient:
 
-    sleeper = await SleeperClientManager.get()
+    sleeper = await get_sleeper_client()
 
     if not connection or not connection.encrypted_token:
         return sleeper

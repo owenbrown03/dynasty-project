@@ -3,7 +3,7 @@ from fastapi import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, delete
 
-from app.models.auth import UserSession
+from app.models.db.auth import UserSession
 
 async def create_session_by_userid(
     user_id: uuid.UUID, 

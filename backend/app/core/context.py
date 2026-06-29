@@ -3,10 +3,10 @@ from typing import Optional
 from fastapi import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.auth import SiteUser, UserSession
-from app.models.sleeper.connection import SleeperConnection
+from app.models.db.auth import SiteUser, UserSession
+from app.models.db.sleeper.connection import SleeperConnection
 from app.integrations.sleeper.client import SleeperClient
-from app.integrations.redis.client import RedisClient
+from app.infrastructure.redis.client import RedisClient
 
 
 @dataclass

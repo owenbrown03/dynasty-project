@@ -2,17 +2,28 @@ from .exceptions import SleeperGraphQLError
 
 
 class SleeperTransport:
-    def __init__(self, auth, http, limiter, config):
+
+    def __init__(
+        self,
+        *,
+        auth,
+        http,
+        limiter,
+        config,
+    ):
         self.auth = auth
         self.http = http
         self.limiter = limiter
         self.config = config
 
-    async def get(self, path: str, params=None):
+    async def get(self, path: str, alt=False, params=None):
         await self.limiter.acquire()
 
-        url = f"{self.config.rest_base.rstrip('/')}/{path.lstrip('/')}"
-
+        if(alt):
+            url = f"{self.config.rest_alt.rstrip('/')}/{path.lstrip('/')}"
+        else:
+            url = f"{self.config.rest_base.rstrip('/')}/{path.lstrip('/')}"
+            
         resp = await self.http.get(
             url,
             params=params,

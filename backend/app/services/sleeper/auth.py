@@ -1,7 +1,7 @@
 import uuid
 from fastapi import HTTPException, status
 
-from app.schemas.sleeper import auth
+from app.integrations.sleeper.schemas import auth
 from app.core.context import Context
 from app.integrations.sleeper.exceptions import (
     SleeperGraphQLError,

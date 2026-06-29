@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, bootstrap
+from app.api.v1.endpoints import auth, bootstrap, test
 from app.api.v1.endpoints.sleeper import auth as sleeper_auth
 from app.api.v1.endpoints.sleeper import connection, players, trades, users, write
 
@@ -13,3 +13,5 @@ api_router.include_router(players.router, prefix="/sleeper/players", tags=["play
 api_router.include_router(trades.router, prefix="/sleeper/trades", tags=["trades"])
 api_router.include_router(users.router, prefix="/sleeper/users", tags=["users"])
 api_router.include_router(write.router, prefix="/sleeper/write", tags=["write"])
+
+api_router.include_router(test.router, prefix="/test", tags=["test"])

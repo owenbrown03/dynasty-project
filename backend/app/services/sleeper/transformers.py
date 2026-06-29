@@ -1,6 +1,9 @@
+import logging
 from typing import Any
-from app.schemas.sleeper import api as schema
-from app.models.sleeper import api as model
+from app.integrations.sleeper.schemas import api as schema
+from app.models.db.sleeper import api as model
+
+logger = logging.getLogger(__name__)
 
 def user_to_db(schema: schema.User, return_dict: bool = False) -> model.User | dict[str, Any]:
     """Transforms a nested Sleeper User payload into a flat User database entry."""
@@ -12,7 +15,13 @@ def user_to_db(schema: schema.User, return_dict: bool = False) -> model.User | d
 
 def player_to_db(schema: schema.Player, return_dict: bool = False) -> model.Player | dict[str, Any]:
     """Transforms a raw Sleeper Player payload into a flat database entity or raw dictionary."""
-    data_map = schema.model_dump()
+    if isinstance(schema, dict):
+        logger.info(f"DEBUG: Processing Player ID {schema.get('player_id')}: {schema.get('first_name')} {schema.get('last_name')}")
+        data_map = schema
+    else:
+        data_map = schema.model_dump()
+    
+    # data_map = schema.model_dump()
     
     if return_dict:
         return data_map

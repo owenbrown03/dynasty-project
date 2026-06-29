@@ -3,7 +3,7 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations.sleeper.client import SleeperClient
-from app.models.sleeper import api as model
+from app.models.db.sleeper import api as model
 from app.crud.sleeper.league import sync_leagues
 from app.crud.sleeper.user import get_userid_by_username
 from app.core.concurrency import bounded_gather
