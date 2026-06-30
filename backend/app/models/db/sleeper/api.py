@@ -3,6 +3,9 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import String, JSON, UniqueConstraint, Index
 from typing import List, Dict, Optional, Any
 
+from ..underdog.models import UnderdogPlayerMap
+from ..ktc.models import KTCPlayerMap
+from ..fc.models import FantasyCalcValue
 from app.analytics.player_value.constants import FANTASY_GAMES_PER_SEASON
 
 class InternalState(SQLModel, table=True):
@@ -33,7 +36,7 @@ class Roster(SQLModel, table=True):
     league_id: str = Field(foreign_key="league.league_id", index=True)
     
     players: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
-    
+
     fpts: int = Field(default=0)
     fpts_against: int = Field(default=0)
     wins: int = Field(default=0)
@@ -121,6 +124,9 @@ class Player(SQLModel, table=True):
     birth_date: Optional[str] = Field(default=None, nullable=True, index=True)
 
     projections: list["PlayerProjection"] = Relationship(back_populates="player")
+    underdog: "UnderdogPlayerMap" = Relationship(back_populates="player")
+    ktc: "KTCPlayerMap" = Relationship(back_populates="player")
+    fantasycalc: "FantasyCalcValue" = Relationship(back_populates="player")
 
     @property
     def full_name(self) -> str:

@@ -6,12 +6,17 @@ from app.core.database import AsyncSessionLocal
 from app.models.db.auth import UserSession, SiteUser
 from app.models.db.sleeper.connection import SleeperConnection
 from app.integrations.sleeper.client import SleeperClient
+from app.integrations.underdog.client import UnderdogClient
+from app.integrations.ktc.client import KTCClient
+from app.integrations.fc.client import FantasyCalcClient
+from app.infrastructure.http.manager import HTTPClientManager
 from app.infrastructure.redis.client import RedisClient
 from app.core.context import Context
 from app.core.security import decrypt_token
 from app.crud.auth.user import get_user_by_session
 from app.crud.auth.session import get_session_by_token, create_session_by_userid
 from app.integrations.sleeper.factory import get_sleeper_client
+
 
 async def get_db():
     async with AsyncSessionLocal() as db:
@@ -106,6 +111,21 @@ async def get_redis_client(
     return RedisClient(request.app.state.redis)
 
 
+async def get_underdog_client() -> UnderdogClient:
+    http_client = await HTTPClientManager.get()
+    return UnderdogClient(http=http_client)
+
+
+async def get_ktc_client() -> KTCClient:
+    http_client = await HTTPClientManager.get()
+    return KTCClient(http=http_client)
+
+
+async def get_fc_client() -> FantasyCalcClient:
+    http_client = await HTTPClientManager.get()
+    return FantasyCalcClient(http=http_client)
+
+
 async def get_context(
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -113,6 +133,9 @@ async def get_context(
     site_user: SiteUser | None = Depends(get_optional_user),
     connection: SleeperConnection | None = Depends(get_sleeper_connection),
     sleeper: SleeperClient | None = Depends(get_user_sleeper_client),
+    underdog: UnderdogClient | None = Depends(get_underdog_client),
+    ktc: KTCClient | None = Depends(get_ktc_client),
+    fc: FantasyCalcClient | None = Depends(get_fc_client),
     redis: RedisClient | None = Depends(get_redis_client),
 ) -> Context:
 
@@ -123,5 +146,8 @@ async def get_context(
         site_user=site_user,
         connection=connection,
         sleeper=sleeper,
+        underdog=underdog,
+        ktc=ktc,
+        fc=fc,
         redis=redis,
     )

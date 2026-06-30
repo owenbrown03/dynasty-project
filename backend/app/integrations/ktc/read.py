@@ -27,18 +27,31 @@ def _extract_team_suffix(player_name: str) -> tuple[str, str, bool]:
     is_rookie = False
     team = ""
 
-    if player_name[-3:] == "RFA":
+    if player_name.endswith("RFA"):
         team = "RFA"
-    elif len(player_name) > 3 and player_name[-4] == "R" and player_name[-3:].isupper():
+
+    elif (
+        len(player_name) > 4
+        and player_name[-4] == "R"
+        and player_name[-3:].isupper()
+    ):
         team = player_name[-3:]
         is_rookie = True
-    elif player_name[-2:] == "FA":
+
+    elif player_name.endswith("FA"):
         team = "FA"
+
     elif player_name[-3:].isupper():
         team = player_name[-3:]
 
-    clean = player_name.replace(team, "").strip() if team else player_name
-    return clean, team.lstrip("R") if is_rookie else team, is_rookie
+    if is_rookie:
+        clean = player_name[:-4].strip()  # remove "R" + 3-letter team
+    elif team:
+        clean = player_name[:-len(team)].strip()
+    else:
+        clean = player_name
+
+    return clean, team, is_rookie
 
 
 def _parse_element(el) -> dict | None:

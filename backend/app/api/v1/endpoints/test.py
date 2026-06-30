@@ -281,3 +281,73 @@ async def dynasty_phase4(
     )
 
     return dynasty_results[:50]
+
+
+from app.crud.ktc.sync import sync_ktc_values
+
+@router.get("/ktc_sync")
+async def ktc_sync(
+    ctx: Context = Depends(get_context),
+):
+
+    return await sync_ktc_values(
+        db=ctx.db,
+        ktc=ctx.ktc
+    )
+
+
+from app.crud.underdog.sync import sync_underdog_adp
+
+@router.get("/underdog_sync")
+async def underdog_sync(
+    ctx: Context = Depends(get_context),
+):
+
+    return await sync_underdog_adp(
+        db=ctx.db,
+        underdog=ctx.underdog
+    )
+
+
+from app.crud.fc.sync import sync_fantasycalc_values
+
+@router.get("/fc_sync")
+async def fc_sync(
+    ctx: Context = Depends(get_context),
+):
+
+    return await sync_fantasycalc_values(
+        db=ctx.db,
+        fc=ctx.fc
+    )
+
+
+from app.services.player import get_player_values
+
+@router.get("/dynasty_phase5")
+async def dynasty_phase5(
+    ctx: Context = Depends(get_context),
+):
+
+    league_id = "1312499253972602880"
+
+    war_players = await WARService().calculate(
+        ctx.db,
+        league_id=league_id,
+    )
+
+    values = await get_player_values(
+        ctx.db,
+        sleeper_ids=[
+            p.player_id 
+            for p in war_players
+        ],
+        war_players=war_players,
+    )
+
+    values.sort(
+        key=lambda x: x.war or 0,
+        reverse=True,
+    )
+
+    return values[:50]

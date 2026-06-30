@@ -6,6 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.db.auth import SiteUser, UserSession
 from app.models.db.sleeper.connection import SleeperConnection
 from app.integrations.sleeper.client import SleeperClient
+from app.integrations.underdog.client import UnderdogClient
+from app.integrations.ktc.client import KTCClient
+from app.integrations.fc.client import FantasyCalcClient
 from app.infrastructure.redis.client import RedisClient
 
 
@@ -17,6 +20,9 @@ class Context:
     site_user: Optional[SiteUser]
     connection: Optional[SleeperConnection]
     sleeper: Optional[SleeperClient]
+    underdog: Optional[UnderdogClient]
+    ktc: Optional[KTCClient]
+    fc: Optional[FantasyCalcClient]
     redis: Optional[RedisClient]
 
     @property

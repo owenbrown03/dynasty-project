@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class UnderdogTeam(BaseModel):
@@ -22,12 +22,26 @@ class UnderdogPlayer(BaseModel):
 
 class UnderdogProjection(BaseModel):
     id: int
-    adp: Optional[float]
-    avg_weekly_points: Optional[float]
-    points: Optional[float]
-    position_rank: Optional[str]      # e.g. "WR1", "RB3"
-    salary: Optional[str]
+    adp: Optional[float] = None
+    avg_weekly_points: Optional[float] = None
+    points: Optional[float] = None
+    position_rank: Optional[str] = None
+    salary: Optional[float] = None
     scoring_type_id: str
+
+    @field_validator(
+        "adp",
+        "avg_weekly_points",
+        "points",
+        "salary",
+        mode="before",
+    )
+    @classmethod
+    def parse_optional_float(cls, value):
+        if value in (None, "", "-"):
+            return None
+
+        return float(value)
 
 
 class UnderdogAppearance(BaseModel):

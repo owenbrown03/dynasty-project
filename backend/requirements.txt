@@ -22,3 +22,4 @@ passlib[argon2]
 requests
 cryptography
 beautifulsoup4
+rapidfuzz

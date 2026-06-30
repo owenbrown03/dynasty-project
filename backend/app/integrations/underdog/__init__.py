@@ -1,7 +1,7 @@
 from .client import UnderdogClient
 from .config import UnderdogConfig
 from .auth import UnderdogAuth
-from .schemas.api import (
+from .schemas import (
     UnderdogSlate,
     UnderdogContestStyle,
     UnderdogPlayer,
