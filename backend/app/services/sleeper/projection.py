@@ -5,11 +5,25 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.models.db.sleeper.api import InternalState, Player, PlayerProjection
-from app.crud.sleeper.projection import upsert_projection
-from app.crud.sleeper.player import sync_players
+from app.models.db.sleeper.api import (
+    InternalState,
+    Player,
+    PlayerProjection,
+)
+
+from app.crud.sleeper.projection import (
+    upsert_projection,
+)
+
+from app.crud.sleeper.player import (
+    sync_players,
+)
+
 
 logger = logging.getLogger(__name__)
+
+
+SYNC_INTERVAL = timedelta(days=1)
 
 
 async def sync_projections(
@@ -29,28 +43,19 @@ async def sync_projections(
     key = f"sync:projection:sleeper:{season}"
 
 
-    result = await db.execute(
-        select(InternalState)
-        .where(
-            InternalState.key == key
+    state = (
+        await db.execute(
+            select(InternalState)
+            .where(
+                InternalState.key == key
+            )
         )
-    )
-
-    state = result.scalar_one_or_none()
+    ).scalar_one_or_none()
 
 
-    last_update = (
-        datetime.fromisoformat(state.value)
-        if state and state.value
-        else None
-    )
-
-
-    if (
-        not force_update
-        and last_update
-        and last_update >
-        datetime.now() - timedelta(days=1)
+    if should_skip_sync(
+        state,
+        force_update,
     ):
         logger.info(
             "Projection sync skipped"
@@ -59,7 +64,7 @@ async def sync_projections(
 
 
     logger.info(
-        f"Starting Sleeper {season} projection sync..."
+        f"Starting Sleeper {season} projection sync"
     )
 
 
@@ -67,41 +72,34 @@ async def sync_projections(
         season
     )
 
-    count = 0
+
+    players = await load_player_ids(db)
+
+
+    inserted = 0
     skipped = 0
 
 
     for projection in projections:
 
-        if projection.stats.pts_ppr is None:
-            continue
-
-        if projection.stats.pts_ppr <= 0:
-            skipped += 1
-            continue
-
-        player_exists = await db.get(
-            Player,
-            projection.player_id,
-        )
-
-        if not player_exists:
+        if projection.player_id not in players:
             skipped += 1
 
             logger.warning(
-                f"Missing player {projection.player_id}, skipping projection"
+                f"Missing player {projection.player_id}"
             )
 
             continue
 
 
-        row = PlayerProjection(
-            player_id=projection.player_id,
-            season=season,
-            source="sleeper",
-            scoring_format="ppr",
-            projected_points=projection.stats.pts_ppr,
-            projected_ppg=projection.stats.pts_ppr / projection.stats.gp,
+        if projection.stats.gp <= 0:
+            skipped += 1
+            continue
+
+
+        row = build_projection(
+            projection,
+            season,
         )
 
 
@@ -110,10 +108,91 @@ async def sync_projections(
             db,
         )
 
-        count += 1
+        inserted += 1
 
+
+    await update_sync_state(
+        db,
+        state,
+        key,
+    )
+
+
+    logger.info(
+        f"""
+        Projection sync complete
+
+        Updated: {inserted}
+        Skipped: {skipped}
+        """
+    )
+
+
+
+async def load_player_ids(
+    db: AsyncSession,
+):
+
+    result = await db.execute(
+        select(Player.player_id)
+    )
+
+    return set(
+        result.scalars().all()
+    )
+
+
+
+def build_projection(
+    projection,
+    season: int,
+):
+
+    stats = projection.stats.model_dump()
+
+
+    return PlayerProjection(
+        player_id=projection.player_id,
+        season=season,
+        source="sleeper",
+
+        **stats,
+    )
+
+
+
+def should_skip_sync(
+    state,
+    force_update,
+):
+
+    if force_update:
+        return False
+
+    if not state or not state.value:
+        return False
+
+
+    last_update = datetime.fromisoformat(
+        state.value
+    )
+
+
+    return (
+        last_update >
+        datetime.now() - SYNC_INTERVAL
+    )
+
+
+
+async def update_sync_state(
+    db,
+    state,
+    key,
+):
 
     if not state:
+
         state = InternalState(
             key=key
         )
@@ -121,17 +200,6 @@ async def sync_projections(
         db.add(state)
 
 
-    state.value = (
-        datetime.now()
-        .isoformat()
-    )
-
+    state.value = datetime.now().isoformat()
 
     await db.commit()
-
-
-    logger.info(
-        f"Projection sync complete. "
-        f"Inserted/updated: {count}, "
-        f"Skipped: {skipped}"
-    )

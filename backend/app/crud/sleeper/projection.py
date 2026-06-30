@@ -8,33 +8,31 @@ async def upsert_projection(
     projection: PlayerProjection,
     db: AsyncSession,
 ):
-
     stmt = select(PlayerProjection).where(
         PlayerProjection.player_id == projection.player_id,
         PlayerProjection.season == projection.season,
         PlayerProjection.source == projection.source,
-        PlayerProjection.scoring_format == projection.scoring_format,
     )
-
 
     result = await db.execute(stmt)
 
     existing = result.scalar_one_or_none()
 
-
     if existing:
 
-        existing.projected_points = (
-            projection.projected_points
-        )
+        for field in PlayerProjection.model_fields:
 
-        existing.projected_ppg = (
-            projection.projected_ppg
-        )
+            if field == "id":
+                continue
+
+            setattr(
+                existing,
+                field,
+                getattr(projection, field),
+            )
 
     else:
         db.add(projection)
-
 
     await db.commit()
 

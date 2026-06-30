@@ -1,7 +1,9 @@
 from sqlmodel import BigInteger, SQLModel, Field, Column, Relationship
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import String, JSON, UniqueConstraint, Index
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
+
+from app.analytics.player_value.constants import FANTASY_GAMES_PER_SEASON
 
 class InternalState(SQLModel, table=True):
     key: str = Field(primary_key=True)
@@ -15,18 +17,15 @@ class League(SQLModel, table=True):
     avatar: Optional[str] = Field(default=None, nullable=True)
     season: str
     dynasty: bool
-    best_ball: Optional[bool] = Field(default=False, nullable=True)
-    trade_deadline: Optional[int] = Field(default=None, nullable=True)
-    bonus_rec_te: int
-    rec: int
-    pass_td: int
-    
+    settings: dict[str, float] = Field(default_factory=dict, sa_type=JSON)
+    scoring_settings: dict[str, float] = Field(default_factory=dict, sa_type=JSON)
     roster_positions: list[str] = Field(sa_column=Column(ARRAY(String)))
 
     roster: List["Roster"] = Relationship(back_populates="league", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     transaction: List["Transaction"] = Relationship(back_populates="league")
     draft: List["Draft"] = Relationship(back_populates="league")
 
+    
 class Roster(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     roster_id: Optional[int] = Field(default=None, index=True, nullable=True)
@@ -132,8 +131,65 @@ class PlayerProjection(SQLModel, table=True):
     player_id: str = Field(foreign_key="player.player_id", index=True)
     season: int = Field(index=True)
     source: str = Field(default="sleeper", index=True)
-    scoring_format: str = Field(default="ppr")
-    projected_points: float
-    projected_ppg: float
+    projected_points: float = 0
+    projected_ppg: float = 0
+    games_played: float = FANTASY_GAMES_PER_SEASON
+
+    # Passing
+    pass_att: float = 0
+    pass_cmp: float = 0
+    pass_yd: float = 0
+    pass_td: float = 0
+    pass_int: float = 0
+    pass_2pt: float = 0
+
+    # Rushing
+    rush_att: float = 0
+    rush_yd: float = 0
+    rush_td: float = 0
+    rush_2pt: float = 0
+
+    # Receiving
+    rec: float = 0
+    rec_yd: float = 0
+    rec_td: float = 0
+    rec_2pt: float = 0
+
+    # Misc
+    fum_lost: float = 0
+
+    # First downs
+    pass_fd: float = 0
+    rush_fd: float = 0
+    rec_fd: float = 0
+
+    # Big play bonuses
+    rec_0_4: float = 0
+    rec_5_9: float = 0
+    rec_10_19: float = 0
+    rec_20_29: float = 0
+    rec_30_39: float = 0
+    rec_40p: float = 0
+
+    bonus_rec_rb: float = 0
+    bonus_rec_wr: float = 0
+    bonus_rec_te: float = 0
 
     player: Optional["Player"] = Relationship(back_populates="projections")
+
+    def to_stats(self) -> dict[str, Any]:
+        excluded = {
+            "id",
+            "player_id",
+            "season",
+            "source",
+            "projected_points",
+            "projected_ppg",
+            "games_played",
+        }
+
+        return {
+            key: value
+            for key, value in self.model_dump().items()
+            if key not in excluded
+        }

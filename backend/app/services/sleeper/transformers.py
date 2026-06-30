@@ -27,27 +27,38 @@ def player_to_db(schema: schema.Player, return_dict: bool = False) -> model.Play
         return data_map
     return model.Player(**data_map)
 
-def league_to_db(schema: schema.League, return_dict: bool = False) -> model.League | dict[str, Any]:
-    """Transforms a nested Sleeper API payload into a flat League database entity safely."""
+def league_to_db(
+    schema: schema.League,
+    return_dict: bool = False
+) -> model.League | dict[str, Any]:
+
     full_data = schema.model_dump()
-    
-    settings = full_data.pop('settings', None) or {}
-    scoring = full_data.pop('scoring_settings', None) or {}
-    
+
+    settings = full_data.get("settings") or {}
+    scoring = full_data.get("scoring_settings") or {}
+
     data_map = {
-        **full_data,
-        **settings,
-        **scoring,
-        "dynasty": settings.get('type') == 2,
-        "roster_positions": full_data.get('roster_positions') or [],
-        "bonus_rec_te": scoring.get("bonus_rec_te", 0),
-        "rec": scoring.get("rec", 0),
-        "pass_td": scoring.get("pass_td", 0),
-        "best_ball": settings.get("best_ball", False),
+        "league_id": full_data["league_id"],
+        "name": full_data["name"],
+        "total_rosters": full_data["total_rosters"],
+        "draft_id": full_data["draft_id"],
+        "avatar": full_data.get("avatar"),
+        "season": full_data["season"],
+
+        "dynasty": settings.get("type") == 2,
+
+        "settings": settings,
+        "scoring_settings": scoring,
+
+        "roster_positions": (
+            full_data.get("roster_positions")
+            or []
+        ),
     }
-    
+
     if return_dict:
         return data_map
+
     return model.League(**data_map)
 
 def roster_to_db(schema: schema.Roster, return_dict: bool = False) -> model.Roster | dict[str, Any]:

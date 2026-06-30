@@ -233,3 +233,35 @@ async def save_league_bundle_to_db(
     except Exception as e:
         logger.error(f"save bundle failed: {e}", exc_info=True)
         return False
+    
+
+async def get_league_context(
+    db: AsyncSession,
+    league_id: str,
+):
+    league = await db.get(
+        model.League,
+        league_id,
+    )
+
+    rosters = (
+        await db.execute(
+            select(model.Roster).where(
+                model.Roster.league_id == league_id
+            )
+        )
+    ).scalars().all()
+
+    projections = (
+        await db.execute(
+            select(model.PlayerProjection).where(
+                model.PlayerProjection.season == int(league.season)
+            )
+        )
+    ).scalars().all()
+
+    return {
+        "league": league,
+        "rosters": rosters,
+        "projections": projections,
+    }

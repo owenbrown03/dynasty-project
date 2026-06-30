@@ -1,6 +1,8 @@
 from pydantic import Field
 from typing import List, Dict, Optional
+
 from app.schemas.base import Base
+from app.analytics.player_value.constants import FANTASY_GAMES_PER_SEASON
 
 class User(Base):
     user_id: str
@@ -8,26 +10,50 @@ class User(Base):
     avatar: Optional[str] = None
     is_owner: Optional[bool] = None
 
+
 class LeagueSettings(Base):
-    best_ball: Optional[bool] = False
+    best_ball: bool = False
     trade_deadline: Optional[int] = None
-    type: int
+    type: int = 0
+
 
 class ScoringSettings(Base):
-    bonus_rec_te: float = 0.0
-    rec: float = 0.0
+    model_config = {
+        "extra": "allow"
+    }
+
+    pass_yd: float = 0.0
     pass_td: float = 0.0
+    pass_int: float = 0.0
+
+    rush_yd: float = 0.0
+    rush_td: float = 0.0
+
+    rec: float = 0.0
+    rec_yd: float = 0.0
+    rec_td: float = 0.0
+
+    fum_lost: float = 0.0
+    bonus_rec_te: float = 0.0
+
 
 class League(Base):
     league_id: str
     name: str
     total_rosters: int
     draft_id: str
+
     avatar: Optional[str] = None
-    season: str    
+
+    season: str
+
     settings: Optional[LeagueSettings] = None
+
     scoring_settings: Optional[ScoringSettings] = None
-    roster_positions: Optional[List[str]] = None
+
+    roster_positions: list[str] = Field(
+        default_factory=list
+    )
 
 class RosterSettings(Base):
     fpts: Optional[int] = 0
@@ -107,11 +133,47 @@ class NFLState(Base):
     week: int
 
 class ProjectionStats(Base):
-    pts_ppr: float = 0
-    pts_half_ppr: float = 0
-    pts_std: float = 0
-    gp: float = 0
+    gp: float = FANTASY_GAMES_PER_SEASON
 
+    # Passing
+    pass_att: float = 0
+    pass_cmp: float = 0
+    pass_yd: float = 0
+    pass_td: float = 0
+    pass_int: float = 0
+    pass_2pt: float = 0
+
+    # Rushing
+    rush_att: float = 0
+    rush_yd: float = 0
+    rush_td: float = 0
+    rush_2pt: float = 0
+
+    # Receiving
+    rec: float = 0
+    rec_yd: float = 0
+    rec_td: float = 0
+    rec_2pt: float = 0
+
+    # Misc
+    fum_lost: float = 0
+
+    # Optional bonus stats
+    rec_fd: float = 0
+    rush_fd: float = 0
+    pass_fd: float = 0
+
+    rec_40p: float = 0
+    rec_30_39: float = 0
+    rec_20_29: float = 0
+    rec_10_19: float = 0
+    rec_5_9: float = 0
+    rec_0_4: float = 0
+
+    bonus_rec_rb: float = 0
+    bonus_rec_wr: float = 0
+    bonus_rec_te: float = 0
+    
 class Projection(Base):
     player_id: str
     stats: ProjectionStats
