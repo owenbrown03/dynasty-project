@@ -9,6 +9,7 @@ from app.models.db.sleeper import api as model
 from app.services.sleeper import transformers
 from app.crud.base import _bulk_upsert
 from app.core.concurrency import bounded_gather
+from app.analytics.war.redraft.cache import clear_league_war_cache
 
 logger = logging.getLogger(__name__)
 
@@ -77,14 +78,26 @@ async def sync_leagues(db, raw_leagues, curr_week, sleeper):
             logger.error(f"[DB BATCH ERROR] {e}", exc_info=True)
 
     await db.commit()
-    logger.info(f"[DB] commited {len(bundles)} bundles")
+
+    logger.info(
+        f"[DB] committed {len(bundles)} bundles"
+    )
+
+    for bundle in bundles:
+
+        league = bundle["league"]
+
+        clear_league_war_cache(
+            league.league_id,
+            int(league.season),
+        )
+
 
     return {
         "status": "completed",
         "synced_count": success_count,
         "failed_batches": failed_batches
     }
-
 
 async def fetch_league_bundle(league, curr_week, sleeper):
     league_id = league.league_id
@@ -126,11 +139,7 @@ async def fetch_league_bundle(league, curr_week, sleeper):
         return None
     
 
-async def save_league_bundle_to_db(
-    db: AsyncSession,
-    bundle: dict,
-    commit: bool = True
-) -> bool:
+async def save_league_bundle_to_db(db: AsyncSession, bundle: dict, commit: bool = True) -> bool:
 
     try:
         league_id = bundle["league"].league_id
@@ -235,10 +244,7 @@ async def save_league_bundle_to_db(
         return False
     
 
-async def get_league_context(
-    db: AsyncSession,
-    league_id: str,
-):
+async def get_league_context(db: AsyncSession, league_id: str):
     league = await db.get(
         model.League,
         league_id,
@@ -265,3 +271,41 @@ async def get_league_context(
         "rosters": rosters,
         "projections": projections,
     }
+
+async def get_user_leagues(db: AsyncSession, username: str):
+    result = await db.execute(
+        select(
+            model.League,
+            model.Roster,
+        )
+        .join(
+            model.Roster,
+            model.Roster.league_id == model.League.league_id
+        )
+        .join(
+            model.User,
+            model.User.user_id == model.Roster.owner_id
+        )
+        .where(
+            model.User.display_name == username
+        )
+    )
+
+    return result.all()
+
+async def get_league_with_rosters(db, league_id: str):
+    result = await db.execute(
+        select(
+            model.League,
+            model.Roster,
+        )
+        .join(
+            model.Roster,
+            model.Roster.league_id == model.League.league_id
+        )
+        .where(
+            model.League.league_id == league_id
+        )
+    )
+
+    return result.all()

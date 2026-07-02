@@ -6,7 +6,7 @@ from typing import List, Dict, Optional, Any
 from ..underdog.models import UnderdogPlayerMap
 from ..ktc.models import KTCPlayerMap
 from ..fc.models import FantasyCalcValue
-from app.analytics.player_value.constants import FANTASY_GAMES_PER_SEASON
+from app.analytics.war.redraft.constants import FANTASY_GAMES_PER_SEASON
 
 class InternalState(SQLModel, table=True):
     key: str = Field(primary_key=True)

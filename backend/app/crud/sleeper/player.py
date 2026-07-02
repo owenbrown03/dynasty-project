@@ -11,6 +11,7 @@ from app.services.sleeper import transformers
 
 logger = logging.getLogger(__name__)
 
+
 _PLAYER_MAP_CACHE: dict[str, dict[str, Any]] = {}
 
 async def get_player_map(db: AsyncSession) -> dict[str, dict[str, Any]]:
@@ -25,6 +26,33 @@ async def get_player_map(db: AsyncSession) -> dict[str, dict[str, Any]]:
     
     _PLAYER_MAP_CACHE = {p.player_id: p.model_dump() for p in players}
     return _PLAYER_MAP_CACHE
+
+
+_PLAYER_SNAPSHOT_CACHE: dict[str, dict[str, Any]] = {}
+
+async def get_analytics_player_map(db: AsyncSession,) -> dict[str, dict[str, Any]]:
+    """Returns a lightweight immutable player snapshot for analytics calculations."""
+    global _PLAYER_SNAPSHOT_CACHE
+
+    if _PLAYER_SNAPSHOT_CACHE:
+        return _PLAYER_SNAPSHOT_CACHE
+
+    players = await get_player_map(db)
+
+    _PLAYER_SNAPSHOT_CACHE = {
+        player_id: {
+            "player_id": player_id,
+            "first_name": player.get("first_name"),
+            "last_name": player.get("last_name"),
+            "position": player.get("position"),
+            "team": player.get("team"),
+            "birth_date": player.get("birth_date"),
+        }
+        for player_id, player in players.items()
+    }
+
+    return _PLAYER_SNAPSHOT_CACHE
+
 
 async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: bool = False):
     global _PLAYER_MAP_CACHE
@@ -64,4 +92,5 @@ async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: b
     
     await db.commit()
     _PLAYER_MAP_CACHE.clear()
+    _PLAYER_SNAPSHOT_CACHE.clear()
     logger.info(f"Player Sync Complete: Processed {len(player_dicts)} players.")
