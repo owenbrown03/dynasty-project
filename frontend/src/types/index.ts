@@ -92,3 +92,101 @@ export type Bootstrap = {
   site_user: BootstrapUser | null;
   sleeper: BootstrapSleeper;
 };
+
+export type LeagueOverview = {
+  league_id: string;
+  league_name: string;
+  season: string | null;
+  total_rosters: number | null;
+};
+
+export type LeagueOwner = {
+  user_id: string;
+  display_name: string;
+  avatar: string | null;
+};
+
+export type LeaguePlayer = {
+  player_id: string;
+
+  name: string;
+  position: string;
+  team: string | null;
+
+  age: number | null;
+
+  ktc_value: number | null;
+  fc_value: number | null;
+
+  starter_war: number | null;
+  roster_war: number | null;
+};
+
+export type LeagueRoster = {
+  roster_id: number;
+
+  owner: LeagueOwner;
+
+  total_starter_war: number;
+  total_roster_war: number;
+
+  rank: number;
+
+  players: LeaguePlayer[];
+};
+
+export type LeagueDetails = {
+  league_id: string;
+  league_name: string;
+  rosters: LeagueRoster[];
+};
+
+export type DashboardSummary = {
+  league_count: number;
+  player_count: number;
+  total_ktc_value: number;
+  total_fc_value: number;
+  total_starter_war: number;
+  total_roster_war: number;
+  average_age: number;
+};
+
+export type DashboardLeague = {
+  league_id: string;
+  league_name: string;
+  league_size: number;
+
+  ktc_value: number;
+  ktc_rank: number;
+
+  fc_value: number;
+  fc_rank: number;
+
+  starter_war: number;
+  starter_war_rank: number;
+
+  roster_war: number;
+  roster_war_rank: number;
+
+  average_age: number | null;
+  age_rank: number;
+};
+
+export type DashboardAsset = {
+  player_id: string;
+  name: string;
+  position: string;
+  team: string | null;
+
+  ktc_value: number | null;
+  fc_value: number | null;
+
+  starter_war: number;
+  roster_war: number;
+};
+
+export type Dashboard = {
+  summary: DashboardSummary;
+  leagues: DashboardLeague[];
+  top_assets: DashboardAsset[];
+};

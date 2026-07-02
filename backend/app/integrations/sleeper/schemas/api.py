@@ -2,7 +2,7 @@ from pydantic import Field
 from typing import List, Dict, Optional
 
 from app.schemas.base import Base
-from app.analytics.player_value.constants import FANTASY_GAMES_PER_SEASON
+from app.analytics.war.redraft.constants import FANTASY_GAMES_PER_SEASON
 
 class User(Base):
     user_id: str

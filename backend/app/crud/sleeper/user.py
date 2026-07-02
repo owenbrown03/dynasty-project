@@ -69,3 +69,19 @@ async def sync_user_data(db: AsyncSession, sleeper: SleeperClient, username: str
         return {"status": "skipped", "reason": "no_leagues"}
     else:    
         return await sync_leagues(db, leagues_json, curr_week, sleeper)
+
+async def get_users(db: AsyncSession, user_ids: set[str]):
+    if not user_ids:
+        return {}
+
+    result = await db.execute(
+        select(model.User)
+        .where(
+            model.User.user_id.in_(user_ids)
+        )
+    )
+
+    return {
+        user.user_id: user
+        for user in result.scalars()
+    }
