@@ -1,8 +1,6 @@
 from app.utils.age import calculate_age
-
 from .constants import FANTASY_GAMES_PER_SEASON
 from .models import PlayerProjectionValue
-
 
 class PlayerNormalizer:
 

@@ -13,7 +13,7 @@ export function TopAssets({
   assets
 }: Props) {
 
-
+  
   return (
 
     <div>
@@ -44,9 +44,8 @@ export function TopAssets({
 
 
             <span>
-              WAR:
-              {" "}
-              {player.roster_war.toFixed(2)}
+              WAR:{" "}
+              {(player.roster_war ?? 0).toFixed(2)}
             </span>
 
 

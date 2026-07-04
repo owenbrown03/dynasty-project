@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.analytics.war.redraft.service import WARService
-
+from app.analytics.war.redraft.singleton import war_service
 from app.crud.sleeper.league import get_league_with_rosters
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
@@ -10,16 +9,14 @@ from app.crud.value import get_player_values
 
 class LeagueDetails:
 
-
     def __init__(self):
-
-        self.war_service = WARService()
-
+        self.war_service = war_service
 
 
     async def get_league_details(
         self,
         db: AsyncSession,
+        redis,
         league_id: str,
     ):
 
@@ -43,17 +40,20 @@ class LeagueDetails:
         # WAR
         # ----------------------------------
 
-        war_players = await self.war_service.calculate(
+        shared = await self.war_service.load_shared_data(
             db,
-            league_id,
+            int(league.season),
         )
 
+        war_players = await self.war_service.calculate_with_data(
+            league=league,
+            shared=shared,
+        )
 
         war_lookup = {
             p.player_id:p
             for p in war_players
         }
-
 
 
         # ----------------------------------
