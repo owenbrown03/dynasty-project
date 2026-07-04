@@ -1,41 +1,81 @@
-from typing import Any
+import json
+
+from app.infrastructure.redis.client import RedisClient
+from .constants import WAR_CACHE_VERSION, WAR_CACHE_TTL_SECONDS
+from .models import PlayerWAR
 
 
-_WAR_CACHE: dict[str, list[Any]] = {}
+class WARCache:
+
+    def _league_key(
+        self,
+        league_id: str,
+        season: int,
+    ) -> str:
+        return (
+            f"war:{WAR_CACHE_VERSION}:league:"
+            f"{league_id}:{season}"
+        )
+
+    async def get_league(
+        self,
+        redis: RedisClient,
+        league_id: str,
+        season: int,
+    ) -> list[PlayerWAR] | None:
+
+        cached = await redis.get(
+            self._league_key(
+                league_id,
+                season,
+            )
+        )
+
+        if cached is None:
+            return None
+
+        data = json.loads(cached)
+
+        return [
+            PlayerWAR(**item)
+            for item in data
+        ]
+
+    async def set_league(
+        self,
+        redis: RedisClient,
+        league_id: str,
+        season: int,
+        value: list[PlayerWAR],
+    ):
+
+        await redis.set(
+            self._league_key(
+                league_id,
+                season,
+            ),
+            json.dumps(
+                [
+                    p.model_dump()
+                    for p in value
+                ]
+            ),
+            ttl_seconds=WAR_CACHE_TTL_SECONDS,
+        )
+
+    async def clear_league(
+        self,
+        redis: RedisClient,
+        league_id: str,
+        season: int,
+    ):
+
+        await redis.delete(
+            self._league_key(
+                league_id,
+                season,
+            )
+        )
 
 
-def get_war_cache(
-    league_id: str,
-    season: int,
-):
-    key = f"{league_id}:{season}"
-
-    return _WAR_CACHE.get(
-        key
-    )
-
-
-def set_war_cache(
-    league_id: str,
-    season: int,
-    value,
-):
-    key = f"{league_id}:{season}"
-
-    _WAR_CACHE[key] = value
-
-
-def clear_war_cache():
-    _WAR_CACHE.clear()
-
-
-def clear_league_war_cache(
-    league_id: str,
-    season: int,
-):
-    key = f"{league_id}:{season}"
-
-    _WAR_CACHE.pop(
-        key,
-        None,
-    )
+war_cache = WARCache()

@@ -181,8 +181,8 @@ export type DashboardAsset = {
   ktc_value: number | null;
   fc_value: number | null;
 
-  starter_war: number;
-  roster_war: number;
+  starter_war: number | null;
+  roster_war: number | null;
 };
 
 export type Dashboard = {

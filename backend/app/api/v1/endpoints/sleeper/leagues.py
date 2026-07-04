@@ -30,6 +30,7 @@ async def details_endpoint(
 
     return await LeagueDetails().get_league_details(
         ctx.db,
+        ctx.redis,
         league_id=league_id,
     )
 
@@ -44,5 +45,6 @@ async def dashboard_endpoint(
 
     return await get_user_dashboard(
         ctx.db,
+        ctx.redis,
         username,
     )

@@ -2,7 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.models.db.sleeper.api import PlayerProjection
-from app.analytics.war.redraft.cache import clear_war_cache
 
 
 async def upsert_projection(
@@ -36,7 +35,5 @@ async def upsert_projection(
         db.add(projection)
 
     await db.commit()
-
-    clear_war_cache()
 
     return existing or projection

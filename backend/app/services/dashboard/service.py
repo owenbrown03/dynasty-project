@@ -1,4 +1,4 @@
-import logging
+import logging, asyncio
 
 from .crud import (
     get_user_by_name,
@@ -22,8 +22,8 @@ from app.crud.value import (
     get_player_values,
 )
 
-from app.analytics.war.redraft.service import (
-    WARService,
+from app.analytics.war.redraft.singleton import (
+    war_service,
 )
 
 
@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 async def get_user_dashboard(
     db,
+    redis,
     username: str,
 ):
 
@@ -71,42 +72,37 @@ async def get_user_dashboard(
             "top_assets": [],
         }
 
-
-
     league_ids = list(
         leagues.keys()
     )
 
+    first_league = next(iter(leagues.values()))["league"]
+
+    shared = await war_service.load_shared_data(
+        db,
+        int(first_league.season),
+    )
 
     all_rosters = await get_all_league_rosters(
         db,
         league_ids,
     )
-
-
-
-    # -----------------------------
-    # WAR
-    # -----------------------------
-
-    war_service = WARService()
-
-
-    war_players = []
-
-
-    for league_id in league_ids:
-
-        results = await war_service.calculate(
-            db,
-            league_id,
+    
+    tasks = [
+        war_service.calculate_with_data(
+            league=leagues[league_id]["league"],
+            shared=shared,
         )
+        for league_id in league_ids
+    ]
 
-        war_players.extend(
-            results
-        )
+    results_per_league = await asyncio.gather(*tasks, return_exceptions=False)
 
-
+    war_players = [
+        player
+        for league_results in results_per_league
+        for player in league_results
+    ]
 
     # -----------------------------
     # Players

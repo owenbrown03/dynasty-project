@@ -6,23 +6,28 @@
   background-color: rgb(68, 68, 68);
 }
 
-.league-header {
+.league-name {
   font-weight: bold;
   margin-bottom: 12px;
   color: #fff;
   font-size: 14px;
 }
 
-/* This targets the new wrapper we added */
-.trade-users-row {
-  display: flex;       /* This puts them side-by-side */
-  flex-direction: row; 
-  gap: 15px;           /* Space between manager A and manager B */
-  align-items: stretch; /* Keeps cards same height if one has more players */
+.trade-time {
+  font-weight: bold;
+  color: #fff;
+  font-size: 14px;
+  float: right;
 }
 
-/* This ensures each UserCard grows to fill the row equally */
+.trade-users-row {
+  display: flex;
+  flex-direction: row; 
+  gap: 15px;
+  align-items: stretch;
+}
+
 .trade-users-row > .user-card {
   flex: 1; 
-  min-width: 0;        /* Prevents long names from breaking the flexbox */
+  min-width: 0;
 }

@@ -9,7 +9,6 @@ from app.models.db.sleeper import api as model
 from app.services.sleeper import transformers
 from app.crud.base import _bulk_upsert
 from app.core.concurrency import bounded_gather
-from app.analytics.war.redraft.cache import clear_league_war_cache
 
 logger = logging.getLogger(__name__)
 
@@ -82,16 +81,6 @@ async def sync_leagues(db, raw_leagues, curr_week, sleeper):
     logger.info(
         f"[DB] committed {len(bundles)} bundles"
     )
-
-    for bundle in bundles:
-
-        league = bundle["league"]
-
-        clear_league_war_cache(
-            league.league_id,
-            int(league.season),
-        )
-
 
     return {
         "status": "completed",
