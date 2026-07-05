@@ -10,7 +10,7 @@ T = TypeVar("T")
 
 async def bounded_gather(
     coros: Iterable[Awaitable[T]],
-    limit: int = 25,
+    limit: int = 100,
     log_every: int = 10,
 ) -> List[T]:
     semaphore = asyncio.Semaphore(limit)

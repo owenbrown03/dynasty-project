@@ -1,16 +1,21 @@
-from sqlmodel import BigInteger, SQLModel, Field, Column, Relationship
-from sqlalchemy.dialects.postgresql import ARRAY
+from datetime import datetime
+
+from sqlmodel import BigInteger, SQLModel, Column, Field, Relationship
 from sqlalchemy import String, JSON, UniqueConstraint, Index
+from sqlalchemy.dialects.postgresql import ARRAY
 from typing import List, Dict, Optional, Any
+from pydantic import field_validator
 
 from ..underdog.models import UnderdogPlayerMap
 from ..ktc.models import KTCPlayerMap
 from ..fc.models import FantasyCalcValue
 from app.analytics.war.redraft.constants import FANTASY_GAMES_PER_SEASON
 
+
 class InternalState(SQLModel, table=True):
     key: str = Field(primary_key=True)
     value: str
+
 
 class League(SQLModel, table=True):
     league_id: str = Field(primary_key=True)
@@ -24,17 +29,31 @@ class League(SQLModel, table=True):
     scoring_settings: dict[str, float] = Field(default_factory=dict, sa_type=JSON)
     roster_positions: list[str] = Field(sa_column=Column(ARRAY(String)))
 
+    @field_validator("roster_positions", mode="before")
+    @classmethod
+    def coerce_roster_positions(cls, v):
+        return v or []
+    
     roster: List["Roster"] = Relationship(back_populates="league", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     transaction: List["Transaction"] = Relationship(back_populates="league")
     draft: List["Draft"] = Relationship(back_populates="league")
+    sync_state: Optional["LeagueSyncState"] = Relationship(back_populates="league")
 
-    
+
+class LeagueSyncState(SQLModel, table=True):
+    league_id: str = Field(primary_key=True, foreign_key="league.league_id")
+    last_synced_week: int = Field(default=0)
+    last_synced_at: datetime = Field(default_factory=datetime.utcnow)
+
+    league: Optional["League"] = Relationship(back_populates="sync_state")
+
+
 class Roster(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     roster_id: Optional[int] = Field(default=None, index=True, nullable=True)
     owner_id: Optional[str] = Field(default=None, foreign_key="user.user_id", index=True)
     league_id: str = Field(foreign_key="league.league_id", index=True)
-    
+
     players: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
 
     fpts: int = Field(default=0)
@@ -52,6 +71,7 @@ class Roster(SQLModel, table=True):
         {"sqlite_autoincrement": True},
     )
 
+
 class User(SQLModel, table=True):
     user_id: str = Field(primary_key=True)
     display_name: str
@@ -60,6 +80,7 @@ class User(SQLModel, table=True):
     is_placeholder: bool = Field(default=False, nullable=False)
 
     roster: List["Roster"] = Relationship(back_populates="user")
+
 
 class Transaction(SQLModel, table=True):
     transaction_id: str = Field(primary_key=True)
@@ -72,6 +93,7 @@ class Transaction(SQLModel, table=True):
     draft_pick: List["TradedPick"] = Relationship(back_populates="transaction")
     waiver_budget: List["WaiverBudget"] = Relationship(back_populates="transaction")
 
+
 class Draft(SQLModel, table=True):
     draft_id: str = Field(primary_key=True)
     league_id: str = Field(foreign_key="league.league_id", index=True)
@@ -80,6 +102,7 @@ class Draft(SQLModel, table=True):
     slot_to_roster_id: Optional[Dict[str, int]] = Field(default_factory=dict, sa_type=JSON, nullable=True)
 
     league: "League" = Relationship(back_populates="draft")
+
 
 class Movement(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -94,6 +117,7 @@ class Movement(SQLModel, table=True):
         Index("idx_movement_roster_tx", "roster_id", "transaction_id"),
     )
 
+
 class WaiverBudget(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     transaction_id: str = Field(foreign_key="transaction.transaction_id", index=True)
@@ -102,6 +126,7 @@ class WaiverBudget(SQLModel, table=True):
     amount: int
 
     transaction: "Transaction" = Relationship(back_populates="waiver_budget")
+
 
 class TradedPick(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -113,6 +138,7 @@ class TradedPick(SQLModel, table=True):
     og_roster_id: int = Field(index=True)
 
     transaction: "Transaction" = Relationship(back_populates="draft_pick")
+
 
 class Player(SQLModel, table=True):
     player_id: str = Field(primary_key=True)
@@ -131,7 +157,8 @@ class Player(SQLModel, table=True):
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
-    
+
+
 class PlayerProjection(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     player_id: str = Field(foreign_key="player.player_id", index=True)
