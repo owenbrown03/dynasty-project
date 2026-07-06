@@ -47,17 +47,33 @@ export function DashboardSummary({
 
 
       <div className="summary-card">
-        <h3>Starter WAR</h3>
+        <h3>Dynasty Starter WAR</h3>
         <p>
-          {summary.total_starter_war.toFixed(2)}
+          {summary.total_dynasty_starter_war.toFixed(2)}
         </p>
       </div>
 
 
       <div className="summary-card">
-        <h3>Roster WAR</h3>
+        <h3>Dynasty Roster WAR</h3>
         <p>
-          {summary.total_roster_war.toFixed(2)}
+          {summary.total_dynasty_roster_war.toFixed(2)}
+        </p>
+      </div>
+
+
+      <div className="summary-card">
+        <h3>Redraft Starter WAR</h3>
+        <p>
+          {summary.total_redraft_starter_war.toFixed(2)}
+        </p>
+      </div>
+
+
+      <div className="summary-card">
+        <h3>Redraft Roster WAR</h3>
+        <p>
+          {summary.total_redraft_roster_war.toFixed(2)}
         </p>
       </div>
 

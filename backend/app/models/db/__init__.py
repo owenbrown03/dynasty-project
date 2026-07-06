@@ -5,6 +5,7 @@ from .auth import(
 from .sleeper.api import(
     InternalState,
     League,
+    LeagueSyncState,
     Roster,
     User,
     Transaction,
@@ -13,6 +14,7 @@ from .sleeper.api import(
     WaiverBudget,
     TradedPick,
     Player,
+    PlayerProjection,
 )
 from .sleeper.connection import(
     SleeperConnection,

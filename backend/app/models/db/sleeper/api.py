@@ -19,22 +19,84 @@ class InternalState(SQLModel, table=True):
 
 class League(SQLModel, table=True):
     league_id: str = Field(primary_key=True)
+    
     name: str
-    total_rosters: int
-    draft_id: str = Field(unique=True, index=True)
     avatar: Optional[str] = Field(default=None, nullable=True)
     season: str
-    dynasty: bool
-    settings: dict[str, float] = Field(default_factory=dict, sa_type=JSON)
-    scoring_settings: dict[str, float] = Field(default_factory=dict, sa_type=JSON)
-    roster_positions: list[str] = Field(sa_column=Column(ARRAY(String)))
-
-    @field_validator("roster_positions", mode="before")
-    @classmethod
-    def coerce_roster_positions(cls, v):
-        return v or []
+    status: str = Field(default="pre_draft", index=True)
+    total_rosters: int
+    draft_id: str = Field(unique=True, index=True)
     
-    roster: List["Roster"] = Relationship(back_populates="league", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    previous_league_id: Optional[str] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+
+    league_metadata: dict = Field(
+        default_factory=dict, 
+        sa_type=JSON
+    )
+
+    settings: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_type=JSON,
+    )
+
+    scoring_settings: dict[str, float] = Field(
+        default_factory=dict,
+        sa_type=JSON,
+    )
+
+    roster_positions: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String)),
+    )
+    
+    @property
+    def roster_size(self) -> int:
+        return len(self.roster_positions)
+
+    @property
+    def starter_slots(self) -> int:
+        return sum(
+            pos not in {"BN", "IR", "TAXI"}
+            for pos in self.roster_positions
+        )
+
+    @property
+    def bench_slots(self) -> int:
+        return self.roster_positions.count("BN")
+
+    @property
+    def taxi_slots(self) -> int:
+        return self.settings.get("taxi_slots", 0)
+
+    @property
+    def reserve_slots(self) -> int:
+        return self.settings.get("reserve_slots", 0)
+
+    @property
+    def waiver_budget(self) -> int:
+        return self.settings.get("waiver_budget", 100)
+
+    @property
+    def playoff_teams(self) -> int:
+        return self.settings.get("playoff_teams", 6)
+
+    @property
+    def trade_deadline(self):
+        return self.settings.get("trade_deadline")
+
+    @property
+    def is_dynasty(self) -> bool:
+        return self.settings.get("type", 0) == 2
+
+    roster: List["Roster"] = Relationship(
+        back_populates="league",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
     transaction: List["Transaction"] = Relationship(back_populates="league")
     draft: List["Draft"] = Relationship(back_populates="league")
     sync_state: Optional["LeagueSyncState"] = Relationship(back_populates="league")
@@ -43,31 +105,121 @@ class League(SQLModel, table=True):
 class LeagueSyncState(SQLModel, table=True):
     league_id: str = Field(primary_key=True, foreign_key="league.league_id")
     last_synced_week: int = Field(default=0)
-    last_synced_at: datetime = Field(default_factory=datetime.utcnow)
+    last_synced_at: datetime = Field(default_factory=datetime.now())
 
     league: Optional["League"] = Relationship(back_populates="sync_state")
 
 
 class Roster(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    roster_id: Optional[int] = Field(default=None, index=True, nullable=True)
-    owner_id: Optional[str] = Field(default=None, foreign_key="user.user_id", index=True)
-    league_id: str = Field(foreign_key="league.league_id", index=True)
 
-    players: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
+    roster_id: int = Field(index=True)
 
-    fpts: int = Field(default=0)
-    fpts_against: int = Field(default=0)
-    wins: int = Field(default=0)
-    ties: int = Field(default=0)
-    losses: int = Field(default=0)
+    owner_id: Optional[str] = Field(
+        default=None,
+        foreign_key="user.user_id",
+        index=True,
+    )
+
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
+
+    players: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String)),
+    )
+
+    starters: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String)),
+    )
+
+    reserve: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String)),
+    )
+
+    taxi: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(String)),
+    )
+
+    roster_metadata: dict = Field(
+        default_factory=dict, 
+        sa_type=JSON
+    )
+
+    settings: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_type=JSON,
+    )
+    
+    @property
+    def wins(self) -> int:
+        return self.settings.get("wins", 0)
+
+    @property
+    def losses(self) -> int:
+        return self.settings.get("losses", 0)
+
+    @property
+    def ties(self) -> int:
+        return self.settings.get("ties", 0)
+
+    @property
+    def fpts(self) -> float:
+        return (
+            self.settings.get("fpts", 0)
+            + self.settings.get("fpts_decimal", 0) / 100
+        )
+
+    @property
+    def waiver_budget_used(self) -> int:
+        return self.settings.get("waiver_budget_used", 0)
+
+    @property
+    def waiver_position(self) -> int:
+        return self.settings.get("waiver_position", 0)
+
+    @property
+    def total_moves(self) -> int:
+        return self.settings.get("total_moves", 0)
+
+    @property
+    def roster_size(self) -> int:
+        return len(self.players)
+
+    def faab_remaining(self, league: "League") -> int:
+        return max(
+            league.waiver_budget - self.waiver_budget_used,
+            0,
+        )
+
+    def open_roster_spots(self, league: "League") -> int:
+        max_players = (
+            league.roster_size
+            + league.taxi_slots
+            + league.reserve_slots
+        )
+
+        return max_players - len(self.players)
 
     league: "League" = Relationship(back_populates="roster")
     user: Optional["User"] = Relationship(back_populates="roster")
 
     __table_args__ = (
-        UniqueConstraint("league_id", "roster_id", name="uq_roster_league_roster_id"),
-        Index("idx_roster_owner_league", "owner_id", "league_id"),
+        UniqueConstraint(
+            "league_id",
+            "roster_id",
+            name="uq_roster_league_roster_id",
+        ),
+        Index(
+            "idx_roster_owner_league",
+            "owner_id",
+            "league_id",
+        ),
         {"sqlite_autoincrement": True},
     )
 
@@ -85,12 +237,26 @@ class User(SQLModel, table=True):
 class Transaction(SQLModel, table=True):
     transaction_id: str = Field(primary_key=True)
     type: str = Field(index=True)
-    time_ms: int = Field(sa_column=Column(BigInteger, nullable=False))
-    league_id: str = Field(foreign_key="league.league_id", index=True)
+    status: str | None = Field(
+        default=None,
+        index=True,
+        nullable=True,
+    )
+    time_ms: int = Field(
+        sa_column=Column(
+            BigInteger,
+            nullable=False,
+        )
+    )
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
 
     league: "League" = Relationship(back_populates="transaction")
     movement: List["Movement"] = Relationship(back_populates="transaction")
     draft_pick: List["TradedPick"] = Relationship(back_populates="transaction")
+
     waiver_budget: List["WaiverBudget"] = Relationship(back_populates="transaction")
 
 
@@ -142,21 +308,99 @@ class TradedPick(SQLModel, table=True):
 
 class Player(SQLModel, table=True):
     player_id: str = Field(primary_key=True)
-    position: Optional[str] = Field(default=None, nullable=True, index=True)
-    team: Optional[str] = Field(default=None, nullable=True, index=True)
-    first_name: str = Field(index=True)
-    last_name: str = Field(index=True)
-    years_exp: Optional[int] = Field(default=None, nullable=True, index=True)
-    birth_date: Optional[str] = Field(default=None, nullable=True, index=True)
 
-    projections: list["PlayerProjection"] = Relationship(back_populates="player")
-    underdog: "UnderdogPlayerMap" = Relationship(back_populates="player")
-    ktc: "KTCPlayerMap" = Relationship(back_populates="player")
-    fantasycalc: "FantasyCalcValue" = Relationship(back_populates="player")
+    position: Optional[str] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+
+    team: Optional[str] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+
+    first_name: str = Field(index=True)
+
+    last_name: str = Field(index=True)
+
+    years_exp: Optional[int] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+
+    birth_date: Optional[str] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+
+    status: Optional[str] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+
+    injury_status: Optional[str] = Field(
+        default=None,
+        nullable=True,
+    )
+
+    injury_body_part: Optional[str] = Field(
+        default=None,
+        nullable=True,
+    )
+
+    active: bool = Field(default=True)
+
+    projections: list["PlayerProjection"] = Relationship(
+        back_populates="player"
+    )
+
+    underdog: "UnderdogPlayerMap" = Relationship(
+        back_populates="player"
+    )
+
+    ktc: "KTCPlayerMap" = Relationship(
+        back_populates="player"
+    )
+
+    fantasycalc: "FantasyCalcValue" = Relationship(
+        back_populates="player"
+    )
 
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
+
+    @property
+    def search_name(self) -> str:
+        return f"{self.first_name} {self.last_name}".lower()
+
+    @property
+    def age(self) -> Optional[int]:
+        if not self.birth_date:
+            return None
+
+        try:
+            from datetime import date
+
+            birth = date.fromisoformat(self.birth_date)
+
+            today = date.today()
+
+            return (
+                today.year
+                - birth.year
+                - (
+                    (today.month, today.day)
+                    < (birth.month, birth.day)
+                )
+            )
+        except Exception:
+            return None
 
 
 class PlayerProjection(SQLModel, table=True):

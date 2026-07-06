@@ -75,20 +75,38 @@ export function DashboardLeagues({
 
 
             <div>
-              Starter WAR:
+              Dynasty Starter WAR:
               {" "}
-              {league.starter_war.toFixed(2)}
+              {league.dynasty_starter_war.toFixed(2)}
               {" "}
-              #{league.starter_war_rank}
+              #{league.dynasty_starter_war_rank}
             </div>
 
 
             <div>
-              Roster WAR:
+              Dynasty Roster WAR:
               {" "}
-              {league.roster_war.toFixed(2)}
+              {league.dynasty_roster_war.toFixed(2)}
               {" "}
-              #{league.roster_war_rank}
+              #{league.dynasty_roster_war_rank}
+            </div>
+
+
+            <div>
+              Redraft Starter WAR:
+              {" "}
+              {league.redraft_starter_war.toFixed(2)}
+              {" "}
+              #{league.redraft_starter_war_rank}
+            </div>
+
+
+            <div>
+              Redraft Roster WAR:
+              {" "}
+              {league.redraft_roster_war.toFixed(2)}
+              {" "}
+              #{league.redraft_roster_war_rank}
             </div>
 
 

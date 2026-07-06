@@ -1,10 +1,10 @@
 from typing import Optional
-from pydantic import BaseModel
 
+from app.schemas.base import Base
 from app.schemas.player import PlayerValue
 
 
-class RosterSummary(BaseModel):
+class RosterSummary(Base):
     ktc_total: int
     fantasycalc_total: int
     war_total: float
@@ -12,7 +12,7 @@ class RosterSummary(BaseModel):
     player_count: int
 
 
-class RosterManifest(BaseModel):
+class RosterManifest(Base):
     roster_id: int
     owner_id: Optional[str]
 
@@ -21,7 +21,7 @@ class RosterManifest(BaseModel):
     players: list[PlayerValue]
 
 
-class LeagueManifest(BaseModel):
+class LeagueManifest(Base):
     league_id: str
     league_name: str
     rosters: list[RosterManifest]

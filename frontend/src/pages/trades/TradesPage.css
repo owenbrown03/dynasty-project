@@ -1,0 +1,563 @@
+.trades-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.trades-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid rgb(70, 70, 70);
+}
+
+.trades-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 10px 14px;
+  background: transparent;
+  color: rgb(170, 170, 170);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.trades-tabs button.active {
+  border-bottom-color: rgb(255, 255, 255);
+  color: rgb(255, 255, 255);
+}
+
+.bulk-offers-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.bulk-trade-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.bulk-trade-intro h1 {
+  margin: 4px 0 8px;
+  font-size: 26px;
+}
+
+.bulk-trade-intro p {
+  max-width: 700px;
+  margin: 0;
+  color: rgb(175, 175, 175);
+  line-height: 1.5;
+}
+
+.page-eyebrow {
+  color: rgb(130, 130, 130);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.bulk-trade-config-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid rgb(75, 75, 75);
+  border-radius: 10px;
+  padding: 18px;
+  background: rgb(49, 49, 49);
+}
+
+.bulk-trade-direction-toggle {
+  display: inline-flex;
+  width: fit-content;
+  overflow: hidden;
+  border: 1px solid rgb(95, 95, 95);
+  border-radius: 7px;
+}
+
+.bulk-trade-direction-toggle button {
+  border: 0;
+  padding: 8px 18px;
+  background: rgb(62, 62, 62);
+  color: rgb(175, 175, 175);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bulk-trade-direction-toggle button.active {
+  background: rgb(235, 235, 235);
+  color: rgb(35, 35, 35);
+}
+
+.bulk-trade-search-label,
+.bulk-trade-price-controls label,
+.bulk-trade-row-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bulk-trade-search-label > span,
+.bulk-trade-price-controls label > span,
+.bulk-trade-row-select > span {
+  color: rgb(170, 170, 170);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.bulk-trade-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgb(90, 90, 90);
+  border-radius: 7px;
+  padding: 0 11px;
+  background: rgb(38, 38, 38);
+}
+
+.bulk-trade-search-input-wrap input {
+  width: 100%;
+  min-height: 39px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: white;
+}
+
+.trade-spinner {
+  animation: trade-spin 0.9s linear infinite;
+}
+
+@keyframes trade-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bulk-trade-search-results {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(80, 80, 80);
+  border-radius: 7px;
+  background: rgb(37, 37, 37);
+}
+
+.bulk-trade-search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 0;
+  border-bottom: 1px solid rgb(63, 63, 63);
+  padding: 11px 14px;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  text-align: left;
+}
+
+.bulk-trade-search-result:last-child {
+  border-bottom: 0;
+}
+
+.bulk-trade-search-result:hover {
+  background: rgb(58, 58, 58);
+}
+
+.bulk-trade-search-result div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bulk-trade-search-result span,
+.bulk-trade-selected-player span {
+  color: rgb(170, 170, 170);
+  font-size: 12px;
+}
+
+.bulk-trade-empty-search {
+  padding: 14px;
+  color: rgb(170, 170, 170);
+  font-size: 13px;
+}
+
+.bulk-trade-selected-player {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid rgb(90, 90, 90);
+  border-radius: 7px;
+  padding: 12px;
+  background: rgb(42, 42, 42);
+}
+
+.bulk-trade-selected-player > div:first-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bulk-trade-selected-values {
+  display: flex;
+  gap: 12px;
+}
+
+.bulk-trade-price-controls {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+
+.bulk-trade-price-controls input,
+.bulk-trade-price-controls select,
+.bulk-trade-row-select select {
+  min-height: 38px;
+  border: 1px solid rgb(90, 90, 90);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: rgb(38, 38, 38);
+  color: white;
+}
+
+.bulk-trade-price-controls input {
+  width: 95px;
+}
+
+.bulk-trade-price-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+
+.bulk-trade-price-summary span {
+  color: rgb(170, 170, 170);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.bulk-trade-price-summary strong {
+  font-size: 15px;
+}
+
+.bulk-trade-loading,
+.bulk-trade-error {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 7px;
+  padding: 12px 14px;
+  background: rgb(49, 49, 49);
+  color: rgb(205, 205, 205);
+  font-size: 13px;
+}
+
+.bulk-trade-error {
+  border: 1px solid rgb(127, 29, 29);
+  color: rgb(252, 165, 165);
+}
+
+.bulk-trade-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.bulk-trade-list-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bulk-trade-list-header span {
+  color: rgb(170, 170, 170);
+  font-size: 13px;
+}
+
+.bulk-trade-league-list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(73, 73, 73);
+  border-radius: 10px;
+}
+
+.bulk-trade-league-row {
+  display: grid;
+  grid-template-columns: auto minmax(190px, 1fr) minmax(150px, auto) minmax(210px, auto) auto;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid rgb(65, 65, 65);
+  padding: 13px 14px;
+  background: rgb(48, 48, 48);
+}
+
+.bulk-trade-league-row:last-child {
+  border-bottom: 0;
+}
+
+.bulk-trade-league-row.selected {
+  background: rgb(55, 55, 55);
+}
+
+.bulk-trade-league-row.unavailable {
+  grid-template-columns: minmax(200px, 1fr) auto;
+  opacity: 0.7;
+}
+
+.bulk-trade-row-toggle input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.bulk-trade-league-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bulk-trade-league-primary span {
+  color: rgb(173, 173, 173);
+  font-size: 12px;
+}
+
+.bulk-trade-unavailable {
+  color: rgb(248, 113, 113);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.bulk-trade-row-select {
+  min-width: 0;
+}
+
+.bulk-trade-row-select select {
+  max-width: 250px;
+  font-size: 12px;
+}
+
+.bulk-trade-row-select select:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.bulk-trade-details-button,
+.bulk-trade-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  border: 0;
+  border-radius: 6px;
+  background: rgb(67, 67, 67);
+  color: rgb(220, 220, 220);
+  cursor: pointer;
+}
+
+.bulk-trade-row-details {
+  grid-column: 2 / -1;
+  display: flex;
+  gap: 14px;
+  color: rgb(165, 165, 165);
+  font-size: 12px;
+}
+
+.bulk-trade-modal-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.bulk-trade-review-modal {
+  display: flex;
+  width: min(760px, 100%);
+  max-height: min(800px, 90vh);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(95, 95, 95);
+  border-radius: 11px;
+  background: rgb(42, 42, 42);
+}
+
+.bulk-trade-review-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid rgb(72, 72, 72);
+  padding: 18px;
+}
+
+.bulk-trade-review-header span {
+  color: rgb(165, 165, 165);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bulk-trade-review-header h2 {
+  margin: 5px 0 0;
+  font-size: 21px;
+}
+
+.bulk-trade-review-list,
+.bulk-trade-results-summary {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+.bulk-trade-review-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid rgb(73, 73, 73);
+  border-radius: 7px;
+  padding: 12px;
+  background: rgb(52, 52, 52);
+}
+
+.bulk-trade-review-row > span {
+  color: rgb(170, 170, 170);
+  font-size: 12px;
+}
+
+.bulk-trade-review-row > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 10px;
+  color: rgb(178, 178, 178);
+  font-size: 13px;
+}
+
+.bulk-trade-review-row > div strong {
+  color: rgb(245, 245, 245);
+}
+
+.bulk-trade-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.bulk-trade-result.success {
+  background: rgb(20, 83, 45);
+  color: rgb(187, 247, 208);
+}
+
+.bulk-trade-result.error {
+  background: rgb(127, 29, 29);
+  color: rgb(254, 202, 202);
+}
+
+.bulk-trade-submit-error {
+  margin: 0 18px;
+  color: rgb(252, 165, 165);
+  font-size: 13px;
+}
+
+.bulk-trade-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid rgb(72, 72, 72);
+  padding: 15px 18px;
+}
+
+.bulk-trade-submit-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.trade-research-placeholder {
+  border: 1px solid rgb(74, 74, 74);
+  border-radius: 10px;
+  padding: 22px;
+  background: rgb(48, 48, 48);
+}
+
+.trade-research-placeholder h1 {
+  margin-top: 0;
+}
+
+.trade-research-placeholder p {
+  margin-bottom: 0;
+  color: rgb(175, 175, 175);
+}
+
+@media (max-width: 900px) {
+  .bulk-trade-league-row {
+    grid-template-columns: auto minmax(150px, 1fr) auto;
+  }
+
+  .bulk-trade-row-select {
+    grid-column: 2 / -1;
+  }
+
+  .bulk-trade-details-button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .bulk-trade-row-details {
+    grid-column: 2 / -1;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 620px) {
+  .bulk-trade-intro,
+  .bulk-trade-list-header,
+  .bulk-trade-selected-player,
+  .bulk-trade-price-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bulk-trade-selected-values {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .bulk-trade-review-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .bulk-trade-league-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .bulk-trade-row-select {
+    grid-column: 1 / -1;
+  }
+
+  .bulk-trade-row-details {
+    grid-column: 1 / -1;
+  }
+}

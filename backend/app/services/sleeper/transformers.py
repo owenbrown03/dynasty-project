@@ -5,55 +5,73 @@ from app.models.db.sleeper import api as model
 
 logger = logging.getLogger(__name__)
 
-def user_to_db(schema: schema.User, return_dict: bool = False) -> model.User | dict[str, Any]:
-    """Transforms a nested Sleeper User payload into a flat User database entry."""
+def user_to_db(
+    schema: schema.User,
+    return_dict: bool = False
+) -> model.User | dict[str, Any]:
     data_map = schema.model_dump()
-    
+
+    data_map.update({
+        "is_placeholder": False,
+        "is_owner": data_map.get("is_owner", False),
+    })
+
     if return_dict:
         return data_map
+
     return model.User(**data_map)
 
-def player_to_db(schema: schema.Player, return_dict: bool = False) -> model.Player | dict[str, Any]:
-    """Transforms a raw Sleeper Player payload into a flat database entity or raw dictionary."""
-    if isinstance(schema, dict):
-        logger.info(f"DEBUG: Processing Player ID {schema.get('player_id')}: {schema.get('first_name')} {schema.get('last_name')}")
-        data_map = schema
-    else:
-        data_map = schema.model_dump()
-    
-    # data_map = schema.model_dump()
-    
+def player_to_db(
+    schema: schema.Player | dict,
+    return_dict: bool = False,
+) -> model.Player | dict[str, Any]:
+    """Transforms a Sleeper player payload into a DB-safe player record."""
+
+    raw = schema if isinstance(schema, dict) else schema.model_dump()
+
+    data_map = {
+        "player_id": raw.get("player_id"),
+        "position": raw.get("position"),
+        "team": raw.get("team"),
+        "first_name": raw.get("first_name"),
+        "last_name": raw.get("last_name"),
+        "years_exp": raw.get("years_exp"),
+        "birth_date": raw.get("birth_date"),
+        "status": raw.get("status"),
+        "injury_status": raw.get("injury_status"),
+        "injury_body_part": raw.get("injury_body_part"),
+        "active": raw.get("active", True),
+    }
+
     if return_dict:
         return data_map
+
     return model.Player(**data_map)
 
 def league_to_db(
     schema: schema.League,
-    return_dict: bool = False
+    return_dict: bool = False,
 ) -> model.League | dict[str, Any]:
+    """Transforms a Sleeper league payload into a DB-safe league record."""
 
     full_data = schema.model_dump()
 
     settings = full_data.get("settings") or {}
-    scoring = full_data.get("scoring_settings") or {}
+    scoring_settings = full_data.get("scoring_settings") or {}
 
     data_map = {
         "league_id": full_data["league_id"],
         "name": full_data["name"],
-        "total_rosters": full_data["total_rosters"],
-        "draft_id": full_data["draft_id"],
         "avatar": full_data.get("avatar"),
         "season": full_data["season"],
-
-        "dynasty": settings.get("type") == 2,
-
+        "status": full_data.get("status") or "pre_draft",
+        "total_rosters": full_data["total_rosters"],
+        "draft_id": full_data["draft_id"],
+        "previous_league_id": full_data.get("previous_league_id"),
+        "league_metadata": full_data.get("metadata") or {},
         "settings": settings,
-        "scoring_settings": scoring,
-
-        "roster_positions": (
-            full_data.get("roster_positions")
-            or []
-        ),
+        "scoring_settings": scoring_settings,
+        "roster_positions": full_data.get("roster_positions") or [],
     }
 
     if return_dict:
@@ -61,14 +79,29 @@ def league_to_db(
 
     return model.League(**data_map)
 
-def roster_to_db(schema: schema.Roster, return_dict: bool = False) -> model.Roster | dict[str, Any]:
-    """Transforms a nested Sleeper Roster schema into a flat database entity or raw dictionary."""
-    data_map = schema.model_dump(exclude={'id'}) # Just keep the original map
-    if "players" not in data_map or not data_map["players"]:
-        data_map["players"] = []
-        
+def roster_to_db(
+    schema: schema.Roster,
+    return_dict: bool = False,
+) -> model.Roster | dict[str, Any]:
+    """Transforms a Sleeper roster payload into a DB-safe roster record."""
+
+    full_data = schema.model_dump()
+
+    data_map = {
+        "roster_id": full_data["roster_id"],
+        "owner_id": full_data.get("owner_id"),
+        "league_id": full_data["league_id"],
+        "players": full_data.get("players") or [],
+        "starters": full_data.get("starters") or [],
+        "reserve": full_data.get("reserve") or [],
+        "taxi": full_data.get("taxi") or [],
+        "roster_metadata": full_data.get("metadata") or {},
+        "settings": full_data.get("settings") or {},
+    }
+
     if return_dict:
         return data_map
+
     return model.Roster(**data_map)
 
 def tx_to_db(
@@ -80,8 +113,13 @@ def tx_to_db(
     tx_data = {
         "transaction_id": schema.transaction_id,
         "type": schema.type,
-        "time_ms": schema.status_updated,
-        "league_id": league_id
+        "status": getattr(
+            schema,
+            "status",
+            None,
+        ),
+        "time_ms": schema.time,
+        "league_id": league_id,
     }
 
     movements_data = [
@@ -92,9 +130,18 @@ def tx_to_db(
         for p_id, r_id in (schema.drops or {}).items()
     ]
 
+    waivers = schema.waiver_budget or []
+    if isinstance(waivers, dict):
+        waivers = []
+
     waivers_data = [
-        {"transaction_id": schema.transaction_id, "sender": w.sender, "receiver": w.receiver, "amount": w.amount}
-        for w in (schema.waiver_budget or [])
+        {
+            "transaction_id": schema.transaction_id,
+            "sender": w.sender,
+            "receiver": w.receiver,
+            "amount": w.amount,
+        }
+        for w in waivers
     ]
 
     picks_data = [

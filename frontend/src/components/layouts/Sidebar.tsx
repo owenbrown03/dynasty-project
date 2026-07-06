@@ -1,14 +1,43 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { LayoutDashboard, Trophy, Briefcase, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Trophy,
+  Briefcase,
+  User,
+  HandCoins,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
 import './Sidebar.css';
 
 const menuItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-  { to: '/leagues', label: 'Leagues', icon: <Trophy size={20} /> },
-  { to: '/trades', label: 'Trades', icon: <Briefcase size={20} /> },
-  { to: '/orphans', label: 'Orphans', icon: <User size={20} /> },
+  {
+    to: '/dashboard',
+    label: 'Dashboard',
+    icon: <LayoutDashboard size={20} />,
+  },
+  {
+    to: '/leagues',
+    label: 'Leagues',
+    icon: <Trophy size={20} />,
+  },
+  {
+    to: '/trades',
+    label: 'Trades',
+    icon: <Briefcase size={20} />,
+  },
+  {
+    to: '/waivers',
+    label: 'Waivers',
+    icon: <HandCoins size={20} />,
+  },
+  {
+    to: '/orphans',
+    label: 'Orphans',
+    icon: <User size={20} />,
+  },
 ];
 
 export const Sidebar = () => {

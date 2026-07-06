@@ -93,16 +93,17 @@ class WARService:
         redis: RedisClient,
         league_id: str,
     ):
-
         league = await self.loader.get_league(
             db,
             league_id,
         )
 
+        projection_season = int(league.season)
+
         cached = await war_cache.get_league(
             redis,
             league_id,
-            league.season,
+            projection_season,
         )
 
         if cached is not None:
@@ -110,7 +111,7 @@ class WARService:
 
         shared = await self.load_shared_data(
             db,
-            league.season,
+            projection_season,
         )
 
         results = await self.calculate_with_data(
@@ -121,7 +122,7 @@ class WARService:
         await war_cache.set_league(
             redis,
             league_id,
-            league.season,
+            projection_season,
             results,
         )
 

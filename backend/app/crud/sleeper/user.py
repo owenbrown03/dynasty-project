@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.db.sleeper import api as model
+from app.models.db.sleeper.api import User
 from app.integrations.sleeper.client import SleeperClient
 from app.crud.sleeper.league import sync_leagues
 
@@ -15,7 +15,7 @@ async def get_userid_by_username(db: AsyncSession, sleeper: SleeperClient, usern
     Falls back to the network ONLY if it's a completely new user profile signature.
     """
     clean_username = username.strip()
-    result = await db.execute(select(model.User.user_id).where(model.User.display_name == clean_username))
+    result = await db.execute(select(User.user_id).where(User.display_name == clean_username))
     user_id = result.scalar_one_or_none()
     
     if not user_id:
@@ -34,7 +34,7 @@ async def get_username_by_userid(db: AsyncSession, sleeper: SleeperClient, user_
     Looks up the user ID locally first to completely bypass the network semaphore.
     Falls back to the network ONLY if it's a completely new user profile signature.
     """
-    result = await db.execute(select(model.User.display_name).where(model.User.user_id == user_id))
+    result = await db.execute(select(User.display_name).where(User.user_id == user_id))
     username = result.scalar_one_or_none()
     if not username:
         user_id_details = await sleeper.read.get_user_details_by_username(user_id)
@@ -49,7 +49,7 @@ async def get_username_by_userid(db: AsyncSession, sleeper: SleeperClient, user_
 async def get_user_meta_map(db: AsyncSession) -> dict[str, dict]:
     """Returns a dict of {user_id: {"name": display_name, "avatar": avatar}}"""
     result = await db.execute(
-        select(model.User.user_id, model.User.display_name, model.User.avatar)
+        select(User.user_id, User.display_name, User.avatar)
     )
     rows = result.all()
 
@@ -68,20 +68,51 @@ async def sync_user_data(db: AsyncSession, sleeper: SleeperClient, username: str
     if not leagues_json:
         return {"status": "skipped", "reason": "no_leagues"}
     else:    
-        return await sync_leagues(db, leagues_json, curr_week, sleeper)
+        return await sync_leagues(db, leagues_json, curr_week, sleeper, force=True)
 
 async def get_users(db: AsyncSession, user_ids: set[str]):
     if not user_ids:
         return {}
 
     result = await db.execute(
-        select(model.User)
+        select(User)
         .where(
-            model.User.user_id.in_(user_ids)
+            User.user_id.in_(user_ids)
         )
     )
 
     return {
         user.user_id: user
         for user in result.scalars()
+    }
+
+async def get_user_names_by_id(
+    *,
+    db: AsyncSession,
+    user_ids: set[str],
+) -> dict[str, str]:
+    """
+    Returns human-readable Sleeper display names for potential trade partners.
+    """
+
+    if not user_ids:
+        return {}
+
+    result = await db.execute(
+        select(
+            User.user_id,
+            User.display_name,
+        ).where(
+            User.user_id.in_(
+                user_ids,
+            )
+        )
+    )
+
+    return {
+        user_id: (
+            display_name
+            or user_id
+        )
+        for user_id, display_name in result.all()
     }

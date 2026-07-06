@@ -1,13 +1,14 @@
 from typing import Iterable
 
-from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
-from app.models.db.sleeper.api import Player
-from app.models.db.ktc.models import KTCValue
-from app.models.db.underdog.models import UnderdogADP
-from app.models.db.fc.models import FantasyCalcValue
+from app.analytics.war.dynasty.models import DynastyProjection
 from app.analytics.war.redraft.models import PlayerWAR
+from app.models.db.fc.models import FantasyCalcValue
+from app.models.db.ktc.models import KTCValue
+from app.models.db.sleeper.api import Player
+from app.models.db.underdog.models import UnderdogADP
 from app.schemas.player import PlayerValue
 from app.utils.age import calculate_age
 
@@ -15,72 +16,74 @@ from app.utils.age import calculate_age
 async def get_player_values(
     db: AsyncSession,
     player_ids: Iterable[str],
-    war_players: list[PlayerWAR],
+    redraft_war_players: list[PlayerWAR],
+    dynasty_war_by_player_id: dict[str, DynastyProjection] | None = None,
 ) -> list[PlayerValue]:
+    """
+    Enriches player IDs with market values, current redraft WAR,
+    and dynasty WAR.
 
+    Redraft WAR:
+        League-specific current-season value.
 
-    player_ids = list(player_ids)
+    Dynasty WAR:
+        Future value calculated from the league-specific redraft WAR
+        baseline, then adjusted for age, expected games remaining,
+        aging decline, and discounting.
+    """
 
+    player_ids = list(dict.fromkeys(player_ids))
 
     if not player_ids:
         return []
 
+    dynasty_war_by_player_id = dynasty_war_by_player_id or {}
 
     # ------------------------------------
     # Players
     # ------------------------------------
-
     result = await db.execute(
-        select(Player)
-        .where(
+        select(Player).where(
             Player.player_id.in_(player_ids)
         )
     )
 
     players = {
-        p.player_id: p
-        for p in result.scalars()
+        player.player_id: player
+        for player in result.scalars()
     }
-
 
     # ------------------------------------
     # KTC
     # ------------------------------------
-
     result = await db.execute(
-        select(KTCValue)
-        .where(
+        select(KTCValue).where(
             KTCValue.player_id.in_(player_ids)
         )
     )
 
     ktc_values = {
-        x.player_id: x
-        for x in result.scalars()
+        value.player_id: value
+        for value in result.scalars()
     }
-
 
     # ------------------------------------
     # FantasyCalc
     # ------------------------------------
-
     result = await db.execute(
-        select(FantasyCalcValue)
-        .where(
+        select(FantasyCalcValue).where(
             FantasyCalcValue.player_id.in_(player_ids)
         )
     )
 
     fc_values = {
-        x.player_id: x
-        for x in result.scalars()
+        value.player_id: value
+        for value in result.scalars()
     }
 
-
     # ------------------------------------
-    # Underdog latest
+    # Latest Underdog ADP
     # ------------------------------------
-
     result = await db.execute(
         select(UnderdogADP)
         .where(
@@ -92,91 +95,100 @@ async def get_player_values(
         )
     )
 
-
-    underdog_values = {}
+    underdog_values: dict[str, UnderdogADP] = {}
 
     for row in result.scalars():
-
         if row.player_id not in underdog_values:
             underdog_values[row.player_id] = row
 
-
-
     # ------------------------------------
-    # WAR
+    # Redraft WAR lookup
     # ------------------------------------
-
-    war_values = {
-        p.player_id: p
-        for p in war_players
+    redraft_war_by_player_id = {
+        player.player_id: player
+        for player in redraft_war_players
     }
-
 
     # ------------------------------------
     # Build output
     # ------------------------------------
-
-    output = []
-
+    output: list[PlayerValue] = []
 
     for player_id in player_ids:
-
         player = players.get(player_id)
 
-        if not player:
+        if player is None:
             continue
-
 
         ktc = ktc_values.get(player_id)
         fc = fc_values.get(player_id)
-        ud = underdog_values.get(player_id)
-        war = war_values.get(player_id)
+        underdog = underdog_values.get(player_id)
 
+        redraft_war = redraft_war_by_player_id.get(player_id)
+        dynasty_war = dynasty_war_by_player_id.get(player_id)
 
         output.append(
             PlayerValue(
                 player_id=player_id,
-
                 name=player.full_name,
                 position=player.position,
                 team=player.team,
-
-                age=calculate_age(
-                    player.birth_date
-                ),
-
+                age=calculate_age(player.birth_date),
 
                 ktc_value=(
                     ktc.sf_value
-                    if ktc
+                    if ktc is not None
                     else None
                 ),
 
                 fc_value=(
                     fc.value
-                    if fc
+                    if fc is not None
                     else None
                 ),
 
                 underdog_position_rank=(
-                    ud.position_rank
-                    if ud
+                    underdog.position_rank
+                    if underdog is not None
                     else None
                 ),
 
-                starter_war=(
-                    war.starter_war
-                    if war
+                redraft_starter_war=(
+                    redraft_war.starter_war
+                    if redraft_war is not None
                     else None
                 ),
 
-                roster_war=(
-                    war.roster_war
-                    if war
+                redraft_roster_war=(
+                    redraft_war.roster_war
+                    if redraft_war is not None
+                    else None
+                ),
+
+                dynasty_starter_war=(
+                    dynasty_war.total_starter_war
+                    if dynasty_war is not None
+                    else None
+                ),
+
+                dynasty_roster_war=(
+                    dynasty_war.total_roster_war
+                    if dynasty_war is not None
+                    else None
+                ),
+
+                dynasty_expected_games_remaining=(
+                    dynasty_war.expected_games_remaining
+                    if dynasty_war is not None
+                    else None
+                ),
+
+                dynasty_seasons_remaining=(
+                    dynasty_war.seasons_remaining
+                    if dynasty_war is not None
                     else None
                 ),
             )
         )
-
 
     return output

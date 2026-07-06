@@ -1,33 +1,56 @@
+import {
+  useState,
+} from 'react';
+
+import { BulkOffersTab } from './BulkOffersTab';
+import { TradeResearchTab } from './TradeResearchTab';
+
 import './TradesPage.css';
-import { TradeCards } from './TradeCards';
-import { useTrades } from '@/hooks/sleeper/useTrades';
+
+
+type TradesTab = 'bulk-offers' | 'research';
+
 
 export const TradesPage = () => {
-  const trades = useTrades();
-
-  if (trades.fetching) {
-    return (
-      <div className="trades-container">
-        <p className="loading-text">Fetching trade signals...</p>
-      </div>
-    );
-  }
-
-  if (Array.isArray(trades.data) && trades.data.length > 0) {
-    return (
-      <div className="trades-container">
-        <TradeCards trades={trades.data} />
-      </div>
-    );
-  }
+  const [activeTab, setActiveTab] = useState<TradesTab>(
+    'bulk-offers',
+  );
 
   return (
-    <div className="trades-container">
-      {trades.username ? (
-        <p className="no-results-text">No transaction history found for "{trades.username}".</p>
-      ) : (
-        <p className="no-results-text">Please enter a username to search trades.</p>
-      )}
-    </div>
+    <main className="trades-page">
+      <div className="trades-tabs">
+        <button
+          className={
+            activeTab === 'bulk-offers'
+              ? 'active'
+              : ''
+          }
+          onClick={() => {
+            setActiveTab('bulk-offers');
+          }}
+        >
+          Bulk Offers
+        </button>
+
+        <button
+          className={
+            activeTab === 'research'
+              ? 'active'
+              : ''
+          }
+          onClick={() => {
+            setActiveTab('research');
+          }}
+        >
+          Trade Research
+        </button>
+      </div>
+
+      {
+        activeTab === 'bulk-offers'
+          ? <BulkOffersTab />
+          : <TradeResearchTab />
+      }
+    </main>
   );
 };

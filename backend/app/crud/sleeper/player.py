@@ -1,30 +1,42 @@
 import logging
 from typing import Any
+from fastapi import HTTPException, status
 from datetime import datetime, timedelta
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
-from app.models.db.sleeper import api as model
+from app.models.db.sleeper.api import Player, InternalState
 from app.integrations.sleeper.client import SleeperClient
-from app.services.sleeper import transformers 
+from app.services.sleeper import transformers
+from app.services.waivers.dynasty import DYNASTY_FANTASY_POSITIONS
 
 logger = logging.getLogger(__name__)
 
 
-_PLAYER_MAP_CACHE: dict[str, dict[str, Any]] = {}
+_PLAYER_MAP_CACHE: dict[str, dict] | None = None
 
-async def get_player_map(db: AsyncSession) -> dict[str, dict[str, Any]]:
-    """Fetches all players and caches them as plain dictionaries without DB session leaks."""
+async def get_player_map(
+    db,
+) -> dict[str, dict]:
     global _PLAYER_MAP_CACHE
-    
-    if _PLAYER_MAP_CACHE:
+
+    if _PLAYER_MAP_CACHE is not None:
         return _PLAYER_MAP_CACHE
 
-    result = await db.execute(select(model.Player))
+    result = await db.execute(
+        select(
+            Player,
+        )
+    )
+
     players = result.scalars().all()
-    
-    _PLAYER_MAP_CACHE = {p.player_id: p.model_dump() for p in players}
+
+    _PLAYER_MAP_CACHE = {
+        player.player_id: player.model_dump()
+        for player in players
+    }
+
     return _PLAYER_MAP_CACHE
 
 
@@ -57,7 +69,7 @@ async def get_analytics_player_map(db: AsyncSession,) -> dict[str, dict[str, Any
 async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: bool = False):
     global _PLAYER_MAP_CACHE
     
-    result = await db.execute(select(model.InternalState).where(model.InternalState.key == "last_player_map_update"))
+    result = await db.execute(select(InternalState).where(InternalState.key == "last_player_map_update"))
     state = result.scalars().first()
     
     last_update = datetime.fromisoformat(state.value) if state and state.value else None
@@ -78,7 +90,7 @@ async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: b
         for i in range(0, len(player_dicts), chunk_size):
             chunk = player_dicts[i : i + chunk_size]
             
-            stmt = insert(model.Player).values(chunk)
+            stmt = insert(Player).values(chunk)
             stmt = stmt.on_conflict_do_update(
                 index_elements=['player_id'],
                 set_={k: getattr(stmt.excluded, k) for k in chunk[0].keys() if k != 'player_id'}
@@ -86,7 +98,7 @@ async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: b
             await db.execute(stmt)
 
     if not state:
-        state = model.InternalState(key="last_player_map_update")
+        state = InternalState(key="last_player_map_update")
         db.add(state)
     state.value = datetime.now().isoformat()
     
@@ -94,3 +106,34 @@ async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: b
     _PLAYER_MAP_CACHE.clear()
     _PLAYER_SNAPSHOT_CACHE.clear()
     logger.info(f"Player Sync Complete: Processed {len(player_dicts)} players.")
+
+
+async def get_bulk_target_player(
+    *,
+    db: AsyncSession,
+    player_id: str,
+) -> Player:
+    result = await db.execute(
+        select(Player).where(
+            Player.player_id == player_id,
+        )
+    )
+
+    player = result.scalar_one_or_none()
+
+    if player is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Player was not found.",
+        )
+
+    if player.position not in DYNASTY_FANTASY_POSITIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Bulk waiver claims currently support only "
+                "QB, RB, WR, and TE players."
+            ),
+        )
+
+    return player
