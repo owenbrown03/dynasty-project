@@ -395,3 +395,91 @@ export interface BulkWaiverClaimResult {
 export interface BulkWaiverClaimResponse {
   results: BulkWaiverClaimResult[];
 }
+
+export type TradeDirection = 'buy' | 'sell';
+
+export interface BulkTradePlayerSearchResult {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  ktc_value: number | null;
+  fc_value: number | null;
+  underdog_position_rank: string | null;
+}
+
+export interface TradeDraftPickAsset {
+  season: string;
+  round: number;
+  og_roster_id: number;
+  current_owner_roster_id: number;
+  original_owner_name: string | null;
+  label: string;
+}
+
+export interface BulkTradeCounterparty {
+  roster_id: number;
+  user_id: string | null;
+  name: string;
+  matching_picks: TradeDraftPickAsset[];
+}
+
+export interface BulkTradeLeagueAvailability {
+  league_id: string;
+  league_name: string;
+  league_avatar: string | null;
+
+  your_roster_id: number;
+
+  target_owner_roster_id: number | null;
+  target_owner_user_id: string | null;
+  target_owner_name: string | null;
+
+  you_own_target_player: boolean;
+
+  is_eligible: boolean;
+  ineligibility_reason: string | null;
+
+  matching_picks: TradeDraftPickAsset[];
+  counterparty_options: BulkTradeCounterparty[];
+}
+
+export interface BulkTradeAvailabilityResponse {
+  player: BulkTradePlayerSearchResult;
+  direction: TradeDirection;
+  pick_season: string;
+  pick_round: number;
+  leagues: BulkTradeLeagueAvailability[];
+}
+
+export interface BulkTradePickReference {
+  season: string;
+  round: number;
+  og_roster_id: number;
+}
+
+export interface BulkTradeOfferRequest {
+  league_id: string;
+  your_roster_id: number;
+  counterparty_roster_id: number;
+  target_player_id: string;
+  direction: TradeDirection;
+  pick: BulkTradePickReference;
+  expires_at?: number | null;
+}
+
+export interface BulkTradeProposalRequest {
+  offers: BulkTradeOfferRequest[];
+}
+
+export interface BulkTradeProposalResult {
+  league_id: string;
+  success: boolean;
+  transaction_id: string | null;
+  error: string | null;
+}
+
+export interface BulkTradeProposalResponse {
+  results: BulkTradeProposalResult[];
+}

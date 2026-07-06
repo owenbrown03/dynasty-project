@@ -237,12 +237,26 @@ class User(SQLModel, table=True):
 class Transaction(SQLModel, table=True):
     transaction_id: str = Field(primary_key=True)
     type: str = Field(index=True)
-    time_ms: int = Field(sa_column=Column(BigInteger, nullable=False))
-    league_id: str = Field(foreign_key="league.league_id", index=True)
+    status: str | None = Field(
+        default=None,
+        index=True,
+        nullable=True,
+    )
+    time_ms: int = Field(
+        sa_column=Column(
+            BigInteger,
+            nullable=False,
+        )
+    )
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
 
     league: "League" = Relationship(back_populates="transaction")
     movement: List["Movement"] = Relationship(back_populates="transaction")
     draft_pick: List["TradedPick"] = Relationship(back_populates="transaction")
+
     waiver_budget: List["WaiverBudget"] = Relationship(back_populates="transaction")
 
 

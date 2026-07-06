@@ -434,46 +434,111 @@ async def _save_transactions(
     transactions: list,
     league_id: str,
 ) -> None:
-    trades = [t for t in transactions if t.type == "trade"]
+    """
+    Upserts transaction metadata for every trade so fields such as status
+    remain current, while only inserting movement/pick/waiver children once.
+    """
+
+    trades = [
+        transaction
+        for transaction in transactions
+        if transaction.type == "trade"
+    ]
 
     if not trades:
         return
 
-    incoming_ids = [t.transaction_id for t in trades]
+    incoming_ids = [
+        transaction.transaction_id
+        for transaction in trades
+    ]
 
-    res = await db.execute(
-        select(model.Transaction.transaction_id).where(
-            model.Transaction.transaction_id.in_(incoming_ids)
+    result = await db.execute(
+        select(
+            model.Transaction.transaction_id,
+        ).where(
+            model.Transaction.transaction_id.in_(
+                incoming_ids,
+            )
         )
     )
-    existing = set(res.scalars().all())
 
-    tx_dicts = []
+    existing_transaction_ids = set(
+        result.scalars().all(),
+    )
+
+    transaction_dicts = []
     movement_dicts = []
     waiver_dicts = []
     pick_dicts = []
 
-    for tx in trades:
-        if tx.transaction_id in existing:
+    for transaction in trades:
+        transaction_dict, movements, waivers, picks = (
+            transformers.tx_to_db(
+                transaction,
+                league_id,
+                True,
+            )
+        )
+
+        # Always upsert transaction metadata so status stays fresh.
+        transaction_dicts.append(
+            transaction_dict,
+        )
+
+        # Child asset movement rows should only be inserted once.
+        if (
+            transaction.transaction_id
+            in existing_transaction_ids
+        ):
             continue
 
-        tx_d, mv, wv, pk = transformers.tx_to_db(tx, league_id, True)
-        tx_dicts.append(tx_d)
-        movement_dicts.extend(mv)
-        waiver_dicts.extend(wv)
-        pick_dicts.extend(pk)
+        movement_dicts.extend(
+            movements,
+        )
 
-    if tx_dicts:
-        await _bulk_upsert(db, model.Transaction, tx_dicts, "transaction_id")
+        waiver_dicts.extend(
+            waivers,
+        )
+
+        pick_dicts.extend(
+            picks,
+        )
+
+    if transaction_dicts:
+        await _bulk_upsert(
+            db,
+            model.Transaction,
+            transaction_dicts,
+            "transaction_id",
+        )
 
     if movement_dicts:
-        await db.execute(insert(model.Movement).values(movement_dicts))
+        await db.execute(
+            insert(
+                model.Movement,
+            ).values(
+                movement_dicts,
+            )
+        )
 
     if waiver_dicts:
-        await db.execute(insert(model.WaiverBudget).values(waiver_dicts))
+        await db.execute(
+            insert(
+                model.WaiverBudget,
+            ).values(
+                waiver_dicts,
+            )
+        )
 
     if pick_dicts:
-        await db.execute(insert(model.TradedPick).values(pick_dicts))
+        await db.execute(
+            insert(
+                model.TradedPick,
+            ).values(
+                pick_dicts,
+            )
+        )
 
 
 # --------------------------------------------------

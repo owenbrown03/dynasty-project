@@ -46,6 +46,8 @@ from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
     build_dynasty_projection,
 )
+from app.crud.sleeper.player import get_bulk_target_player
+from app.crud.sleeper.roster import get_owned_roster_rows
 from app.utils.age import calculate_age
 
 
@@ -186,73 +188,6 @@ async def search_bulk_waiver_players(
         )
         for player in players
     ]
-
-async def get_bulk_target_player(
-    *,
-    db: AsyncSession,
-    player_id: str,
-) -> Player:
-    result = await db.execute(
-        select(Player).where(
-            Player.player_id == player_id,
-        )
-    )
-
-    player = result.scalar_one_or_none()
-
-    if player is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Player was not found.",
-        )
-
-    if player.position not in DYNASTY_FANTASY_POSITIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Bulk waiver claims currently support only "
-                "QB, RB, WR, and TE players."
-            ),
-        )
-
-    return player
-
-
-async def get_owned_roster_rows(
-    *,
-    db: AsyncSession,
-    connection: SleeperConnection,
-) -> list[tuple[Roster, League]]:
-    """
-    Gets all roster/league pairs owned by the connected Sleeper account.
-    """
-
-    if not connection.sleeper_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Connected Sleeper account is missing "
-                "a Sleeper user ID."
-            ),
-        )
-
-    result = await db.execute(
-        select(Roster, League)
-        .join(
-            League,
-            League.league_id == Roster.league_id,
-        )
-        .where(
-            Roster.owner_id == connection.sleeper_user_id,
-        )
-        .order_by(
-            League.name,
-        )
-    )
-
-    return list(
-        result.all(),
-    )
 
 
 async def get_rostered_player_ids_by_league(

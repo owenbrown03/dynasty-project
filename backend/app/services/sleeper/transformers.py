@@ -113,8 +113,13 @@ def tx_to_db(
     tx_data = {
         "transaction_id": schema.transaction_id,
         "type": schema.type,
-        "time_ms": schema.status_updated,
-        "league_id": league_id
+        "status": getattr(
+            schema,
+            "status",
+            None,
+        ),
+        "time_ms": schema.time,
+        "league_id": league_id,
     }
 
     movements_data = [
