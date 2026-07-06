@@ -1,20 +1,50 @@
+from __future__ import annotations
+
+
+def get_sortable_value(
+    item: dict,
+    value_key: str,
+) -> float:
+    """
+    Converts a dashboard metric into a sortable number.
+
+    Missing values rank as zero. This avoids dashboard-wide crashes if a
+    future metric is unavailable for a player or league.
+    """
+
+    value = item.get(
+        value_key,
+    )
+
+    if value is None:
+        return 0.0
+
+    return float(value)
+
+
 def add_rank(
-    items,
-    value_key,
-    rank_key,
-    reverse=True,
-):
+    items: list[dict],
+    value_key: str,
+    rank_key: str,
+    *,
+    reverse: bool = True,
+) -> None:
+    """
+    Assigns ordinal ranks.
+
+    This keeps your original ranking behavior:
+    - larger value is better for KTC, FC, and WAR
+    - smaller value is better for average age
+    """
 
     ranked = sorted(
         items,
-        key=lambda x: (
-            x[value_key]
-            if x[value_key] is not None
-            else 0
+        key=lambda item: get_sortable_value(
+            item,
+            value_key,
         ),
         reverse=reverse,
     )
-
 
     for index, item in enumerate(
         ranked,
@@ -23,11 +53,9 @@ def add_rank(
         item[rank_key] = index
 
 
-
 def rank_league_teams(
     teams: list[dict],
-):
-
+) -> list[dict]:
     add_rank(
         teams,
         "ktc_value",
@@ -40,28 +68,35 @@ def rank_league_teams(
         "fc_rank",
     )
 
+    add_rank(
+        teams,
+        "dynasty_starter_war",
+        "dynasty_starter_war_rank",
+    )
 
     add_rank(
         teams,
-        "starter_war",
-        "starter_war_rank",
+        "dynasty_roster_war",
+        "dynasty_roster_war_rank",
     )
-
 
     add_rank(
         teams,
-        "roster_war",
-        "roster_war_rank",
+        "redraft_starter_war",
+        "redraft_starter_war_rank",
     )
 
+    add_rank(
+        teams,
+        "redraft_roster_war",
+        "redraft_roster_war_rank",
+    )
 
-    # younger is better
     add_rank(
         teams,
         "average_age",
         "age_rank",
         reverse=False,
     )
-
 
     return teams

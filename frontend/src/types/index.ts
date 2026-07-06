@@ -1,39 +1,39 @@
-export type Movement = {
+export interface Movement {
   name: string;
   signal: string;
-};
+}
 
-export type UserMovements = {
+export interface UserMovements {
   display_name: string;
   avatar: string;
   adds: Movement[];
   drops: Movement[];
-};
+}
 
-export type Transaction = {
+export interface Transaction {
   transaction_id: string;
   league_name: string;
   time_ms: number;
   users: UserMovements[];
-};
+}
 
-export type Roster = {
+export interface Roster {
   league_name: string;
   players: string[];
-};
+}
 
-export type Orphan = {
+export interface Orphan {
   league_name: string;
   roster_name: string;
   players: string[];
-};
+}
 
-export type Login = {
+export interface Login {
   email: string;
   password: string;
-};
+}
 
-export type TradeRequest = {
+export interface TradeRequest {
   league_id: string;
   k_adds: string[];
   v_adds: number[];
@@ -42,9 +42,9 @@ export type TradeRequest = {
   draft_picks: string[];
   waiver_budget?: number[];
   expires_at?: number;
-};
+}
 
-export type WaiverRequest = {
+export interface WaiverRequest {
   league_id: string;
   k_adds: string[];
   v_adds: number[];
@@ -53,60 +53,60 @@ export type WaiverRequest = {
   draft_picks: string[];
   k_settings?: number[];
   v_settings?: number[];
-};
+}
 
-export type SendCodeRequest = {
+export interface SendCodeRequest {
   username: string;
   captcha: string;
-};
+}
 
-export type SendCodeResponse = {
+export interface SendCodeResponse {
   connect_id: string;
-};
+}
 
-export type VerifyCodeRequest = {
+export interface VerifyCodeRequest {
   connect_id: string;
   code: string;
   captcha?: string;
-};
+}
 
-export type VerifyCodeResponse = {
+export interface VerifyCodeResponse {
   sleeper_token: string;
-};
+}
 
-export type BootstrapUser = {
+export interface BootstrapUser {
   id: string;
   email: string;
-};
+}
 
-export type BootstrapSleeper = {
+export interface BootstrapSleeper {
   linked: boolean;
   sleeper_username: string | null;
   sleeper_user_id: string | null;
   can_read: boolean;
   can_write: boolean;
-};
+}
 
-export type Bootstrap = {
+export interface Bootstrap {
   authenticated: boolean;
   site_user: BootstrapUser | null;
   sleeper: BootstrapSleeper;
-};
+}
 
-export type LeagueOverview = {
+export interface LeagueOverview {
   league_id: string;
   league_name: string;
   season: string | null;
   total_rosters: number | null;
-};
+}
 
-export type LeagueOwner = {
+export interface LeagueOwner {
   user_id: string;
   display_name: string;
   avatar: string | null;
-};
+}
 
-export type LeaguePlayer = {
+export interface LeaguePlayer {
   player_id: string;
 
   name: string;
@@ -120,9 +120,9 @@ export type LeaguePlayer = {
 
   starter_war: number | null;
   roster_war: number | null;
-};
+}
 
-export type LeagueRoster = {
+export interface LeagueRoster {
   roster_id: number;
 
   owner: LeagueOwner;
@@ -133,25 +133,27 @@ export type LeagueRoster = {
   rank: number;
 
   players: LeaguePlayer[];
-};
+}
 
-export type LeagueDetails = {
+export interface LeagueDetails {
   league_id: string;
   league_name: string;
   rosters: LeagueRoster[];
-};
+}
 
-export type DashboardSummary = {
+export interface DashboardSummary {
   league_count: number;
   player_count: number;
   total_ktc_value: number;
   total_fc_value: number;
-  total_starter_war: number;
-  total_roster_war: number;
+  total_dynasty_starter_war: number;
+  total_dynasty_roster_war: number;
+  total_redraft_starter_war: number;
+  total_redraft_roster_war: number;
   average_age: number;
-};
+}
 
-export type DashboardLeague = {
+export interface DashboardLeague {
   league_id: string;
   league_name: string;
   league_size: number;
@@ -162,17 +164,23 @@ export type DashboardLeague = {
   fc_value: number;
   fc_rank: number;
 
-  starter_war: number;
-  starter_war_rank: number;
+  dynasty_starter_war: number;
+  dynasty_starter_war_rank: number;
 
-  roster_war: number;
-  roster_war_rank: number;
+  dynasty_roster_war: number;
+  dynasty_roster_war_rank: number;
+
+  redraft_starter_war: number;
+  redraft_starter_war_rank: number;
+
+  redraft_roster_war: number;
+  redraft_roster_war_rank: number;
 
   average_age: number | null;
   age_rank: number;
-};
+}
 
-export type DashboardAsset = {
+export interface DashboardAsset {
   player_id: string;
   name: string;
   position: string;
@@ -183,10 +191,207 @@ export type DashboardAsset = {
 
   starter_war: number | null;
   roster_war: number | null;
-};
+}
 
-export type Dashboard = {
+export interface Dashboard {
   summary: DashboardSummary;
   leagues: DashboardLeague[];
   top_assets: DashboardAsset[];
-};
+}
+
+export type ValueBasis =
+  | 'ktc'
+  | 'fantasycalc'
+  | 'redraft_starter_war'
+  | 'redraft_roster_war'
+  | 'dynasty_starter_war'
+  | 'dynasty_roster_war';
+
+export interface PlayerValue {
+  player_id: string;
+
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+
+  ktc_value: number | null;
+  fc_value: number | null;
+  underdog_position_rank: string | null;
+
+  redraft_starter_war: number | null;
+  redraft_roster_war: number | null;
+
+  dynasty_starter_war: number | null;
+  dynasty_roster_war: number | null;
+
+  dynasty_expected_games_remaining: number | null;
+  dynasty_seasons_remaining: number | null;
+}
+
+export interface WaiverLeagueOverview {
+  league_id: string;
+  league_name: string;
+  league_avatar: string | null;
+
+  roster_id: number;
+
+  roster_size: number;
+  roster_capacity: number;
+  roster_spots_available: number;
+
+  faab_budget: number;
+  faab_used: number;
+  faab_remaining: number;
+  faab_percent_remaining: number;
+
+  available_player_count: number;
+
+  value_basis: ValueBasis;
+  value_label: string;
+
+  suggested_add: PlayerValue | null;
+  suggested_drop: PlayerValue | null;
+
+  suggested_add_value: number | null;
+  suggested_drop_value: number | null;
+  value_gain: number | null;
+
+  can_submit_claim: boolean;
+}
+
+export interface WaiverOverviewResponse {
+  sleeper_username: string | null;
+  leagues: WaiverLeagueOverview[];
+}
+
+export interface WaiverClaimRequest {
+  league_id: string;
+  roster_id: number;
+
+  add_player_id: string;
+  drop_player_id: string | null;
+
+  bid: number;
+}
+
+export interface WaiverClaimResponse {
+  transaction_id: string;
+}
+
+export interface WaiverLeagueOption {
+  league_id: string;
+  league_name: string;
+  league_avatar: string | null;
+
+  roster_id: number;
+
+  roster_size: number;
+  roster_capacity: number;
+  roster_spots_available: number;
+
+  faab_remaining: number;
+  faab_percent_remaining: number;
+}
+
+export interface WaiverAvailablePlayer extends PlayerValue {
+  selected_value: number | null;
+}
+
+export interface WaiverAvailablePlayersResponse {
+  league_id: string;
+  league_name: string;
+  league_avatar: string | null;
+
+  roster_id: number;
+
+  value_basis: ValueBasis;
+  value_label: string;
+
+  total_players: number;
+
+  players: WaiverAvailablePlayer[];
+}
+
+export interface WaiverRosterPlayer extends PlayerValue {
+  selected_value: number | null;
+}
+
+export interface WaiverRosterPlayersResponse {
+  league_id: string;
+  league_name: string;
+
+  roster_id: number;
+
+  value_basis: ValueBasis;
+  value_label: string;
+
+  total_players: number;
+
+  players: WaiverRosterPlayer[];
+}
+
+export interface BulkWaiverPlayerSearchResult {
+  player_id: string;
+
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+
+  ktc_value: number | null;
+  fc_value: number | null;
+
+  underdog_position_rank: string | null;
+}
+
+export interface BulkWaiverLeagueAvailability {
+  league_id: string;
+  league_name: string;
+  league_avatar: string | null;
+
+  roster_id: number;
+
+  is_available: boolean;
+  already_rostered_by_you: boolean;
+  unavailable_reason: string | null;
+
+  can_submit_claim: boolean;
+  claim_blocked_reason: string | null;
+
+  faab_remaining: number;
+  roster_spots_available: number;
+  requires_drop: boolean;
+
+  add_selected_value: number | null;
+
+  recommended_drop: PlayerValue | null;
+  recommended_drop_selected_value: number | null;
+}
+
+export interface BulkWaiverAvailabilityResponse {
+  player: BulkWaiverPlayerSearchResult;
+
+  value_basis: ValueBasis;
+  value_label: string;
+
+  leagues: BulkWaiverLeagueAvailability[];
+}
+
+export interface BulkWaiverClaimRequest {
+  claims: WaiverClaimRequest[];
+}
+
+export interface BulkWaiverClaimResult {
+  league_id: string;
+  roster_id: number;
+
+  success: boolean;
+
+  transaction_id: string | null;
+  error: string | null;
+}
+
+export interface BulkWaiverClaimResponse {
+  results: BulkWaiverClaimResult[];
+}

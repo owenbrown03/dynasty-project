@@ -1,57 +1,84 @@
+from __future__ import annotations
+
 from statistics import mean
 
 
 def build_summary(
+    *,
     league_cards,
     all_players,
 ):
+    """
+    Builds totals from the user's league cards.
+
+    WAR totals intentionally sum per-league values. A player rostered in
+    multiple leagues should contribute once in each league because each
+    roster represents a separate dynasty team.
+    """
 
     ages = [
-        p.age
-        for p in all_players
-        if p.age is not None
+        player.age
+        for player in all_players
+        if player.age is not None
     ]
-
 
     return {
         "league_count": len(
-            league_cards
+            league_cards,
         ),
 
         "player_count": len(
-            all_players
+            all_players,
         ),
 
         "total_ktc_value": sum(
-            x["ktc_value"]
-            for x in league_cards
+            card["ktc_value"]
+            for card in league_cards
         ),
 
         "total_fc_value": sum(
-            x["fc_value"]
-            for x in league_cards
+            card["fc_value"]
+            for card in league_cards
         ),
 
-        "total_starter_war": round(
+        "total_dynasty_starter_war": round(
             sum(
-                x["starter_war"]
-                for x in league_cards
+                card["dynasty_starter_war"]
+                for card in league_cards
             ),
             2,
         ),
 
-        "total_roster_war": round(
+        "total_dynasty_roster_war": round(
             sum(
-                x["roster_war"]
-                for x in league_cards
+                card["dynasty_roster_war"]
+                for card in league_cards
             ),
             2,
         ),
 
-        "average_age": round(
-            mean(ages),
+        "total_redraft_starter_war": round(
+            sum(
+                card["redraft_starter_war"]
+                for card in league_cards
+            ),
             2,
-        )
-        if ages
-        else None,
+        ),
+
+        "total_redraft_roster_war": round(
+            sum(
+                card["redraft_roster_war"]
+                for card in league_cards
+            ),
+            2,
+        ),
+
+        "average_age": (
+            round(
+                mean(ages),
+                2,
+            )
+            if ages
+            else None
+        ),
     }

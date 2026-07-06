@@ -1,5 +1,4 @@
-import logging
-import asyncio
+import logging, asyncio
 from datetime import datetime
 from typing import List, Set
 
@@ -35,24 +34,101 @@ async def get_existing_leagues(db: AsyncSession, league_ids: List[str]) -> Set[s
     return set(result.scalars().all())
 
 
-async def get_sync_states(db: AsyncSession, league_ids: List[str]) -> dict[str, int]:
-    """Returns {league_id: last_synced_week} for all known leagues."""
+async def get_sync_states(
+    db: AsyncSession,
+    league_ids: List[str],
+) -> dict[str, model.LeagueSyncState]:
+    """
+    Returns {league_id: LeagueSyncState} for known synced leagues.
+
+    last_synced_week:
+        Used to find transaction weeks we have never fetched.
+
+    last_synced_at:
+        Used to decide whether today's roster / FAAB / taxi / IR
+        data has already been refreshed.
+    """
+
     result = await db.execute(
         select(
-            model.LeagueSyncState.league_id,
-            model.LeagueSyncState.last_synced_week,
+            model.LeagueSyncState,
         ).where(
-            model.LeagueSyncState.league_id.in_(league_ids)
+            model.LeagueSyncState.league_id.in_(
+                league_ids,
+            )
         )
     )
-    return {league_id: week for league_id, week in result.all()}
 
+    sync_states = result.scalars().all()
+
+    return {
+        sync_state.league_id: sync_state
+        for sync_state in sync_states
+    }
+
+
+def was_synced_today(
+    sync_state: model.LeagueSyncState | None,
+) -> bool:
+    """
+    Treat a league as fresh only when we successfully synced it
+    at least once during the current UTC calendar day.
+    """
+
+    if sync_state is None:
+        return False
+
+    if sync_state.last_synced_at is None:
+        return False
+
+    return (sync_state.last_synced_at.datetime.now())
+
+
+def get_transaction_weeks_to_fetch(
+    *,
+    last_synced_week: int,
+    curr_week: int,
+) -> list[int]:
+    """
+    Always re-fetch the current week because trades and waiver activity
+    can happen multiple times during the same NFL week.
+
+    Also backfill any earlier weeks we have not seen yet.
+    """
+
+    first_missing_week = max(
+        last_synced_week + 1,
+        1,
+    )
+
+    missing_weeks = list(
+        range(
+            first_missing_week,
+            curr_week + 1,
+        )
+    )
+
+    if curr_week not in missing_weeks:
+        missing_weeks.append(
+            curr_week,
+        )
+
+    return sorted(
+        set(missing_weeks),
+    )
 
 # --------------------------------------------------
 # Core sync entry point
 # --------------------------------------------------
 
-async def sync_leagues(db, raw_leagues, curr_week, sleeper):
+async def sync_leagues(
+    db: AsyncSession,
+    raw_leagues,
+    curr_week: int,
+    sleeper,
+    *,
+    force: bool = False,
+):
     curr_week = max(curr_week, 1)
 
     leagues = list(
@@ -62,7 +138,11 @@ async def sync_leagues(db, raw_leagues, curr_week, sleeper):
     if not leagues:
         return {"status": "skipped", "synced_count": 0}
 
-    logger.info(f"Starting ingestion for {len(leagues)} leagues")
+    logger.info(
+        "Starting ingestion for %s leagues force=%s",
+        len(leagues),
+        force,
+    )
 
     all_league_ids = [l.league_id for l in leagues]
 
@@ -73,8 +153,15 @@ async def sync_leagues(db, raw_leagues, curr_week, sleeper):
     )
 
     bundles = await bounded_gather([
-        fetch_league_bundle(l, curr_week, sleeper, existing_ids, sync_states)
-        for l in leagues
+        fetch_league_bundle(
+            league=league,
+            curr_week=curr_week,
+            sleeper=sleeper,
+            existing_ids=existing_ids,
+            sync_states=sync_states,
+            force=force,
+        )
+        for league in leagues
     ])
 
     # Filter out None (skipped leagues with no new data) and exceptions
@@ -91,7 +178,7 @@ async def sync_leagues(db, raw_leagues, curr_week, sleeper):
     success_count = 0
     failed_batches = 0
     batch_size = 100
-    synced_league_ids = []
+    synced_bundles: list[dict] = []
 
     for i in range(0, len(bundles), batch_size):
         chunk = bundles[i:i + batch_size]
@@ -104,15 +191,17 @@ async def sync_leagues(db, raw_leagues, curr_week, sleeper):
 
             await db.flush()
             success_count += len(chunk)
-            synced_league_ids.extend(b["league_id"] for b in chunk)
+            synced_bundles.extend(chunk)
 
         except Exception as e:
             failed_batches += 1
             logger.error(f"[DB BATCH ERROR] {e}", exc_info=True)
 
-    # Update sync state for all successfully saved leagues
-    if synced_league_ids:
-        await _update_sync_states(db, synced_league_ids, curr_week)
+    if synced_bundles:
+        await _update_sync_states(
+            db=db,
+            bundles=synced_bundles,
+        )
 
     await db.commit()
 
@@ -130,88 +219,137 @@ async def sync_leagues(db, raw_leagues, curr_week, sleeper):
 # --------------------------------------------------
 
 async def fetch_league_bundle(
+    *,
     league,
     curr_week: int,
     sleeper,
     existing_ids: Set[str],
-    sync_states: dict[str, int],
+    sync_states: dict[str, model.LeagueSyncState],
+    force: bool = False,
 ):
+    """
+    Daily full roster refresh plus transaction backfill.
+
+    Normal behavior:
+    - Skip a league if it was already fully refreshed today.
+    - Refresh league, users, rosters, and current-week transactions
+      once per day.
+
+    Force behavior:
+    - Refresh immediately even if already synced today.
+    """
+
     league_id = league.league_id
+
     if not league_id:
         return None
 
     is_new = league_id not in existing_ids
-    last_synced_week = sync_states.get(league_id, 0)
-    weeks_to_fetch = list(range(last_synced_week + 1, curr_week + 1))
 
-    if not is_new and not weeks_to_fetch:
-        # Already up to date — nothing to do
-        logger.debug(f"[SKIP] {league_id} already synced to week {last_synced_week}")
+    sync_state = sync_states.get(
+        league_id,
+    )
+
+    last_synced_week = (
+        sync_state.last_synced_week
+        if sync_state is not None
+        else 0
+    )
+
+    needs_daily_refresh = (
+        is_new
+        or force
+        or not was_synced_today(sync_state)
+    )
+
+    if not needs_daily_refresh:
+        logger.info(
+            "[SKIP] league=%s already synced today",
+            league_id,
+        )
         return None
 
+    transaction_weeks = get_transaction_weeks_to_fetch(
+        last_synced_week=last_synced_week,
+        curr_week=curr_week,
+    )
+
+    logger.info(
+        "[FETCH] league=%s new=%s force=%s "
+        "last_week=%s tx_weeks=%s",
+        league_id,
+        is_new,
+        force,
+        last_synced_week,
+        transaction_weeks,
+    )
+
     try:
-        if is_new:
-            # Full fetch — league we've never seen before
-            league_obj, users, rosters, drafts, tx_lists = await asyncio.gather(
-                sleeper.read.get_league(league_id),
-                sleeper.read.get_users(league_id),
-                sleeper.read.get_rosters(league_id),
-                sleeper.read.get_drafts_league(league_id),
-                asyncio.gather(
-                    *[
-                        sleeper.read.get_transactions(league_id, week)
-                        for week in weeks_to_fetch
-                    ],
-                    return_exceptions=True,
-                ),
-            )
-
-            trades = [
-                tx
-                for batch in tx_lists
-                if isinstance(batch, list)
-                for tx in batch
-            ]
-
-            return {
-                "league_id": league_id,
-                "league": league_obj,
-                "users": users,
-                "rosters": rosters,
-                "drafts": drafts,
-                "transactions": trades,
-                "transactions_only": False,
-            }
-
-        else:
-            # Known league — only fetch new transaction weeks
-            tx_lists = await asyncio.gather(
+        (
+            league_obj,
+            users,
+            rosters,
+            tx_lists,
+        ) = await asyncio.gather(
+            sleeper.read.get_league(
+                league_id,
+            ),
+            sleeper.read.get_users(
+                league_id,
+            ),
+            sleeper.read.get_rosters(
+                league_id,
+            ),
+            asyncio.gather(
                 *[
-                    sleeper.read.get_transactions(league_id, week)
-                    for week in weeks_to_fetch
+                    sleeper.read.get_transactions(
+                        league_id,
+                        week,
+                    )
+                    for week in transaction_weeks
                 ],
                 return_exceptions=True,
-            )
+            ),
+        )
 
-            trades = [
-                tx
-                for batch in tx_lists
-                if isinstance(batch, list)
-                for tx in batch
-            ]
+        transactions = [
+            transaction
+            for batch in tx_lists
+            if isinstance(batch, list)
+            for transaction in batch
+        ]
 
-            return {
-                "league_id": league_id,
-                "league": None,
-                "users": [],
-                "rosters": [],
-                "drafts": [],
-                "transactions": trades,
-                "transactions_only": True,
-            }
+        return {
+            "league_id": league_id,
 
-    except Exception as e:
-        logger.error(f"[BUNDLE ERROR] league={league_id} err={e}", exc_info=True)
+            # Daily refresh now includes the current league / users / rosters.
+            "league": league_obj,
+            "users": users,
+            "rosters": rosters,
+
+            # Drafts do not need to be fetched daily.
+            "drafts": [],
+
+            "transactions": transactions,
+
+            # Keep this false so save_league_bundle_to_db()
+            # upserts the latest roster state.
+            "transactions_only": False,
+
+            # Used for sync-state update after successful save.
+            "synced_week": max(
+                last_synced_week,
+                curr_week,
+            ),
+        }
+
+    except Exception as error:
+        logger.error(
+            "[BUNDLE ERROR] league=%s err=%s",
+            league_id,
+            error,
+            exc_info=True,
+        )
         return None
 
 
@@ -343,20 +481,35 @@ async def _save_transactions(
 # --------------------------------------------------
 
 async def _update_sync_states(
+    *,
     db: AsyncSession,
-    league_ids: List[str],
-    week: int,
+    bundles: list[dict],
 ) -> None:
-    now = datetime.utcnow()
+    """
+    Updates daily freshness timestamps only after bundle data was
+    successfully saved.
+    """
+
+    now = datetime.now()
+
     rows = [
         {
-            "league_id": league_id,
-            "last_synced_week": week,
+            "league_id": bundle["league_id"],
+            "last_synced_week": bundle.get(
+                "synced_week",
+                0,
+            ),
             "last_synced_at": now,
         }
-        for league_id in league_ids
+        for bundle in bundles
     ]
-    await _bulk_upsert(db, model.LeagueSyncState, rows, "league_id")
+
+    await _bulk_upsert(
+        db,
+        model.LeagueSyncState,
+        rows,
+        "league_id",
+    )
 
 
 # --------------------------------------------------

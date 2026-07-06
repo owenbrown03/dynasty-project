@@ -80,7 +80,7 @@ class LeagueEnvironmentCalculator:
         )
 
 
-        logger.info(
+        logger.debug(
             f"""
             League Environment:
 

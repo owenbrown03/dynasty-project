@@ -1,5 +1,5 @@
-from pydantic import Field
-from typing import List, Dict, Optional
+from pydantic import Field, field_validator
+from typing import List, Dict, Optional, Any
 
 from app.schemas.base import Base
 from app.analytics.war.redraft.constants import FANTASY_GAMES_PER_SEASON
@@ -10,64 +10,118 @@ class User(Base):
     avatar: Optional[str] = None
     is_owner: Optional[bool] = None
 
-
 class LeagueSettings(Base):
-    best_ball: bool = False
+    model_config = {"extra": "allow"}
+    best_ball: int = 0
+    waiver_budget: int = 100
+    reserve_slots: int = 0
+    taxi_slots: int = 0
+    draft_rounds: int = 4
+    playoff_teams: int = 6
     trade_deadline: Optional[int] = None
+    num_teams: int = 12
     type: int = 0
 
-
 class ScoringSettings(Base):
-    model_config = {
-        "extra": "allow"
-    }
-
+    model_config = {"extra": "allow"}
     pass_yd: float = 0.0
     pass_td: float = 0.0
     pass_int: float = 0.0
-
     rush_yd: float = 0.0
     rush_td: float = 0.0
-
     rec: float = 0.0
     rec_yd: float = 0.0
     rec_td: float = 0.0
-
     fum_lost: float = 0.0
     bonus_rec_te: float = 0.0
-
 
 class League(Base):
     league_id: str
     name: str
+    avatar: Optional[str] = None
+    season: str
+    status: str = "pre_draft"
     total_rosters: int
     draft_id: str
+    previous_league_id: Optional[str] = None
 
-    avatar: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
-    season: str
+    settings: LeagueSettings = Field(default_factory=LeagueSettings)
 
-    settings: Optional[LeagueSettings] = None
-
-    scoring_settings: Optional[ScoringSettings] = None
-
-    roster_positions: list[str] = Field(
-        default_factory=list
+    scoring_settings: ScoringSettings = Field(
+        default_factory=ScoringSettings
     )
 
+    roster_positions: List[str] = Field(default_factory=list)
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def normalize_metadata(cls, value):
+        return value or {}
+
+    @field_validator("settings", mode="before")
+    @classmethod
+    def normalize_settings(cls, value):
+        return value or {}
+
+    @field_validator("scoring_settings", mode="before")
+    @classmethod
+    def normalize_scoring_settings(cls, value):
+        return value or {}
+
+    @field_validator("roster_positions", mode="before")
+    @classmethod
+    def normalize_roster_positions(cls, value):
+        return value or []
+
 class RosterSettings(Base):
-    fpts: Optional[int] = 0
-    fpts_against: Optional[int] = 0
-    wins: Optional[int] = 0
-    ties: Optional[int] = 0
-    losses: Optional[int] = 0
+    model_config = {"extra": "allow"}
+    fpts: float = 0
+    fpts_decimal: float = 0
+    wins: int = 0
+    losses: int = 0
+    ties: int = 0
+    total_moves: int = 0
+    waiver_budget_used: int = 0
+    waiver_position: int = 0
 
 class Roster(Base):
     roster_id: int
-    owner_id: Optional[str] = None 
+    owner_id: Optional[str] = None
     league_id: str
-    players: Optional[List[str]] = None
-    settings: RosterSettings
+
+    players: List[str] = Field(default_factory=list)
+    starters: List[str] = Field(default_factory=list)
+    reserve: List[str] = Field(default_factory=list)
+    taxi: List[str] = Field(default_factory=list)
+
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    settings: RosterSettings = Field(
+        default_factory=RosterSettings
+    )
+
+    @field_validator(
+        "players",
+        "starters",
+        "reserve",
+        "taxi",
+        mode="before",
+    )
+    @classmethod
+    def normalize_player_lists(cls, value):
+        return value or []
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def normalize_metadata(cls, value):
+        return value or {}
+
+    @field_validator("settings", mode="before")
+    @classmethod
+    def normalize_settings(cls, value):
+        return value or {}
 
 class BracketSource(Base):
     w: Optional[int] = None 
@@ -121,8 +175,24 @@ class Player(Base):
     last_name: str
     years_exp: Optional[int] = None
     birth_date: Optional[str] = None
+    status: Optional[str] = None
+    injury_status: Optional[str] = None
+    injury_body_part: Optional[str] = None
+    active: bool = True
 
 type PlayerMap = Dict[str, Player]
+
+class PlayerSummary(Base):
+    player_id: str
+    first_name: str
+    last_name: str
+    position: Optional[str] = None
+    team: Optional[str] = None
+    age: Optional[int] = None
+    war: Optional[float] = None
+    dynasty_war: Optional[float] = None
+    fantasycalc_value: Optional[int] = None
+    ktc_value: Optional[int] = None
 
 class TrendingPlayer(Base):
     player_id: str

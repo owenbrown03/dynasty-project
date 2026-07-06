@@ -42,7 +42,7 @@ class ReplacementCalculator:
 
                 native_demand[slot] += total_rosters
 
-        logger.info(
+        logger.debug(
             f"""
             Native demand:
             {dict(native_demand)}
@@ -148,7 +148,7 @@ class ReplacementCalculator:
 
             consume(player)
 
-        logger.info(
+        logger.debug(
             f"""
             Consumed demand:
 
@@ -188,7 +188,7 @@ class ReplacementCalculator:
 
                 replacement[position] = 0
 
-        logger.info(
+        logger.debug(
             f"""
             Replacement Points:
 

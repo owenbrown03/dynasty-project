@@ -1,7 +1,7 @@
-from pydantic import BaseModel
+from app.schemas.base import Base
 
 
-class PlayerValue(BaseModel):
+class PlayerValue(Base):
     player_id: str
 
     name: str
@@ -13,5 +13,11 @@ class PlayerValue(BaseModel):
     fc_value: int | None = None
     underdog_position_rank: str | None = None
 
-    starter_war: float | None = None
-    roster_war: float | None = None
+    redraft_starter_war: float | None = None
+    redraft_roster_war: float | None = None
+
+    dynasty_starter_war: float | None = None
+    dynasty_roster_war: float | None = None
+
+    dynasty_expected_games_remaining: float | None = None
+    dynasty_seasons_remaining: float | None = None

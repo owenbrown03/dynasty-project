@@ -127,6 +127,7 @@ async def dynasty_phase5(
 
     war_players = await WARService().calculate(
         ctx.db,
+        ctx.redis,
         league_id=league_id,
     )
 

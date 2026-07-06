@@ -1,118 +1,212 @@
+from __future__ import annotations
+
+import logging
 from statistics import mean
 
-from .rankings import rank_league_teams
+from .rankings import (
+    rank_league_teams,
+)
 
+
+logger = logging.getLogger(__name__)
+
+
+def sum_player_metric(
+    players,
+    metric_name: str,
+) -> float:
+    """
+    Adds a player metric while treating missing values as zero.
+
+    Missing dynasty values are expected for non-QB/RB/WR/TE players.
+    """
+
+    return sum(
+        getattr(
+            player,
+            metric_name,
+            None,
+        )
+        or 0
+        for player in players
+    )
+
+
+def build_team_metrics(
+    *,
+    roster,
+    player_map,
+) -> dict:
+    """
+    Builds one team's cross-metric totals in one specific league.
+    """
+
+    players = [
+        player_map[player_id]
+        for player_id in (roster.players or [])
+        if player_id in player_map
+    ]
+
+    ages = [
+        player.age
+        for player in players
+        if player.age is not None
+    ]
+
+    return {
+        "owner_id": roster.owner_id,
+
+        "player_count": len(players),
+
+        "ktc_value": sum_player_metric(
+            players,
+            "ktc_value",
+        ),
+
+        "fc_value": sum_player_metric(
+            players,
+            "fc_value",
+        ),
+
+        "dynasty_starter_war": sum_player_metric(
+            players,
+            "dynasty_starter_war",
+        ),
+
+        "dynasty_roster_war": sum_player_metric(
+            players,
+            "dynasty_roster_war",
+        ),
+
+        "redraft_starter_war": sum_player_metric(
+            players,
+            "redraft_starter_war",
+        ),
+
+        "redraft_roster_war": sum_player_metric(
+            players,
+            "redraft_roster_war",
+        ),
+
+        "average_age": (
+            mean(ages)
+            if ages
+            else None
+        ),
+    }
 
 
 def build_league_cards(
+    *,
     leagues,
     all_rosters,
-    player_map,
+    player_maps_by_league_id,
     user_id,
 ):
+    """
+    Builds one dashboard card per league.
 
-    output=[]
+    Each league receives its own PlayerValue map because WAR is not global.
+    """
 
+    output = []
 
-    for league_id,data in leagues.items():
+    for league_id, data in leagues.items():
+        league = data["league"]
 
-        teams=[]
+        league_rosters = all_rosters.get(
+            league_id,
+            [],
+        )
 
+        player_map = player_maps_by_league_id.get(
+            league_id,
+            {},
+        )
 
-        for roster in all_rosters[league_id]:
-
-            players=[]
-
-
-            for player_id in roster.players or []:
-
-                player = player_map.get(
-                    player_id
-                )
-
-                if player:
-                    players.append(
-                        player
-                    )
-
-
-            ages=[
-                p.age
-                for p in players
-                if p.age
-            ]
-
-
-            teams.append(
-                {
-                    "owner_id": roster.owner_id,
-
-                    "player_count":len(players),
-
-                    "ktc_value":sum(
-                        p.ktc_value or 0
-                        for p in players
-                    ),
-
-                    "fc_value":sum(
-                        p.fc_value or 0
-                        for p in players
-                    ),
-
-                    "starter_war":sum(
-                        p.starter_war or 0
-                        for p in players
-                    ),
-
-                    "roster_war":sum(
-                        p.roster_war or 0
-                        for p in players
-                    ),
-
-                    "average_age":(
-                        mean(ages)
-                        if ages
-                        else None
-                    ),
-                }
+        teams = [
+            build_team_metrics(
+                roster=roster,
+                player_map=player_map,
             )
+            for roster in league_rosters
+        ]
 
+        if not teams:
+            logger.warning(
+                "Skipping dashboard league=%s because no rosters were found",
+                league_id,
+            )
+            continue
 
         rank_league_teams(
-            teams
+            teams,
         )
-
 
         mine = next(
-            x
-            for x in teams
-            if x["owner_id"] == user_id
+            (
+                team
+                for team in teams
+                if team["owner_id"] == user_id
+            ),
+            None,
         )
 
+        if mine is None:
+            logger.warning(
+                (
+                    "Skipping dashboard league=%s because user=%s "
+                    "does not own a roster in the loaded data"
+                ),
+                league_id,
+                user_id,
+            )
+            continue
 
         output.append(
             {
-                "league_id":league_id,
-                "league_name":data["league"].name,
+                "league_id": league_id,
+                "league_name": league.name,
 
-                "league_size":len(teams),
+                "league_size": len(teams),
 
-                "ktc_value":mine["ktc_value"],
-                "ktc_rank":mine["ktc_rank"],
+                "ktc_value": mine["ktc_value"],
+                "ktc_rank": mine["ktc_rank"],
 
-                "fc_value":mine["fc_value"],
-                "fc_rank":mine["fc_rank"],
+                "fc_value": mine["fc_value"],
+                "fc_rank": mine["fc_rank"],
 
-                "starter_war":mine["starter_war"],
-                "starter_war_rank":mine["starter_war_rank"],
+                "dynasty_starter_war": (
+                    mine["dynasty_starter_war"]
+                ),
+                "dynasty_starter_war_rank": (
+                    mine["dynasty_starter_war_rank"]
+                ),
 
-                "roster_war":mine["roster_war"],
-                "roster_war_rank":mine["roster_war_rank"],
+                "dynasty_roster_war": (
+                    mine["dynasty_roster_war"]
+                ),
+                "dynasty_roster_war_rank": (
+                    mine["dynasty_roster_war_rank"]
+                ),
 
-                "average_age":mine["average_age"],
-                "age_rank":mine["age_rank"],
+                "redraft_starter_war": (
+                    mine["redraft_starter_war"]
+                ),
+                "redraft_starter_war_rank": (
+                    mine["redraft_starter_war_rank"]
+                ),
+
+                "redraft_roster_war": (
+                    mine["redraft_roster_war"]
+                ),
+                "redraft_roster_war_rank": (
+                    mine["redraft_roster_war_rank"]
+                ),
+
+                "average_age": mine["average_age"],
+                "age_rank": mine["age_rank"],
             }
         )
-
 
     return output

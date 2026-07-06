@@ -68,7 +68,7 @@ async def sync_user_data(db: AsyncSession, sleeper: SleeperClient, username: str
     if not leagues_json:
         return {"status": "skipped", "reason": "no_leagues"}
     else:    
-        return await sync_leagues(db, leagues_json, curr_week, sleeper)
+        return await sync_leagues(db, leagues_json, curr_week, sleeper, force=True)
 
 async def get_users(db: AsyncSession, user_ids: set[str]):
     if not user_ids:

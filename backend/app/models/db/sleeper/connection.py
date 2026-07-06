@@ -43,4 +43,4 @@ class SleeperConnection(SQLModel, table=True):
 
     encrypted_token: Optional[str] = Field(default=None)
 
-    linked_at: datetime = Field(default_factory=datetime.utcnow)
+    linked_at: datetime = Field(default_factory=datetime.now())

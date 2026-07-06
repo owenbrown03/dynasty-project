@@ -93,11 +93,7 @@ class SleeperGraphQLError(SleeperError):
         for err in errors:
             if isinstance(err, dict):
                 msg = err.get("message", str(err))
-                path = err.get("path")
-                if path:
-                    messages.append(f"{msg} (path={path})")
-                else:
-                    messages.append(msg)
+                messages.append(msg)
             else:
                 messages.append(str(err))
 
