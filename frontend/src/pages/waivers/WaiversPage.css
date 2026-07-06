@@ -1,0 +1,1530 @@
+.waivers-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.waivers-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px;
+
+  padding-bottom: 18px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.waivers-eyebrow {
+  margin: 0 0 6px;
+
+  color: #3b82f6;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.waivers-page-header h1 {
+  margin: 0;
+
+  color: #f9fafb;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.waivers-page-description {
+  margin: 8px 0 0;
+
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.waivers-value-selector {
+  min-width: 210px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.waivers-value-selector span {
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.waivers-value-selector select {
+  width: 100%;
+
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  color: #f9fafb;
+
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
+.waivers-value-selector select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.waivers-refreshing {
+  color: #9ca3af;
+  font-size: 12px;
+  text-align: right;
+}
+
+.waivers-loading-state,
+.waivers-empty-state {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+
+  color: #9ca3af;
+  text-align: center;
+
+  padding: 48px 24px;
+}
+
+.waivers-empty-state h1,
+.waivers-empty-state h2 {
+  margin: 0 0 8px;
+
+  color: #f9fafb;
+  font-size: 18px;
+}
+
+.waivers-empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.waiver-league-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
+  gap: 16px;
+}
+
+.waiver-league-card {
+  background: #0b1220;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+
+  padding: 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.waiver-league-card:hover {
+  border-color: #374151;
+}
+
+.waiver-league-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.waiver-league-header h2 {
+  margin: 0;
+
+  color: #f9fafb;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.waiver-league-header p {
+  margin: 5px 0 0;
+
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.waiver-gain {
+  min-width: 84px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.waiver-gain span {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.waiver-gain strong {
+  color: #4ade80;
+  font-size: 18px;
+}
+
+.waiver-league-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.waiver-stat {
+  min-width: 0;
+
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+
+  padding: 9px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.waiver-stat svg {
+  color: #9ca3af;
+}
+
+.waiver-stat span {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.waiver-stat strong {
+  color: #f9fafb;
+  font-size: 13px;
+}
+
+.waiver-stat small {
+  color: #6b7280;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.waiver-roster-status.negative {
+  color: #f87171;
+}
+
+.waiver-roster-status.neutral {
+  color: #fbbf24;
+}
+
+.waiver-roster-status.positive {
+  color: #4ade80;
+}
+
+.waiver-recommendation-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+}
+
+.waiver-swap-arrow {
+  color: #6b7280;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.waiver-player-card {
+  min-width: 0;
+
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+
+  padding: 12px;
+}
+
+.waiver-player-card-add {
+  border-left: 3px solid #22c55e;
+}
+
+.waiver-player-card-drop {
+  border-left: 3px solid #ef4444;
+}
+
+.waiver-player-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.waiver-player-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.waiver-player-card-add .waiver-player-title svg {
+  color: #4ade80;
+}
+
+.waiver-player-card-drop .waiver-player-title svg {
+  color: #f87171;
+}
+
+.waiver-player-value {
+  color: #f9fafb;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.waiver-player-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  margin-top: 10px;
+
+  color: #f9fafb;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.waiver-player-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+
+  margin-top: 5px;
+
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.waiver-player-secondary-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #1f2937;
+
+  color: #6b7280;
+  font-size: 10px;
+}
+
+.waiver-player-empty {
+  margin-top: 12px;
+
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.waiver-league-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.waiver-claim-button {
+  font-size: 11px;
+  padding: 7px 10px;
+}
+
+.waiver-claim-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.waiver-read-only {
+  color: #fbbf24;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .waivers-page {
+    padding: 16px;
+  }
+
+  .waivers-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .waivers-value-selector {
+    width: 100%;
+  }
+
+  .waiver-league-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .waiver-league-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .waiver-recommendation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .waiver-swap-arrow {
+    height: 20px;
+    transform: rotate(90deg);
+  }
+
+  .waiver-league-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .waiver-read-only {
+    text-align: left;
+  }
+}
+
+.waiver-claim-button,
+.waiver-cancel-claim-button,
+.waiver-submit-claim-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.waiver-claim-form {
+  width: 100%;
+
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+
+  padding: 10px;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.waiver-claim-summary {
+  flex: 1 1 180px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.waiver-claim-summary strong {
+  color: #f9fafb;
+  font-weight: 600;
+}
+
+.waiver-bid-input {
+  width: 82px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.waiver-bid-input span {
+  color: #9ca3af;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.waiver-bid-input input {
+  width: 100%;
+
+  background: #0b1220;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  color: #f9fafb;
+
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.waiver-bid-input input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.waiver-claim-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.waiver-submit-claim-button {
+  border-color: #166534;
+}
+
+.waiver-submit-claim-button:hover:not(:disabled) {
+  border-color: #22c55e;
+}
+
+.waiver-claim-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #4ade80;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.waiver-claim-error {
+  width: 100%;
+  margin: 0;
+
+  color: #f87171;
+  font-size: 11px;
+}
+
+.waiver-spinner {
+  animation: waiver-spin 0.9s linear infinite;
+}
+
+@keyframes waiver-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 520px) {
+  .waiver-claim-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .waiver-bid-input {
+    width: 100%;
+  }
+
+  .waiver-claim-actions {
+    width: 100%;
+  }
+
+  .waiver-claim-actions button {
+    flex: 1;
+  }
+}
+
+.waivers-tabs {
+  display: flex;
+  gap: 4px;
+
+  width: fit-content;
+
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 9px;
+
+  padding: 4px;
+}
+
+.waivers-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+
+  color: #9ca3af;
+  cursor: pointer;
+
+  padding: 8px 12px;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.waivers-tab:hover {
+  color: #f9fafb;
+}
+
+.waivers-tab.active {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+.available-players-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.available-players-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+
+  padding: 14px;
+}
+
+.available-players-toolbar h2 {
+  margin: 0;
+
+  color: #f9fafb;
+  font-size: 16px;
+}
+
+.available-players-toolbar p {
+  margin: 6px 0 0;
+
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.available-league-selector {
+  min-width: 240px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.available-league-selector span {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.available-league-selector select {
+  width: 100%;
+
+  background: #0b1220;
+  border: 1px solid #374151;
+  border-radius: 7px;
+  color: #f9fafb;
+
+  padding: 9px 10px;
+
+  font-size: 12px;
+}
+
+.available-league-selector select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.available-players-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.available-players-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+
+  background: #0b1220;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+}
+
+.available-players-table {
+  width: 100%;
+  min-width: 960px;
+
+  border-collapse: collapse;
+}
+
+.available-players-table th,
+.available-players-table td {
+  border-bottom: 1px solid #1f2937;
+  padding: 11px 12px;
+
+  color: #d1d5db;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.available-players-table th {
+  position: sticky;
+  top: 0;
+
+  background: #111827;
+  color: #9ca3af;
+
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.available-players-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.available-players-table tbody tr:hover {
+  background: #111827;
+}
+
+.available-players-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.available-player-name-cell {
+  min-width: 180px;
+}
+
+.available-player-name-cell strong {
+  display: block;
+
+  color: #f9fafb;
+  font-size: 12px;
+}
+
+.available-player-name-cell span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #6b7280;
+  font-size: 10px;
+}
+
+.available-selected-value strong {
+  display: block;
+
+  color: #4ade80;
+  font-size: 13px;
+}
+
+.available-selected-value span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #6b7280;
+  font-size: 9px;
+}
+
+.available-claim-button {
+  font-size: 11px;
+  padding: 6px 9px;
+}
+
+.available-claim-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 760px) {
+  .available-players-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .available-league-selector {
+    width: 100%;
+  }
+
+  .available-players-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+.available-claim-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.waiver-claim-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.68);
+  padding: 20px;
+}
+
+.waiver-claim-modal {
+  width: min(100%, 520px);
+
+  background: #0b1220;
+  border: 1px solid #374151;
+  border-radius: 14px;
+
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+
+  padding: 18px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.waiver-claim-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.waiver-claim-modal-header p {
+  margin: 0 0 4px;
+
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.waiver-claim-modal-header h2 {
+  margin: 0;
+
+  color: #f9fafb;
+  font-size: 18px;
+}
+
+.waiver-modal-close-button {
+  width: 30px;
+  height: 30px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  background: transparent;
+  border: 1px solid #374151;
+  border-radius: 7px;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.waiver-modal-close-button:hover:not(:disabled) {
+  color: #f9fafb;
+  border-color: #6b7280;
+}
+
+.waiver-modal-player-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.waiver-modal-player-summary > div {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 9px;
+
+  padding: 10px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.waiver-modal-player-summary span {
+  color: #9ca3af;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.waiver-modal-player-summary strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: #f9fafb;
+  font-size: 13px;
+}
+
+.waiver-modal-player-summary small {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.waiver-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.waiver-modal-field > span {
+  color: #d1d5db;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.waiver-modal-field small {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.waiver-modal-field select,
+.waiver-modal-field input {
+  width: 100%;
+
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 7px;
+  color: #f9fafb;
+
+  padding: 9px 10px;
+  font-size: 12px;
+}
+
+.waiver-modal-field select:focus,
+.waiver-modal-field input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.waiver-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.waiver-modal-submit-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  border-color: #166534;
+}
+
+.waiver-modal-submit-button:hover:not(:disabled) {
+  border-color: #22c55e;
+}
+
+.waiver-modal-loading {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.waiver-modal-error {
+  margin: 0;
+  color: #f87171;
+  font-size: 12px;
+}
+
+.waiver-modal-success {
+  min-height: 160px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  color: #4ade80;
+  text-align: left;
+}
+
+.waiver-modal-success div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.waiver-modal-success strong {
+  font-size: 14px;
+}
+
+.waiver-modal-success span {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  .waiver-claim-modal {
+    padding: 14px;
+  }
+
+  .waiver-modal-player-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .waiver-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .waiver-modal-actions button {
+    width: 100%;
+  }
+}
+
+.bulk-claims-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bulk-claims-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+
+  padding: 14px;
+}
+
+.bulk-claims-toolbar h2 {
+  margin: 0;
+
+  color: #f9fafb;
+  font-size: 16px;
+}
+
+.bulk-claims-toolbar p {
+  margin: 6px 0 0;
+
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.bulk-write-warning {
+  color: #fbbf24;
+  font-size: 11px;
+  text-align: right;
+}
+
+.bulk-player-search {
+  position: relative;
+
+  background: #0b1220;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+
+  padding: 14px;
+}
+
+.bulk-search-input {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.bulk-search-input > span {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.bulk-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+
+  padding: 0 10px;
+}
+
+.bulk-search-input-wrapper svg {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.bulk-search-input-wrapper input {
+  width: 100%;
+
+  background: transparent;
+  border: 0;
+  color: #f9fafb;
+
+  padding: 10px 0;
+  font-size: 13px;
+}
+
+.bulk-search-input-wrapper input:focus {
+  outline: none;
+}
+
+.bulk-search-results {
+  overflow: hidden;
+
+  margin-top: 10px;
+
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+}
+
+.bulk-search-result {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #1f2937;
+  color: inherit;
+  cursor: pointer;
+
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.bulk-search-result:last-child {
+  border-bottom: 0;
+}
+
+.bulk-search-result:hover,
+.bulk-search-result.selected {
+  background: #1f2937;
+}
+
+.bulk-search-result strong {
+  display: block;
+
+  color: #f9fafb;
+  font-size: 13px;
+}
+
+.bulk-search-result span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.bulk-search-market-values {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  color: #6b7280;
+  font-size: 10px;
+  text-align: right;
+}
+
+.bulk-search-empty {
+  color: #9ca3af;
+  font-size: 12px;
+
+  padding: 12px;
+}
+
+.bulk-selected-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+
+  color: #f9fafb;
+  padding: 10px 12px;
+}
+
+.bulk-selected-player span {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.bulk-availability-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.bulk-claim-league-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bulk-claim-league-row {
+  background: #0b1220;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+
+  padding: 12px;
+
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 120px;
+  gap: 12px;
+}
+
+.bulk-claim-league-row.selected {
+  border-color: #3b82f6;
+}
+
+.bulk-claim-league-row.unavailable {
+  opacity: 0.62;
+}
+
+.bulk-league-selection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bulk-league-selection input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.bulk-league-main strong {
+  display: block;
+
+  color: #f9fafb;
+  font-size: 13px;
+}
+
+.bulk-league-main span {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.bulk-league-target-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+}
+
+.bulk-league-target-value span {
+  color: #9ca3af;
+  font-size: 10px;
+}
+
+.bulk-league-target-value strong {
+  color: #4ade80;
+  font-size: 14px;
+}
+
+.bulk-unavailable-status {
+  align-self: center;
+  justify-self: end;
+
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.bulk-claim-controls {
+  grid-column: 1 / -1;
+
+  display: grid;
+  grid-template-columns: 100px minmax(180px, 1fr);
+  gap: 12px;
+
+  border-top: 1px solid #1f2937;
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+.bulk-claim-controls label,
+.bulk-drop-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bulk-claim-controls label > span,
+.bulk-drop-control-header > span {
+  color: #9ca3af;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.bulk-claim-controls input,
+.bulk-drop-control select {
+  width: 100%;
+
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 7px;
+  color: #f9fafb;
+
+  padding: 8px;
+  font-size: 12px;
+}
+
+.bulk-drop-control-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bulk-drop-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  background: transparent;
+  border: 0;
+  color: #60a5fa;
+  cursor: pointer;
+
+  font-size: 10px;
+}
+
+.bulk-drop-control > strong {
+  color: #f9fafb;
+  font-size: 12px;
+}
+
+.bulk-claim-preview {
+  grid-column: 1 / -1;
+
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.bulk-submit-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  background: #111827;
+  border: 1px solid #3b82f6;
+  border-radius: 10px;
+
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+
+  color: #f9fafb;
+  padding: 12px;
+}
+
+.bulk-review-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.68);
+  padding: 20px;
+}
+
+.bulk-review-modal {
+  width: min(100%, 580px);
+  max-height: min(700px, 90vh);
+
+  overflow-y: auto;
+
+  background: #0b1220;
+  border: 1px solid #374151;
+  border-radius: 14px;
+
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+
+  padding: 18px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bulk-review-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.bulk-review-header p {
+  margin: 0 0 4px;
+
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.bulk-review-header h2 {
+  margin: 0;
+
+  color: #f9fafb;
+  font-size: 18px;
+}
+
+.bulk-review-list,
+.bulk-result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bulk-review-row,
+.bulk-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+
+  padding: 10px;
+}
+
+.bulk-result-row span {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.bulk-review-row strong,
+.bulk-result-row strong {
+  display: block;
+
+  color: #f9fafb;
+  font-size: 12px;
+}
+
+.bulk-review-row span,
+.bulk-result-row span {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.bulk-review-row > div:last-child {
+  text-align: right;
+}
+
+.bulk-result-row.success {
+  border-left: 3px solid #22c55e;
+}
+
+.bulk-result-row.success svg {
+  color: #4ade80;
+}
+
+.bulk-result-row.error {
+  border-left: 3px solid #ef4444;
+}
+
+.bulk-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .bulk-claims-toolbar,
+  .bulk-availability-summary,
+  .bulk-submit-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bulk-write-warning {
+    text-align: left;
+  }
+
+  .bulk-search-result {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bulk-search-market-values {
+    text-align: left;
+  }
+
+  .bulk-claim-league-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-league-target-value {
+    align-items: flex-start;
+  }
+
+  .bulk-unavailable-status {
+    justify-self: start;
+  }
+
+  .bulk-claim-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-review-actions {
+    flex-direction: column-reverse;
+  }
+
+  .bulk-review-actions button {
+    width: 100%;
+  }
+}
+
+.bulk-claim-league-row.blocked {
+  border-color: #7f1d1d;
+  opacity: 0.78;
+}
+
+.bulk-claim-league-row.blocked .bulk-league-main span {
+  max-width: 620px;
+
+  color: #fca5a5;
+  line-height: 1.4;
+}
+
+.bulk-blocked-status {
+  align-self: center;
+  justify-self: end;
+
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.waiver-claim-blocked {
+  max-width: 280px;
+
+  color: #fca5a5;
+  line-height: 1.35;
+  text-align: right;
+}
