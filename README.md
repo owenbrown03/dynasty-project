@@ -1,31 +1,118 @@
-started with a to do list
-then wanted to change all my fantasy football ideas and speradsheets into one website
-started with the basics of just trying to pull all my leagues and store them in database
+# Dynasty Fantasy Football Analytics Platform
 
-first issues:
--typos
--incorrect type formats
--learning about relationships and foreign keys, trying to set up my future indexing better
--nested jsons that sleeper api was returning, how to deal with those
--1-to-many vs 1-to-1, if sleeper randomly decides to nest a json where the league settings are nested in a settings object, we should just unwrap that on the spot rather than trying to store it like that to make it easier to use the database in the future, vs 1-to-many lets just make a whole nother table for that and establish a relationship
--tables will become complicated and needing to manage many relationships later to improve speed so we want to be learning ahead here to prepare
--when i was starting my env/docker fastapi was immediately crashing so i ran docker logs fastapi_app to find:
-from . import models, crud, service
-ImportError: attempted relative import with no known parent package
+A full stack fantasy football analytics platform built to analyze dynasty leagues, identify cross-league trade opportunities, and automate interactions with the Sleeper platform.
 
-so when i was doing from . it was erroring because i was running main:app inside /app
+This project was created to solve a problem I ran into while managing multiple dynasty leagues. Instead of manually searching through hundreds of rosters and thousands of transactions, the application collects league data, stores it in a relational database, and generates actionable trade insights in seconds.
 
--ran into some relationship issues due to misunderstanding of how it worked and what it was used for
+The project started as a Google Sheet with Apps Script and has grown into a distributed web application with asynchronous data pipelines, background workers, REST APIs, authentication, and a React frontend.
 
-my process was to make individual functions to make sure i had the process of sleeper -> database (just upsert in CRUD) down for each section (leagues, rosters, transactions) before moving into more of a cohesive unit
+---
 
-code started taking way too long so we need to start issuing some runtime improvements
-lets start with asyncio
+## Features
 
-weaving though all the different relationships and stuff in my database seemed very overwhelming
-but i was able to use my knowledge of data structs to make all the structs i needed up front so that i could use them easily later
+- User authentication with linked Sleeper accounts
+- Asynchronous data ingestion from the Sleeper API
+- Background processing with distributed workers
+- PostgreSQL database with normalized schemas
+- Cross-league trade signal generation
+- Player valuation engine based on historical production and aging curves
+- League, roster, transaction, and player analytics
+- Trade proposal and waiver claim automation
+- React dashboard for browsing analytics
+- Redis caching to reduce API calls and improve response times
 
-i was also thinking pretty hard about which way i wanted to do things but finally decided to stop thinking and just time it and do it
+---
 
+## Tech Stack
 
-dealing with sleeper api makes you deal with a lot of interesting mapping and problem solving questions along the way, particularly with how they handle drafts as well as roster/user/owner ids
+### Backend
+
+- Python
+- FastAPI
+- SQLModel
+- SQLAlchemy
+- PostgreSQL
+- Alembic
+- TaskIQ
+- Redis
+- HTTPX
+- Pydantic
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- React Router
+
+### Infrastructure
+
+- Docker
+- Docker Compose
+
+---
+
+## How It Works
+
+1. Users connect their Sleeper account.
+2. Background workers synchronize leagues, rosters, players, users, drafts, and transactions.
+3. Data is normalized and stored in PostgreSQL.
+4. Analytics services process the data to generate player values and trade signals.
+5. The frontend displays results through the FastAPI API.
+
+---
+
+## Analytics
+
+The platform currently includes:
+
+- Cross-league trade signal detection
+- Historical transaction analysis
+- Dynasty player valuation
+- Expected career value modeling
+- Aging curve adjustments
+- League activity tracking
+- Player ownership analysis
+- Draft pick valuation
+
+Additional analytics are continuously being added.
+
+---
+
+## Performance
+
+The application is designed around asynchronous processing and distributed workers.
+
+Some optimizations include:
+
+- Concurrent API requests with HTTPX
+- Bulk database inserts and upserts
+- Redis caching
+- Background synchronization jobs
+- Batched processing
+- Connection pooling
+
+These improvements reduced large synchronization jobs from over 30 minutes to under 30 seconds while allowing analytics across thousands of leagues.
+
+---
+
+## Goals
+
+Some upcoming work includes:
+
+- Additional dynasty valuation models
+- More advanced trade recommendations
+- Historical player trend visualization
+- League comparison dashboards
+- CI/CD deployment pipeline
+- Cloud deployment
+
+---
+
+## Why I Built This
+
+As a dynasty fantasy football player, I wanted better tools for evaluating trades across multiple leagues.
+
+Most existing tools only analyze a single league at a time. I wanted something that could continuously collect data from thousands of leagues, analyze market trends, and surface opportunities that would be nearly impossible to find manually.
+
+Building the platform also gave me an opportunity to learn and apply modern backend engineering practices including asynchronous programming, distributed task processing, REST API design, relational database modeling, Docker, and React.
