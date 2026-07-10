@@ -15,24 +15,16 @@ interface Props {
 
 
 export function LeagueSelector({
-
   leagues,
-
   selectedLeague,
-
   onSelect
-
 }:Props){
-
-
   return (
-
     <select
-
+      className="leagues-selector-input"
       value={
         selectedLeague ?? ''
       }
-
       onChange={
         e =>
           onSelect(
@@ -46,35 +38,22 @@ export function LeagueSelector({
       <option value="">
         Select League
       </option>
-
-
       {
         leagues.map(
           league => (
-
             <option
-
               key={
                 league.league_id
               }
-
               value={
                 league.league_id
               }
-
             >
-
               {league.league_name}
-
             </option>
-
           )
         )
       }
-
-
     </select>
-
   );
-
 }

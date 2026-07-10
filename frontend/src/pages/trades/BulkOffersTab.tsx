@@ -31,6 +31,33 @@ import { BulkTradeReviewModal } from './BulkTradeReviewModal';
 
 const DEFAULT_PICK_SEASON = '2027';
 const DEFAULT_PICK_ROUND = 2;
+const ROOKIE_DRAFT_ROLLOVER_MONTH = 5;
+const ROOKIE_DRAFT_ROLLOVER_DAY = 1;
+
+
+function getValidSleeperPickYears(
+  now = new Date(),
+): string[] {
+  const currentYear = now.getFullYear();
+  const rookieDraftRollover = new Date(
+    currentYear,
+    ROOKIE_DRAFT_ROLLOVER_MONTH,
+    ROOKIE_DRAFT_ROLLOVER_DAY,
+  );
+
+  const startYear = (
+    now >= rookieDraftRollover
+      ? currentYear + 1
+      : currentYear
+  );
+
+  return Array.from(
+    {
+      length: 3,
+    },
+    (_, index) => String(startYear + index),
+  );
+}
 
 
 function createInitialSelection(
@@ -114,13 +141,18 @@ export const BulkOffersTab = () => {
   const {
     canWrite,
   } = useSleeperConnection();
+  const validPickYears = useMemo(
+    () => getValidSleeperPickYears(),
+    [],
+  );
 
   const [direction, setDirection] = useState<
     TradeDirection
   >('buy');
 
   const [pickSeason, setPickSeason] = useState(
-    DEFAULT_PICK_SEASON,
+    validPickYears[0]
+    ?? DEFAULT_PICK_SEASON,
   );
 
   const [pickRound, setPickRound] = useState(
@@ -158,6 +190,20 @@ export const BulkOffersTab = () => {
     error: submitError,
     reset,
   } = useSubmitBulkTradeOffers();
+
+  useEffect(() => {
+    if (
+      !validPickYears.includes(pickSeason)
+    ) {
+      setPickSeason(
+        validPickYears[0]
+        ?? DEFAULT_PICK_SEASON,
+      );
+    }
+  }, [
+    pickSeason,
+    validPickYears,
+  ]);
 
   useEffect(() => {
     const data = availability.data;
@@ -409,20 +455,25 @@ export const BulkOffersTab = () => {
               Pick year
             </span>
 
-            <input
+            <select
               value={pickSeason}
-              inputMode="numeric"
-              maxLength={4}
               onChange={event => {
                 setPickSeason(
-                  event.target.value.replace(
-                    /\D/g,
-                    '',
-                  ).slice(0, 4),
+                  event.target.value,
                 );
               }}
-              placeholder="2027"
-            />
+            >
+              {
+                validPickYears.map(year => (
+                  <option
+                    key={year}
+                    value={year}
+                  >
+                    {year}
+                  </option>
+                ))
+              }
+            </select>
           </label>
 
           <label>

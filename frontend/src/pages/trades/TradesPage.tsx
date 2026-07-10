@@ -18,16 +18,28 @@ export const TradesPage = () => {
 
   return (
     <main className="trades-page">
-      <div className="trades-tabs">
+      <section className="trades-page-header">
+        <div>
+          <p className="page-eyebrow">Trades</p>
+          <h1 className="trades-page-title">Trade tools</h1>
+          <p className="trades-page-description">
+            Research completed deals and build repeatable cross-league offers
+            without leaving the dashboard.
+          </p>
+        </div>
+      </section>
+
+      <div className="trades-tabs" role="tablist" aria-label="Trade tools">
         <button
           className={
             activeTab === 'bulk-offers'
-              ? 'active'
-              : ''
+              ? 'trades-tab-button active'
+              : 'trades-tab-button'
           }
           onClick={() => {
             setActiveTab('bulk-offers');
           }}
+          type="button"
         >
           Bulk Offers
         </button>
@@ -35,12 +47,13 @@ export const TradesPage = () => {
         <button
           className={
             activeTab === 'research'
-              ? 'active'
-              : ''
+              ? 'trades-tab-button active'
+              : 'trades-tab-button'
           }
           onClick={() => {
             setActiveTab('research');
           }}
+          type="button"
         >
           Trade Research
         </button>

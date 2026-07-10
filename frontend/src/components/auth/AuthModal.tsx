@@ -13,7 +13,12 @@ export const AuthModal = () => {
   return (
     <div className="auth-modal">
       <div className="modal-content">
-        <button className="close-btn" onClick={authContext.close}>×</button>
+        <button
+          className="button-secondary close-btn"
+          onClick={authContext.close}
+        >
+          ×
+        </button>
 
         {authContext.view === 'login' ? (
           <LoginForm

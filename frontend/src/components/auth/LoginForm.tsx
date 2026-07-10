@@ -51,6 +51,7 @@ export const LoginForm = ({
 
       <button
         type="submit"
+        className="button-primary"
         disabled={loading}
       >
         {loading

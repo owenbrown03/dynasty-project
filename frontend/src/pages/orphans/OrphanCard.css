@@ -1,49 +1,65 @@
 .orphan-card {
-  border: 1px solid rgb(80, 80, 80);
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
-  background-color: rgb(68, 68, 68);
+  display: grid;
+  gap: 12px;
+  padding: 14px;
   box-sizing: border-box;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
-.league-header {
-  font-weight: bold;
-  margin-bottom: 12px;
-  color: #fff;
-  font-size: 14px;
+.orphan-card-header {
   display: flex;
-  flex-direction: column;
+  align-items: end;
   justify-content: space-between;
-  align-items: flex-start;
-  width: 100%;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.league-title {
-  flex: 1;
-  padding-right: 12px;
+.orphan-card-kicker {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.header-line-1 {
-  font-size: 13px;
-  color: #b0b0b0;
+.orphan-league-name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
-.header-line-2 {
-  font-size: 14px;
-  font-weight: bold;
-  color: #ffffff;
+.orphan-roster-name {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
 }
 
 .orphan-players-row {
-  display: flex;       
-  flex-direction: column; 
-  gap: 8px;          
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .orphan-player {
-  background-color: rgb(50, 50, 50);
-  padding: 6px 10px;
-  border-radius: 4px;
-  color: #ddd;
+  padding: 7px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .orphan-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .orphan-roster-name {
+    text-align: left;
+  }
 }

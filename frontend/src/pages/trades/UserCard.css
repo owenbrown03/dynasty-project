@@ -1,43 +1,68 @@
 .user-card {
-  background: #252525;
-  border-radius: 8px;
+  display: grid;
+  gap: 10px;
   padding: 12px;
-  border: 1px solid #444;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
 }
 
 .user-header{
-  font-weight: bold;
-  color: #fff;
-  margin-bottom: 10px;
-  font-size: 1rem;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-strong);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .adds, .drops {
-  margin-bottom: 8px;
-  font-size: 0.9rem;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 0;
+  font-size: 13px;
 }
 
-.adds { color: #b9ffd0; }
-.drops { color: #ffb8b8; }
+.adds,
+.drops {
+  color: var(--color-text);
+}
 
 .has-signal {
-  margin-top: 4px;
+  margin-top: 0;
+}
+
+.movement-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text);
+}
+
+.movement-prefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  color: var(--color-text-muted);
+  font-weight: 700;
 }
 
 .sell, .buy {
-  font-size: 0.75rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-left: 6px;
-  font-weight: bold;
+  font-size: 10px;
+  padding: 0;
+  border-radius: 0;
+  margin-left: 2px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: transparent;
 }
 
 .sell {
-  background: rgba(248, 113, 113, 0.2);
-  color: #f87171;
+  color: var(--color-danger);
 }
 
 .buy {
-  background: rgba(74, 222, 128, 0.2);
-  color: #4ade80;
+  color: var(--color-success);
 }

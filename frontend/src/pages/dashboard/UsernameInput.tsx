@@ -31,21 +31,33 @@ export function UsernameInput() {
   };
 
   return (
-    <div className="input-container">
-      <input
-        className="username-input"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && submit()}
-        placeholder="Sleeper username"
-      />
+    <section className="username-panel">
+      <div className="username-panel-copy">
+        <span className="username-panel-label">
+          Sleeper account
+        </span>
 
-      <button
-        className="submit-button"
-        onClick={submit}
-      >
-        Submit
-      </button>
-    </div>
+        <strong className="username-panel-title">
+          {connection.username ?? 'Connect a profile'}
+        </strong>
+      </div>
+
+      <div className="input-container">
+        <input
+          className="username-input"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          placeholder="Sleeper username"
+        />
+
+        <button
+          className="button-primary submit-button"
+          onClick={submit}
+        >
+          Sync profile
+        </button>
+      </div>
+    </section>
   );
 }

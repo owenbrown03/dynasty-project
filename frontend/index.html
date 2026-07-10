@@ -2,14 +2,50 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <title>Dynasty Base</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Dynasty Base is a fantasy football control room for leagues, trades, waivers, and orphan roster analysis." />
+    <meta property="og:title" content="Dynasty Base" />
+    <meta property="og:description" content="Dynasty Base is a fantasy football control room for leagues, trades, waivers, and orphan roster analysis." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/logo.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Dynasty Base" />
+    <meta name="twitter:description" content="Dynasty Base is a fantasy football control room for leagues, trades, waivers, and orphan roster analysis." />
+    <meta name="twitter:image" content="/logo.png" />
     <base href="/" />
 
     <!-- Load a font called Roboto from Google Fonts. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+      (function () {
+        var key = 'dynasty-theme-preference';
+        var stored = window.localStorage.getItem(key);
+        var preference =
+          stored === 'light' || stored === 'dark' || stored === 'system'
+            ? stored
+            : 'system';
+
+        var resolved =
+          preference === 'system'
+            ? (
+              window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+            )
+            : preference;
+
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.style.colorScheme = resolved;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

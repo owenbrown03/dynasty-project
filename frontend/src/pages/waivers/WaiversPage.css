@@ -1,11 +1,8 @@
 .waivers-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px;
-
   display: flex;
   flex-direction: column;
   gap: 18px;
+  width: min(1180px, 100%);
 }
 
 .waivers-page-header {
@@ -14,32 +11,35 @@
   align-items: end;
   gap: 20px;
 
-  padding-bottom: 18px;
-  border-bottom: 1px solid #1f2937;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .waivers-eyebrow {
   margin: 0 0 6px;
 
-  color: #3b82f6;
+  color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .waivers-page-header h1 {
   margin: 0;
 
-  color: #f9fafb;
-  font-size: 24px;
+  color: var(--color-text-strong);
+  font-size: 30px;
   font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .waivers-page-description {
   margin: 8px 0 0;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 14px;
+  line-height: 1.5;
 }
 
 .waivers-value-selector {
@@ -51,51 +51,32 @@
 }
 
 .waivers-value-selector span {
-  color: #9ca3af;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.waivers-value-selector select {
-  width: 100%;
-
-  background: #111827;
-  border: 1px solid #374151;
-  border-radius: 8px;
-  color: #f9fafb;
-
-  padding: 9px 10px;
-  font-size: 13px;
-}
-
-.waivers-value-selector select:focus {
-  outline: none;
-  border-color: #3b82f6;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .waivers-refreshing {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
   text-align: right;
 }
 
 .waivers-loading-state,
 .waivers-empty-state {
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-
-  color: #9ca3af;
+  border: 1px dashed var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
   text-align: center;
-
   padding: 48px 24px;
 }
 
 .waivers-empty-state h1,
 .waivers-empty-state h2 {
   margin: 0 0 8px;
-
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 18px;
 }
 
@@ -105,45 +86,42 @@
 }
 
 .waiver-league-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .waiver-league-card {
-  background: #0b1220;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-
-  padding: 16px;
+  padding: 14px;
 
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .waiver-league-card:hover {
-  border-color: #374151;
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
 }
 
 .waiver-league-header {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .waiver-league-header h2 {
   margin: 0;
-
-  color: #f9fafb;
   font-size: 16px;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .waiver-league-header p {
   margin: 5px 0 0;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
@@ -157,12 +135,15 @@
 }
 
 .waiver-gain span {
-  color: #9ca3af;
-  font-size: 11px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .waiver-gain strong {
-  color: #4ade80;
+  color: var(--color-success);
   font-size: 18px;
 }
 
@@ -175,9 +156,9 @@
 .waiver-stat {
   min-width: 0;
 
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 8px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 
   padding: 9px;
 
@@ -187,46 +168,49 @@
 }
 
 .waiver-stat svg {
-  color: #9ca3af;
+  color: var(--color-text-faint);
 }
 
 .waiver-stat span {
-  color: #9ca3af;
-  font-size: 11px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .waiver-stat strong {
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 13px;
 }
 
 .waiver-stat small {
-  color: #6b7280;
+  color: var(--color-text-faint);
   font-size: 10px;
   font-weight: 500;
 }
 
 .waiver-roster-status.negative {
-  color: #f87171;
+  color: var(--color-danger);
 }
 
 .waiver-roster-status.neutral {
-  color: #fbbf24;
+  color: var(--color-warning);
 }
 
 .waiver-roster-status.positive {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .waiver-recommendation-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 26px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
   align-items: stretch;
   gap: 8px;
 }
 
 .waiver-swap-arrow {
-  color: #6b7280;
+  color: var(--color-text-faint);
 
   display: flex;
   align-items: center;
@@ -236,19 +220,19 @@
 .waiver-player-card {
   min-width: 0;
 
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 
   padding: 12px;
 }
 
 .waiver-player-card-add {
-  border-left: 3px solid #22c55e;
+  border-left: 3px solid var(--color-success);
 }
 
 .waiver-player-card-drop {
-  border-left: 3px solid #ef4444;
+  border-left: 3px solid var(--color-danger);
 }
 
 .waiver-player-card-header {
@@ -263,21 +247,23 @@
   align-items: center;
   gap: 6px;
 
-  color: #9ca3af;
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .waiver-player-card-add .waiver-player-title svg {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .waiver-player-card-drop .waiver-player-title svg {
-  color: #f87171;
+  color: var(--color-danger);
 }
 
 .waiver-player-value {
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 13px;
   font-weight: 700;
 }
@@ -289,9 +275,9 @@
 
   margin-top: 10px;
 
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .waiver-player-meta {
@@ -301,7 +287,7 @@
 
   margin-top: 5px;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
@@ -312,16 +298,15 @@
 
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid #1f2937;
-
-  color: #6b7280;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-faint);
   font-size: 10px;
 }
 
 .waiver-player-empty {
   margin-top: 12px;
 
-  color: #6b7280;
+  color: var(--color-text-faint);
   font-size: 12px;
 }
 
@@ -330,8 +315,9 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-
-  color: #9ca3af;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
@@ -346,7 +332,7 @@
 }
 
 .waiver-read-only {
-  color: #fbbf24;
+  color: var(--color-warning);
   text-align: right;
 }
 
@@ -527,39 +513,33 @@
 
 .waivers-tabs {
   display: flex;
-  gap: 4px;
-
-  width: fit-content;
-
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 9px;
-
-  padding: 4px;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .waivers-tab {
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   cursor: pointer;
 
-  padding: 8px 12px;
+  padding: 9px 12px;
 
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .waivers-tab:hover {
-  color: #f9fafb;
+  color: var(--color-text-strong);
 }
 
 .waivers-tab.active {
-  background: #1f2937;
-  border-color: #374151;
-  color: #f9fafb;
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+  color: var(--color-text-strong);
 }
 
 .available-players-section {
@@ -574,24 +554,22 @@
   justify-content: space-between;
   gap: 16px;
 
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
   padding: 14px;
 }
 
 .available-players-toolbar h2 {
   margin: 0;
 
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 16px;
 }
 
 .available-players-toolbar p {
   margin: 6px 0 0;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
@@ -604,27 +582,11 @@
 }
 
 .available-league-selector span {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 11px;
-  font-weight: 600;
-}
-
-.available-league-selector select {
-  width: 100%;
-
-  background: #0b1220;
-  border: 1px solid #374151;
-  border-radius: 7px;
-  color: #f9fafb;
-
-  padding: 9px 10px;
-
-  font-size: 12px;
-}
-
-.available-league-selector select:focus {
-  outline: none;
-  border-color: #3b82f6;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .available-players-summary {
@@ -632,7 +594,7 @@
   justify-content: space-between;
   gap: 12px;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
@@ -640,9 +602,8 @@
   width: 100%;
   overflow-x: auto;
 
-  background: #0b1220;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
 }
 
 .available-players-table {
@@ -654,10 +615,10 @@
 
 .available-players-table th,
 .available-players-table td {
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--color-border);
   padding: 11px 12px;
 
-  color: #d1d5db;
+  color: var(--color-text);
   font-size: 12px;
   text-align: left;
   white-space: nowrap;
@@ -667,12 +628,12 @@
   position: sticky;
   top: 0;
 
-  background: #111827;
-  color: #9ca3af;
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
 
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -681,7 +642,7 @@
 }
 
 .available-players-table tbody tr:hover {
-  background: #111827;
+  background: var(--color-surface-raised);
 }
 
 .available-players-table tbody tr:last-child td {
@@ -695,8 +656,8 @@
 .available-player-name-cell strong {
   display: block;
 
-  color: #f9fafb;
-  font-size: 12px;
+  color: var(--color-text-strong);
+  font-size: 13px;
 }
 
 .available-player-name-cell span {
@@ -704,14 +665,14 @@
 
   margin-top: 3px;
 
-  color: #6b7280;
+  color: var(--color-text-faint);
   font-size: 10px;
 }
 
 .available-selected-value strong {
   display: block;
 
-  color: #4ade80;
+  color: var(--color-text-strong);
   font-size: 13px;
 }
 
@@ -720,7 +681,7 @@
 
   margin-top: 3px;
 
-  color: #6b7280;
+  color: var(--color-text-faint);
   font-size: 9px;
 }
 
@@ -772,11 +733,10 @@
 .waiver-claim-modal {
   width: min(100%, 520px);
 
-  background: #0b1220;
-  border: 1px solid #374151;
-  border-radius: 14px;
-
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
 
   padding: 18px;
 
@@ -794,14 +754,14 @@
 .waiver-claim-modal-header p {
   margin: 0 0 4px;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
 .waiver-claim-modal-header h2 {
   margin: 0;
 
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 18px;
 }
 
@@ -813,16 +773,16 @@
   align-items: center;
   justify-content: center;
 
-  background: transparent;
-  border: 1px solid #374151;
-  border-radius: 7px;
-  color: #9ca3af;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
 .waiver-modal-close-button:hover:not(:disabled) {
-  color: #f9fafb;
-  border-color: #6b7280;
+  color: var(--color-text-strong);
+  border-color: var(--color-border-strong);
 }
 
 .waiver-modal-player-summary {
@@ -832,9 +792,9 @@
 }
 
 .waiver-modal-player-summary > div {
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 9px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 
   padding: 10px;
 
@@ -844,9 +804,10 @@
 }
 
 .waiver-modal-player-summary span {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -855,12 +816,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 13px;
 }
 
 .waiver-modal-player-summary small {
-  color: #6b7280;
+  color: var(--color-text-faint);
   font-size: 11px;
 }
 
@@ -871,34 +832,15 @@
 }
 
 .waiver-modal-field > span {
-  color: #d1d5db;
+  color: var(--color-text);
   font-size: 12px;
   font-weight: 600;
 }
 
 .waiver-modal-field small {
-  color: #6b7280;
+  color: var(--color-text-faint);
   font-size: 11px;
   font-weight: 500;
-}
-
-.waiver-modal-field select,
-.waiver-modal-field input {
-  width: 100%;
-
-  background: #111827;
-  border: 1px solid #374151;
-  border-radius: 7px;
-  color: #f9fafb;
-
-  padding: 9px 10px;
-  font-size: 12px;
-}
-
-.waiver-modal-field select:focus,
-.waiver-modal-field input:focus {
-  outline: none;
-  border-color: #3b82f6;
 }
 
 .waiver-modal-actions {
@@ -911,23 +853,17 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-
-  border-color: #166534;
-}
-
-.waiver-modal-submit-button:hover:not(:disabled) {
-  border-color: #22c55e;
 }
 
 .waiver-modal-loading {
   margin: 0;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
 .waiver-modal-error {
   margin: 0;
-  color: #f87171;
+  color: var(--color-danger);
   font-size: 12px;
 }
 
@@ -939,7 +875,7 @@
   justify-content: center;
   gap: 12px;
 
-  color: #4ade80;
+  color: var(--color-success);
   text-align: left;
 }
 
@@ -954,7 +890,7 @@
 }
 
 .waiver-modal-success span {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
@@ -988,29 +924,27 @@
   justify-content: space-between;
   gap: 16px;
 
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
   padding: 14px;
 }
 
 .bulk-claims-toolbar h2 {
   margin: 0;
 
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 16px;
 }
 
 .bulk-claims-toolbar p {
   margin: 6px 0 0;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
 .bulk-write-warning {
-  color: #fbbf24;
+  color: var(--color-warning);
   font-size: 11px;
   text-align: right;
 }
@@ -1018,10 +952,8 @@
 .bulk-player-search {
   position: relative;
 
-  background: #0b1220;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   padding: 14px;
 }
 
@@ -1032,9 +964,11 @@
 }
 
 .bulk-search-input > span {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .bulk-search-input-wrapper {
@@ -1042,15 +976,15 @@
   align-items: center;
   gap: 8px;
 
-  background: #111827;
-  border: 1px solid #374151;
-  border-radius: 8px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
 
   padding: 0 10px;
 }
 
 .bulk-search-input-wrapper svg {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   flex-shrink: 0;
 }
 
@@ -1059,7 +993,7 @@
 
   background: transparent;
   border: 0;
-  color: #f9fafb;
+  color: var(--color-text);
 
   padding: 10px 0;
   font-size: 13px;
@@ -1074,9 +1008,8 @@
 
   margin-top: 10px;
 
-  background: #111827;
-  border: 1px solid #374151;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
 }
 
 .bulk-search-result {
@@ -1089,7 +1022,7 @@
 
   background: transparent;
   border: 0;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--color-border);
   color: inherit;
   cursor: pointer;
 
@@ -1103,13 +1036,13 @@
 
 .bulk-search-result:hover,
 .bulk-search-result.selected {
-  background: #1f2937;
+  background: var(--color-surface-raised);
 }
 
 .bulk-search-result strong {
   display: block;
 
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 13px;
 }
 
@@ -1118,7 +1051,7 @@
 
   margin-top: 3px;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
@@ -1127,13 +1060,13 @@
   flex-direction: column;
   gap: 3px;
 
-  color: #6b7280;
+  color: var(--color-text-faint);
   font-size: 10px;
   text-align: right;
 }
 
 .bulk-search-empty {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 
   padding: 12px;
@@ -1144,16 +1077,14 @@
   align-items: center;
   gap: 8px;
 
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 8px;
-
-  color: #f9fafb;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-strong);
   padding: 10px 12px;
 }
 
 .bulk-selected-player span {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
@@ -1162,30 +1093,35 @@
   justify-content: space-between;
   gap: 12px;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
 .bulk-claim-league-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
 }
 
 .bulk-claim-league-row {
-  background: #0b1220;
-  border: 1px solid #1f2937;
-  border-radius: 10px;
-
-  padding: 12px;
+  background: var(--color-surface);
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  padding: 12px 14px;
 
   display: grid;
   grid-template-columns: minmax(180px, 1fr) 120px;
   gap: 12px;
 }
 
+.bulk-claim-league-row:last-child {
+  border-bottom: 0;
+}
+
 .bulk-claim-league-row.selected {
-  border-color: #3b82f6;
+  background: var(--color-surface-raised);
 }
 
 .bulk-claim-league-row.unavailable {
@@ -1207,7 +1143,7 @@
 .bulk-league-main strong {
   display: block;
 
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 13px;
 }
 
@@ -1216,7 +1152,7 @@
 
   margin-top: 4px;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
@@ -1229,12 +1165,15 @@
 }
 
 .bulk-league-target-value span {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .bulk-league-target-value strong {
-  color: #4ade80;
+  color: var(--color-text-strong);
   font-size: 14px;
 }
 
@@ -1242,7 +1181,7 @@
   align-self: center;
   justify-self: end;
 
-  color: #6b7280;
+  color: var(--color-text-faint);
   font-size: 11px;
 }
 
@@ -1253,7 +1192,7 @@
   grid-template-columns: 100px minmax(180px, 1fr);
   gap: 12px;
 
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid var(--color-border);
   margin-top: 4px;
   padding-top: 12px;
 }
@@ -1267,22 +1206,11 @@
 
 .bulk-claim-controls label > span,
 .bulk-drop-control-header > span {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 10px;
-  font-weight: 600;
-}
-
-.bulk-claim-controls input,
-.bulk-drop-control select {
-  width: 100%;
-
-  background: #111827;
-  border: 1px solid #374151;
-  border-radius: 7px;
-  color: #f9fafb;
-
-  padding: 8px;
-  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .bulk-drop-control-header {
@@ -1298,21 +1226,21 @@
 
   background: transparent;
   border: 0;
-  color: #60a5fa;
+  color: var(--color-link);
   cursor: pointer;
 
   font-size: 10px;
 }
 
 .bulk-drop-control > strong {
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 12px;
 }
 
 .bulk-claim-preview {
   grid-column: 1 / -1;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
@@ -1326,13 +1254,10 @@
   justify-content: space-between;
   gap: 12px;
 
-  background: #111827;
-  border: 1px solid #3b82f6;
-  border-radius: 10px;
-
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-
-  color: #f9fafb;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-overlay);
+  color: var(--color-text-strong);
   padding: 12px;
 }
 
@@ -1355,11 +1280,10 @@
 
   overflow-y: auto;
 
-  background: #0b1220;
-  border: 1px solid #374151;
-  border-radius: 14px;
-
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
 
   padding: 18px;
 
@@ -1377,14 +1301,14 @@
 .bulk-review-header p {
   margin: 0 0 4px;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
 .bulk-review-header h2 {
   margin: 0;
 
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 18px;
 }
 
@@ -1402,9 +1326,9 @@
   justify-content: space-between;
   gap: 12px;
 
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 8px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 
   padding: 10px;
 }
@@ -1418,7 +1342,7 @@
 .bulk-result-row strong {
   display: block;
 
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-size: 12px;
 }
 
@@ -1428,7 +1352,7 @@
 
   margin-top: 4px;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
@@ -1437,15 +1361,15 @@
 }
 
 .bulk-result-row.success {
-  border-left: 3px solid #22c55e;
+  border-left: 3px solid var(--color-success);
 }
 
 .bulk-result-row.success svg {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .bulk-result-row.error {
-  border-left: 3px solid #ef4444;
+  border-left: 3px solid var(--color-danger);
 }
 
 .bulk-review-actions {
@@ -1501,14 +1425,14 @@
 }
 
 .bulk-claim-league-row.blocked {
-  border-color: #7f1d1d;
+  background: color-mix(in srgb, var(--color-danger-soft) 45%, var(--color-surface));
   opacity: 0.78;
 }
 
 .bulk-claim-league-row.blocked .bulk-league-main span {
   max-width: 620px;
 
-  color: #fca5a5;
+  color: var(--color-danger);
   line-height: 1.4;
 }
 
@@ -1516,7 +1440,7 @@
   align-self: center;
   justify-self: end;
 
-  color: #f87171;
+  color: var(--color-danger);
   font-size: 11px;
   font-weight: 700;
 }
@@ -1524,7 +1448,7 @@
 .waiver-claim-blocked {
   max-width: 280px;
 
-  color: #fca5a5;
+  color: var(--color-danger);
   line-height: 1.35;
   text-align: right;
 }

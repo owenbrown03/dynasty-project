@@ -63,3 +63,72 @@ async def get_user_by_session(
         SiteUser,
         session.site_user_id,
     )
+
+
+def get_theme_preference(
+    user: SiteUser | None,
+) -> str | None:
+    if not user:
+        return None
+
+    value = (
+        (user.settings or {}).get("theme_preference")
+    )
+
+    if value in {"light", "dark", "system"}:
+        return value
+
+    return "light"
+
+
+async def set_theme_preference(
+    *,
+    user: SiteUser,
+    theme_preference: str,
+    db: AsyncSession,
+) -> SiteUser:
+    settings = dict(
+        user.settings or {}
+    )
+
+    settings["theme_preference"] = theme_preference
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def reconcile_session_theme_preference(
+    *,
+    user: SiteUser,
+    session: UserSession | None,
+    db: AsyncSession,
+) -> SiteUser:
+    if not session:
+        return user
+
+    session_preference = (
+        (session.settings or {}).get(
+            "theme_preference",
+        )
+    )
+
+    if session_preference not in {
+        "light",
+        "dark",
+        "system",
+    }:
+        return user
+
+    settings = dict(
+        user.settings or {}
+    )
+    settings["theme_preference"] = session_preference
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user

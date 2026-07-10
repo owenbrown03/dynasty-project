@@ -41,3 +41,8 @@ class UserSession(SQLModel, table=True):
     )
 
     sleeper_username: Optional[str] = None
+
+    settings: Dict[str, Any] = Field(
+        default_factory=dict,
+        sa_type=JSON,
+    )

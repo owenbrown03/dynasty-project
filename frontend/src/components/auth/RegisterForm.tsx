@@ -51,6 +51,7 @@ export const RegisterForm = ({
 
       <button
         type="submit"
+        className="button-primary"
         disabled={loading}
       >
         {loading

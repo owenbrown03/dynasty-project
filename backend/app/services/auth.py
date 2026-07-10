@@ -1,10 +1,22 @@
 from fastapi import HTTPException, APIRouter, status
 from passlib.context import CryptContext
 
-from app.schemas.auth import Login
+from app.schemas.auth import Login, ThemePreferenceUpdate
 from app.core.context import Context
-from app.crud.auth.user import get_user_by_credentials, insert_user
-from app.crud.auth.session import create_session_by_userid, insert_session_by_userid, delete_session
+from app.crud.auth.user import (
+    get_theme_preference,
+    get_user_by_credentials,
+    insert_user,
+    reconcile_session_theme_preference,
+    set_theme_preference,
+)
+from app.crud.auth.session import (
+    create_session_by_userid,
+    get_session_theme_preference,
+    insert_session_by_userid,
+    delete_session,
+    set_session_theme_preference,
+)
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
@@ -24,12 +36,48 @@ async def login(credentials: Login, ctx: Context):
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Incorrect username or password"
         )
-    return await insert_session_by_userid(db_user.id, ctx.session, ctx.db)
+    session = await insert_session_by_userid(
+        db_user.id,
+        ctx.session,
+        ctx.db,
+    )
+
+    await reconcile_session_theme_preference(
+        user=db_user,
+        session=session,
+        db=ctx.db,
+    )
+
+    return session
 
 async def logout(ctx: Context):
     if not ctx.session or not ctx.session.site_user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+
+    theme_preference = (
+        get_session_theme_preference(
+            ctx.session,
+        )
+        or get_theme_preference(
+            ctx.site_user,
+        )
+    )
+
     await delete_session(ctx.session, ctx.response, ctx.db)
+
+    new_session = await create_session_by_userid(
+        None,
+        ctx.response,
+        ctx.db,
+    )
+
+    if theme_preference is not None:
+        await set_session_theme_preference(
+            session=new_session,
+            theme_preference=theme_preference,
+            db=ctx.db,
+        )
+
     return ctx.session.site_user_id
 
 async def validate(ctx: Context):
@@ -49,3 +97,32 @@ async def me(ctx: Context):
         return {"authenticated": False}
 
     return {"authenticated": True}
+
+
+async def update_theme(
+    body: ThemePreferenceUpdate,
+    ctx: Context,
+):
+    session = await set_session_theme_preference(
+        session=ctx.session,
+        theme_preference=body.theme_preference,
+        db=ctx.db,
+    )
+
+    if ctx.site_user:
+        user = await set_theme_preference(
+            user=ctx.site_user,
+            theme_preference=body.theme_preference,
+            db=ctx.db,
+        )
+        return {
+            "theme_preference": (
+                user.settings.get("theme_preference")
+            ),
+        }
+
+    return {
+        "theme_preference": (
+            session.settings.get("theme_preference")
+        ),
+    }

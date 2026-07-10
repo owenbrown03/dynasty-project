@@ -91,7 +91,13 @@ export interface Bootstrap {
   authenticated: boolean;
   site_user: BootstrapUser | null;
   sleeper: BootstrapSleeper;
+  theme_preference: ThemePreference | null;
 }
+
+export type ThemePreference =
+  | 'light'
+  | 'dark'
+  | 'system';
 
 export interface LeagueOverview {
   league_id: string;

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from app.schemas.base import Base
 
@@ -20,3 +20,4 @@ class BootstrapResponse(Base):
     authenticated: bool
     site_user: Optional[BootstrapUser] = None
     sleeper: BootstrapSleeper
+    theme_preference: Literal["light", "dark", "system"] | None = None

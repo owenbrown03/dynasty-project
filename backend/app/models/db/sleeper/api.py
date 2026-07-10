@@ -105,7 +105,7 @@ class League(SQLModel, table=True):
 class LeagueSyncState(SQLModel, table=True):
     league_id: str = Field(primary_key=True, foreign_key="league.league_id")
     last_synced_week: int = Field(default=0)
-    last_synced_at: datetime = Field(default_factory=datetime.now())
+    last_synced_at: datetime = Field(default_factory=datetime.now)
 
     league: Optional["League"] = Relationship(back_populates="sync_state")
 

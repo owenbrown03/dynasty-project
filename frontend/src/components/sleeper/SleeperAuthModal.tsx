@@ -15,7 +15,12 @@ export const SleeperAuthModal = () => {
   return (
     <div className="auth-modal">
       <div className="modal-content">
-        <button onClick={authContext.close}>×</button>
+        <button
+          className="button-secondary close-btn"
+          onClick={authContext.close}
+        >
+          ×
+        </button>
 
         {authContext.step === 'send' ? (
           <SendForm

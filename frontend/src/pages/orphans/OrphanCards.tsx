@@ -1,4 +1,4 @@
-import './orphanCards.css';
+import './OrphanCards.css';
 import type { Orphan } from '../../types';
 import { OrphanCard } from './OrphanCard';
 
@@ -11,6 +11,7 @@ export function OrphanCards({ orphans }: Props) {
     <div className="orphan-cards">
       {orphans.map((orphan) => (
         <OrphanCard 
+          key={`${orphan.league_name}-${orphan.roster_name}`}
           orphan={orphan} 
         />
       ))}

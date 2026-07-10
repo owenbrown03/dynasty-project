@@ -1,12 +1,14 @@
 .main-wrapper {
   display: flex;
-  flex-grow: 1;
-  flex-direction: row; 
-  height: calc(100vh - 60px);
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--color-canvas);
 }
 
 .content {
-  flex-grow: 1;
-  padding: 20px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 20px 24px 30px;
   overflow-y: auto;
+  background: var(--color-canvas);
 }

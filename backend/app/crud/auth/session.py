@@ -12,7 +12,10 @@ async def create_session_by_userid(
 ):
 
     token = secrets.token_hex(32)
-    new_session = UserSession(session_token=token, site_user_id=user_id)
+    new_session = UserSession(
+        session_token=token,
+        site_user_id=user_id,
+    )
     db.add(new_session)
     await db.commit()
     is_prod = os.getenv("ENVIRONMENT") == "production"
@@ -32,6 +35,43 @@ async def insert_session_by_userid(
     db: AsyncSession
 ):
     session.site_user_id = site_user_id
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+def get_session_theme_preference(
+    session: UserSession | None,
+) -> str | None:
+    if not session:
+        return None
+
+    value = (
+        (session.settings or {}).get(
+            "theme_preference",
+        )
+    )
+
+    if value in {"light", "dark", "system"}:
+        return value
+
+    return None
+
+
+async def set_session_theme_preference(
+    *,
+    session: UserSession,
+    theme_preference: str,
+    db: AsyncSession,
+) -> UserSession:
+    settings = dict(
+        session.settings or {}
+    )
+
+    settings["theme_preference"] = theme_preference
+    session.settings = settings
+
+    db.add(session)
     await db.commit()
     await db.refresh(session)
     return session

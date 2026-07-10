@@ -15,6 +15,12 @@ export const TradeResearchTab = () => {
   if (Array.isArray(trades.data) && trades.data.length > 0) {
     return (
       <div className="trades-container">
+        <div className="trades-section-header">
+          <div>
+            <p className="page-eyebrow">Research</p>
+            <h2 className="trades-section-title">Recent transaction history</h2>
+          </div>
+        </div>
         <TradeCards trades={trades.data} />
       </div>
     );

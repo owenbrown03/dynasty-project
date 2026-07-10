@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from app.schemas.auth import Login
+from app.schemas.auth import Login, ThemePreferenceUpdate
 from app.core.context import Context
 from app.api.deps import get_context
-from app.services.auth import register, login, logout, validate, me
+from app.services.auth import register, login, logout, validate, me, update_theme
 
 router = APIRouter()
 
@@ -27,3 +27,11 @@ async def logout_endpoint(
     ctx: Context = Depends(get_context),
 ):
     await logout(ctx)
+
+
+@router.post("/theme")
+async def update_theme_endpoint(
+    body: ThemePreferenceUpdate,
+    ctx: Context = Depends(get_context),
+):
+    return await update_theme(body, ctx)

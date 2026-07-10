@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { NavLink } from 'react-router';
 import {
   LayoutDashboard,
   Trophy,
@@ -45,19 +45,39 @@ export const Sidebar = () => {
 
   return (
     <nav className={`sidebar ${isOpen ? 'expanded' : 'collapsed'}`}>
-      <button className='button-secondary' onClick={() => setIsOpen(!isOpen)}>
+      <button
+        className="button-secondary sidebar-toggle"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-label={
+          isOpen
+            ? 'Collapse sidebar'
+            : 'Expand sidebar'
+        }
+      >
         {isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
       </button>
 
       <div id="sidebar-menu">
+        {isOpen && (
+          <span className="sidebar-section-label">
+            Navigation
+          </span>
+        )}
+
         {menuItems.map((item) => (
-          <Link key={item.to} to={item.to} className="sidebar-link">
-            <div className="tooltip-container">
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? 'active' : ''}`
+            }
+          >
+            <div className="tooltip-container sidebar-icon-slot">
               {item.icon}
               {!isOpen && <span className="tooltip">{item.label}</span>}
             </div>
             {isOpen && <span className="link-text">{item.label}</span>}
-          </Link>
+          </NavLink>
         ))}
       </div>
     </nav>

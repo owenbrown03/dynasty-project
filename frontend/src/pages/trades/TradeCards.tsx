@@ -11,6 +11,7 @@ export function TradeCards({ trades }: Props) {
     <div className="trade-cards">
       {trades.map((tx) => (
         <TradeCard 
+          key={tx.transaction_id}
           tx={tx} 
         />
       ))}

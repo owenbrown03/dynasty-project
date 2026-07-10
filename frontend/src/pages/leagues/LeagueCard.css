@@ -1,25 +1,68 @@
 .league-card {
-  background: #0f172a;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-  padding: 16px;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
 .league-header {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 10px;
-  color: #e2e8f0;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.league-summary {
-  font-size: 13px;
-  color: #94a3b8;
-  margin-bottom: 12px;
+.league-header-kicker {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.league-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.league-summary-stat {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.league-summary-stat strong {
+  color: var(--color-text-strong);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.league-summary-stat small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .rosters {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .league-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .league-summary-stat {
+    justify-items: start;
+  }
 }

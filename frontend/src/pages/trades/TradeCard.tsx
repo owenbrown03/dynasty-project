@@ -10,7 +10,10 @@ export function TradeCard({ tx }: Props) {
   return (
     <div className="trade-card">
       <header className="trade-header">
-        <span className="league-name">{tx.league_name}</span>
+        <div className="trade-header-main">
+          <span className="trade-header-kicker">League</span>
+          <span className="league-name">{tx.league_name}</span>
+        </div>
 
         <span className="trade-time">
           {new Date(tx.time_ms).toLocaleString()}
