@@ -11,6 +11,7 @@ import type {
   BulkTradePlayerSearchResult,
   TradeDirection,
 } from '@/types';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 
 
 interface ReviewOffer {
@@ -72,13 +73,21 @@ export const BulkTradeReviewModal = ({
               Review bulk offers
             </span>
 
-            <h2>
-              {
-                direction === 'buy'
-                  ? `Buy ${player.name}`
-                  : `Sell ${player.name}`
-              }
-            </h2>
+            <div className="bulk-trade-player-heading">
+              <PlayerAvatar
+                playerId={player.player_id}
+                name={player.name}
+                size="md"
+              />
+
+              <h2>
+                {
+                  direction === 'buy'
+                    ? `Buy ${player.name}`
+                    : `Sell ${player.name}`
+                }
+              </h2>
+            </div>
           </div>
 
           <button
@@ -164,9 +173,17 @@ export const BulkTradeReviewModal = ({
                                   You receive:
                                 </span>
 
-                                <strong>
-                                  {player.name}
-                                </strong>
+                                <span className="player-with-avatar">
+                                  <PlayerAvatar
+                                    playerId={player.player_id}
+                                    name={player.name}
+                                    size="sm"
+                                  />
+
+                                  <strong>
+                                    {player.name}
+                                  </strong>
+                                </span>
                               </>
                             )
                             : (
@@ -175,9 +192,17 @@ export const BulkTradeReviewModal = ({
                                   You send:
                                 </span>
 
-                                <strong>
-                                  {player.name}
-                                </strong>
+                                <span className="player-with-avatar">
+                                  <PlayerAvatar
+                                    playerId={player.player_id}
+                                    name={player.name}
+                                    size="sm"
+                                  />
+
+                                  <strong>
+                                    {player.name}
+                                  </strong>
+                                </span>
 
                                 <span>
                                   You receive:

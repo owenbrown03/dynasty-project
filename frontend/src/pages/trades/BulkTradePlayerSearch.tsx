@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { useBulkTradePlayerSearch } from '@/hooks/sleeper/useBulkTrades';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 
 import type {
   BulkTradePlayerSearchResult,
@@ -109,21 +110,29 @@ export const BulkTradePlayerSearch = ({
         selectedPlayer
           ? (
             <div className="bulk-trade-selected-player">
-              <div>
-                <strong>
-                  {selectedPlayer.name}
-                </strong>
+              <div className="player-with-avatar">
+                <PlayerAvatar
+                  playerId={selectedPlayer.player_id}
+                  name={selectedPlayer.name}
+                  size="md"
+                />
 
-                <span>
-                  {
-                    [
-                      selectedPlayer.position,
-                      selectedPlayer.team,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')
-                  }
-                </span>
+                <div className="player-with-avatar-copy">
+                  <strong>
+                    {selectedPlayer.name}
+                  </strong>
+
+                  <span>
+                    {
+                      [
+                        selectedPlayer.position,
+                        selectedPlayer.team,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')
+                    }
+                  </span>
+                </div>
               </div>
 
               <div className="bulk-trade-selected-values">
@@ -192,22 +201,30 @@ export const BulkTradePlayerSearch = ({
                       );
                     }}
                   >
-                    <div>
-                      <strong>
-                        {player.name}
-                      </strong>
+                    <div className="player-with-avatar">
+                      <PlayerAvatar
+                        playerId={player.player_id}
+                        name={player.name}
+                        size="sm"
+                      />
 
-                      <span>
-                        {
-                          [
-                            player.position,
-                            player.team,
-                            player.underdog_position_rank,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')
-                        }
-                      </span>
+                      <div className="player-with-avatar-copy">
+                        <strong>
+                          {player.name}
+                        </strong>
+
+                        <span>
+                          {
+                            [
+                              player.position,
+                              player.team,
+                              player.underdog_position_rank,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')
+                          }
+                        </span>
+                      </div>
                     </div>
 
                     <div>

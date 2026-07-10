@@ -201,9 +201,13 @@
   background: var(--color-surface-raised);
 }
 
-.bulk-trade-search-result div {
-  display: flex;
-  flex-direction: column;
+.bulk-trade-search-result .player-with-avatar {
+  flex: 1;
+  min-width: 0;
+}
+
+.bulk-trade-search-result .player-with-avatar-copy {
+  display: grid;
   gap: 3px;
 }
 
@@ -229,10 +233,13 @@
   background: var(--color-surface-raised);
 }
 
-.bulk-trade-selected-player > div:first-child {
-  display: flex;
+.bulk-trade-selected-player > .player-with-avatar {
   flex: 1;
-  flex-direction: column;
+  min-width: 0;
+}
+
+.bulk-trade-selected-player .player-with-avatar-copy {
+  display: grid;
   gap: 3px;
 }
 
@@ -450,6 +457,13 @@
 .bulk-trade-review-header h2 {
   margin: 5px 0 0;
   font-size: 21px;
+}
+
+.bulk-trade-player-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
 }
 
 .bulk-trade-review-list,

@@ -320,6 +320,58 @@ tbody tr:hover {
   text-transform: uppercase;
 }
 
+.player-avatar {
+  display: block;
+  flex-shrink: 0;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+
+.player-avatar-sm {
+  width: 24px;
+  height: 24px;
+}
+
+.player-avatar-md {
+  width: 32px;
+  height: 32px;
+}
+
+.player-avatar-lg {
+  width: 40px;
+  height: 40px;
+}
+
+.player-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-indent: 0;
+  text-transform: uppercase;
+}
+
+.player-with-avatar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.player-with-avatar-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
 .loading-text,
 .no-results-text {
   display: block;

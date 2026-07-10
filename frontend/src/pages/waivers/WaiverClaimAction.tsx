@@ -12,6 +12,7 @@ import {
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { useSubmitWaiverClaim } from '@/hooks/sleeper/useWaivers';
 
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import type {
   PlayerValue,
   WaiverLeagueOverview,
@@ -180,13 +181,29 @@ export const WaiverClaimAction = ({
   return (
     <div className="waiver-claim-form">
       <div className="waiver-claim-summary">
-        <span>
-          Add <strong>{addPlayer.name}</strong>
-        </span>
+        <div className="player-with-avatar">
+          <PlayerAvatar
+            playerId={addPlayer.player_id}
+            name={addPlayer.name}
+            size="sm"
+          />
 
-        <span>
-          Drop <strong>{dropPlayer.name}</strong>
-        </span>
+          <span>
+            Add <strong>{addPlayer.name}</strong>
+          </span>
+        </div>
+
+        <div className="player-with-avatar">
+          <PlayerAvatar
+            playerId={dropPlayer.player_id}
+            name={dropPlayer.name}
+            size="sm"
+          />
+
+          <span>
+            Drop <strong>{dropPlayer.name}</strong>
+          </span>
+        </div>
       </div>
 
       <label className="waiver-bid-input">

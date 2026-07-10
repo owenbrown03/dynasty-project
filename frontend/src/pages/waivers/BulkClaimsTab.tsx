@@ -5,6 +5,7 @@ import {
 } from 'react';
 
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import {
   useBulkWaiverAvailability,
   useBulkWaiverPlayerSearch,
@@ -194,15 +195,23 @@ export const BulkClaimsTab = ({
         selectedPlayer
           ? (
             <div className="bulk-selected-player">
-              <strong>
-                {selectedPlayer.name}
-              </strong>
+              <PlayerAvatar
+                playerId={selectedPlayer.player_id}
+                name={selectedPlayer.name}
+                size="md"
+              />
 
-              <span>
-                {selectedPlayer.position ?? '—'}
-                {' · '}
-                {selectedPlayer.team ?? 'FA'}
-              </span>
+              <div className="player-with-avatar-copy">
+                <strong>
+                  {selectedPlayer.name}
+                </strong>
+
+                <span>
+                  {selectedPlayer.position ?? '—'}
+                  {' · '}
+                  {selectedPlayer.team ?? 'FA'}
+                </span>
+              </div>
             </div>
           )
           : null
@@ -257,6 +266,10 @@ export const BulkClaimsTab = ({
                     (league) => (
                       <BulkClaimLeagueRow
                         key={league.league_id}
+                        targetPlayerId={
+                          selectedPlayer?.player_id
+                          ?? availabilityData.player.player_id
+                        }
                         targetPlayerName={
                           selectedPlayer?.name
                           ?? availabilityData.player.name
@@ -312,7 +325,7 @@ export const BulkClaimsTab = ({
         && selectedPlayer
           ? (
             <BulkClaimReviewModal
-              playerName={selectedPlayer.name}
+              player={selectedPlayer}
               claims={selectedClaims}
               leagueNamesById={leagueNamesById}
               submitting={bulkSubmit.submitting}

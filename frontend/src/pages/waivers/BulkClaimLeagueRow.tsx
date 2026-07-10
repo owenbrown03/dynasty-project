@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { useRosterWaiverPlayers } from '@/hooks/sleeper/useWaivers';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 
 import type {
   BulkWaiverLeagueAvailability,
@@ -21,6 +22,7 @@ import {
 
 
 interface BulkClaimLeagueRowProps {
+  targetPlayerId?: string | null;
   targetPlayerName: string;
 
   league: BulkWaiverLeagueAvailability;
@@ -40,6 +42,7 @@ interface BulkClaimLeagueRowProps {
 
 
 export const BulkClaimLeagueRow = ({
+  targetPlayerId,
   targetPlayerName,
   league,
   valueBasis,
@@ -325,14 +328,47 @@ export const BulkClaimLeagueRow = ({
               </div>
 
               <div className="bulk-claim-preview">
-                Add {targetPlayerName}
-                {' → '}
+                <div className="player-with-avatar">
+                  <PlayerAvatar
+                    playerId={targetPlayerId}
+                    name={targetPlayerName}
+                    size="sm"
+                  />
+
+                  <span>
+                    Add {targetPlayerName}
+                  </span>
+                </div>
+
+                <span>
+                  {' → '}
+                </span>
+
                 {
                   draftClaim.drop_player_id
                     ? (
-                      selectedDropPlayer?.name
-                      ?? league.recommended_drop?.name
-                      ?? 'Selected player'
+                      <div className="player-with-avatar">
+                        <PlayerAvatar
+                          playerId={
+                            selectedDropPlayer?.player_id
+                            ?? league.recommended_drop?.player_id
+                          }
+                          name={
+                            selectedDropPlayer?.name
+                            ?? league.recommended_drop?.name
+                            ?? 'Selected player'
+                          }
+                          size="sm"
+                        />
+
+                        <span>
+                          {
+                            selectedDropPlayer?.name
+                            ?? league.recommended_drop?.name
+                            ?? 'Selected player'
+                          }
+                        </span>
+                      </div>
                     )
                     : 'Open roster spot'
                 }

@@ -28,3 +28,12 @@
 .player-table tbody tr:hover {
   background: var(--color-surface);
 }
+
+.player-table-name-cell {
+  min-width: 200px;
+}
+
+.player-table-name {
+  min-width: 0;
+  font-weight: 600;
+}

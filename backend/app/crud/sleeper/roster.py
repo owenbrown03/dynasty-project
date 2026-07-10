@@ -7,7 +7,7 @@ from app.integrations.sleeper.client import SleeperClient
 from app.models.db.sleeper.api import League, Roster
 from app.models.db.sleeper.connection import SleeperConnection
 from app.crud.sleeper.player import get_player_map
-from app.services.sleeper.format import format_players
+from app.services.sleeper.format import format_player_cards, format_players
 from app.crud.sleeper.user import get_userid_by_username
 
 async def get_user_rosters(db: AsyncSession, sleeper: SleeperClient, username: str) -> list[dict]:
@@ -63,7 +63,7 @@ async def get_user_orphans(db: AsyncSession, sleeper: SleeperClient, username: s
 
     formatted_rosters = []
     for league_name, roster_id, player_ids in raw_results:
-        formatted_players = format_players(player_ids, player_map)
+        formatted_players = format_player_cards(player_ids, player_map)
         formatted_rosters.append({
             "league_name": league_name,
             "roster_name": "Team " + str(roster_id),

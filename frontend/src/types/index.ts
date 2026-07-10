@@ -25,7 +25,14 @@ export interface Roster {
 export interface Orphan {
   league_name: string;
   roster_name: string;
-  players: string[];
+  players: OrphanPlayer[];
+}
+
+export interface OrphanPlayer {
+  player_id: string | null;
+  name: string;
+  position: string | null;
+  team: string | null;
 }
 
 export interface Login {

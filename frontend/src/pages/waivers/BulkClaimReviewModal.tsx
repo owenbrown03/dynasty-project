@@ -6,13 +6,15 @@ import {
 } from 'lucide-react';
 
 import type {
+  BulkWaiverPlayerSearchResult,
   BulkWaiverClaimResponse,
   WaiverClaimRequest,
 } from '@/types';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 
 
 interface BulkClaimReviewModalProps {
-  playerName: string;
+  player: BulkWaiverPlayerSearchResult;
 
   claims: WaiverClaimRequest[];
   leagueNamesById: Record<string, string>;
@@ -27,7 +29,7 @@ interface BulkClaimReviewModalProps {
 
 
 export const BulkClaimReviewModal = ({
-  playerName,
+  player,
   claims,
   leagueNamesById,
   submitting,
@@ -187,7 +189,15 @@ export const BulkClaimReviewModal = ({
                   </strong>
 
                   <span>
-                    Add {playerName}
+                    <span className="player-with-avatar">
+                      <PlayerAvatar
+                        playerId={player.player_id}
+                        name={player.name}
+                        size="sm"
+                      />
+
+                      <span>Add {player.name}</span>
+                    </span>
                   </span>
                 </div>
 

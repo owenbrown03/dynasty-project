@@ -3,6 +3,7 @@ import {
   ArrowUpFromLine,
 } from 'lucide-react';
 
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import type {
   PlayerValue,
   ValueBasis,
@@ -67,26 +68,36 @@ export const PlayerRecommendation = ({
         player
           ? (
             <>
-              <div className="waiver-player-name">
-                {player.name}
-              </div>
+              <div className="waiver-player-identity">
+                <PlayerAvatar
+                  playerId={player.player_id}
+                  name={player.name}
+                  size="md"
+                />
 
-              <div className="waiver-player-meta">
-                <span>
-                  {player.position ?? '—'}
-                </span>
+                <div className="waiver-player-copy">
+                  <div className="waiver-player-name">
+                    {player.name}
+                  </div>
 
-                <span>•</span>
+                  <div className="waiver-player-meta">
+                    <span>
+                      {player.position ?? '—'}
+                    </span>
 
-                <span>
-                  {player.team ?? 'FA'}
-                </span>
+                    <span>•</span>
 
-                <span>•</span>
+                    <span>
+                      {player.team ?? 'FA'}
+                    </span>
 
-                <span>
-                  Age {formatAge(player.age)}
-                </span>
+                    <span>•</span>
+
+                    <span>
+                      Age {formatAge(player.age)}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="waiver-player-secondary-values">

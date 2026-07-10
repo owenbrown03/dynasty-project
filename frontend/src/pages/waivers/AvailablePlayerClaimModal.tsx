@@ -14,6 +14,7 @@ import {
   useSubmitWaiverClaim,
 } from '@/hooks/sleeper/useWaivers';
 
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import type {
   ValueBasis,
   WaiverAvailablePlayer,
@@ -160,9 +161,17 @@ export const AvailablePlayerClaimModal = ({
                   <div>
                     <span>Add</span>
 
-                    <strong>
-                      {addPlayer.name}
-                    </strong>
+                    <div className="player-with-avatar">
+                      <PlayerAvatar
+                        playerId={addPlayer.player_id}
+                        name={addPlayer.name}
+                        size="sm"
+                      />
+
+                      <strong>
+                        {addPlayer.name}
+                      </strong>
+                    </div>
 
                     <small>
                       {addPlayer.position ?? '—'}
@@ -181,15 +190,31 @@ export const AvailablePlayerClaimModal = ({
                   <div>
                     <span>Drop</span>
 
-                    <strong>
-                      {
-                        selectedDropPlayer
-                          ? selectedDropPlayer.name
-                          : hasOpenRosterSpot
-                            ? 'No drop needed'
-                            : 'Choose a player'
-                      }
-                    </strong>
+                    {
+                      selectedDropPlayer
+                        ? (
+                          <div className="player-with-avatar">
+                            <PlayerAvatar
+                              playerId={selectedDropPlayer.player_id}
+                              name={selectedDropPlayer.name}
+                              size="sm"
+                            />
+
+                            <strong>
+                              {selectedDropPlayer.name}
+                            </strong>
+                          </div>
+                        )
+                        : (
+                          <strong>
+                            {
+                              hasOpenRosterSpot
+                                ? 'No drop needed'
+                                : 'Choose a player'
+                            }
+                          </strong>
+                        )
+                    }
 
                     {
                       selectedDropPlayer
