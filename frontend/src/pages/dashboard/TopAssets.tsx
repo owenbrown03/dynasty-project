@@ -1,4 +1,5 @@
 import type { DashboardAsset } from '@/types';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { formatNumber } from '@/utils/format';
 
 interface Props {
@@ -33,15 +34,25 @@ export function TopAssets({
             </div>
 
             <div className="top-asset-main">
-              <strong className="top-asset-name">
-                {player.name}
-              </strong>
+              <div className="player-with-avatar">
+                <PlayerAvatar
+                  playerId={player.player_id}
+                  name={player.name}
+                  size="md"
+                />
 
-              <span className="top-asset-meta">
-                {player.position}
-                {' '}
-                {player.team ?? 'FA'}
-              </span>
+                <div className="player-with-avatar-copy">
+                  <strong className="top-asset-name">
+                    {player.name}
+                  </strong>
+
+                  <span className="top-asset-meta">
+                    {player.position}
+                    {' '}
+                    {player.team ?? 'FA'}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="top-asset-stats">

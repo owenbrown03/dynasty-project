@@ -3,6 +3,7 @@ import {
   Search,
 } from 'lucide-react';
 
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import type {
   BulkWaiverPlayerSearchResult,
 } from '@/types';
@@ -100,18 +101,26 @@ export const BulkPlayerSearch = ({
                       onSelect(player);
                     }}
                   >
-                    <div>
-                      <strong>
-                        {player.name}
-                      </strong>
+                    <div className="player-with-avatar">
+                      <PlayerAvatar
+                        playerId={player.player_id}
+                        name={player.name}
+                        size="sm"
+                      />
 
-                      <span>
-                        {player.position ?? '—'}
-                        {' · '}
-                        {player.team ?? 'FA'}
-                        {' · '}
-                        Age {formatAge(player.age)}
-                      </span>
+                      <div className="player-with-avatar-copy">
+                        <strong>
+                          {player.name}
+                        </strong>
+
+                        <span>
+                          {player.position ?? '—'}
+                          {' · '}
+                          {player.team ?? 'FA'}
+                          {' · '}
+                          Age {formatAge(player.age)}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="bulk-search-market-values">

@@ -1,4 +1,5 @@
 import './OrphanCard.css';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import type { Orphan } from '../../types';
 
 interface Props {
@@ -23,7 +24,25 @@ export function OrphanCard({ orphan }: Props) {
             key={`${orphan.league_name}-${index}`}
             className="orphan-player"
           >
-            {player}
+            <div className="player-with-avatar">
+              <PlayerAvatar
+                playerId={player.player_id}
+                name={player.name}
+                size="sm"
+              />
+
+              <div className="player-with-avatar-copy">
+                <strong>{player.name}</strong>
+
+                <span>
+                  {
+                    [player.position, player.team]
+                      .filter(Boolean)
+                      .join(' · ') || '—'
+                  }
+                </span>
+              </div>
+            </div>
           </div>
         ))}
       </div>

@@ -1,4 +1,5 @@
 import './PlayerTable.css';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import type { LeaguePlayer } from '@/types';
 import { formatNumber } from '@/utils/format';
 
@@ -22,7 +23,19 @@ export function PlayerTable({ players }: Props) {
       <tbody>
         {players.map((player) => (
           <tr key={player.player_id}>
-            <td>{player.name}</td>
+            <td className="player-table-name-cell">
+              <div className="player-with-avatar">
+                <PlayerAvatar
+                  playerId={player.player_id}
+                  name={player.name}
+                  size="sm"
+                />
+
+                <span className="player-table-name">
+                  {player.name}
+                </span>
+              </div>
+            </td>
             <td>{player.position}</td>
             <td>{player.team ?? '-'}</td>
             <td>{formatNumber(player.starter_war)}</td>
