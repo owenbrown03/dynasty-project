@@ -1,5 +1,6 @@
-import logging, asyncio
-from datetime import datetime
+import asyncio
+import logging
+from datetime import UTC, datetime
 from typing import List, Set
 
 from sqlmodel import select
@@ -81,7 +82,10 @@ def was_synced_today(
     if sync_state.last_synced_at is None:
         return False
 
-    return (sync_state.last_synced_at.datetime.now())
+    return (
+        sync_state.last_synced_at.date()
+        == datetime.now(UTC).date()
+    )
 
 
 def get_transaction_weeks_to_fetch(
@@ -184,12 +188,18 @@ async def sync_leagues(
         chunk = bundles[i:i + batch_size]
 
         try:
-            for bundle in chunk:
-                ok = await save_league_bundle_to_db(db, bundle, commit=False)
-                if not ok:
-                    raise RuntimeError("bundle save failed")
+            async with db.begin_nested():
+                for bundle in chunk:
+                    ok = await save_league_bundle_to_db(
+                        db,
+                        bundle,
+                        commit=False,
+                    )
+                    if not ok:
+                        raise RuntimeError("bundle save failed")
 
-            await db.flush()
+                await db.flush()
+
             success_count += len(chunk)
             synced_bundles.extend(chunk)
 
