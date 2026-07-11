@@ -24,3 +24,4 @@ cryptography
 beautifulsoup4
 rapidfuzz
 cachetools
+pytest
