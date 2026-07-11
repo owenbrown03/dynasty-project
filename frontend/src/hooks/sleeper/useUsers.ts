@@ -1,7 +1,12 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 
 import { api } from '@/api/v1/endpoints';
-import type { Roster, Orphan } from '@/types';
+import type {
+  CommissionerOrphansResponse,
+  Orphan,
+  Roster,
+  ValueBasis,
+} from '@/types';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
 export function useRosters() {
@@ -57,5 +62,39 @@ export function useSync() {
   return {
     sync: mutation.mutateAsync,
     isSyncing: mutation.isPending,
+  };
+}
+
+
+export function useCommissionerOrphans(
+  username: string | null | undefined,
+  valueBasis: ValueBasis,
+) {
+  const query = useQuery<CommissionerOrphansResponse>({
+    queryKey: [
+      'commissioner-orphans',
+      username,
+      valueBasis,
+    ],
+    queryFn: async () => {
+      if (!username) {
+        throw new Error('Missing username');
+      }
+
+      return api.users
+        .getCommissionerOrphans(
+          username,
+          valueBasis,
+        )
+        .then((res) => res.data);
+    },
+    enabled: !!username,
+  });
+
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
   };
 }

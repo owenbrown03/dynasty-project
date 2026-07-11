@@ -445,6 +445,8 @@ docker compose exec db psql ...
 
 For sync-related changes, verify against the existing ingestion path rather than creating a second path around it.
 
+You have permission to trigger real local backend API calls for verification when that is the most direct way to test a change. Prefer hitting the existing application endpoints over inventing ad hoc scripts when validating request, sync, and worker flows.
+
 ### Worker verification
 
 After changing any of the following, restart the worker and verify startup:
@@ -455,6 +457,11 @@ After changing any of the following, restart the worker and verify startup:
 - code directly imported by task execution paths
 
 Do not assume API reload also refreshes the worker.
+
+If a change affects a queued sync or write path, verify both:
+
+- worker startup is clean
+- the real endpoint or job path runs without worker runtime errors
 
 ## Change strategy for this repo
 

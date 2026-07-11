@@ -104,6 +104,27 @@ def roster_to_db(
 
     return model.Roster(**data_map)
 
+def draft_to_db(
+    schema: schema.Draft,
+    return_dict: bool = False,
+) -> model.Draft | dict[str, Any]:
+    """Transforms a Sleeper draft payload into a DB-safe draft record."""
+
+    full_data = schema.model_dump()
+
+    data_map = {
+        "draft_id": full_data["draft_id"],
+        "league_id": full_data["league_id"],
+        "season": full_data["season"],
+        "draft_order": full_data.get("draft_order") or {},
+        "slot_to_roster_id": full_data.get("slot_to_roster_id") or {},
+    }
+
+    if return_dict:
+        return data_map
+
+    return model.Draft(**data_map)
+
 def tx_to_db(
     schema: schema.Transaction, 
     league_id: str,
@@ -118,7 +139,7 @@ def tx_to_db(
             "status",
             None,
         ),
-        "time_ms": schema.time,
+        "time_ms": schema.status_updated,
         "league_id": league_id,
     }
 

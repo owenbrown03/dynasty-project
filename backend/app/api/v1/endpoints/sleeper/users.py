@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.core.context import Context
 from app.api.deps import get_context
 from app.crud.sleeper.roster import get_user_rosters, get_user_orphans
+from app.schemas.commissioner import CommissionerOrphansResponse
 from app.tasks.user import sync_user_data_task
+from app.services.commissioner.orphans import get_commissioner_orphans
+from app.services.values.basis import ValueBasis
 
 router = APIRouter()
 
@@ -27,3 +30,21 @@ async def get_user_orphans_endpoint(
     ctx: Context = Depends(get_context),
 ):
     return await get_user_orphans(ctx.db, ctx.sleeper, username)
+
+
+@router.get(
+    "/{username}/commissioner/orphans",
+    response_model=CommissionerOrphansResponse,
+)
+async def get_commissioner_orphans_endpoint(
+    username: str,
+    value_basis: ValueBasis = Query(
+        ValueBasis.FANTASYCALC,
+    ),
+    ctx: Context = Depends(get_context),
+):
+    return await get_commissioner_orphans(
+        db=ctx.db,
+        username=username,
+        value_basis=value_basis,
+    )

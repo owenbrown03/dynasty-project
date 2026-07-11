@@ -258,6 +258,55 @@ export interface TierBoard {
   tiers: TierBoardGroup[];
 }
 
+export interface CommissionerPlayerAsset {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  selected_value: number | null;
+}
+
+export interface CommissionerLineupSlot {
+  slot: string;
+  player: CommissionerPlayerAsset | null;
+}
+
+export interface CommissionerDraftPickAsset {
+  season: string;
+  round: number;
+  og_roster_id: number;
+  current_owner_roster_id: number;
+  original_owner_name: string | null;
+  current_owner_name: string | null;
+  slot: number | null;
+  label: string;
+  selected_value: number | null;
+  value_source_label: string | null;
+}
+
+export interface CommissionerOrphanRoster {
+  league_id: string;
+  league_name: string;
+  league_season: string;
+  roster_id: number;
+  roster_name: string;
+  settings_badges: string[];
+  roster_value: number;
+  league_average_value: number;
+  average_age: number | null;
+  lineup: CommissionerLineupSlot[];
+  bench: CommissionerPlayerAsset[];
+  picks: CommissionerDraftPickAsset[];
+}
+
+export interface CommissionerOrphansResponse {
+  username: string;
+  value_basis: ValueBasis;
+  value_label: string;
+  orphans: CommissionerOrphanRoster[];
+}
+
 export interface PlayerValue {
   player_id: string;
 
