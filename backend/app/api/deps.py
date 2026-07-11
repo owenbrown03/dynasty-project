@@ -151,3 +151,15 @@ async def get_context(
 
 DBSessionDep = Annotated[AsyncSession, Depends(get_db)]
 ContextDep = Annotated[Context, Depends(get_context)]
+
+
+def require_sleeper_connection(
+    ctx: Context,
+    *,
+    detail: str,
+) -> None:
+    if ctx.connection is None:
+        raise HTTPException(
+            status_code=401,
+            detail=detail,
+        )

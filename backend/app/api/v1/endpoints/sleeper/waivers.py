@@ -1,12 +1,14 @@
 from fastapi import (
     APIRouter,
-    HTTPException,
     Query,
     status,
 )
 
 from app.analytics.war.redraft.service import WARService
-from app.api.deps import ContextDep
+from app.api.deps import (
+    ContextDep,
+    require_sleeper_connection,
+)
 from app.schemas.waivers import (
     BulkWaiverAvailabilityResponse,
     BulkWaiverClaimRequest,
@@ -124,14 +126,13 @@ async def available_waiver_players(
         ),
     ),
 ) -> WaiverAvailablePlayersResponse:
-    if ctx.connection is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Connect a Sleeper account before viewing "
-                "available players."
-            ),
-        )
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before viewing "
+            "available players."
+        ),
+    )
 
     war_service = WARService()
 
@@ -161,13 +162,12 @@ async def roster_waiver_players(
         default=DEFAULT_VALUE_BASIS,
     ),
 ) -> WaiverRosterPlayersResponse:
-    if ctx.connection is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Connect a Sleeper account before viewing roster players."
-            ),
-        )
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before viewing roster players."
+        ),
+    )
 
     war_service = WARService()
 
@@ -224,14 +224,13 @@ async def bulk_waiver_availability(
         default=DEFAULT_VALUE_BASIS,
     ),
 ) -> BulkWaiverAvailabilityResponse:
-    if ctx.connection is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Connect a Sleeper account before checking "
-                "bulk waiver availability."
-            ),
-        )
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before checking "
+            "bulk waiver availability."
+        ),
+    )
 
     war_service = WARService()
 
@@ -254,6 +253,14 @@ async def submit_bulk_waiver_claims(
     ctx: ContextDep,
     body: BulkWaiverClaimRequest,
 ) -> BulkWaiverClaimResponse:
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before submitting "
+            "bulk waiver claims."
+        ),
+    )
+
     return await submit_bulk_claims(
         db=ctx.db,
         connection=ctx.connection,

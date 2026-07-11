@@ -1,11 +1,12 @@
 from fastapi import (
     APIRouter,
-    HTTPException,
     Query,
-    status,
 )
 
-from app.api.deps import ContextDep
+from app.api.deps import (
+    ContextDep,
+    require_sleeper_connection,
+)
 from app.crud.sleeper.trade import get_trade_signals
 from app.schemas.trades import (
     BulkTradeAvailabilityResponse,
@@ -94,14 +95,13 @@ async def bulk_trade_availability_endpoint(
         ),
     ),
 ) -> BulkTradeAvailabilityResponse:
-    if ctx.connection is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Connect a Sleeper account before checking "
-                "bulk trade availability."
-            ),
-        )
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before checking "
+            "bulk trade availability."
+        ),
+    )
 
     return await get_bulk_trade_availability(
         db=ctx.db,
@@ -123,6 +123,14 @@ async def submit_bulk_trade_offers_endpoint(
     body: BulkTradeProposalRequest,
     ctx: ContextDep,
 ) -> BulkTradeProposalResponse:
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before proposing "
+            "bulk trades."
+        ),
+    )
+
     return await submit_bulk_trade_offers(
         db=ctx.db,
         connection=ctx.connection,
