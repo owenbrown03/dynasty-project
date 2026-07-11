@@ -48,6 +48,36 @@ def test_was_synced_today_uses_calendar_day():
         )
         is False
     )
+
+
+def test_needs_full_refresh_uses_last_full_sync_age():
+    assert league_crud.needs_full_refresh(None) is True
+    assert (
+        league_crud.needs_full_refresh(
+            SimpleNamespace(last_full_synced_at=None)
+        )
+        is True
+    )
+    assert (
+        league_crud.needs_full_refresh(
+            SimpleNamespace(
+                last_full_synced_at=datetime.now()
+                - timedelta(days=1),
+            )
+        )
+        is False
+    )
+    assert (
+        league_crud.needs_full_refresh(
+            SimpleNamespace(
+                last_full_synced_at=datetime.now()
+                - timedelta(
+                    days=league_crud.FULL_REFRESH_INTERVAL_DAYS + 1,
+                ),
+            )
+        )
+        is True
+    )
     assert (
         league_crud.was_synced_today(
             SimpleNamespace(
@@ -79,6 +109,9 @@ def test_sync_leagues_uses_nested_transaction_per_batch(
     async def fake_get_sync_states(db, league_ids):
         return {}
 
+    async def fake_get_incomplete_league_ids(db, league_ids):
+        return set()
+
     async def fake_fetch_league_bundle(
         *,
         league,
@@ -86,9 +119,11 @@ def test_sync_leagues_uses_nested_transaction_per_batch(
         sleeper,
         existing_ids,
         sync_states,
+        incomplete_league_ids,
         force=False,
         existing_refresh="full",
     ):
+        del incomplete_league_ids
         return {"league_id": league.league_id}
 
     async def fake_bounded_gather(
@@ -122,6 +157,11 @@ def test_sync_leagues_uses_nested_transaction_per_batch(
         league_crud,
         "fetch_league_bundle",
         fake_fetch_league_bundle,
+    )
+    monkeypatch.setattr(
+        league_crud,
+        "get_incomplete_league_ids",
+        fake_get_incomplete_league_ids,
     )
     monkeypatch.setattr(
         league_crud,
@@ -224,8 +264,10 @@ def test_fetch_league_bundle_uses_transactions_only_for_existing_league():
                 "league-1": SimpleNamespace(
                     last_synced_week=1,
                     last_synced_at=None,
+                    last_full_synced_at=datetime.now(),
                 )
             },
+            incomplete_league_ids=set(),
             existing_refresh="transactions_only",
         )
     )
@@ -249,3 +291,70 @@ def test_fetch_league_bundle_uses_transactions_only_for_existing_league():
         ("get_transactions", "league-1", 2),
         ("get_transactions", "league-1", 3),
     ]
+
+
+def test_fetch_league_bundle_uses_full_refresh_for_incomplete_existing_league():
+    class FakeRead:
+        def __init__(self):
+            self.calls: list[tuple[str, str, int | None]] = []
+
+        async def get_transactions(self, league_id, week):
+            self.calls.append(
+                ("get_transactions", league_id, week)
+            )
+            return []
+
+        async def get_league(self, league_id):
+            self.calls.append(
+                ("get_league", league_id, None)
+            )
+            return SimpleNamespace(league_id=league_id)
+
+        async def get_users(self, league_id):
+            self.calls.append(
+                ("get_users", league_id, None)
+            )
+            return []
+
+        async def get_rosters(self, league_id):
+            self.calls.append(
+                ("get_rosters", league_id, None)
+            )
+            return []
+
+        async def get_drafts_league(self, league_id):
+            self.calls.append(
+                ("get_drafts_league", league_id, None)
+            )
+            return []
+
+    sleeper = SimpleNamespace(
+        read=FakeRead(),
+    )
+
+    bundle = asyncio.run(
+        league_crud.fetch_league_bundle(
+            league=SimpleNamespace(
+                league_id="league-1",
+            ),
+            curr_week=3,
+            sleeper=sleeper,
+            existing_ids={"league-1"},
+            sync_states={
+                "league-1": SimpleNamespace(
+                    last_synced_week=1,
+                    last_synced_at=datetime.now(),
+                    last_full_synced_at=datetime.now(),
+                )
+            },
+            incomplete_league_ids={"league-1"},
+            existing_refresh="transactions_only",
+        )
+    )
+
+    assert bundle is not None
+    assert bundle["transactions_only"] is False
+    assert ("get_league", "league-1", None) in sleeper.read.calls
+    assert ("get_users", "league-1", None) in sleeper.read.calls
+    assert ("get_rosters", "league-1", None) in sleeper.read.calls
+    assert ("get_drafts_league", "league-1", None) in sleeper.read.calls

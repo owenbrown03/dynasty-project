@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.integrations.sleeper.client import SleeperClient
-from app.crud.sleeper.league import get_league_map
 from app.crud.sleeper.leaguemate import get_leaguemate_ids
 from app.crud.sleeper.player import get_player_map
 from app.crud.sleeper.user import get_userid_by_username
@@ -17,6 +16,7 @@ from app.integrations.sleeper.schemas import (
 )
 from app.integrations.sleeper.schemas import display
 from app.models.db.sleeper import api as model
+from app.services.leagues.settings import build_settings_badges
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,31 @@ async def get_user_meta_map(db: AsyncSession) -> Dict[str, dict]:
             "is_placeholder": is_placeholder,
         }
         for user_id, display_name, avatar, is_placeholder in rows
+    }
+
+
+async def get_trade_league_meta_map(
+    db: AsyncSession,
+    league_ids: set[str],
+) -> Dict[str, dict]:
+    if not league_ids:
+        return {}
+
+    stmt = (
+        select(model.League)
+        .where(model.League.league_id.in_(league_ids))
+    )
+    result = await db.execute(stmt)
+    leagues = result.scalars().all()
+
+    return {
+        league.league_id: {
+            "name": league.name,
+            "settings": build_settings_badges(
+                league,
+            ),
+        }
+        for league in leagues
     }
 
 async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
@@ -115,10 +140,17 @@ async def get_trade_signals(db: AsyncSession, sleeper: SleeperClient, username: 
         total_trades = len(lm_trades_data)
         logger.info(f"Dataset compiled: Processing {total_trades} historical transactions.")
 
-        league_map = await get_league_map(db)
         user_meta = await get_user_meta_map(db)
 
         trade_league_ids = {tx_data['trade'].league_id for tx_data in lm_trades_data.values() if tx_data['trade']}
+        league_meta = await get_trade_league_meta_map(
+            db,
+            trade_league_ids,
+        )
+        league_map = {
+            league_id: meta["name"]
+            for league_id, meta in league_meta.items()
+        }
         roster_owner_map = defaultdict(dict)
         
         r_stmt = (
@@ -256,6 +288,15 @@ async def get_trade_signals(db: AsyncSession, sleeper: SleeperClient, username: 
                     transaction_id=tx_id,
                     time_ms=trade_obj.time_ms or 0,
                     league_name=league_map.get(league_id, "Unknown League"),
+                    league_settings=(
+                        league_meta.get(
+                            league_id,
+                            {},
+                        ).get(
+                            "settings",
+                            [],
+                        )
+                    ),
                     users=ui_users
                 ))
 

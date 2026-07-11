@@ -25,4 +25,5 @@ class Transaction(Base):
     transaction_id: str
     time_ms: int
     league_name: str
+    league_settings: List[str] = Field(default_factory=list)
     users: List[User] = Field(default_factory=list)

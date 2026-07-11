@@ -13,6 +13,7 @@ export interface UserMovements {
 export interface Transaction {
   transaction_id: string;
   league_name: string;
+  league_settings: string[];
   time_ms: number;
   users: UserMovements[];
 }

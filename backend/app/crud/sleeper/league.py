@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Literal, List, Set
 
 from sqlmodel import select
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 FETCH_CHUNK_SIZE = 250
 DB_BATCH_SIZE = 100
+FULL_REFRESH_INTERVAL_DAYS = 7
 
 
 # --------------------------------------------------
@@ -36,6 +37,30 @@ async def get_existing_leagues(db: AsyncSession, league_ids: List[str]) -> Set[s
         )
     )
     return set(result.scalars().all())
+
+
+async def get_incomplete_league_ids(
+    db: AsyncSession,
+    league_ids: List[str],
+) -> Set[str]:
+    result = await db.execute(
+        select(
+            model.League.league_id,
+            model.League.settings,
+            model.League.scoring_settings,
+            model.League.roster_positions,
+        ).where(
+            model.League.league_id.in_(league_ids)
+        )
+    )
+
+    incomplete_ids: set[str] = set()
+
+    for league_id, settings, scoring_settings, roster_positions in result.all():
+        if not settings or not scoring_settings or not roster_positions:
+            incomplete_ids.add(league_id)
+
+    return incomplete_ids
 
 
 async def get_sync_states(
@@ -89,6 +114,22 @@ def was_synced_today(
         sync_state.last_synced_at.date()
         == datetime.now(UTC).date()
     )
+
+
+def needs_full_refresh(
+    sync_state: model.LeagueSyncState | None,
+) -> bool:
+    if sync_state is None:
+        return True
+
+    if sync_state.last_full_synced_at is None:
+        return True
+
+    refresh_cutoff = datetime.now() - timedelta(
+        days=FULL_REFRESH_INTERVAL_DAYS,
+    )
+
+    return sync_state.last_full_synced_at < refresh_cutoff
 
 
 def get_transaction_weeks_to_fetch(
@@ -158,9 +199,10 @@ async def sync_leagues(
     all_league_ids = [l.league_id for l in leagues]
 
     # Load existing league IDs and sync states in one pass
-    existing_ids, sync_states = await asyncio.gather(
+    existing_ids, sync_states, incomplete_league_ids = await asyncio.gather(
         get_existing_leagues(db, all_league_ids),
         get_sync_states(db, all_league_ids),
+        get_incomplete_league_ids(db, all_league_ids),
     )
 
     success_count = 0
@@ -187,6 +229,7 @@ async def sync_leagues(
                     sleeper=sleeper,
                     existing_ids=existing_ids,
                     sync_states=sync_states,
+                    incomplete_league_ids=incomplete_league_ids,
                     force=force,
                     existing_refresh=existing_refresh,
                 )
@@ -271,6 +314,7 @@ async def fetch_league_bundle(
     sleeper,
     existing_ids: Set[str],
     sync_states: dict[str, model.LeagueSyncState],
+    incomplete_league_ids: Set[str],
     force: bool = False,
     existing_refresh: Literal[
         "full",
@@ -306,13 +350,19 @@ async def fetch_league_bundle(
         else 0
     )
 
-    needs_daily_refresh = (
+    full_refresh_due = (
         is_new
         or force
+        or league_id in incomplete_league_ids
+        or needs_full_refresh(sync_state)
+    )
+
+    needs_refresh = (
+        full_refresh_due
         or not was_synced_today(sync_state)
     )
 
-    if not needs_daily_refresh:
+    if not needs_refresh:
         return None
 
     transaction_weeks = get_transaction_weeks_to_fetch(
@@ -325,6 +375,7 @@ async def fetch_league_bundle(
             not is_new
             and existing_refresh
             == "transactions_only"
+            and not full_refresh_due
         ):
             tx_lists = await asyncio.gather(
                 *[
@@ -717,7 +768,7 @@ async def _update_sync_states(
 
     now = datetime.now()
 
-    rows = [
+    transaction_rows = [
         {
             "league_id": bundle["league_id"],
             "last_synced_week": bundle.get(
@@ -729,12 +780,53 @@ async def _update_sync_states(
         for bundle in bundles
     ]
 
-    await _bulk_upsert(
-        db,
+    tx_stmt = insert(
         model.LeagueSyncState,
-        rows,
-        "league_id",
+    ).values(
+        transaction_rows,
     )
+
+    await db.execute(
+        tx_stmt.on_conflict_do_update(
+            index_elements=["league_id"],
+            set_={
+                "last_synced_week": tx_stmt.excluded.last_synced_week,
+                "last_synced_at": tx_stmt.excluded.last_synced_at,
+            },
+        )
+    )
+
+    full_rows = [
+        {
+            "league_id": bundle["league_id"],
+            "last_synced_week": bundle.get(
+                "synced_week",
+                0,
+            ),
+            "last_synced_at": now,
+            "last_full_synced_at": now,
+        }
+        for bundle in bundles
+        if not bundle.get("transactions_only")
+    ]
+
+    if full_rows:
+        full_stmt = insert(
+            model.LeagueSyncState,
+        ).values(
+            full_rows,
+        )
+
+        await db.execute(
+            full_stmt.on_conflict_do_update(
+                index_elements=["league_id"],
+                set_={
+                    "last_synced_week": full_stmt.excluded.last_synced_week,
+                    "last_synced_at": full_stmt.excluded.last_synced_at,
+                    "last_full_synced_at": full_stmt.excluded.last_full_synced_at,
+                },
+            )
+        )
 
 
 # --------------------------------------------------
