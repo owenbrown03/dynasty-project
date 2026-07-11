@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/api/v1/endpoints';
 import { notify } from '@/utils/notify';
-import { useAuthContext } from '@/context/AuthContext'
+import { useAuthContext } from '@/context/useAuthContext'
 import { useBootstrap } from './useBootstrap';
 
 const KEY = ['bootstrap'] as const;

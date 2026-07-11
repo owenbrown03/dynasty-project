@@ -1,30 +1,12 @@
 import {
-  createContext,
-  useContext,
   useState,
   type ReactNode,
 } from 'react';
 
-export type SleeperAuthStep = 'send' | 'verify';
-
-type SleeperAuthContextType = {
-  isOpen: boolean;
-  step: SleeperAuthStep;
-  username: string | null;
-
-  captcha: string | null;
-  setCaptcha: (token: string | null) => void;
-
-  setStep: (step: SleeperAuthStep) => void;
-  setUsername: (username: string | null) => void;
-
-  open: () => void;
-  close: () => void;
-  reset: () => void;
-};
-
-const SleeperAuthContext =
-  createContext<SleeperAuthContextType | null>(null);
+import {
+  SleeperAuthContext,
+  type SleeperAuthStep,
+} from '@/context/sleeper-auth-context';
 
 export function SleeperAuthProvider({
   children,
@@ -77,18 +59,4 @@ export function SleeperAuthProvider({
       {children}
     </SleeperAuthContext.Provider>
   );
-}
-
-export function useSleeperAuthContext() {
-  const context = useContext(
-    SleeperAuthContext,
-  );
-
-  if (!context) {
-    throw new Error(
-      'useSleeperAuthContext must be used within SleeperAuthProvider'
-    );
-  }
-
-  return context;
 }

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/api/v1/endpoints';
 import { notify } from '@/utils/notify';
-import { useSleeperAuthContext } from '@/context/SleeperAuthContext';
+import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
 
 const KEY = ['sleeper-connection'] as const;
 

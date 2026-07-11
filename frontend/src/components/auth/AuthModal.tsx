@@ -1,7 +1,7 @@
 import './AuthModal.css';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
-import { useAuthContext } from '@/context/AuthContext';
+import { useAuthContext } from '@/context/useAuthContext';
 import { useAuth } from '@/hooks/useAuth';
 
 export const AuthModal = () => {

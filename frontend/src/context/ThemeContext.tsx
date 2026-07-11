@@ -1,6 +1,4 @@
 import {
-  createContext,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -8,24 +6,15 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/api/v1/endpoints';
+import type { ThemeContextType } from '@/context/theme-context';
+import { ThemeContext } from '@/context/theme-context';
 import { useBootstrap } from '@/hooks/useBootstrap';
 import type { Bootstrap, ThemePreference } from '@/types';
 
 type ResolvedTheme = 'light' | 'dark';
 
-type ThemeContextType = {
-  preference: ThemePreference;
-  resolvedTheme: ResolvedTheme;
-  setPreference: (next: ThemePreference) => Promise<void>;
-  isSaving: boolean;
-};
-
 const STORAGE_KEY = 'dynasty-theme-preference';
 const BOOTSTRAP_KEY = ['bootstrap'] as const;
-
-const ThemeContext = createContext<ThemeContextType | null>(
-  null,
-);
 
 function isThemePreference(
   value: string | null,
@@ -184,7 +173,7 @@ export function ThemeProvider({
       resolvedTheme,
       isSaving: updatePreference.isPending,
       setPreference: async (
-        nextPreference,
+        nextPreference: ThemePreference,
       ) => {
         setPreferenceState(
           nextPreference,
@@ -207,7 +196,6 @@ export function ThemeProvider({
       },
     }),
     [
-      bootstrapPreference,
       preference,
       resolvedTheme,
       updatePreference,
@@ -219,18 +207,4 @@ export function ThemeProvider({
       {children}
     </ThemeContext.Provider>
   );
-}
-
-export function useTheme() {
-  const context = useContext(
-    ThemeContext,
-  );
-
-  if (!context) {
-    throw new Error(
-      'useTheme must be used within ThemeProvider',
-    );
-  }
-
-  return context;
 }

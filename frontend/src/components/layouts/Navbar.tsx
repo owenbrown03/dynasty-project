@@ -1,10 +1,10 @@
 import './Navbar.css';
 import { Link } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
-import { useAuthContext } from '@/context/AuthContext'
-import { useSleeperAuthContext } from '@/context/SleeperAuthContext';
+import { useAuthContext } from '@/context/useAuthContext'
+import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/useTheme';
 import brandLogo from '@/assets/logo.png';
 
 export const Navbar = () => {
