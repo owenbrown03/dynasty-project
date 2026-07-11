@@ -1,7 +1,9 @@
 import importlib
-import pkgutil
 import logging
+import pkgutil
+
 from taskiq_redis import ListQueueBroker
+
 import app.tasks as tasks_pkg
 from app.core.config import settings
 
@@ -17,16 +19,34 @@ broker = ListQueueBroker(
 logger = logging.getLogger(__name__)
 
 
-for _, name, _ in pkgutil.iter_modules(
-    tasks_pkg.__path__,
-    tasks_pkg.__name__ + ".",
-):
-    try:
-        importlib.import_module(name)
-        logger.info(f"Loaded task module: {name}")
-
-    except Exception:
-        logger.exception(
-            f"Failed to load task module: {name}"
+def iter_task_module_names(
+    package=tasks_pkg,
+) -> list[str]:
+    return [
+        name
+        for _, name, _ in pkgutil.iter_modules(
+            package.__path__,
+            package.__name__ + ".",
         )
-        raise
+    ]
+
+
+def load_task_modules(
+    package=tasks_pkg,
+) -> None:
+    for name in iter_task_module_names(package):
+        try:
+            importlib.import_module(name)
+            logger.info(
+                "Loaded task module: %s",
+                name,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to load task module: %s",
+                name,
+            )
+            raise
+
+
+load_task_modules()
