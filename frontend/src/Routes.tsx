@@ -7,6 +7,7 @@ import { TradesPage } from './pages/trades/TradesPage';
 import { LeaguesPage } from './pages/leagues/LeaguesPage';
 import { WaiversPage } from './pages/waivers/WaiversPage';
 import { OrphansPage } from './pages/orphans/OrphansPage';
+import { TiersPage } from './pages/tiers/TiersPage';
 
 export const AppRoutes = () => {
   return (
@@ -17,6 +18,7 @@ export const AppRoutes = () => {
         <Route path="/leagues" element={<LeaguesPage />} />
         <Route path="/trades" element={<TradesPage />} />
         <Route path="/waivers" element={<WaiversPage />} />
+        <Route path="/tiers" element={<TiersPage />} />
         <Route path="/orphans" element={<OrphansPage />} />
       </Route>
     </Routes>

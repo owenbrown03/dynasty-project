@@ -220,6 +220,36 @@ export type ValueBasis =
   | 'dynasty_starter_war'
   | 'dynasty_roster_war';
 
+export type TierBoardSource =
+  | ValueBasis
+  | 'league_war';
+
+export interface TierBoardPlayer {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  rank: number;
+  tier: string;
+  selected_value: number;
+}
+
+export interface TierBoardGroup {
+  label: string;
+  players: TierBoardPlayer[];
+}
+
+export interface TierBoard {
+  value_basis: ValueBasis;
+  value_label: string;
+  season: number;
+  war_context: string;
+  war_league_id: string | null;
+  war_league_name: string | null;
+  tiers: TierBoardGroup[];
+}
+
 export interface PlayerValue {
   player_id: string;
 

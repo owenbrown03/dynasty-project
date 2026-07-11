@@ -2,11 +2,12 @@ import logging
 from typing import Any
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta
+from sqlalchemy import func
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
 
-from app.models.db.sleeper.api import Player, InternalState
+from app.models.db.sleeper.api import Player, InternalState, PlayerProjection
 from app.integrations.sleeper.client import SleeperClient
 from app.services.sleeper import transformers
 from app.services.waivers.dynasty import DYNASTY_FANTASY_POSITIONS
@@ -137,3 +138,37 @@ async def get_bulk_target_player(
         )
 
     return player
+
+
+async def get_supported_player_ids(
+    db: AsyncSession,
+) -> list[str]:
+    result = await db.execute(
+        select(Player.player_id)
+        .where(
+            Player.position.in_(
+                DYNASTY_FANTASY_POSITIONS,
+            )
+        )
+        .order_by(
+            Player.player_id,
+        )
+    )
+
+    return list(
+        result.scalars().all(),
+    )
+
+
+async def get_latest_projection_season(
+    db: AsyncSession,
+) -> int | None:
+    result = await db.execute(
+        select(
+            func.max(
+                PlayerProjection.season,
+            )
+        )
+    )
+
+    return result.scalar_one_or_none()
