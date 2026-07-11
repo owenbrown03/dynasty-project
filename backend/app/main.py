@@ -1,10 +1,14 @@
-import os, logging, debugpy
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+import logging
+import os
 from contextlib import asynccontextmanager
 
+import debugpy
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
 from app.api.v1.api import api_router
+from app.core.config import settings
 from app.infrastructure.http.manager import HTTPClientManager
 from app.infrastructure.redis.manager import RedisManager
 from app.core.logger import setup_logging
@@ -29,10 +33,7 @@ app.include_router(api_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
-    ],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,9 +67,9 @@ async def global_exception_handler(
 if os.getenv("DEBUG_MODE") == "true":
     try:
         debugpy.listen(("0.0.0.0", 5678))
-        print("Debugger listening on port 5678")
+        logger.info("Debugger listening on port 5678")
     except RuntimeError as e:
         if "Address already in use" in str(e):
-            print("Debugger already running, skipping.")
+            logger.info("Debugger already running, skipping.")
         else:
             raise

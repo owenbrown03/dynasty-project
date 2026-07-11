@@ -1,14 +1,14 @@
 from fastapi import (
     APIRouter,
-    HTTPException,
     status,
-    Depends,
     Query,
 )
 
-from app.core.context import Context
-from app.api.deps import get_context
-from app.tasks.trade import sync_leaguemates_task
+
+from app.api.deps import (
+    ContextDep,
+    require_sleeper_connection,
+)
 from app.crud.sleeper.trade import get_trade_signals
 from app.schemas.trades import (
     BulkTradeAvailabilityResponse,
@@ -22,13 +22,14 @@ from app.services.trades.bulk import (
     search_bulk_trade_players,
     submit_bulk_trade_offers,
 )
+from app.tasks.trade import sync_leaguemates_task
 
 router = APIRouter()
 
 @router.get("/{username}/trade-signals")
 async def get_trade_signals_endpoint(
     username: str,
-    ctx: Context = Depends(get_context),
+    ctx: ContextDep,
 ):
     return await get_trade_signals(ctx.db, ctx.sleeper, username)
 
@@ -46,6 +47,7 @@ async def sync_leaguemates_endpoint(username: str):
     response_model=list[BulkTradePlayerSearchResult],
 )
 async def bulk_trade_player_search_endpoint(
+    ctx: ContextDep,
     q: str = Query(
         ...,
         min_length=2,
@@ -55,7 +57,6 @@ async def bulk_trade_player_search_endpoint(
         ge=1,
         le=25,
     ),
-    ctx: Context = Depends(get_context),
 ) -> list[BulkTradePlayerSearchResult]:
     return await search_bulk_trade_players(
         db=ctx.db,
@@ -69,6 +70,7 @@ async def bulk_trade_player_search_endpoint(
     response_model=BulkTradeAvailabilityResponse,
 )
 async def bulk_trade_availability_endpoint(
+    ctx: ContextDep,
     player_id: str = Query(
         ...,
         description=(
@@ -94,16 +96,14 @@ async def bulk_trade_availability_endpoint(
             "Draft-pick round, such as 2."
         ),
     ),
-    ctx: Context = Depends(get_context),
 ) -> BulkTradeAvailabilityResponse:
-    if ctx.connection is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Connect a Sleeper account before checking "
-                "bulk trade availability."
-            ),
-        )
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before checking "
+            "bulk trade availability."
+        ),
+    )
 
     return await get_bulk_trade_availability(
         db=ctx.db,
@@ -123,8 +123,16 @@ async def bulk_trade_availability_endpoint(
 )
 async def submit_bulk_trade_offers_endpoint(
     body: BulkTradeProposalRequest,
-    ctx: Context = Depends(get_context),
+    ctx: ContextDep,
 ) -> BulkTradeProposalResponse:
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before proposing "
+            "bulk trades."
+        ),
+    )
+
     return await submit_bulk_trade_offers(
         db=ctx.db,
         connection=ctx.connection,

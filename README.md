@@ -1,118 +1,144 @@
-# Dynasty Fantasy Football Analytics Platform
+# Dynasty Base
 
-A full stack fantasy football analytics platform built to analyze dynasty leagues, identify cross-league trade opportunities, and automate interactions with the Sleeper platform.
+Dynasty Base is a full-stack fantasy football analytics platform centered on Sleeper leagues. It ingests league data into a normalized Postgres schema, computes player and roster value across multiple valuation systems, and exposes those workflows through a FastAPI backend and a React frontend.
 
-This project was created to solve a problem I ran into while managing multiple dynasty leagues. Instead of manually searching through hundreds of rosters and thousands of transactions, the application collects league data, stores it in a relational database, and generates actionable trade insights in seconds.
+The project started as a spreadsheet workflow for dynasty roster management and evolved into an application with background sync jobs, normalized league state, draft-pick ownership tracking, valuation pipelines, and authenticated write flows back to Sleeper.
 
-The project started as a Google Sheet with Apps Script and has grown into a distributed web application with asynchronous data pipelines, background workers, REST APIs, authentication, and a React frontend.
+## What it does
 
----
+- Syncs users, leagues, rosters, drafts, transactions, and traded picks from Sleeper
+- Stores normalized application state in Postgres
+- Calculates redraft and dynasty WAR from stored projections
+- Tracks external value systems such as KeepTradeCut and FantasyCalc
+- Resolves draft-pick ownership and pick value from normalized Sleeper data
+- Supports research workflows for dashboards, waivers, trade signals, tiers, and commissioner/orphan views
+- Supports authenticated write actions back to Sleeper for waivers and trades
 
-## Features
-
-- User authentication with linked Sleeper accounts
-- Asynchronous data ingestion from the Sleeper API
-- Background processing with distributed workers
-- PostgreSQL database with normalized schemas
-- Cross-league trade signal generation
-- Player valuation engine based on historical production and aging curves
-- League, roster, transaction, and player analytics
-- Trade proposal and waiver claim automation
-- React dashboard for browsing analytics
-- Redis caching to reduce API calls and improve response times
-
----
-
-## Tech Stack
+## Architecture
 
 ### Backend
 
-- Python
-- FastAPI
-- SQLModel
-- SQLAlchemy
-- PostgreSQL
-- Alembic
-- TaskIQ
-- Redis
-- HTTPX
-- Pydantic
+- FastAPI application in [backend/app/main.py](/Users/owen/Code/dynasty/project/backend/app/main.py)
+- API routers under [backend/app/api/](/Users/owen/Code/dynasty/project/backend/app/api)
+- Business logic under [backend/app/services/](/Users/owen/Code/dynasty/project/backend/app/services)
+- Database access under [backend/app/crud/](/Users/owen/Code/dynasty/project/backend/app/crud)
+- SQLModel models under [backend/app/models/db/](/Users/owen/Code/dynasty/project/backend/app/models/db)
+- Background jobs with TaskIQ under [backend/app/tasks/](/Users/owen/Code/dynasty/project/backend/app/tasks)
+
+Request flow:
+
+1. FastAPI endpoint receives the request.
+2. Dependencies build a request `Context` with DB session, session user, Sleeper client, and Redis access.
+3. Routers delegate to services.
+4. Services coordinate CRUD, analytics, and integrations.
+5. CRUD persists normalized data and serves read models.
 
 ### Frontend
 
-- React
-- TypeScript
-- Vite
-- React Router
+- React + TypeScript + Vite
+- Route composition under [frontend/src/pages/](/Users/owen/Code/dynasty/project/frontend/src/pages)
+- Shared data hooks under [frontend/src/hooks/](/Users/owen/Code/dynasty/project/frontend/src/hooks)
+- API clients under [frontend/src/api/v1/](/Users/owen/Code/dynasty/project/frontend/src/api/v1)
+- Shared app contexts under [frontend/src/context/](/Users/owen/Code/dynasty/project/frontend/src/context)
+
+Data flow:
+
+1. Components call feature hooks.
+2. Hooks call typed endpoint wrappers.
+3. Axios talks to FastAPI under `/api/v1`.
+4. TanStack Query caches and invalidates server state.
 
 ### Infrastructure
 
-- Docker
-- Docker Compose
+- Postgres is the source of truth
+- Redis is used for queueing, transient auth state, and cache layers
+- Docker Compose orchestrates the local stack
+- TaskIQ workers process asynchronous sync tasks
 
----
+## Local development
 
-## How It Works
+From the repo root:
 
-1. Users connect their Sleeper account.
-2. Background workers synchronize leagues, rosters, players, users, drafts, and transactions.
-3. Data is normalized and stored in PostgreSQL.
-4. Analytics services process the data to generate player values and trade signals.
-5. The frontend displays results through the FastAPI API.
+```sh
+docker compose up --build
+```
 
----
+Or use the provided shortcuts:
 
-## Analytics
+```sh
+make up
+```
 
-The platform currently includes:
+Common container workflows:
 
-- Cross-league trade signal detection
-- Historical transaction analysis
-- Dynasty player valuation
-- Expected career value modeling
-- Aging curve adjustments
-- League activity tracking
-- Player ownership analysis
-- Draft pick valuation
+```sh
+docker compose logs -f api
+docker compose logs -f worker
+docker compose restart worker
+docker compose exec api alembic upgrade head
+```
 
-Additional analytics are continuously being added.
+Environment notes:
 
----
+- `BACKEND_CORS_ORIGINS` accepts a comma-separated list of allowed frontend origins
+- `VITE_API_BASE_URL` overrides the frontend API target when needed
 
-## Performance
+Frontend only:
 
-The application is designed around asynchronous processing and distributed workers.
+```sh
+cd frontend
+npm run dev
+```
 
-Some optimizations include:
+## Testing and verification
 
-- Concurrent API requests with HTTPX
-- Bulk database inserts and upserts
-- Redis caching
-- Background synchronization jobs
-- Batched processing
-- Connection pooling
+Frontend:
 
-These improvements reduced large synchronization jobs from over 30 minutes to under 30 seconds while allowing analytics across thousands of leagues.
+```sh
+cd frontend
+npm run lint
+npm run test
+npm run build
+```
 
----
+Backend:
 
-## Goals
+```sh
+docker compose exec api python -m pytest
+```
 
-Some upcoming work includes:
+Combined shortcuts:
 
-- Additional dynasty valuation models
-- More advanced trade recommendations
-- Historical player trend visualization
-- League comparison dashboards
-- CI/CD deployment pipeline
-- Cloud deployment
+```sh
+make test-backend
+make test-frontend
+make test
+```
 
----
+Continuous integration:
 
-## Why I Built This
+- GitHub Actions runs backend tests plus frontend lint, tests, and build on pushes and pull requests
+- The workflow lives at [.github/workflows/ci.yml](/Users/owen/Code/dynasty/project/.github/workflows/ci.yml)
 
-As a dynasty fantasy football player, I wanted better tools for evaluating trades across multiple leagues.
+Schema changes:
 
-Most existing tools only analyze a single league at a time. I wanted something that could continuously collect data from thousands of leagues, analyze market trends, and surface opportunities that would be nearly impossible to find manually.
+```sh
+docker compose exec api alembic revision --autogenerate -m "message"
+docker compose exec api alembic upgrade head
+```
 
-Building the platform also gave me an opportunity to learn and apply modern backend engineering practices including asynchronous programming, distributed task processing, REST API design, relational database modeling, Docker, and React.
+If you change worker-imported code, restart the worker before treating the change as verified.
+
+## Notable implementation details
+
+- Anonymous sessions are first-class for low-friction browsing, but the long-term identity model is the registered site user linked to a Sleeper account.
+- Postgres-backed reads are preferred over live Sleeper reads whenever normalized data already exists.
+- Draft picks are modeled separately from players. Sleeper ownership comes from drafts and traded picks, while external pick values are stored in source-specific tables.
+- Theme preference is persisted in session settings for anonymous users and user settings for authenticated users.
+- Commissioner/orphan views, leagues, waivers, and trade tooling all read from the same normalized roster and valuation layers.
+- Internal `/api/v1/test/*` routes are available only in debug or non-production environments.
+
+## Repository guide
+
+- [AGENTS.md](/Users/owen/Code/dynasty/project/AGENTS.md) contains the project-specific working rules for AI agents and is also a useful high-signal implementation guide.
+- [frontend/README.md](/Users/owen/Code/dynasty/project/frontend/README.md) contains frontend-specific commands and structure.

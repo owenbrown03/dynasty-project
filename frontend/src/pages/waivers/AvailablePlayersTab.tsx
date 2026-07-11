@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react';
 
+import { LoadingState } from '@/components/feedback/LoadingState';
 import {
   useAvailableWaiverPlayers,
   useWaiverLeagueOptions,
@@ -94,9 +95,10 @@ export const AvailablePlayersTab = ({
 
   if (leagues.loading) {
     return (
-      <div className="waivers-loading-state">
-        Loading your leagues...
-      </div>
+      <LoadingState
+        label="Loading your leagues..."
+        className="waivers-loading-state"
+      />
     );
   }
 
@@ -151,9 +153,10 @@ export const AvailablePlayersTab = ({
       {
         availablePlayers.loading
           ? (
-            <div className="waivers-loading-state">
-              Calculating available player values...
-            </div>
+            <LoadingState
+              label="Calculating available player values..."
+              className="waivers-loading-state"
+            />
           )
           : null
       }

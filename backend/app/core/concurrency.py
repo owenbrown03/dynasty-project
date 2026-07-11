@@ -12,6 +12,9 @@ async def bounded_gather(
     coros: Iterable[Awaitable[T]],
     limit: int = 100,
     log_every: int = 10,
+    progress_total: int | None = None,
+    progress_offset: int = 0,
+    progress_label: str | None = None,
 ) -> List[T]:
     semaphore = asyncio.Semaphore(limit)
 
@@ -37,13 +40,22 @@ async def bounded_gather(
                 if completed % log_every == 0 or completed == total:
                     elapsed = time.monotonic() - started
 
+                    display_total = progress_total or total
+                    display_completed = min(
+                        progress_offset + completed,
+                        display_total,
+                    )
+
                     rate = (
                         completed / elapsed
                         if elapsed > 0
                         else 0
                     )
 
-                    remaining = total - completed
+                    remaining = max(
+                        display_total - display_completed,
+                        0,
+                    )
 
                     eta_seconds = (
                         remaining / rate
@@ -51,10 +63,16 @@ async def bounded_gather(
                         else 0
                     )
 
+                    label = (
+                        f":{progress_label}"
+                        if progress_label
+                        else ""
+                    )
+
                     logger.info(
-                        "[bounded_gather] "
-                        f"{completed:,}/{total:,} "
-                        f"({completed / total:.1%}) | "
+                        f"[bounded_gather{label}] "
+                        f"{display_completed:,}/{display_total:,} "
+                        f"({display_completed / display_total:.1%}) | "
                         f"{rate:.1f}/sec | "
                         f"ETA {eta_seconds / 60:.1f}m"
                     )

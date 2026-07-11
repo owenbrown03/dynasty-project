@@ -1,20 +1,22 @@
 from fastapi import (
     APIRouter,
-    Depends,
-    HTTPException,
     Query,
     status,
 )
+
 from app.analytics.war.redraft.service import WARService
-from app.core.context import Context
+from app.api.deps import (
+    ContextDep,
+    require_sleeper_connection,
+)
 from app.schemas.waivers import (
-    WaiverOverviewResponse,
-    WaiverClaimRequest,
-    WaiverClaimResponse,
     BulkWaiverAvailabilityResponse,
     BulkWaiverClaimRequest,
     BulkWaiverClaimResponse,
     BulkWaiverPlayerSearchResult,
+    WaiverClaimRequest,
+    WaiverClaimResponse,
+    WaiverOverviewResponse,
 )
 from app.schemas.waivers import (
     WaiverAvailablePlayersResponse,
@@ -24,14 +26,13 @@ from app.schemas.waivers import (
 from app.services.waivers.available import (
     get_available_waiver_players,
     get_waiver_league_options,
-    get_roster_waiver_players
+    get_roster_waiver_players,
 )
 from app.services.waivers.bulk import (
     get_bulk_waiver_availability,
     search_bulk_waiver_players,
     submit_bulk_claims,
 )
-from app.api.deps import get_context
 from app.services.values.basis import (
     DEFAULT_VALUE_BASIS,
     ValueBasis,
@@ -47,6 +48,7 @@ router = APIRouter()
     response_model=WaiverOverviewResponse,
 )
 async def waiver_overview(
+    ctx: ContextDep,
     value_basis: ValueBasis = Query(
         default=DEFAULT_VALUE_BASIS,
         description=(
@@ -54,7 +56,6 @@ async def waiver_overview(
             "and suggested drops."
         ),
     ),
-    ctx: Context = Depends(get_context),
 ) -> WaiverOverviewResponse:
     if ctx.connection is None:
         return WaiverOverviewResponse()
@@ -77,7 +78,7 @@ async def waiver_overview(
 )
 async def submit_waiver_claim(
     body: WaiverClaimRequest,
-    ctx: Context = Depends(get_context),
+    ctx: ContextDep,
 ) -> WaiverClaimResponse:
     return await submit_claim(
         db=ctx.db,
@@ -91,7 +92,7 @@ async def submit_waiver_claim(
     response_model=list[WaiverLeagueOption],
 )
 async def waiver_leagues(
-    ctx: Context = Depends(get_context),
+    ctx: ContextDep,
 ) -> list[WaiverLeagueOption]:
     """
     Supplies the Available Players league dropdown.
@@ -111,6 +112,7 @@ async def waiver_leagues(
     response_model=WaiverAvailablePlayersResponse,
 )
 async def available_waiver_players(
+    ctx: ContextDep,
     league_id: str = Query(
         ...,
         description=(
@@ -123,16 +125,14 @@ async def available_waiver_players(
             "The player value system used to sort the returned players."
         ),
     ),
-    ctx: Context = Depends(get_context),
 ) -> WaiverAvailablePlayersResponse:
-    if ctx.connection is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Connect a Sleeper account before viewing "
-                "available players."
-            ),
-        )
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before viewing "
+            "available players."
+        ),
+    )
 
     war_service = WARService()
 
@@ -151,6 +151,7 @@ async def available_waiver_players(
     response_model=WaiverRosterPlayersResponse,
 )
 async def roster_waiver_players(
+    ctx: ContextDep,
     league_id: str = Query(
         ...,
         description=(
@@ -160,15 +161,13 @@ async def roster_waiver_players(
     value_basis: ValueBasis = Query(
         default=DEFAULT_VALUE_BASIS,
     ),
-    ctx: Context = Depends(get_context),
 ) -> WaiverRosterPlayersResponse:
-    if ctx.connection is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Connect a Sleeper account before viewing roster players."
-            ),
-        )
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before viewing roster players."
+        ),
+    )
 
     war_service = WARService()
 
@@ -187,6 +186,7 @@ async def roster_waiver_players(
     response_model=list[BulkWaiverPlayerSearchResult],
 )
 async def bulk_waiver_player_search(
+    ctx: ContextDep,
     q: str = Query(
         ...,
         min_length=2,
@@ -200,7 +200,6 @@ async def bulk_waiver_player_search(
         ge=1,
         le=25,
     ),
-    ctx: Context = Depends(get_context),
 ) -> list[BulkWaiverPlayerSearchResult]:
     return await search_bulk_waiver_players(
         db=ctx.db,
@@ -214,6 +213,7 @@ async def bulk_waiver_player_search(
     response_model=BulkWaiverAvailabilityResponse,
 )
 async def bulk_waiver_availability(
+    ctx: ContextDep,
     player_id: str = Query(
         ...,
         description=(
@@ -223,16 +223,14 @@ async def bulk_waiver_availability(
     value_basis: ValueBasis = Query(
         default=DEFAULT_VALUE_BASIS,
     ),
-    ctx: Context = Depends(get_context),
 ) -> BulkWaiverAvailabilityResponse:
-    if ctx.connection is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Connect a Sleeper account before checking "
-                "bulk waiver availability."
-            ),
-        )
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before checking "
+            "bulk waiver availability."
+        ),
+    )
 
     war_service = WARService()
 
@@ -252,9 +250,17 @@ async def bulk_waiver_availability(
     status_code=status.HTTP_200_OK,
 )
 async def submit_bulk_waiver_claims(
+    ctx: ContextDep,
     body: BulkWaiverClaimRequest,
-    ctx: Context = Depends(get_context),
 ) -> BulkWaiverClaimResponse:
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before submitting "
+            "bulk waiver claims."
+        ),
+    )
+
     return await submit_bulk_claims(
         db=ctx.db,
         connection=ctx.connection,

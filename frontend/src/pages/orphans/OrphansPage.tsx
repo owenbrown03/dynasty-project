@@ -1,4 +1,5 @@
 import './OrphansPage.css';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { OrphanCards } from './OrphanCards';
 import { useOrphans } from '@/hooks/sleeper/useUsers';
 
@@ -20,7 +21,7 @@ export const OrphansPage = () => {
 
       {orphans.loading && (
         <div className="orphans-empty-state">
-          <p>Fetching orphan rosters...</p>
+          <LoadingState label="Fetching orphan rosters..." />
         </div>
       )}
 

@@ -1,4 +1,6 @@
-from fastapi import HTTPException, Request, Response, Cookie, Depends
+from typing import Annotated, AsyncIterator
+
+from fastapi import Cookie, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -18,7 +20,7 @@ from app.crud.auth.session import get_session_by_token, create_session_by_userid
 from app.integrations.sleeper.factory import get_sleeper_client
 
 
-async def get_db():
+async def get_db() -> AsyncIterator[AsyncSession]:
     async with AsyncSessionLocal() as db:
         yield db
 
@@ -28,7 +30,6 @@ async def get_current_session(
     db: AsyncSession = Depends(get_db),
     session_token: str | None = Cookie(None),
 ) -> UserSession:
-    
     if session_token:
         session = await get_session_by_token(session_token, db)
         if session:
@@ -43,7 +44,6 @@ async def get_current_user(
     session: UserSession | None = Depends(get_current_session),
     db: AsyncSession = Depends(get_db),
 ) -> SiteUser:
-
     if not session:
         raise HTTPException(401, "Authentication required")
 
@@ -59,7 +59,6 @@ async def get_optional_user(
     session: UserSession | None = Depends(get_current_session),
     db: AsyncSession = Depends(get_db),
 ) -> SiteUser | None:
-
     if not session:
         return None
 
@@ -71,7 +70,6 @@ async def get_sleeper_connection(
     session: UserSession = Depends(get_current_session),
     user: SiteUser | None = Depends(get_optional_user),
 ) -> SleeperConnection | None:
-
     if user:
         stmt = select(SleeperConnection).where(
             SleeperConnection.site_user_id == user.id
@@ -92,7 +90,6 @@ async def get_user_sleeper_client(
         get_sleeper_connection,
     ),
 ) -> SleeperClient:
-
     sleeper = await get_sleeper_client()
 
     if not connection or not connection.encrypted_token:
@@ -138,7 +135,6 @@ async def get_context(
     fc: FantasyCalcClient | None = Depends(get_fc_client),
     redis: RedisClient | None = Depends(get_redis_client),
 ) -> Context:
-
     return Context(
         response=response,
         db=db,
@@ -151,3 +147,19 @@ async def get_context(
         fc=fc,
         redis=redis,
     )
+
+
+DBSessionDep = Annotated[AsyncSession, Depends(get_db)]
+ContextDep = Annotated[Context, Depends(get_context)]
+
+
+def require_sleeper_connection(
+    ctx: Context,
+    *,
+    detail: str,
+) -> None:
+    if ctx.connection is None:
+        raise HTTPException(
+            status_code=401,
+            detail=detail,
+        )

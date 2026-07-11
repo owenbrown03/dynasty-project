@@ -1,10 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { BOOTSTRAP_QUERY_KEY } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import { useBootstrap } from '../useBootstrap';
-
-const KEY = ['bootstrap'] as const;
-
 
 export function useSleeperConnection() {
   const queryClient = useQueryClient();
@@ -15,7 +13,7 @@ export function useSleeperConnection() {
 
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: KEY,
+        queryKey: BOOTSTRAP_QUERY_KEY,
       });
     },
   });
@@ -25,7 +23,7 @@ export function useSleeperConnection() {
 
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: KEY,
+        queryKey: BOOTSTRAP_QUERY_KEY,
       });
     },
   });

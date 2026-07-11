@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import type {
   TierBoard,
@@ -13,11 +14,10 @@ export function usePlayerTiers(
   enabled: boolean = true,
 ) {
   const query = useQuery<TierBoard>({
-    queryKey: [
-      'player-tiers',
+    queryKey: queryKeys.players.tiers(
       valueBasis,
-      leagueId ?? null,
-    ],
+      leagueId,
+    ),
     queryFn: async () => {
       return api.players
         .getTiers(

@@ -4,6 +4,8 @@
   --radius-sm: 3px;
   --radius-md: 6px;
   --radius-lg: 10px;
+  --page-max-width: 1680px;
+  --page-copy-max-width: 860px;
 
   --shadow-overlay: 0 20px 40px rgba(15, 23, 42, 0.18);
 
@@ -380,4 +382,35 @@ tbody tr:hover {
   background: var(--color-surface);
   color: var(--color-text-muted);
   text-align: center;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 88px;
+  padding: 28px 18px;
+  border: 1px dashed var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.loading-state-inline {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.site-spinner {
+  flex-shrink: 0;
+  animation: site-spin 0.9s linear infinite;
+}
+
+@keyframes site-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

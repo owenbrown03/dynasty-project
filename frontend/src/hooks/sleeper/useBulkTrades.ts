@@ -4,6 +4,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 
+import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
@@ -24,10 +25,9 @@ export function useBulkTradePlayerSearch(
   const search = useQuery<
     BulkTradePlayerSearchResult[]
   >({
-    queryKey: [
-      'bulk-trade-player-search',
+    queryKey: queryKeys.trades.bulkPlayerSearch(
       trimmedQuery,
-    ],
+    ),
     queryFn: async () => {
       return api.trades.searchBulkPlayers(
         trimmedQuery,
@@ -61,14 +61,13 @@ export function useBulkTradeAvailability(
   const query = useQuery<
     BulkTradeAvailabilityResponse
   >({
-    queryKey: [
-      'bulk-trade-availability',
+    queryKey: queryKeys.trades.bulkAvailability(
       username,
       playerId,
       direction,
       pickSeason,
       pickRound,
-    ],
+    ),
     queryFn: async () => {
       if (!playerId) {
         throw new Error(
@@ -121,21 +120,15 @@ export function useSubmitBulkTradeOffers() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: [
-            'bulk-trade-availability',
-          ],
+          queryKey: queryKeys.trades.bulkAvailabilityRoot,
         }),
 
         queryClient.invalidateQueries({
-          queryKey: [
-            'league-overview',
-          ],
+          queryKey: queryKeys.leagues.overviewRoot,
         }),
 
         queryClient.invalidateQueries({
-          queryKey: [
-            'waiver-overview',
-          ],
+          queryKey: queryKeys.waivers.overviewRoot,
         }),
       ]);
     },

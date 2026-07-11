@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 
-import { useSleeperAuthContext } from '@/context/SleeperAuthContext';
+import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
 
 interface Props {
   initialUsername?: string | null;

@@ -6,17 +6,62 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def _bulk_upsert(db: AsyncSession, model, mappings: list[dict], index_elements: Any):
+
+def _normalize_bulk_mappings(
+    model,
+    mappings: list[dict],
+) -> list[dict]:
+    model_cols = set(model.__table__.columns.keys())
+
+    clean = [
+        {
+            k: v
+            for k, v in mapping.items()
+            if k in model_cols
+        }
+        for mapping in mappings
+    ]
+
+    clean = [
+        mapping
+        for mapping in clean
+        if mapping
+    ]
+
+    if not clean:
+        return []
+
+    all_keys = sorted(
+        {
+            key
+            for mapping in clean
+            for key in mapping.keys()
+        }
+    )
+
+    return [
+        {
+            key: mapping.get(key)
+            for key in all_keys
+        }
+        for mapping in clean
+    ]
+
+
+async def _bulk_upsert(
+    db: AsyncSession,
+    model,
+    mappings: list[dict],
+    index_elements: Any,
+):
 
     if not mappings:
         return
 
-    model_cols = set(model.__table__.columns.keys())
-
-    clean = [
-        {k: v for k, v in m.items() if k in model_cols}
-        for m in mappings
-    ]
+    clean = _normalize_bulk_mappings(
+        model,
+        mappings,
+    )
 
     if not clean:
         return

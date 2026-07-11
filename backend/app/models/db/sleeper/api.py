@@ -106,6 +106,10 @@ class LeagueSyncState(SQLModel, table=True):
     league_id: str = Field(primary_key=True, foreign_key="league.league_id")
     last_synced_week: int = Field(default=0)
     last_synced_at: datetime = Field(default_factory=datetime.now)
+    last_full_synced_at: Optional[datetime] = Field(
+        default=None,
+        nullable=True,
+    )
 
     league: Optional["League"] = Relationship(back_populates="sync_state")
 
@@ -399,7 +403,7 @@ class Player(SQLModel, table=True):
                     < (birth.month, birth.day)
                 )
             )
-        except Exception:
+        except ValueError:
             return None
 
 

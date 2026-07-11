@@ -5,4 +5,8 @@ echo "Running migrations..."
 alembic upgrade head
 
 echo "Starting application..."
-exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+if [ "${DEBUG_MODE}" = "true" ]; then
+  exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+fi
+
+exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000

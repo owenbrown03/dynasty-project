@@ -1,12 +1,26 @@
+# Environment
 backend/.env
-.venv
 .env
 .env.*
 !.env.example
+
+# Python
+.venv/
 __pycache__/
-*.pyc
-.vscode/
-*.db
-.DS_Store
-pgadmin_data/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Frontend
 node_modules/
+frontend/dist/
+
+# Editors / OS
+.vscode/
+.DS_Store
+
+# Local data / logs
+*.db
+*.log
+worker.log
+pgadmin_data/

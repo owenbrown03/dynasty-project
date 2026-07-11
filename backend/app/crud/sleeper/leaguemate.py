@@ -1,4 +1,5 @@
-import logging, asyncio
+import asyncio
+import logging
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,4 +82,10 @@ async def sync_leaguemates(
     if not leagues:
         return {"status": "skipped", "reason": "no_leagues"}
 
-    return await sync_leagues(db, leagues, curr_week, sleeper)
+    return await sync_leagues(
+        db,
+        leagues,
+        curr_week,
+        sleeper,
+        existing_refresh="transactions_only",
+    )

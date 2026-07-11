@@ -1,6 +1,7 @@
 import logging
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import tuple_
 
 from app.models.db.sleeper.api import Player
 from app.models.db.ktc.models import KTCPlayerMap, KTCValue, KTCPickValue
@@ -124,11 +125,63 @@ async def sync_ktc_values(
     for m in new_maps:
         db.add(m)
 
+    existing_value_rows = (
+        (
+            await db.execute(
+                select(KTCValue).where(
+                    KTCValue.player_id.in_(
+                        [row.player_id for row in new_value_rows],
+                    )
+                )
+            )
+        ).scalars().all()
+        if new_value_rows
+        else []
+    )
+
+    existing_values_by_player_id = {
+        row.player_id: row
+        for row in existing_value_rows
+    }
+
+    existing_pick_rows = (
+        (
+            await db.execute(
+                select(KTCPickValue).where(
+                    tuple_(
+                        KTCPickValue.season,
+                        KTCPickValue.round,
+                        KTCPickValue.bucket,
+                    ).in_(
+                        [
+                            (
+                                row.season,
+                                row.round,
+                                row.bucket,
+                            )
+                            for row in pick_rows
+                        ]
+                    )
+                )
+            )
+        ).scalars().all()
+        if pick_rows
+        else []
+    )
+
+    existing_picks_by_key = {
+        (
+            row.season,
+            row.round,
+            row.bucket,
+        ): row
+        for row in existing_pick_rows
+    }
+
     for row in new_value_rows:
-        existing_value = await db.execute(
-            select(KTCValue).where(KTCValue.player_id == row.player_id)
+        existing_row = existing_values_by_player_id.get(
+            row.player_id,
         )
-        existing_row = existing_value.scalar_one_or_none()
         if existing_row:
             existing_row.value = row.value
             existing_row.position_rank = row.position_rank
@@ -143,14 +196,13 @@ async def sync_ktc_values(
             db.add(row)
 
     for row in pick_rows:
-        existing_pick = await db.execute(
-            select(KTCPickValue).where(
-                KTCPickValue.season == row.season,
-                KTCPickValue.round == row.round,
-                KTCPickValue.bucket == row.bucket,
+        existing_pick_row = existing_picks_by_key.get(
+            (
+                row.season,
+                row.round,
+                row.bucket,
             )
         )
-        existing_pick_row = existing_pick.scalar_one_or_none()
 
         if existing_pick_row:
             existing_pick_row.source_name = row.source_name

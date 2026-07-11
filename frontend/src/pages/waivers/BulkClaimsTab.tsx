@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react';
 
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import {
@@ -104,10 +105,8 @@ export const BulkClaimsTab = ({
       const existing = current[league.league_id];
 
       if (existing) {
-        const {
-          [league.league_id]: _removed,
-          ...rest
-        } = current;
+        const rest = { ...current };
+        delete rest[league.league_id];
 
         return rest;
       }
@@ -220,9 +219,10 @@ export const BulkClaimsTab = ({
       {
         availability.loading
           ? (
-            <div className="waivers-loading-state">
-              Checking availability across your leagues...
-            </div>
+            <LoadingState
+              label="Checking availability across your leagues..."
+              className="waivers-loading-state"
+            />
           )
           : null
       }

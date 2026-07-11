@@ -5,11 +5,11 @@ from app.schemas.base import Base
 
 class TradeRequest(Base):
     league_id: str
-    k_adds: List[str] = []
-    v_adds: List[int] = []
-    k_drops: List[str] = []
-    v_drops: List[int] = []
-    draft_picks: List[str] = []
+    k_adds: List[str] = Field(default_factory=list)
+    v_adds: List[int] = Field(default_factory=list)
+    k_drops: List[str] = Field(default_factory=list)
+    v_drops: List[int] = Field(default_factory=list)
+    draft_picks: List[str] = Field(default_factory=list)
     waiver_budget: Optional[List[int]] = None
     expires_at: Optional[int] = None
 

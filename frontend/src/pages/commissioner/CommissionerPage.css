@@ -2,7 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  width: min(1240px, 100%);
+  width: 100%;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
 .commissioner-page-header {
@@ -22,7 +24,7 @@
 
 .commissioner-page-description {
   margin-top: 8px;
-  max-width: 760px;
+  max-width: var(--page-copy-max-width);
   color: var(--color-text-muted);
   font-size: 14px;
   line-height: 1.5;

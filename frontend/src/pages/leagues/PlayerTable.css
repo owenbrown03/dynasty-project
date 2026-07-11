@@ -1,7 +1,7 @@
 .player-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text);
 }
 
@@ -12,14 +12,15 @@
 
 .player-table th,
 .player-table td {
-  padding: 9px 10px;
+  padding: 8px 9px;
   border-bottom: 1px solid var(--color-border);
   text-align: left;
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 .player-table th {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -29,8 +30,12 @@
   background: var(--color-surface);
 }
 
+.player-table-row-starter {
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+}
+
 .player-table-name-cell {
-  min-width: 200px;
+  min-width: 220px;
 }
 
 .player-table-name {

@@ -2,7 +2,7 @@ import './SleeperAuthModal.css';
 import { SendForm } from './SendForm';
 import { VerifyForm } from './VerifyForm';
 import { useSleeperAuth } from '@/hooks/sleeper/useAuth';
-import { useSleeperAuthContext } from '@/context/SleeperAuthContext';
+import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
 export const SleeperAuthModal = () => {

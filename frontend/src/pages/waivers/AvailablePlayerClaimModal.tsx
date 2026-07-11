@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 
+import { LoadingState } from '@/components/feedback/LoadingState';
 import {
   useRosterWaiverPlayers,
   useSubmitWaiverClaim,
@@ -322,9 +323,11 @@ export const AvailablePlayerClaimModal = ({
                 {
                   rosterPlayers.loading
                     ? (
-                      <p className="waiver-modal-loading">
-                        Loading your roster players...
-                      </p>
+                      <LoadingState
+                        label="Loading your roster players..."
+                        inline
+                        className="waiver-modal-loading"
+                      />
                     )
                     : null
                 }

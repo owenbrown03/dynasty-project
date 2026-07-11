@@ -1,35 +1,67 @@
-from fastapi import HTTPException, APIRouter, status
+import logging
+
+from fastapi import HTTPException, status
 from passlib.context import CryptContext
 
-from app.schemas.auth import Login, ThemePreferenceUpdate
+from app.schemas.auth import (
+    AuthSessionResponse,
+    Login,
+    ThemePreferenceResponse,
+    ThemePreferenceUpdate,
+    ValuePreferenceResponse,
+    ValuePreferenceUpdate,
+)
 from app.core.context import Context
 from app.crud.auth.user import (
     get_theme_preference,
+    get_value_preference,
     get_user_by_credentials,
     insert_user,
     reconcile_session_theme_preference,
+    reconcile_session_value_preference,
     set_theme_preference,
+    set_value_preference,
 )
 from app.crud.auth.session import (
     create_session_by_userid,
     get_session_theme_preference,
+    get_session_value_preference,
     insert_session_by_userid,
     delete_session,
     set_session_theme_preference,
+    set_session_value_preference,
 )
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+logger = logging.getLogger(__name__)
 
-async def register(credentials: Login, ctx: Context):
+def build_auth_session_response(
+    user_id: str | None,
+) -> AuthSessionResponse:
+    return AuthSessionResponse(
+        authenticated=user_id is not None,
+        user_id=user_id,
+    )
+
+
+async def register(
+    credentials: Login,
+    ctx: Context,
+) -> AuthSessionResponse:
     db_user = await get_user_by_credentials(credentials, ctx.db)
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Username already taken"
         )
-    return await insert_user(credentials, ctx.db)
+    await insert_user(credentials, ctx.db)
+    return await login(credentials, ctx)
 
-async def login(credentials: Login, ctx: Context):
+
+async def login(
+    credentials: Login,
+    ctx: Context,
+) -> AuthSessionResponse:
     db_user = await get_user_by_credentials(credentials, ctx.db)
     if not db_user or not pwd_context.verify(credentials.password, db_user.hashed_password):
         raise HTTPException(
@@ -47,10 +79,20 @@ async def login(credentials: Login, ctx: Context):
         session=session,
         db=ctx.db,
     )
+    await reconcile_session_value_preference(
+        user=db_user,
+        session=session,
+        db=ctx.db,
+    )
 
-    return session
+    return build_auth_session_response(
+        str(db_user.id),
+    )
 
-async def logout(ctx: Context):
+
+async def logout(
+    ctx: Context,
+) -> AuthSessionResponse:
     if not ctx.session or not ctx.session.site_user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
 
@@ -59,6 +101,14 @@ async def logout(ctx: Context):
             ctx.session,
         )
         or get_theme_preference(
+            ctx.site_user,
+        )
+    )
+    value_preference = (
+        get_session_value_preference(
+            ctx.session,
+        )
+        or get_value_preference(
             ctx.site_user,
         )
     )
@@ -78,31 +128,22 @@ async def logout(ctx: Context):
             db=ctx.db,
         )
 
-    return ctx.session.site_user_id
+    if value_preference is not None:
+        await set_session_value_preference(
+            session=new_session,
+            value_preference=value_preference,
+            db=ctx.db,
+        )
 
-async def validate(ctx: Context):
-    try:
-        if ctx.session and ctx.session.site_user_id:
-            await create_session_by_userid(ctx.session.site_user_id, ctx.response, ctx.db)
-            return {"authenticated": True, "user_id": ctx.session.site_user_id}
-        ctx.response.delete_cookie("session_id")
-        return {"authenticated": False, "user_id": None}
-    except Exception as e:
-        print(f"Validation error: {e}")
-        return {"authenticated": False, "user_id": None}
-    
-
-async def me(ctx: Context):
-    if not ctx.site_user:
-        return {"authenticated": False}
-
-    return {"authenticated": True}
+    return build_auth_session_response(
+        None,
+    )
 
 
 async def update_theme(
     body: ThemePreferenceUpdate,
     ctx: Context,
-):
+) -> ThemePreferenceResponse:
     session = await set_session_theme_preference(
         session=ctx.session,
         theme_preference=body.theme_preference,
@@ -115,14 +156,43 @@ async def update_theme(
             theme_preference=body.theme_preference,
             db=ctx.db,
         )
-        return {
-            "theme_preference": (
+        return ThemePreferenceResponse(
+            theme_preference=(
                 user.settings.get("theme_preference")
             ),
-        }
+        )
 
-    return {
-        "theme_preference": (
+    return ThemePreferenceResponse(
+        theme_preference=(
             session.settings.get("theme_preference")
         ),
-    }
+    )
+
+
+async def update_value_preference(
+    body: ValuePreferenceUpdate,
+    ctx: Context,
+) -> ValuePreferenceResponse:
+    session = await set_session_value_preference(
+        session=ctx.session,
+        value_preference=body.value_preference,
+        db=ctx.db,
+    )
+
+    if ctx.site_user:
+        user = await set_value_preference(
+            user=ctx.site_user,
+            value_preference=body.value_preference,
+            db=ctx.db,
+        )
+        return ValuePreferenceResponse(
+            value_preference=get_value_preference(
+                user,
+            ),
+        )
+
+    return ValuePreferenceResponse(
+        value_preference=get_session_value_preference(
+            session,
+        ),
+    )

@@ -1,6 +1,7 @@
-import logging, asyncio
-from datetime import datetime
-from typing import List, Set
+import asyncio
+import logging
+from datetime import UTC, datetime, timedelta
+from typing import Literal, List, Set
 
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,10 @@ from app.crud.base import _bulk_upsert
 from app.core.concurrency import bounded_gather
 
 logger = logging.getLogger(__name__)
+
+FETCH_CHUNK_SIZE = 250
+DB_BATCH_SIZE = 100
+FULL_REFRESH_INTERVAL_DAYS = 7
 
 
 # --------------------------------------------------
@@ -32,6 +37,30 @@ async def get_existing_leagues(db: AsyncSession, league_ids: List[str]) -> Set[s
         )
     )
     return set(result.scalars().all())
+
+
+async def get_incomplete_league_ids(
+    db: AsyncSession,
+    league_ids: List[str],
+) -> Set[str]:
+    result = await db.execute(
+        select(
+            model.League.league_id,
+            model.League.settings,
+            model.League.scoring_settings,
+            model.League.roster_positions,
+        ).where(
+            model.League.league_id.in_(league_ids)
+        )
+    )
+
+    incomplete_ids: set[str] = set()
+
+    for league_id, settings, scoring_settings, roster_positions in result.all():
+        if not settings or not scoring_settings or not roster_positions:
+            incomplete_ids.add(league_id)
+
+    return incomplete_ids
 
 
 async def get_sync_states(
@@ -81,7 +110,26 @@ def was_synced_today(
     if sync_state.last_synced_at is None:
         return False
 
-    return (sync_state.last_synced_at.datetime.now())
+    return (
+        sync_state.last_synced_at.date()
+        == datetime.now(UTC).date()
+    )
+
+
+def needs_full_refresh(
+    sync_state: model.LeagueSyncState | None,
+) -> bool:
+    if sync_state is None:
+        return True
+
+    if sync_state.last_full_synced_at is None:
+        return True
+
+    refresh_cutoff = datetime.now() - timedelta(
+        days=FULL_REFRESH_INTERVAL_DAYS,
+    )
+
+    return sync_state.last_full_synced_at < refresh_cutoff
 
 
 def get_transaction_weeks_to_fetch(
@@ -128,6 +176,10 @@ async def sync_leagues(
     sleeper,
     *,
     force: bool = False,
+    existing_refresh: Literal[
+        "full",
+        "transactions_only",
+    ] = "full",
 ):
     curr_week = max(curr_week, 1)
 
@@ -147,65 +199,102 @@ async def sync_leagues(
     all_league_ids = [l.league_id for l in leagues]
 
     # Load existing league IDs and sync states in one pass
-    existing_ids, sync_states = await asyncio.gather(
+    existing_ids, sync_states, incomplete_league_ids = await asyncio.gather(
         get_existing_leagues(db, all_league_ids),
         get_sync_states(db, all_league_ids),
+        get_incomplete_league_ids(db, all_league_ids),
     )
-
-    bundles = await bounded_gather([
-        fetch_league_bundle(
-            league=league,
-            curr_week=curr_week,
-            sleeper=sleeper,
-            existing_ids=existing_ids,
-            sync_states=sync_states,
-            force=force,
-        )
-        for league in leagues
-    ])
-
-    # Filter out None (skipped leagues with no new data) and exceptions
-    bundles = [
-        b for b in bundles
-        if isinstance(b, dict)
-    ]
-
-    if not bundles:
-        return {"status": "skipped", "synced_count": 0, "reason": "no_new_data"}
-
-    logger.info(f"[DB] ingesting {len(bundles)} bundles")
 
     success_count = 0
     failed_batches = 0
-    batch_size = 100
-    synced_bundles: list[dict] = []
+    fetched_bundle_count = 0
 
-    for i in range(0, len(bundles), batch_size):
-        chunk = bundles[i:i + batch_size]
+    total_leagues = len(
+        leagues,
+    )
 
-        try:
-            for bundle in chunk:
-                ok = await save_league_bundle_to_db(db, bundle, commit=False)
-                if not ok:
-                    raise RuntimeError("bundle save failed")
-
-            await db.flush()
-            success_count += len(chunk)
-            synced_bundles.extend(chunk)
-
-        except Exception as e:
-            failed_batches += 1
-            logger.error(f"[DB BATCH ERROR] {e}", exc_info=True)
-
-    if synced_bundles:
-        await _update_sync_states(
-            db=db,
-            bundles=synced_bundles,
+    for chunk_start in range(
+        0,
+        total_leagues,
+        FETCH_CHUNK_SIZE,
+    ):
+        league_chunk = leagues[
+            chunk_start:chunk_start + FETCH_CHUNK_SIZE
+        ]
+        bundles = await bounded_gather(
+            [
+                fetch_league_bundle(
+                    league=league,
+                    curr_week=curr_week,
+                    sleeper=sleeper,
+                    existing_ids=existing_ids,
+                    sync_states=sync_states,
+                    incomplete_league_ids=incomplete_league_ids,
+                    force=force,
+                    existing_refresh=existing_refresh,
+                )
+                for league in league_chunk
+            ],
+            log_every=len(league_chunk),
+            progress_total=total_leagues,
+            progress_offset=chunk_start,
+            progress_label="leagues",
         )
 
-    await db.commit()
+        bundles = [
+            bundle
+            for bundle in bundles
+            if isinstance(bundle, dict)
+        ]
 
-    logger.info(f"[DB] committed {len(bundles)} bundles")
+        if not bundles:
+            logger.info(
+                "[SYNC] progress=%s/%s persisted=%s failed_batches=%s",
+                min(
+                    chunk_start + len(league_chunk),
+                    total_leagues,
+                ),
+                total_leagues,
+                success_count,
+                failed_batches,
+            )
+            continue
+
+        chunk_success_count, chunk_failed_batches = await _save_bundles(
+            db=db,
+            bundles=bundles,
+        )
+
+        success_count += chunk_success_count
+        failed_batches += chunk_failed_batches
+        fetched_bundle_count += len(bundles)
+
+        logger.info(
+            "[SYNC] progress=%s/%s persisted=%s (+%s) failed_batches=%s",
+            min(
+                chunk_start + len(league_chunk),
+                total_leagues,
+            ),
+            total_leagues,
+            success_count,
+            chunk_success_count,
+            failed_batches,
+        )
+
+        sync_session = getattr(
+            db,
+            "sync_session",
+            None,
+        )
+        if sync_session is not None:
+            sync_session.expunge_all()
+
+    if fetched_bundle_count == 0:
+        return {
+            "status": "skipped",
+            "synced_count": 0,
+            "reason": "no_new_data",
+        }
 
     return {
         "status": "completed",
@@ -225,7 +314,12 @@ async def fetch_league_bundle(
     sleeper,
     existing_ids: Set[str],
     sync_states: dict[str, model.LeagueSyncState],
+    incomplete_league_ids: Set[str],
     force: bool = False,
+    existing_refresh: Literal[
+        "full",
+        "transactions_only",
+    ] = "full",
 ):
     """
     Daily full roster refresh plus transaction backfill.
@@ -256,17 +350,19 @@ async def fetch_league_bundle(
         else 0
     )
 
-    needs_daily_refresh = (
+    full_refresh_due = (
         is_new
         or force
+        or league_id in incomplete_league_ids
+        or needs_full_refresh(sync_state)
+    )
+
+    needs_refresh = (
+        full_refresh_due
         or not was_synced_today(sync_state)
     )
 
-    if not needs_daily_refresh:
-        logger.info(
-            "[SKIP] league=%s already synced today",
-            league_id,
-        )
+    if not needs_refresh:
         return None
 
     transaction_weeks = get_transaction_weeks_to_fetch(
@@ -274,17 +370,41 @@ async def fetch_league_bundle(
         curr_week=curr_week,
     )
 
-    logger.info(
-        "[FETCH] league=%s new=%s force=%s "
-        "last_week=%s tx_weeks=%s",
-        league_id,
-        is_new,
-        force,
-        last_synced_week,
-        transaction_weeks,
-    )
-
     try:
+        if (
+            not is_new
+            and existing_refresh
+            == "transactions_only"
+            and not full_refresh_due
+        ):
+            tx_lists = await asyncio.gather(
+                *[
+                    sleeper.read.get_transactions(
+                        league_id,
+                        week,
+                    )
+                    for week in transaction_weeks
+                ],
+                return_exceptions=True,
+            )
+
+            transactions = [
+                transaction
+                for batch in tx_lists
+                if isinstance(batch, list)
+                for transaction in batch
+            ]
+
+            return {
+                "league_id": league_id,
+                "transactions": transactions,
+                "transactions_only": True,
+                "synced_week": max(
+                    last_synced_week,
+                    curr_week,
+                ),
+            }
+
         (
             league_obj,
             users,
@@ -355,6 +475,80 @@ async def fetch_league_bundle(
         return None
 
 
+def _chunked(
+    items: list,
+    chunk_size: int,
+):
+    for start in range(
+        0,
+        len(items),
+        chunk_size,
+    ):
+        yield items[
+            start:start + chunk_size
+        ]
+
+
+async def _save_bundles(
+    *,
+    db: AsyncSession,
+    bundles: list[dict],
+) -> tuple[int, int]:
+    success_count = 0
+    failed_batches = 0
+    synced_bundles: list[dict] = []
+
+    for bundle_chunk in _chunked(
+        bundles,
+        DB_BATCH_SIZE,
+    ):
+        try:
+            async with db.begin_nested():
+                for bundle in bundle_chunk:
+                    ok = await save_league_bundle_to_db(
+                        db,
+                        bundle,
+                        commit=False,
+                    )
+
+                    if not ok:
+                        raise RuntimeError(
+                            "bundle save failed",
+                        )
+
+                await db.flush()
+
+            success_count += len(
+                bundle_chunk,
+            )
+            synced_bundles.extend(
+                bundle_chunk,
+            )
+
+        except Exception as error:
+            failed_batches += 1
+            logger.error(
+                "[DB BATCH ERROR] %s",
+                error,
+                exc_info=True,
+            )
+
+    if synced_bundles:
+        await _update_sync_states(
+            db=db,
+            bundles=synced_bundles,
+        )
+
+    await db.commit()
+
+    logger.info(
+        "[DB] committed %s bundles",
+        len(synced_bundles),
+    )
+
+    return success_count, failed_batches
+
+
 # --------------------------------------------------
 # Bundle saving
 # --------------------------------------------------
@@ -401,6 +595,8 @@ async def save_league_bundle_to_db(
                     "username": f"orphan_{owner[:8]}",
                     "display_name": "Orphan",
                     "avatar": None,
+                    "is_owner": None,
+                    "is_placeholder": True,
                 })
                 user_ids.add(str(owner))
 
@@ -572,7 +768,7 @@ async def _update_sync_states(
 
     now = datetime.now()
 
-    rows = [
+    transaction_rows = [
         {
             "league_id": bundle["league_id"],
             "last_synced_week": bundle.get(
@@ -584,12 +780,53 @@ async def _update_sync_states(
         for bundle in bundles
     ]
 
-    await _bulk_upsert(
-        db,
+    tx_stmt = insert(
         model.LeagueSyncState,
-        rows,
-        "league_id",
+    ).values(
+        transaction_rows,
     )
+
+    await db.execute(
+        tx_stmt.on_conflict_do_update(
+            index_elements=["league_id"],
+            set_={
+                "last_synced_week": tx_stmt.excluded.last_synced_week,
+                "last_synced_at": tx_stmt.excluded.last_synced_at,
+            },
+        )
+    )
+
+    full_rows = [
+        {
+            "league_id": bundle["league_id"],
+            "last_synced_week": bundle.get(
+                "synced_week",
+                0,
+            ),
+            "last_synced_at": now,
+            "last_full_synced_at": now,
+        }
+        for bundle in bundles
+        if not bundle.get("transactions_only")
+    ]
+
+    if full_rows:
+        full_stmt = insert(
+            model.LeagueSyncState,
+        ).values(
+            full_rows,
+        )
+
+        await db.execute(
+            full_stmt.on_conflict_do_update(
+                index_elements=["league_id"],
+                set_={
+                    "last_synced_week": full_stmt.excluded.last_synced_week,
+                    "last_synced_at": full_stmt.excluded.last_synced_at,
+                    "last_full_synced_at": full_stmt.excluded.last_full_synced_at,
+                },
+            )
+        )
 
 
 # --------------------------------------------------

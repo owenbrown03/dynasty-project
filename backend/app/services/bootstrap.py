@@ -1,8 +1,14 @@
 from fastapi import APIRouter
 
 from app.core.context import Context
-from app.crud.auth.user import get_theme_preference
-from app.crud.auth.session import get_session_theme_preference
+from app.crud.auth.session import (
+    get_session_theme_preference,
+    get_session_value_preference,
+)
+from app.crud.auth.user import (
+    get_theme_preference,
+    get_value_preference,
+)
 from app.schemas.bootstrap import (
     BootstrapResponse,
     BootstrapUser,
@@ -45,6 +51,15 @@ async def bootstrap(ctx: Context):
             )
             if ctx.site_user
             else get_session_theme_preference(
+                ctx.session,
+            )
+        ),
+        value_preference=(
+            get_value_preference(
+                ctx.site_user,
+            )
+            if ctx.site_user
+            else get_session_value_preference(
                 ctx.session,
             )
         ),

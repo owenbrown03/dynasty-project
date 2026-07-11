@@ -34,6 +34,8 @@ Main backend entry points:
 - `backend/app/core/worker.py` — TaskIQ worker startup/shutdown hooks
 - `backend/app/core/broker.py` — TaskIQ broker and task auto-imports
 
+Internal debug routes live under `backend/app/api/v1/endpoints/test.py` and are registered only when `DEBUG_MODE=true` or `ENVIRONMENT` is not `production`.
+
 Backend request flow:
 
 1. FastAPI endpoint receives request.
@@ -68,7 +70,7 @@ Frontend data flow:
 
 1. Components call hooks in `frontend/src/hooks/...`.
 2. Hooks call API wrappers in `frontend/src/api/v1/endpoints/...`.
-3. Axios talks to the FastAPI backend at `http://localhost:8000/api/v1`.
+3. Axios talks to the FastAPI backend at a configured API base URL. The frontend defaults to `http://localhost:8000/api/v1` on localhost and `/api/v1` elsewhere unless `VITE_API_BASE_URL` is set.
 4. TanStack Query handles loading/caching/invalidation.
 
 Follow the existing component and hook patterns rather than inventing a new structure.
@@ -320,6 +322,12 @@ Start the main stack:
 docker compose up --build
 ```
 
+Or from repo root:
+
+```sh
+make up
+```
+
 Start with multiple workers:
 
 ```sh
@@ -354,6 +362,15 @@ Tail worker logs:
 
 ```sh
 docker compose logs -f worker
+```
+
+Common shortcuts:
+
+```sh
+make logs-api
+make logs-worker
+make restart-worker
+make migrate
 ```
 
 ### Backend workflow
@@ -421,6 +438,13 @@ At minimum, verify:
 - the affected endpoint imports and runs
 - the worker restarts cleanly if worker code changed
 - migrations still apply if schema changed
+
+The repository also has a CI workflow at `.github/workflows/ci.yml` that runs:
+
+- backend `pytest`
+- frontend `lint`
+- frontend `vitest`
+- frontend production build
 
 If you add or change database models, run the migration workflow from the API container:
 
@@ -490,7 +514,7 @@ Examples:
 
 ## Notes on documentation state
 
-- The top-level `README.md` is currently project notes, not a reliable operational guide.
-- `frontend/README.md` is still the default Vite template.
+- The top-level `README.md` is now the primary local-development and architecture summary.
+- `frontend/README.md` contains frontend-specific run, test, and API-base-URL notes.
 
 Treat the codebase and this file as the primary implementation guide unless the project documentation is updated.

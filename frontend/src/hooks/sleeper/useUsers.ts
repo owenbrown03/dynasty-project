@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 
+import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import type {
   CommissionerOrphansResponse,
@@ -12,7 +13,9 @@ import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 export function useRosters() {
   const { username } = useSleeperConnection();
   const query = useQuery<Roster[]>({
-    queryKey: ['rosters', username],
+    queryKey: queryKeys.users.rosters(
+      username,
+    ),
     queryFn: async () => {
       if (!username) throw new Error('Missing username');
       return api.users.getRosters(username).then(res => res.data);
@@ -31,7 +34,9 @@ export function useRosters() {
 export function useOrphans() {
   const { username } = useSleeperConnection();
   const query = useQuery<Orphan[]>({
-    queryKey: ['orphans', username],
+    queryKey: queryKeys.users.orphans(
+      username,
+    ),
     queryFn: async () => {
       if (!username) throw new Error('Missing username');
       return api.users.getOrphans(username).then(res => res.data);
@@ -54,8 +59,16 @@ export function useSync() {
     mutationFn: api.users.sync,
 
     onSuccess: (_, username) => {
-      queryClient.invalidateQueries({ queryKey: ['rosters', username] });
-      queryClient.invalidateQueries({ queryKey: ['orphans', username] });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.users.rosters(
+          username,
+        ),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.users.orphans(
+          username,
+        ),
+      });
     },
   });
 
@@ -71,11 +84,10 @@ export function useCommissionerOrphans(
   valueBasis: ValueBasis,
 ) {
   const query = useQuery<CommissionerOrphansResponse>({
-    queryKey: [
-      'commissioner-orphans',
+    queryKey: queryKeys.users.commissionerOrphans(
       username,
       valueBasis,
-    ],
+    ),
     queryFn: async () => {
       if (!username) {
         throw new Error('Missing username');

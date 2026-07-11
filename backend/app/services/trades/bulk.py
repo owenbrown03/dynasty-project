@@ -1,35 +1,18 @@
 from __future__ import annotations
 
-import logging, time
+import logging
+import time
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.db.fc.models import FantasyCalcValue
-from app.models.db.ktc.models import KTCValue
 from app.models.db.sleeper.connection import (
     SleeperConnection,
 )
-from app.models.db.underdog.models import UnderdogADP
-from app.schemas.trades import (
-    BulkTradeAvailabilityResponse,
-    BulkTradeLeagueAvailability,
-    BulkTradePlayerSearchResult,
-    TradeDirection,
-)
-
-
-
 from app.integrations.sleeper.client import SleeperClient
 from app.integrations.sleeper.exceptions import SleeperGraphQLError
-from app.models.db.fc.models import FantasyCalcValue
-from app.models.db.ktc.models import KTCValue
 from app.models.db.sleeper import api as model
-from app.models.db.sleeper.connection import (
-    SleeperConnection,
-)
-from app.models.db.underdog.models import UnderdogADP
 from app.schemas.trades import (
     BulkTradeAvailabilityResponse,
     BulkTradeCounterparty,
@@ -40,6 +23,9 @@ from app.schemas.trades import (
     BulkTradeProposalResponse,
     BulkTradeProposalResult,
     TradeDirection,
+)
+from app.services.players.search import (
+    search_local_dynasty_players,
 )
 from app.services.trades.picks import (
     build_sleeper_draft_pick_string,
@@ -52,14 +38,26 @@ from app.services.waivers.dynasty import (
 from app.utils.age import calculate_age
 from app.crud.sleeper.roster import get_all_rosters_by_league, get_owned_roster_rows, get_target_owner_roster
 from app.crud.sleeper.user import get_user_names_by_id
-from app.services.waivers.dynasty import DYNASTY_FANTASY_POSITIONS
-
-
 
 logger = logging.getLogger(__name__)
 
 
 DEFAULT_TRADE_EXPIRY_SECONDS = 7 * 24 * 60 * 60
+
+
+def build_bulk_trade_result(
+    *,
+    league_id: str,
+    success: bool,
+    transaction_id: str | None = None,
+    error: str | None = None,
+) -> BulkTradeProposalResult:
+    return BulkTradeProposalResult(
+        league_id=league_id,
+        success=success,
+        transaction_id=transaction_id,
+        error=error,
+    )
 
 
 async def search_bulk_trade_players(
@@ -68,135 +66,26 @@ async def search_bulk_trade_players(
     query: str,
     limit: int = 10,
 ) -> list[BulkTradePlayerSearchResult]:
-    """
-    Searches only the local Sleeper player database.
-    """
-
-    search_term = query.strip()
-
-    if len(search_term) < 2:
-        return []
-
-    player_name_expression = func.concat_ws(
-        " ",
-        model.Player.first_name,
-        model.Player.last_name,
+    results = await search_local_dynasty_players(
+        db=db,
+        query=query,
+        limit=limit,
     )
-
-    result = await db.execute(
-        select(model.Player)
-        .where(
-            model.Player.position.in_(
-                DYNASTY_FANTASY_POSITIONS,
-            ),
-            player_name_expression.ilike(
-                f"%{search_term}%",
-            ),
-        )
-        .order_by(
-            model.Player.last_name,
-            model.Player.first_name,
-        )
-        .limit(limit)
-    )
-
-    players = list(
-        result.scalars(),
-    )
-
-    if not players:
-        return []
-
-    player_ids = [
-        player.player_id
-        for player in players
-    ]
-
-    ktc_result = await db.execute(
-        select(KTCValue).where(
-            KTCValue.player_id.in_(
-                player_ids,
-            )
-        )
-    )
-
-    ktc_by_player_id = {
-        value.player_id: value
-        for value in ktc_result.scalars()
-    }
-
-    fc_result = await db.execute(
-        select(FantasyCalcValue).where(
-            FantasyCalcValue.player_id.in_(
-                player_ids,
-            )
-        )
-    )
-
-    fc_by_player_id = {
-        value.player_id: value
-        for value in fc_result.scalars()
-    }
-
-    underdog_result = await db.execute(
-        select(UnderdogADP)
-        .where(
-            UnderdogADP.player_id.in_(
-                player_ids,
-            )
-        )
-        .order_by(
-            UnderdogADP.player_id,
-            UnderdogADP.id.desc(),
-        )
-    )
-
-    underdog_by_player_id: dict[
-        str,
-        UnderdogADP,
-    ] = {}
-
-    for row in underdog_result.scalars():
-        if row.player_id not in underdog_by_player_id:
-            underdog_by_player_id[
-                row.player_id
-            ] = row
 
     return [
         BulkTradePlayerSearchResult(
-            player_id=player.player_id,
-            name=player.full_name,
-            position=player.position,
-            team=player.team,
-            age=calculate_age(
-                player.birth_date,
-            ),
-
-            ktc_value=(
-                ktc_by_player_id[
-                    player.player_id
-                ].sf_value
-                if player.player_id in ktc_by_player_id
-                else None
-            ),
-
-            fc_value=(
-                fc_by_player_id[
-                    player.player_id
-                ].value
-                if player.player_id in fc_by_player_id
-                else None
-            ),
-
+            player_id=result.player_id,
+            name=result.name,
+            position=result.position,
+            team=result.team,
+            age=result.age,
+            ktc_value=result.ktc_value,
+            fc_value=result.fc_value,
             underdog_position_rank=(
-                underdog_by_player_id[
-                    player.player_id
-                ].position_rank
-                if player.player_id in underdog_by_player_id
-                else None
+                result.underdog_position_rank
             ),
         )
-        for player in players
+        for result in results
     ]
 
 
@@ -1038,7 +927,7 @@ async def submit_bulk_trade_offers(
     if preflight_errors_by_league_id:
         return BulkTradeProposalResponse(
             results=[
-                BulkTradeProposalResult(
+                build_bulk_trade_result(
                     league_id=offer.league_id,
                     success=False,
                     error=(
@@ -1067,7 +956,7 @@ async def submit_bulk_trade_offers(
             )
 
             results.append(
-                BulkTradeProposalResult(
+                build_bulk_trade_result(
                     league_id=offer.league_id,
                     success=True,
                     transaction_id=find_transaction_id(
@@ -1087,7 +976,7 @@ async def submit_bulk_trade_offers(
             )
 
             results.append(
-                BulkTradeProposalResult(
+                build_bulk_trade_result(
                     league_id=offer.league_id,
                     success=False,
                     error=str(error),
@@ -1101,7 +990,7 @@ async def submit_bulk_trade_offers(
             )
 
             results.append(
-                BulkTradeProposalResult(
+                build_bulk_trade_result(
                     league_id=offer.league_id,
                     success=False,
                     error=(

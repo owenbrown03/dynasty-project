@@ -154,18 +154,22 @@ class Transaction(Base):
     transaction_id: str
     status_updated: int
     type: str
-    roster_ids: List[int] = []
+    roster_ids: List[int] = Field(default_factory=list)
     adds: Optional[Dict[str, int]] = None
     drops: Optional[Dict[str, int]] = None
-    waiver_budget: List[WaiverBudget] = []
-    draft_picks: List[TradedPicks] = []
+    waiver_budget: List[WaiverBudget] = Field(default_factory=list)
+    draft_picks: List[TradedPicks] = Field(default_factory=list)
 
 class Draft(Base):
     draft_id: str
     league_id: str
     season: str
-    draft_order: Optional[Dict[str, int]] = {}
-    slot_to_roster_id: Optional[Dict[str, int]] = {}
+    draft_order: Optional[Dict[str, int]] = Field(
+        default_factory=dict,
+    )
+    slot_to_roster_id: Optional[Dict[str, int]] = Field(
+        default_factory=dict,
+    )
 
 class Player(Base):
     player_id: str
