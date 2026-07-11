@@ -14,6 +14,9 @@ from app.core.concurrency import bounded_gather
 
 logger = logging.getLogger(__name__)
 
+FETCH_CHUNK_SIZE = 250
+DB_BATCH_SIZE = 100
+
 
 # --------------------------------------------------
 # Queries
@@ -160,67 +163,88 @@ async def sync_leagues(
         get_sync_states(db, all_league_ids),
     )
 
-    bundles = await bounded_gather([
-        fetch_league_bundle(
-            league=league,
-            curr_week=curr_week,
-            sleeper=sleeper,
-            existing_ids=existing_ids,
-            sync_states=sync_states,
-            force=force,
-            existing_refresh=existing_refresh,
-        )
-        for league in leagues
-    ])
-
-    # Filter out None (skipped leagues with no new data) and exceptions
-    bundles = [
-        b for b in bundles
-        if isinstance(b, dict)
-    ]
-
-    if not bundles:
-        return {"status": "skipped", "synced_count": 0, "reason": "no_new_data"}
-
-    logger.info(f"[DB] ingesting {len(bundles)} bundles")
-
     success_count = 0
     failed_batches = 0
-    batch_size = 100
-    synced_bundles: list[dict] = []
+    fetched_bundle_count = 0
 
-    for i in range(0, len(bundles), batch_size):
-        chunk = bundles[i:i + batch_size]
+    league_chunks = list(
+        _chunked(
+            leagues,
+            FETCH_CHUNK_SIZE,
+        )
+    )
 
-        try:
-            async with db.begin_nested():
-                for bundle in chunk:
-                    ok = await save_league_bundle_to_db(
-                        db,
-                        bundle,
-                        commit=False,
-                    )
-                    if not ok:
-                        raise RuntimeError("bundle save failed")
-
-                await db.flush()
-
-            success_count += len(chunk)
-            synced_bundles.extend(chunk)
-
-        except Exception as e:
-            failed_batches += 1
-            logger.error(f"[DB BATCH ERROR] {e}", exc_info=True)
-
-    if synced_bundles:
-        await _update_sync_states(
-            db=db,
-            bundles=synced_bundles,
+    for chunk_index, league_chunk in enumerate(
+        league_chunks,
+        start=1,
+    ):
+        bundles = await bounded_gather(
+            [
+                fetch_league_bundle(
+                    league=league,
+                    curr_week=curr_week,
+                    sleeper=sleeper,
+                    existing_ids=existing_ids,
+                    sync_states=sync_states,
+                    force=force,
+                    existing_refresh=existing_refresh,
+                )
+                for league in league_chunk
+            ]
         )
 
-    await db.commit()
+        bundles = [
+            bundle
+            for bundle in bundles
+            if isinstance(bundle, dict)
+        ]
 
-    logger.info(f"[DB] committed {len(bundles)} bundles")
+        if not bundles:
+            logger.info(
+                "[SYNC] chunk %s/%s had no new data",
+                chunk_index,
+                len(league_chunks),
+            )
+            continue
+
+        logger.info(
+            "[SYNC] persisting chunk %s/%s bundles=%s",
+            chunk_index,
+            len(league_chunks),
+            len(bundles),
+        )
+
+        chunk_success_count, chunk_failed_batches = await _save_bundles(
+            db=db,
+            bundles=bundles,
+        )
+
+        success_count += chunk_success_count
+        failed_batches += chunk_failed_batches
+        fetched_bundle_count += len(bundles)
+
+        logger.info(
+            "[SYNC] completed chunk %s/%s success=%s failed_batches=%s",
+            chunk_index,
+            len(league_chunks),
+            chunk_success_count,
+            chunk_failed_batches,
+        )
+
+        sync_session = getattr(
+            db,
+            "sync_session",
+            None,
+        )
+        if sync_session is not None:
+            sync_session.expunge_all()
+
+    if fetched_bundle_count == 0:
+        return {
+            "status": "skipped",
+            "synced_count": 0,
+            "reason": "no_new_data",
+        }
 
     return {
         "status": "completed",
@@ -282,25 +306,11 @@ async def fetch_league_bundle(
     )
 
     if not needs_daily_refresh:
-        logger.info(
-            "[SKIP] league=%s already synced today",
-            league_id,
-        )
         return None
 
     transaction_weeks = get_transaction_weeks_to_fetch(
         last_synced_week=last_synced_week,
         curr_week=curr_week,
-    )
-
-    logger.info(
-        "[FETCH] league=%s new=%s force=%s "
-        "last_week=%s tx_weeks=%s",
-        league_id,
-        is_new,
-        force,
-        last_synced_week,
-        transaction_weeks,
     )
 
     try:
@@ -405,6 +415,80 @@ async def fetch_league_bundle(
             exc_info=True,
         )
         return None
+
+
+def _chunked(
+    items: list,
+    chunk_size: int,
+):
+    for start in range(
+        0,
+        len(items),
+        chunk_size,
+    ):
+        yield items[
+            start:start + chunk_size
+        ]
+
+
+async def _save_bundles(
+    *,
+    db: AsyncSession,
+    bundles: list[dict],
+) -> tuple[int, int]:
+    success_count = 0
+    failed_batches = 0
+    synced_bundles: list[dict] = []
+
+    for bundle_chunk in _chunked(
+        bundles,
+        DB_BATCH_SIZE,
+    ):
+        try:
+            async with db.begin_nested():
+                for bundle in bundle_chunk:
+                    ok = await save_league_bundle_to_db(
+                        db,
+                        bundle,
+                        commit=False,
+                    )
+
+                    if not ok:
+                        raise RuntimeError(
+                            "bundle save failed",
+                        )
+
+                await db.flush()
+
+            success_count += len(
+                bundle_chunk,
+            )
+            synced_bundles.extend(
+                bundle_chunk,
+            )
+
+        except Exception as error:
+            failed_batches += 1
+            logger.error(
+                "[DB BATCH ERROR] %s",
+                error,
+                exc_info=True,
+            )
+
+    if synced_bundles:
+        await _update_sync_states(
+            db=db,
+            bundles=synced_bundles,
+        )
+
+    await db.commit()
+
+    logger.info(
+        "[DB] committed %s bundles",
+        len(synced_bundles),
+    )
+
+    return success_count, failed_batches
 
 
 # --------------------------------------------------
