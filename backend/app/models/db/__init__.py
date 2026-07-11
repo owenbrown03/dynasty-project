@@ -22,3 +22,12 @@ from .sleeper.connection import(
 from .sleeper.personal import(
     PlayerValue,
 )
+from .ktc.models import(
+    KTCPlayerMap,
+    KTCValue,
+    KTCPickValue,
+)
+from .fc.models import(
+    FantasyCalcValue,
+    FantasyCalcPickValue,
+)

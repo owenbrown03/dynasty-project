@@ -1,5 +1,5 @@
 from typing import Optional, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
+from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint, Index
 
 if TYPE_CHECKING:
     from ..sleeper.api import Player
@@ -31,4 +31,29 @@ class KTCValue(SQLModel, table=True):
 
     __table_args__ = (
         UniqueConstraint("player_id", name="uq_ktc_value_player"),
+    )
+
+
+class KTCPickValue(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source_name: str = Field(index=True)
+    season: str = Field(index=True)
+    round: int = Field(index=True)
+    bucket: str = Field(index=True)
+    value: int = 0
+    sf_value: Optional[int] = Field(default=None, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "season",
+            "round",
+            "bucket",
+            name="uq_ktc_pick_value_shape",
+        ),
+        Index(
+            "idx_ktc_pick_value_lookup",
+            "season",
+            "round",
+            "bucket",
+        ),
     )

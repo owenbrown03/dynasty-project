@@ -3,8 +3,9 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db.sleeper.api import Player
-from app.models.db.ktc.models import KTCPlayerMap, KTCValue
+from app.models.db.ktc.models import KTCPlayerMap, KTCValue, KTCPickValue
 from app.integrations.ktc import KTCClient
+from app.services.draft.values import parse_ktc_pick_name
 from app.services.sleeper.normalize import SleeperNameIndex
 
 logger = logging.getLogger(__name__)
@@ -53,8 +54,27 @@ async def sync_ktc_values(
     unmatched: list[str] = []
     new_maps = []
     new_value_rows = []
+    pick_rows = []
 
     for ktc_player in ktc_players:
+        parsed_pick = parse_ktc_pick_name(
+            ktc_player.player_name,
+        )
+
+        if parsed_pick is not None:
+            season, round_number, bucket = parsed_pick
+            pick_rows.append(
+                KTCPickValue(
+                    source_name=ktc_player.player_name,
+                    season=season,
+                    round=round_number,
+                    bucket=bucket,
+                    value=ktc_player.value,
+                    sf_value=ktc_player.sf_value,
+                )
+            )
+            continue
+
         existing = existing_maps.get(ktc_player.player_name)
 
         if existing:
@@ -122,11 +142,30 @@ async def sync_ktc_values(
         else:
             db.add(row)
 
+    for row in pick_rows:
+        existing_pick = await db.execute(
+            select(KTCPickValue).where(
+                KTCPickValue.season == row.season,
+                KTCPickValue.round == row.round,
+                KTCPickValue.bucket == row.bucket,
+            )
+        )
+        existing_pick_row = existing_pick.scalar_one_or_none()
+
+        if existing_pick_row:
+            existing_pick_row.source_name = row.source_name
+            existing_pick_row.value = row.value
+            existing_pick_row.sf_value = row.sf_value
+            db.add(existing_pick_row)
+        else:
+            db.add(row)
+
     await db.commit()
 
     return {
         "fetched": len(ktc_players),
         "matched": matched,
+        "pick_rows": len(pick_rows),
         "unmatched": len(unmatched),
         "unmatched_names": unmatched,
         "new_maps_created": len(new_maps),

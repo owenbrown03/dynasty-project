@@ -289,6 +289,7 @@ async def fetch_league_bundle(
             league_obj,
             users,
             rosters,
+            drafts,
             tx_lists,
         ) = await asyncio.gather(
             sleeper.read.get_league(
@@ -298,6 +299,9 @@ async def fetch_league_bundle(
                 league_id,
             ),
             sleeper.read.get_rosters(
+                league_id,
+            ),
+            sleeper.read.get_drafts_league(
                 league_id,
             ),
             asyncio.gather(
@@ -326,9 +330,7 @@ async def fetch_league_bundle(
             "league": league_obj,
             "users": users,
             "rosters": rosters,
-
-            # Drafts do not need to be fetched daily.
-            "drafts": [],
+            "drafts": drafts,
 
             "transactions": transactions,
 
@@ -384,6 +386,11 @@ async def save_league_bundle_to_db(
             for r in bundle.get("rosters", [])
         ]
 
+        draft_dicts = [
+            transformers.draft_to_db(d, True)
+            for d in bundle.get("drafts", [])
+        ]
+
         # Ensure orphaned roster owners get a placeholder user row
         user_ids = {str(u["user_id"]) for u in user_dicts}
         for r in roster_dicts:
@@ -409,6 +416,14 @@ async def save_league_bundle_to_db(
                 model.Roster,
                 roster_dicts,
                 ["league_id", "roster_id"],
+            )
+
+        if draft_dicts:
+            await _bulk_upsert(
+                db,
+                model.Draft,
+                draft_dicts,
+                "draft_id",
             )
 
         await _save_transactions(db, bundle.get("transactions", []), league_id)

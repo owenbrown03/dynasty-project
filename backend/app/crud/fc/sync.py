@@ -4,8 +4,9 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db.sleeper.api import Player
-from app.models.db.fc.models import FantasyCalcValue
+from app.models.db.fc.models import FantasyCalcValue, FantasyCalcPickValue
 from app.integrations.fc.client import FantasyCalcClient
+from app.services.draft.values import parse_fantasycalc_pick
 
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ async def sync_fantasycalc_values(
     unmatched = []
 
     rows = []
+    pick_rows = []
 
 
     # ------------------------------------
@@ -68,6 +70,37 @@ async def sync_fantasycalc_values(
     # ------------------------------------
 
     for fc in players:
+        parsed_pick = parse_fantasycalc_pick(
+            source_id=fc.player.sleeperId or "",
+            source_name=fc.player.name,
+        )
+
+        if parsed_pick is not None:
+            season, round_number, slot, is_exact_slot = parsed_pick
+
+            pick_rows.append(
+                FantasyCalcPickValue(
+                    source_id=fc.player.sleeperId or fc.player.name,
+                    source_name=fc.player.name,
+                    season=season,
+                    round=round_number,
+                    slot=slot,
+                    is_exact_slot=is_exact_slot,
+                    is_dynasty=is_dynasty,
+                    num_qbs=num_qbs,
+                    num_teams=num_teams,
+                    ppr=ppr,
+                    value=fc.value,
+                    overall_rank=fc.overallRank,
+                    position_rank=fc.positionRank,
+                    trend_30_day=fc.trend30Day,
+                    redraft_value=fc.redraftValue,
+                    combined_value=fc.combinedValue,
+                    tier=fc.maybeTier,
+                    adp=fc.maybeAdp,
+                )
+            )
+            continue
 
         sleeper_id = fc.player.sleeperId
 
@@ -159,19 +192,56 @@ async def sync_fantasycalc_values(
             db.add(row)
             created += 1
 
+    for row in pick_rows:
+        result = await db.execute(
+            select(FantasyCalcPickValue).where(
+                FantasyCalcPickValue.source_id == row.source_id,
+                FantasyCalcPickValue.is_dynasty == row.is_dynasty,
+                FantasyCalcPickValue.num_qbs == row.num_qbs,
+                FantasyCalcPickValue.num_teams == row.num_teams,
+                FantasyCalcPickValue.ppr == row.ppr,
+            )
+        )
+
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            for field in (
+                "source_name",
+                "season",
+                "round",
+                "slot",
+                "is_exact_slot",
+                "value",
+                "overall_rank",
+                "position_rank",
+                "trend_30_day",
+                "redraft_value",
+                "combined_value",
+                "tier",
+                "adp",
+            ):
+                setattr(existing, field, getattr(row, field))
+
+            db.add(existing)
+        else:
+            db.add(row)
+
 
     await db.commit()
 
 
     logger.info(
         f"FantasyCalc sync complete "
-        f"matched={matched} created={created} updated={updated}"
+        f"matched={matched} created={created} updated={updated} "
+        f"pick_rows={len(pick_rows)}"
     )
 
 
     return {
         "fetched": len(players),
         "matched": matched,
+        "pick_rows": len(pick_rows),
         "unmatched": len(unmatched),
         "created": created,
         "updated": updated,
