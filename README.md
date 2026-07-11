@@ -72,6 +72,11 @@ docker compose restart worker
 docker compose exec api alembic upgrade head
 ```
 
+Environment notes:
+
+- `BACKEND_CORS_ORIGINS` accepts a comma-separated list of allowed frontend origins
+- `VITE_API_BASE_URL` overrides the frontend API target when needed
+
 Frontend only:
 
 ```sh

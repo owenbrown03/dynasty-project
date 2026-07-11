@@ -208,7 +208,10 @@ async def get_trade_signals(db: AsyncSession, sleeper: SleeperClient, username: 
                     draft_order = draft_orders[draft_id][year]
                     pick_slot = draft_order[og_user_id]
                     asset = f"{year} Pick {round_num}.{pick_slot:02d}"
-                except:
+                except (
+                    KeyError,
+                    TypeError,
+                ):
                     asset = f"{year} Round {round_num}"
                     
                 if user_id not in users_dict:

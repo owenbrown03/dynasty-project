@@ -399,7 +399,7 @@ class Player(SQLModel, table=True):
                     < (birth.month, birth.day)
                 )
             )
-        except Exception:
+        except ValueError:
             return None
 
 

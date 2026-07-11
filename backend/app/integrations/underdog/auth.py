@@ -1,6 +1,7 @@
 import time
 import httpx
 import base64
+import binascii
 import json
 from .config import UnderdogConfig
 
@@ -13,7 +14,14 @@ def _decode_jwt_exp(token: str) -> int | None:
         payload_b64 += "=" * (-len(payload_b64) % 4)
         payload = json.loads(base64.urlsafe_b64decode(payload_b64))
         return payload.get("exp")
-    except Exception:
+    except (
+        IndexError,
+        KeyError,
+        TypeError,
+        ValueError,
+        binascii.Error,
+        json.JSONDecodeError,
+    ):
         return None
 
 
