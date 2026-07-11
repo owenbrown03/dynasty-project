@@ -16,6 +16,9 @@ import {
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
 import type {
+  BulkTradeCounterparty,
+  BulkTradeLeagueAvailability,
+  TradeDraftPickAsset,
   BulkTradeOfferRequest,
   BulkTradePlayerSearchResult,
   TradeDirection,
@@ -61,7 +64,7 @@ function getValidSleeperPickYears(
 
 
 function createInitialSelection(
-  league,
+  league: BulkTradeLeagueAvailability,
   direction: TradeDirection,
 ): BulkTradeLeagueSelection {
   if (!league.is_eligible) {
@@ -106,10 +109,10 @@ function createInitialSelection(
 
 
 function getSelectedPick(
-  league,
+  league: BulkTradeLeagueAvailability,
   selection: BulkTradeLeagueSelection,
   direction: TradeDirection,
-) {
+): TradeDraftPickAsset | null {
   if (direction === 'buy') {
     return league.matching_picks.find(
       pick => (
@@ -121,7 +124,7 @@ function getSelectedPick(
 
   const counterparty = (
     league.counterparty_options.find(
-      option => (
+      (option: BulkTradeCounterparty) => (
         option.roster_id
         === selection.counterpartyRosterId
       ),
@@ -215,7 +218,7 @@ export const BulkOffersTab = () => {
 
     setSelectionsByLeagueId(
       Object.fromEntries(
-        data.leagues.map(league => [
+        data.leagues.map((league: BulkTradeLeagueAvailability) => [
           league.league_id,
           createInitialSelection(
             league,
@@ -236,7 +239,7 @@ export const BulkOffersTab = () => {
       return [];
     }
 
-    return data.leagues.flatMap(league => {
+    return data.leagues.flatMap((league: BulkTradeLeagueAvailability) => {
       const selection = selectionsByLeagueId[
         league.league_id
       ];
@@ -313,7 +316,7 @@ export const BulkOffersTab = () => {
         direction === 'buy'
           ? league.target_owner_name
           : league.counterparty_options.find(
-            option => (
+            (option: BulkTradeCounterparty) => (
               option.roster_id
               === offer.counterparty_roster_id
             ),
@@ -344,7 +347,7 @@ export const BulkOffersTab = () => {
 
   const eligibleCount = (
     availability.data?.leagues.filter(
-      league => league.is_eligible,
+      (league: BulkTradeLeagueAvailability) => league.is_eligible,
     ).length
     ?? 0
   );

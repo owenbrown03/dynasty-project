@@ -94,6 +94,14 @@ export interface BootstrapSleeper {
   can_write: boolean;
 }
 
+export interface SleeperConnection {
+  linked: boolean;
+  sleeper_username: string | null;
+  sleeper_user_id: string | null;
+  can_read: boolean;
+  can_write: boolean;
+}
+
 export interface Bootstrap {
   authenticated: boolean;
   site_user: BootstrapUser | null;
