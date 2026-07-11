@@ -131,6 +131,24 @@ def tx_to_db(
     return_dict: bool = False
 ) -> tuple[Any, list[Any], list[Any], list[Any]]:
     """Transforms a multi-entity transaction payload into database objects or raw dictionaries."""
+    time_ms = getattr(
+        schema,
+        "status_updated",
+        None,
+    )
+
+    if time_ms is None:
+        time_ms = getattr(
+            schema,
+            "time",
+            None,
+        )
+
+    if time_ms is None:
+        raise ValueError(
+            "Transaction payload missing status_updated/time timestamp."
+        )
+
     tx_data = {
         "transaction_id": schema.transaction_id,
         "type": schema.type,
@@ -139,7 +157,7 @@ def tx_to_db(
             "status",
             None,
         ),
-        "time_ms": schema.status_updated,
+        "time_ms": time_ms,
         "league_id": league_id,
     }
 

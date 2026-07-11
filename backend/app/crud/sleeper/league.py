@@ -453,6 +453,8 @@ async def save_league_bundle_to_db(
                     "username": f"orphan_{owner[:8]}",
                     "display_name": "Orphan",
                     "avatar": None,
+                    "is_owner": None,
+                    "is_placeholder": True,
                 })
                 user_ids.add(str(owner))
 
