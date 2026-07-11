@@ -9,6 +9,7 @@ from app.api.v1.endpoints.sleeper import (
     users,
     waivers,
 )
+from app.core.config import settings
 
 api_router = APIRouter()
 
@@ -23,4 +24,9 @@ api_router.include_router(trades.router, prefix="/sleeper/trades", tags=["trades
 api_router.include_router(users.router, prefix="/sleeper/users", tags=["users"])
 api_router.include_router(waivers.router, prefix="/sleeper/waivers", tags=["waivers"])
 
-api_router.include_router(test.router, prefix="/test", tags=["test"])
+if settings.include_debug_routes:
+    api_router.include_router(
+        test.router,
+        prefix="/test",
+        tags=["test"],
+    )

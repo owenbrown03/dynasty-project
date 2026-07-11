@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     ENVIRONMENT: str
+    DEBUG_MODE: bool = False
     DATABASE_URL: str
     ENCRYPTION_KEY: str
 
@@ -28,6 +29,12 @@ class Settings(BaseSettings):
             for origin in self.BACKEND_CORS_ORIGINS.split(",")
             if origin.strip()
         ]
+
+    @property
+    def include_debug_routes(self) -> bool:
+        return self.DEBUG_MODE or (
+            self.ENVIRONMENT.lower() != "production"
+        )
 
 
 settings = Settings()

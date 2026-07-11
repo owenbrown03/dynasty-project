@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
+from app.api.deps import ContextDep
 from app.schemas.auth import Login, ThemePreferenceUpdate
-from app.core.context import Context
-from app.api.deps import get_context
 from app.services.auth import register, login, logout, validate, me, update_theme
 
 router = APIRouter()
@@ -10,7 +9,7 @@ router = APIRouter()
 @router.post("/register")
 async def register_endpoint(
     credentials: Login,
-    ctx: Context = Depends(get_context),
+    ctx: ContextDep,
 ):
     await register(credentials, ctx)
     await login(credentials, ctx)
@@ -18,13 +17,13 @@ async def register_endpoint(
 @router.post("/login")
 async def login_endpoint(
     credentials: Login,
-    ctx: Context = Depends(get_context),
+    ctx: ContextDep,
 ):
     await login(credentials, ctx)
 
 @router.post("/logout")
 async def logout_endpoint(
-    ctx: Context = Depends(get_context),
+    ctx: ContextDep,
 ):
     await logout(ctx)
 
@@ -32,6 +31,6 @@ async def logout_endpoint(
 @router.post("/theme")
 async def update_theme_endpoint(
     body: ThemePreferenceUpdate,
-    ctx: Context = Depends(get_context),
+    ctx: ContextDep,
 ):
     return await update_theme(body, ctx)
