@@ -36,5 +36,20 @@ class Settings(BaseSettings):
             self.ENVIRONMENT.lower() != "production"
         )
 
+    @property
+    def async_database_url(self) -> str:
+        if self.DATABASE_URL.startswith("postgresql+"):
+            return self.DATABASE_URL
+
+        if self.DATABASE_URL.startswith("postgres://"):
+            suffix = self.DATABASE_URL[len("postgres://"):]
+            return f"postgresql+asyncpg://{suffix}"
+
+        if self.DATABASE_URL.startswith("postgresql://"):
+            suffix = self.DATABASE_URL[len("postgresql://"):]
+            return f"postgresql+asyncpg://{suffix}"
+
+        return self.DATABASE_URL
+
 
 settings = Settings()
