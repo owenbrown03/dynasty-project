@@ -122,43 +122,88 @@ export interface LeagueOverview {
 }
 
 export interface LeagueOwner {
-  user_id: string;
+  user_id: string | null;
   display_name: string;
   avatar: string | null;
+}
+
+export interface LeagueSettingsDetail {
+  label: string;
+  value: string;
+}
+
+export interface LeaguePick {
+  season: string;
+  round: number;
+  og_roster_id: number;
+  current_owner_roster_id: number;
+  label: string;
+  slot: number | null;
+  fc_value: number | null;
+  ktc_value: number | null;
 }
 
 export interface LeaguePlayer {
   player_id: string;
 
   name: string;
-  position: string;
+  position: string | null;
   team: string | null;
 
   age: number | null;
+  underdog_position_rank: string | null;
+  projected_points: number | null;
 
   ktc_value: number | null;
   fc_value: number | null;
+  fc_trend_30_day: number | null;
 
-  starter_war: number | null;
-  roster_war: number | null;
+  redraft_starter_war: number | null;
+  redraft_roster_war: number | null;
+  dynasty_starter_war: number | null;
+  dynasty_roster_war: number | null;
+  is_starter: boolean;
 }
 
 export interface LeagueRoster {
   roster_id: number;
 
   owner: LeagueOwner;
-
-  total_starter_war: number;
-  total_roster_war: number;
+  record: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  actual_points_for: number;
+  projected_points: number;
+  faab_remaining: number;
+  waiver_position: number;
+  total_moves: number;
+  open_roster_spots: number;
+  average_age: number | null;
+  total_ktc_value: number;
+  total_fc_value: number;
+  total_redraft_starter_war: number;
+  total_redraft_roster_war: number;
+  total_dynasty_starter_war: number;
+  total_dynasty_roster_war: number;
+  total_pick_ktc_value: number;
+  total_pick_fc_value: number;
+  total_asset_ktc_value: number;
+  total_asset_fc_value: number;
 
   rank: number;
 
   players: LeaguePlayer[];
+  picks: LeaguePick[];
 }
 
 export interface LeagueDetails {
   league_id: string;
   league_name: string;
+  season: string;
+  total_rosters: number;
+  settings_badges: string[];
+  settings_details: LeagueSettingsDetail[];
   rosters: LeagueRoster[];
 }
 

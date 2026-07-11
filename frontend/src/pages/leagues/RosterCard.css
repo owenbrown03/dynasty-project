@@ -3,7 +3,6 @@
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
 }
 
@@ -34,13 +33,20 @@
   font-weight: 700;
 }
 
-.roster-war-stat {
+.roster-subtitle {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.roster-summary-hero {
   display: grid;
   justify-items: end;
   gap: 2px;
 }
 
-.roster-war-stat span {
+.roster-summary-hero span,
+.roster-summary-stat span {
   color: var(--color-text-muted);
   font-size: 10px;
   font-weight: 700;
@@ -48,19 +54,47 @@
   text-transform: uppercase;
 }
 
-.roster-war-stat strong {
-  font-size: 16px;
+.roster-summary-hero strong {
+  font-size: 18px;
   font-weight: 700;
   color: var(--color-text-strong);
 }
 
-@media (max-width: 640px) {
+.roster-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.roster-summary-stat {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.roster-summary-stat strong {
+  color: var(--color-text-strong);
+  font-size: 13px;
+}
+
+.roster-card-actions {
+  display: flex;
+}
+
+.roster-card-details {
+  display: grid;
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
   .roster-header {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .roster-war-stat {
+  .roster-summary-hero {
     justify-items: start;
   }
 }
