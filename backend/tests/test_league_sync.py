@@ -87,6 +87,7 @@ def test_sync_leagues_uses_nested_transaction_per_batch(
         existing_ids,
         sync_states,
         force=False,
+        existing_refresh="full",
     ):
         return {"league_id": league.league_id}
 
@@ -157,3 +158,90 @@ def test_sync_leagues_uses_nested_transaction_per_batch(
     assert db.flush_calls == 0
     assert db.commit_calls == 1
     assert update_calls == []
+
+
+def test_fetch_league_bundle_uses_transactions_only_for_existing_league():
+    class FakeRead:
+        def __init__(self):
+            self.calls: list[tuple[str, str, int | None]] = []
+
+        async def get_transactions(
+            self,
+            league_id,
+            week,
+        ):
+            self.calls.append(
+                ("get_transactions", league_id, week)
+            )
+            return [
+                SimpleNamespace(
+                    transaction_id=f"{league_id}-{week}",
+                    type="trade",
+                )
+            ]
+
+        async def get_league(self, league_id):
+            self.calls.append(
+                ("get_league", league_id, None)
+            )
+            return SimpleNamespace()
+
+        async def get_users(self, league_id):
+            self.calls.append(
+                ("get_users", league_id, None)
+            )
+            return []
+
+        async def get_rosters(self, league_id):
+            self.calls.append(
+                ("get_rosters", league_id, None)
+            )
+            return []
+
+        async def get_drafts_league(self, league_id):
+            self.calls.append(
+                ("get_drafts_league", league_id, None)
+            )
+            return []
+
+    sleeper = SimpleNamespace(
+        read=FakeRead(),
+    )
+
+    bundle = asyncio.run(
+        league_crud.fetch_league_bundle(
+            league=SimpleNamespace(
+                league_id="league-1",
+            ),
+            curr_week=3,
+            sleeper=sleeper,
+            existing_ids={"league-1"},
+            sync_states={
+                "league-1": SimpleNamespace(
+                    last_synced_week=1,
+                    last_synced_at=None,
+                )
+            },
+            existing_refresh="transactions_only",
+        )
+    )
+
+    assert bundle == {
+        "league_id": "league-1",
+        "transactions": [
+            SimpleNamespace(
+                transaction_id="league-1-2",
+                type="trade",
+            ),
+            SimpleNamespace(
+                transaction_id="league-1-3",
+                type="trade",
+            ),
+        ],
+        "transactions_only": True,
+        "synced_week": 3,
+    }
+    assert sleeper.read.calls == [
+        ("get_transactions", "league-1", 2),
+        ("get_transactions", "league-1", 3),
+    ]

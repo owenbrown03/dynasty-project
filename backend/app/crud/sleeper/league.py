@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import UTC, datetime
-from typing import List, Set
+from typing import Literal, List, Set
 
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -132,6 +132,10 @@ async def sync_leagues(
     sleeper,
     *,
     force: bool = False,
+    existing_refresh: Literal[
+        "full",
+        "transactions_only",
+    ] = "full",
 ):
     curr_week = max(curr_week, 1)
 
@@ -164,6 +168,7 @@ async def sync_leagues(
             existing_ids=existing_ids,
             sync_states=sync_states,
             force=force,
+            existing_refresh=existing_refresh,
         )
         for league in leagues
     ])
@@ -236,6 +241,10 @@ async def fetch_league_bundle(
     existing_ids: Set[str],
     sync_states: dict[str, model.LeagueSyncState],
     force: bool = False,
+    existing_refresh: Literal[
+        "full",
+        "transactions_only",
+    ] = "full",
 ):
     """
     Daily full roster refresh plus transaction backfill.
@@ -295,6 +304,39 @@ async def fetch_league_bundle(
     )
 
     try:
+        if (
+            not is_new
+            and existing_refresh
+            == "transactions_only"
+        ):
+            tx_lists = await asyncio.gather(
+                *[
+                    sleeper.read.get_transactions(
+                        league_id,
+                        week,
+                    )
+                    for week in transaction_weeks
+                ],
+                return_exceptions=True,
+            )
+
+            transactions = [
+                transaction
+                for batch in tx_lists
+                if isinstance(batch, list)
+                for transaction in batch
+            ]
+
+            return {
+                "league_id": league_id,
+                "transactions": transactions,
+                "transactions_only": True,
+                "synced_week": max(
+                    last_synced_week,
+                    curr_week,
+                ),
+            }
+
         (
             league_obj,
             users,
