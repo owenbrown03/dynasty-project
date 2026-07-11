@@ -61,6 +61,14 @@ Unit tests:
 npm run test
 ```
 
+From the repo root you can also use:
+
+```sh
+make lint-frontend
+make test-frontend
+make build-frontend
+```
+
 ## Repository-specific conventions
 
 - Keep server state in TanStack Query hooks.

@@ -63,6 +63,12 @@ From the repo root:
 docker compose up --build
 ```
 
+Or use the provided shortcuts:
+
+```sh
+make up
+```
+
 Common container workflows:
 
 ```sh
@@ -98,7 +104,15 @@ npm run build
 Backend:
 
 ```sh
-docker compose exec api python -m pytest /workspace/backend/tests -q
+docker compose exec api python -m pytest
+```
+
+Combined shortcuts:
+
+```sh
+make test-backend
+make test-frontend
+make test
 ```
 
 Schema changes:
