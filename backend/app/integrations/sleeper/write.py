@@ -1,3 +1,5 @@
+import logging
+
 from .mutations import (
     CREATE_VERIFICATION_CODE_MUTATION,
     LOGIN_QUERY,
@@ -8,6 +10,8 @@ from .exceptions import (
     SleeperUnknownOperationError,
     SleeperValidationError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SleeperWrite:
@@ -38,8 +42,11 @@ class SleeperWrite:
         code: str,
         captcha: str | None = None,
     ) -> str:
-
-        print(f"[sleeper:verify_code] identifier={username!r} code={code!r} captcha={'<present>' if captcha else None}")
+        logger.debug(
+            "[sleeper:verify_code] identifier=%r captcha=%s",
+            username,
+            "<present>" if captcha else None,
+        )
         data = await self.transport.post(
             query=LOGIN_QUERY,
             variables={

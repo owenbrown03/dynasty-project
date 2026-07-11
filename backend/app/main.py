@@ -1,4 +1,6 @@
-import os, logging, debugpy
+import logging
+import os
+import debugpy
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,9 +68,9 @@ async def global_exception_handler(
 if os.getenv("DEBUG_MODE") == "true":
     try:
         debugpy.listen(("0.0.0.0", 5678))
-        print("Debugger listening on port 5678")
+        logger.info("Debugger listening on port 5678")
     except RuntimeError as e:
         if "Address already in use" in str(e):
-            print("Debugger already running, skipping.")
+            logger.info("Debugger already running, skipping.")
         else:
             raise

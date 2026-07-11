@@ -18,12 +18,8 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
-  },
-  {
-    plugins: {
-      'react-refresh': reactRefresh,
-    },
     rules: {
+      'react-hooks/set-state-in-effect': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

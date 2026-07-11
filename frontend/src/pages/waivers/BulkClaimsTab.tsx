@@ -104,10 +104,8 @@ export const BulkClaimsTab = ({
       const existing = current[league.league_id];
 
       if (existing) {
-        const {
-          [league.league_id]: _removed,
-          ...rest
-        } = current;
+        const rest = { ...current };
+        delete rest[league.league_id];
 
         return rest;
       }

@@ -1,4 +1,6 @@
-from fastapi import HTTPException, APIRouter, status
+import logging
+
+from fastapi import HTTPException, status
 from passlib.context import CryptContext
 
 from app.schemas.auth import Login, ThemePreferenceUpdate
@@ -19,6 +21,7 @@ from app.crud.auth.session import (
 )
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+logger = logging.getLogger(__name__)
 
 async def register(credentials: Login, ctx: Context):
     db_user = await get_user_by_credentials(credentials, ctx.db)
@@ -88,7 +91,7 @@ async def validate(ctx: Context):
         ctx.response.delete_cookie("session_id")
         return {"authenticated": False, "user_id": None}
     except Exception as e:
-        print(f"Validation error: {e}")
+        logger.exception("Session validation failed")
         return {"authenticated": False, "user_id": None}
     
 
