@@ -1,3 +1,141 @@
-export const BOOTSTRAP_QUERY_KEY = [
-  'bootstrap',
-] as const;
+import type {
+  TradeDirection,
+  ValueBasis,
+} from '@/types';
+
+export const queryKeys = {
+  bootstrap: ['bootstrap'] as const,
+
+  users: {
+    rosters: (
+      username: string | null | undefined,
+    ) => ['rosters', username ?? null] as const,
+    orphans: (
+      username: string | null | undefined,
+    ) => ['orphans', username ?? null] as const,
+    commissionerOrphans: (
+      username: string | null | undefined,
+      valueBasis: ValueBasis,
+    ) =>
+      [
+        'commissioner-orphans',
+        username ?? null,
+        valueBasis,
+      ] as const,
+  },
+
+  leagues: {
+    overviewRoot: ['league-overview'] as const,
+    overview: (
+      username: string | null | undefined,
+    ) => ['league-overview', username ?? null] as const,
+    details: (
+      leagueId: string | undefined,
+    ) => ['league-details', leagueId ?? null] as const,
+    dashboard: (
+      username: string | null | undefined,
+    ) =>
+      ['league-dashboard', username ?? null] as const,
+  },
+
+  trades: {
+    signals: (
+      username: string | null | undefined,
+    ) => ['trade-signals', username ?? null] as const,
+    bulkPlayerSearch: (query: string) =>
+      ['bulk-trade-player-search', query] as const,
+    bulkAvailability: (
+      username: string | null | undefined,
+      playerId: string | undefined,
+      direction: TradeDirection,
+      pickSeason: string,
+      pickRound: number,
+    ) =>
+      [
+        'bulk-trade-availability',
+        username ?? null,
+        playerId ?? null,
+        direction,
+        pickSeason,
+        pickRound,
+      ] as const,
+    bulkAvailabilityRoot: [
+      'bulk-trade-availability',
+    ] as const,
+  },
+
+  waivers: {
+    overview: (
+      username: string | null | undefined,
+      valueBasis: ValueBasis,
+    ) =>
+      [
+        'waiver-overview',
+        username ?? null,
+        valueBasis,
+      ] as const,
+    overviewRoot: ['waiver-overview'] as const,
+    leagues: (
+      username: string | null | undefined,
+    ) => ['waiver-leagues', username ?? null] as const,
+    availablePlayers: (
+      username: string | null | undefined,
+      leagueId: string | undefined,
+      valueBasis: ValueBasis,
+    ) =>
+      [
+        'waiver-available-players',
+        username ?? null,
+        leagueId ?? null,
+        valueBasis,
+      ] as const,
+    availablePlayersRoot: [
+      'waiver-available-players',
+    ] as const,
+    rosterPlayers: (
+      username: string | null | undefined,
+      leagueId: string | undefined,
+      valueBasis: ValueBasis,
+    ) =>
+      [
+        'waiver-roster-players',
+        username ?? null,
+        leagueId ?? null,
+        valueBasis,
+      ] as const,
+    rosterPlayersRoot: [
+      'waiver-roster-players',
+    ] as const,
+    bulkPlayerSearch: (query: string) =>
+      ['bulk-waiver-player-search', query] as const,
+    bulkAvailability: (
+      username: string | null | undefined,
+      playerId: string | undefined,
+      valueBasis: ValueBasis,
+    ) =>
+      [
+        'bulk-waiver-availability',
+        username ?? null,
+        playerId ?? null,
+        valueBasis,
+      ] as const,
+    bulkAvailabilityRoot: [
+      'bulk-waiver-availability',
+    ] as const,
+  },
+
+  players: {
+    tiers: (
+      valueBasis: ValueBasis,
+      leagueId?: string,
+    ) =>
+      [
+        'player-tiers',
+        valueBasis,
+        leagueId ?? null,
+      ] as const,
+  },
+} as const;
+
+export const BOOTSTRAP_QUERY_KEY =
+  queryKeys.bootstrap;

@@ -4,6 +4,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 
+import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
@@ -30,11 +31,10 @@ export function useWaiverOverview(
   } = useSleeperConnection();
 
   const query = useQuery<WaiverOverviewResponse>({
-    queryKey: [
-      'waiver-overview',
+    queryKey: queryKeys.waivers.overview(
       username,
       valueBasis,
-    ],
+    ),
 
     queryFn: async () => {
       return api.waivers
@@ -74,19 +74,13 @@ export function useSubmitWaiverClaim() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: [
-            'waiver-overview',
-          ],
+          queryKey: queryKeys.waivers.overviewRoot,
         }),
         queryClient.invalidateQueries({
-          queryKey: [
-            'waiver-available-players',
-          ],
+          queryKey: queryKeys.waivers.availablePlayersRoot,
         }),
         queryClient.invalidateQueries({
-          queryKey: [
-            'waiver-roster-players',
-          ],
+          queryKey: queryKeys.waivers.rosterPlayersRoot,
         }),
       ]);
     },
@@ -113,10 +107,9 @@ export function useWaiverLeagueOptions() {
   } = useSleeperConnection();
 
   const query = useQuery({
-    queryKey: [
-      'waiver-leagues',
+    queryKey: queryKeys.waivers.leagues(
       username,
-    ],
+    ),
 
     queryFn: async () => {
       return api.waivers
@@ -146,12 +139,11 @@ export function useAvailableWaiverPlayers(
   } = useSleeperConnection();
 
   const query = useQuery<WaiverAvailablePlayersResponse>({
-    queryKey: [
-      'waiver-available-players',
+    queryKey: queryKeys.waivers.availablePlayers(
       username,
       leagueId,
       valueBasis,
-    ],
+    ),
 
     queryFn: async () => {
       if (!leagueId) {
@@ -194,12 +186,11 @@ export function useRosterWaiverPlayers(
   } = useSleeperConnection();
 
   const query = useQuery<WaiverRosterPlayersResponse>({
-    queryKey: [
-      'waiver-roster-players',
+    queryKey: queryKeys.waivers.rosterPlayers(
       username,
       leagueId,
       valueBasis,
-    ],
+    ),
 
     queryFn: async () => {
       if (!leagueId) {
@@ -237,10 +228,9 @@ export function useBulkWaiverPlayerSearch(
   const trimmedQuery = query.trim();
 
   const search = useQuery<BulkWaiverPlayerSearchResult[]>({
-    queryKey: [
-      'bulk-waiver-player-search',
+    queryKey: queryKeys.waivers.bulkPlayerSearch(
       trimmedQuery,
-    ],
+    ),
 
     queryFn: async () => {
       return api.waivers
@@ -270,12 +260,11 @@ export function useBulkWaiverAvailability(
   } = useSleeperConnection();
 
   const query = useQuery<BulkWaiverAvailabilityResponse>({
-    queryKey: [
-      'bulk-waiver-availability',
+    queryKey: queryKeys.waivers.bulkAvailability(
       username,
       playerId,
       valueBasis,
-    ],
+    ),
 
     queryFn: async () => {
       if (!playerId) {
@@ -326,24 +315,16 @@ export function useSubmitBulkWaiverClaims() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: [
-            'waiver-overview',
-          ],
+          queryKey: queryKeys.waivers.overviewRoot,
         }),
         queryClient.invalidateQueries({
-          queryKey: [
-            'waiver-available-players',
-          ],
+          queryKey: queryKeys.waivers.availablePlayersRoot,
         }),
         queryClient.invalidateQueries({
-          queryKey: [
-            'waiver-roster-players',
-          ],
+          queryKey: queryKeys.waivers.rosterPlayersRoot,
         }),
         queryClient.invalidateQueries({
-          queryKey: [
-            'bulk-waiver-availability',
-          ],
+          queryKey: queryKeys.waivers.bulkAvailabilityRoot,
         }),
       ]);
     },
