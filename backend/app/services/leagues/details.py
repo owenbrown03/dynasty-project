@@ -112,10 +112,12 @@ def build_settings_details(league) -> list[LeagueSettingsDetail]:
 def is_slot_eligible(slot: str, position: str | None) -> bool:
     if position is None:
         return False
-    if slot == "SUPER_FLEX":
+    if slot in {"SUPER_FLEX", "OP"}:
         return position in {"QB", "RB", "WR", "TE"}
-    if slot == "FLEX":
+    if slot in {"FLEX", "REC_FLEX", "WRRB_FLEX"}:
         return position in {"RB", "WR", "TE"}
+    if slot == "IDP_FLEX":
+        return position in {"DL", "LB", "DB"}
     return position == slot
 
 
