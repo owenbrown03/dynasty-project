@@ -1,7 +1,9 @@
 from fastapi import (
     APIRouter,
+    status,
     Query,
 )
+
 
 from app.api.deps import (
     ContextDep,

@@ -4,7 +4,7 @@ import logging
 from collections import defaultdict
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations.sleeper.exceptions import (
@@ -38,6 +38,9 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.players.search import (
+    search_local_dynasty_players,
+)
 from app.services.waivers.claims import (
     get_claim_block_reason,
     submit_claim,
@@ -66,127 +69,26 @@ async def search_bulk_waiver_players(
     query: str,
     limit: int = 10,
 ) -> list[BulkWaiverPlayerSearchResult]:
-    """
-    Searches only players already stored in our local Sleeper player table.
-
-    The frontend receives the local Sleeper player_id from this result and
-    uses that ID for the later cross-league availability request.
-    """
-
-    search_term = query.strip()
-
-    if len(search_term) < 2:
-        return []
-
-    player_name_expression = func.concat_ws(
-        " ",
-        Player.first_name,
-        Player.last_name,
+    results = await search_local_dynasty_players(
+        db=db,
+        query=query,
+        limit=limit,
     )
-
-    result = await db.execute(
-        select(Player)
-        .where(
-            Player.position.in_(DYNASTY_FANTASY_POSITIONS),
-            player_name_expression.ilike(
-                f"%{search_term}%",
-            ),
-        )
-        .order_by(
-            Player.last_name,
-            Player.first_name,
-        )
-        .limit(limit)
-    )
-
-    players = list(
-        result.scalars(),
-    )
-
-    if not players:
-        return []
-
-    player_ids = [
-        player.player_id
-        for player in players
-    ]
-
-    ktc_result = await db.execute(
-        select(KTCValue).where(
-            KTCValue.player_id.in_(player_ids),
-        )
-    )
-
-    ktc_by_player_id = {
-        value.player_id: value
-        for value in ktc_result.scalars()
-    }
-
-    fc_result = await db.execute(
-        select(FantasyCalcValue).where(
-            FantasyCalcValue.player_id.in_(player_ids),
-        )
-    )
-
-    fc_by_player_id = {
-        value.player_id: value
-        for value in fc_result.scalars()
-    }
-
-    underdog_result = await db.execute(
-        select(UnderdogADP)
-        .where(
-            UnderdogADP.player_id.in_(player_ids),
-        )
-        .order_by(
-            UnderdogADP.player_id,
-            UnderdogADP.id.desc(),
-        )
-    )
-
-    underdog_by_player_id: dict[str, UnderdogADP] = {}
-
-    for row in underdog_result.scalars():
-        if row.player_id not in underdog_by_player_id:
-            underdog_by_player_id[
-                row.player_id
-            ] = row
 
     return [
         BulkWaiverPlayerSearchResult(
-            player_id=player.player_id,
-            name=player.full_name,
-            position=player.position,
-            team=player.team,
-            age=calculate_age(
-                player.birth_date,
-            ),
-
-            ktc_value=(
-                ktc_by_player_id[
-                    player.player_id
-                ].sf_value
-                if player.player_id in ktc_by_player_id
-                else None
-            ),
-
-            fc_value=(
-                fc_by_player_id[
-                    player.player_id
-                ].value
-                if player.player_id in fc_by_player_id
-                else None
-            ),
-
+            player_id=result.player_id,
+            name=result.name,
+            position=result.position,
+            team=result.team,
+            age=result.age,
+            ktc_value=result.ktc_value,
+            fc_value=result.fc_value,
             underdog_position_rank=(
-                underdog_by_player_id[
-                    player.player_id
-                ].position_rank
-                if player.player_id in underdog_by_player_id
-                else None
+                result.underdog_position_rank
             ),
         )
-        for player in players
+        for result in results
     ]
 
 
