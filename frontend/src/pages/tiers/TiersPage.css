@@ -1,0 +1,232 @@
+.tiers-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(1280px, 100%);
+}
+
+.tiers-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tiers-page-title {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.tiers-page-description {
+  margin-top: 8px;
+  max-width: 760px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.tiers-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.tiers-meta-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tiers-meta-block {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.tiers-meta-block span {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tiers-meta-block strong {
+  color: var(--color-text-strong);
+  font-size: 14px;
+}
+
+.tiers-board {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tier-row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  align-items: stretch;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.tier-row-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 10px;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  text-align: center;
+}
+
+.tier-row-grade {
+  color: var(--color-text-strong);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.tier-row-count {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tier-row-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+  gap: 8px;
+  padding: 8px;
+}
+
+.tier-row-empty {
+  display: flex;
+  align-items: center;
+  min-height: 54px;
+  padding: 10px 12px;
+  color: var(--color-text-faint);
+  font-size: 12px;
+}
+
+.tier-player {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.tier-player-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.tier-player-metrics {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.tier-player-metrics span {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tier-player-metrics strong {
+  color: var(--color-text-strong);
+  font-size: 13px;
+}
+
+.tier-player .player-with-avatar-copy strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.tier-player .player-with-avatar-copy span {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.tier-player-qb {
+  border-left: 3px solid #c55b52;
+}
+
+.tier-player-rb {
+  border-left: 3px solid #6fa85b;
+}
+
+.tier-player-wr {
+  border-left: 3px solid #5f89d8;
+}
+
+.tier-player-te {
+  border-left: 3px solid #d3ab4f;
+}
+
+.tier-player-neutral {
+  border-left: 3px solid var(--color-border-strong);
+}
+
+.tiers-empty-state {
+  padding: 42px 24px;
+  border: 1px dashed var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .tiers-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tiers-toolbar {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .tiers-meta-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .tier-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tier-row-label {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+  }
+
+  .tier-row-players {
+    grid-template-columns: 1fr;
+  }
+}

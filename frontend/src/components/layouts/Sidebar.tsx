@@ -6,6 +6,7 @@ import {
   Briefcase,
   User,
   HandCoins,
+  Layers3,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -32,6 +33,11 @@ const menuItems = [
     to: '/waivers',
     label: 'Waivers',
     icon: <HandCoins size={20} />,
+  },
+  {
+    to: '/tiers',
+    label: 'Tiers',
+    icon: <Layers3 size={20} />,
   },
   {
     to: '/orphans',
