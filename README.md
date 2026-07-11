@@ -115,6 +115,11 @@ make test-frontend
 make test
 ```
 
+Continuous integration:
+
+- GitHub Actions runs backend tests plus frontend lint, tests, and build on pushes and pull requests
+- The workflow lives at [.github/workflows/ci.yml](/Users/owen/Code/dynasty/project/.github/workflows/ci.yml)
+
 Schema changes:
 
 ```sh
@@ -131,6 +136,7 @@ If you change worker-imported code, restart the worker before treating the chang
 - Draft picks are modeled separately from players. Sleeper ownership comes from drafts and traded picks, while external pick values are stored in source-specific tables.
 - Theme preference is persisted in session settings for anonymous users and user settings for authenticated users.
 - Commissioner/orphan views, leagues, waivers, and trade tooling all read from the same normalized roster and valuation layers.
+- Internal `/api/v1/test/*` routes are available only in debug or non-production environments.
 
 ## Repository guide
 

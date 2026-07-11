@@ -69,6 +69,8 @@ make test-frontend
 make build-frontend
 ```
 
+The same frontend checks also run in CI through [.github/workflows/ci.yml](/Users/owen/Code/dynasty/project/.github/workflows/ci.yml).
+
 ## Repository-specific conventions
 
 - Keep server state in TanStack Query hooks.
