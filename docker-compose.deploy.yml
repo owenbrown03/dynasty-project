@@ -1,10 +1,10 @@
 networks:
   app-network:
     driver: bridge
+
 services:
   db:
     image: postgres:16-alpine
-    container_name: postgres_db
     restart: unless-stopped
     env_file:
       - .env
@@ -17,28 +17,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin_gui
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    depends_on:
-      - db
     networks:
       - app-network
 
@@ -46,64 +26,47 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: fastapi_app
     restart: unless-stopped
     working_dir: /workspace/backend
-    volumes:
-      - .:/workspace
     env_file:
       - .env
     environment:
-      ENVIRONMENT: development
-      DEBUG_MODE: "true"
+      ENVIRONMENT: production
+      DEBUG_MODE: "false"
       PYTHONUNBUFFERED: "1"
       FORCE_COLOR: "1"
     ports:
       - "8000:8000"
-      - "5678:5678"
     depends_on:
       db:
         condition: service_healthy
-    stdin_open: true
-    tty: true
     networks:
       - app-network
-  
+
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    container_name: react_app
+      dockerfile: Dockerfile.prod
     restart: unless-stopped
-    working_dir: /workspace/frontend
-    volumes:
-      - .:/workspace
-      - /workspace/frontend/node_modules
-    env_file:
-      - .env
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
-      VITE_HCAPTCHA_SITE_KEY: ${VITE_HCAPTCHA_SITE_KEY}
     ports:
-      - "5173:5173"
-    stdin_open: true
-    tty: true
+      - "80:80"
     depends_on:
       - api
     networks:
       - app-network
-      
+
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
     command: taskiq worker --no-configure-logging app.core.worker:broker
+    working_dir: /workspace/backend
     env_file:
       - .env
     environment:
-      ENVIRONMENT: development
-      DEBUG_MODE: "true"
+      ENVIRONMENT: production
+      DEBUG_MODE: "false"
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
     depends_on:
@@ -111,17 +74,12 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
-    working_dir: /workspace/backend
-    volumes:
-      - .:/workspace
     networks:
       - app-network
 
   redis:
     image: redis:alpine
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -134,5 +92,4 @@ services:
 
 volumes:
   postgres_data:
-  pgadmin_data:
   redis_data:

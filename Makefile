@@ -1,11 +1,13 @@
 DOCKER_COMPOSE := docker compose
 
-.PHONY: help up down logs-api logs-worker restart-worker migrate test-backend test-frontend lint-frontend build-frontend test
+.PHONY: help up up-deploy down down-deploy logs-api logs-worker restart-worker migrate test-backend test-frontend lint-frontend build-frontend test
 
 help:
 	@echo "Available targets:"
 	@echo "  up              Start the local stack"
+	@echo "  up-deploy       Start the deployment-oriented stack"
 	@echo "  down            Stop the local stack"
+	@echo "  down-deploy     Stop the deployment-oriented stack"
 	@echo "  logs-api        Tail API logs"
 	@echo "  logs-worker     Tail worker logs"
 	@echo "  restart-worker  Restart the TaskIQ worker"
@@ -19,8 +21,14 @@ help:
 up:
 	$(DOCKER_COMPOSE) up --build
 
+up-deploy:
+	$(DOCKER_COMPOSE) -f docker-compose.deploy.yml up --build -d
+
 down:
 	$(DOCKER_COMPOSE) down
+
+down-deploy:
+	$(DOCKER_COMPOSE) -f docker-compose.deploy.yml down
 
 logs-api:
 	$(DOCKER_COMPOSE) logs -f api

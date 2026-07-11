@@ -69,6 +69,13 @@ Or use the provided shortcuts:
 make up
 ```
 
+The default Compose setup is intentionally development-oriented:
+
+- bind mounts the repo into the containers
+- runs the Vite dev server for the frontend
+- exposes the Python debug port
+- keeps pgAdmin available locally
+
 Common container workflows:
 
 ```sh
@@ -77,6 +84,21 @@ docker compose logs -f worker
 docker compose restart worker
 docker compose exec api alembic upgrade head
 ```
+
+## Production-style Docker deployment
+
+For a self-hosted production-style stack, use the dedicated deployment compose file:
+
+```sh
+docker compose -f docker-compose.deploy.yml up --build -d
+```
+
+That deployment config:
+
+- disables source bind mounts
+- serves the frontend as static assets from nginx
+- disables the Python debug port and Vite dev server behavior
+- omits pgAdmin from the runtime stack
 
 Environment notes:
 
