@@ -13,6 +13,7 @@ from app.services.sleeper import transformers
 from app.services.waivers.dynasty import DYNASTY_FANTASY_POSITIONS
 
 logger = logging.getLogger(__name__)
+PLAYER_SYNC_INTERVAL = timedelta(days=1)
 
 
 _PLAYER_MAP_CACHE: dict[str, dict] | None = None
@@ -69,12 +70,13 @@ async def get_analytics_player_map(db: AsyncSession,) -> dict[str, dict[str, Any
 
 async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: bool = False):
     global _PLAYER_MAP_CACHE
+    global _PLAYER_SNAPSHOT_CACHE
     
     result = await db.execute(select(InternalState).where(InternalState.key == "last_player_map_update"))
     state = result.scalars().first()
     
     last_update = datetime.fromisoformat(state.value) if state and state.value else None
-    if not force_update and last_update and last_update > (datetime.now() - timedelta(days=30)):
+    if not force_update and last_update and last_update > (datetime.now() - PLAYER_SYNC_INTERVAL):
         return
 
     logger.info("Starting full Sleeper player sync...")
@@ -104,7 +106,7 @@ async def sync_players(db: AsyncSession, sleeper: SleeperClient, force_update: b
     state.value = datetime.now().isoformat()
     
     await db.commit()
-    _PLAYER_MAP_CACHE.clear()
+    _PLAYER_MAP_CACHE = None
     _PLAYER_SNAPSHOT_CACHE.clear()
     logger.info(f"Player Sync Complete: Processed {len(player_dicts)} players.")
 
