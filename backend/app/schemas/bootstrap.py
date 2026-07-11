@@ -1,6 +1,7 @@
 from typing import Literal, Optional
 
 from app.schemas.base import Base
+from app.services.values.basis import ValueBasis
 
 
 class BootstrapUser(Base):
@@ -21,3 +22,4 @@ class BootstrapResponse(Base):
     site_user: Optional[BootstrapUser] = None
     sleeper: BootstrapSleeper
     theme_preference: Literal["light", "dark", "system"] | None = None
+    value_preference: ValueBasis | None = None

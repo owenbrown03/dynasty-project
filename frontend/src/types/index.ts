@@ -5,7 +5,7 @@ export interface Movement {
 
 export interface UserMovements {
   display_name: string;
-  avatar: string;
+  avatar: string | null;
   adds: Movement[];
   drops: Movement[];
 }
@@ -86,6 +86,7 @@ export interface Bootstrap {
   site_user: BootstrapUser | null;
   sleeper: BootstrapSleeper;
   theme_preference: ThemePreference | null;
+  value_preference: ValueBasis | null;
 }
 
 export type ThemePreference =

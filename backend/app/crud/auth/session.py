@@ -4,6 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, delete
 
 from app.models.db.auth import UserSession
+from app.services.values.basis import ValueBasis
+
+VALID_THEME_PREFERENCES = {"light", "dark", "system"}
+VALID_VALUE_PREFERENCES = {
+    basis.value
+    for basis in ValueBasis
+}
 
 async def create_session_by_userid(
     user_id: uuid.UUID, 
@@ -52,8 +59,26 @@ def get_session_theme_preference(
         )
     )
 
-    if value in {"light", "dark", "system"}:
+    if value in VALID_THEME_PREFERENCES:
         return value
+
+    return None
+
+
+def get_session_value_preference(
+    session: UserSession | None,
+) -> ValueBasis | None:
+    if not session:
+        return None
+
+    value = (
+        (session.settings or {}).get(
+            "value_preference",
+        )
+    )
+
+    if value in VALID_VALUE_PREFERENCES:
+        return ValueBasis(value)
 
     return None
 
@@ -69,6 +94,25 @@ async def set_session_theme_preference(
     )
 
     settings["theme_preference"] = theme_preference
+    session.settings = settings
+
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+async def set_session_value_preference(
+    *,
+    session: UserSession,
+    value_preference: ValueBasis,
+    db: AsyncSession,
+) -> UserSession:
+    settings = dict(
+        session.settings or {}
+    )
+
+    settings["value_preference"] = value_preference.value
     session.settings = settings
 
     db.add(session)

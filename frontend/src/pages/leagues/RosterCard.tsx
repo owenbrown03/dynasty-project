@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import './RosterCard.css';
 
+import { UserAvatar } from '@/components/users/UserAvatar';
 import type { LeaguePick, LeagueRoster } from '@/types';
 import { PlayerTable } from './PlayerTable';
 import { formatNumber } from '@/utils/format';
@@ -57,9 +58,17 @@ export function RosterCard({ roster }: Props) {
       <header className="roster-header">
         <div className="roster-header-main">
           <p className="roster-header-kicker">Roster</p>
-          <h3 className="roster-title">
-            #{roster.rank} {roster.owner.display_name}
-          </h3>
+          <div className="player-with-avatar">
+            <UserAvatar
+              avatarId={roster.owner.avatar}
+              name={roster.owner.display_name}
+              size="sm"
+            />
+
+            <h3 className="roster-title">
+              #{roster.rank} {roster.owner.display_name}
+            </h3>
+          </div>
           <p className="roster-subtitle">
             {roster.record} · PF {formatNumber(roster.actual_points_for)}
           </p>

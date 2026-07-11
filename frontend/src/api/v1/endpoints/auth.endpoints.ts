@@ -3,6 +3,7 @@ import { type AxiosInstance } from 'axios';
 import type {
   Login,
   ThemePreference,
+  ValueBasis,
 } from '@/types/index';
 
 export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
@@ -14,5 +15,11 @@ export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
   ) => client.post(
     `${prefix}/theme`,
     { theme_preference },
+  ),
+  updateValuePreference: (
+    value_preference: ValueBasis,
+  ) => client.post(
+    `${prefix}/value`,
+    { value_preference },
   ),
 });

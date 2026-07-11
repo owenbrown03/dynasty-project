@@ -5,8 +5,17 @@ from sqlmodel import select
 from app.models.db.auth import SiteUser, UserSession
 from app.schemas.auth import Login
 from app.crud.auth.session import get_session_by_token
+from app.services.values.basis import (
+    DEFAULT_VALUE_BASIS,
+    ValueBasis,
+)
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+VALID_THEME_PREFERENCES = {"light", "dark", "system"}
+VALID_VALUE_PREFERENCES = {
+    basis.value
+    for basis in ValueBasis
+}
 
 async def insert_user(
     credentials: Login,
@@ -75,10 +84,26 @@ def get_theme_preference(
         (user.settings or {}).get("theme_preference")
     )
 
-    if value in {"light", "dark", "system"}:
+    if value in VALID_THEME_PREFERENCES:
         return value
 
     return "light"
+
+
+def get_value_preference(
+    user: SiteUser | None,
+) -> ValueBasis | None:
+    if not user:
+        return None
+
+    value = (
+        (user.settings or {}).get("value_preference")
+    )
+
+    if value in VALID_VALUE_PREFERENCES:
+        return ValueBasis(value)
+
+    return DEFAULT_VALUE_BASIS
 
 
 async def set_theme_preference(
@@ -92,6 +117,25 @@ async def set_theme_preference(
     )
 
     settings["theme_preference"] = theme_preference
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def set_value_preference(
+    *,
+    user: SiteUser,
+    value_preference: ValueBasis,
+    db: AsyncSession,
+) -> SiteUser:
+    settings = dict(
+        user.settings or {}
+    )
+
+    settings["value_preference"] = value_preference.value
     user.settings = settings
 
     db.add(user)
@@ -115,17 +159,43 @@ async def reconcile_session_theme_preference(
         )
     )
 
-    if session_preference not in {
-        "light",
-        "dark",
-        "system",
-    }:
+    if session_preference not in VALID_THEME_PREFERENCES:
         return user
 
     settings = dict(
         user.settings or {}
     )
     settings["theme_preference"] = session_preference
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def reconcile_session_value_preference(
+    *,
+    user: SiteUser,
+    session: UserSession | None,
+    db: AsyncSession,
+) -> SiteUser:
+    if not session:
+        return user
+
+    session_preference = (
+        (session.settings or {}).get(
+            "value_preference",
+        )
+    )
+
+    if session_preference not in VALID_VALUE_PREFERENCES:
+        return user
+
+    settings = dict(
+        user.settings or {}
+    )
+    settings["value_preference"] = session_preference
     user.settings = settings
 
     db.add(user)

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { useValuePreference } from '@/context/useValuePreference';
 import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
 import { usePlayerTiers } from '@/hooks/sleeper/usePlayerTiers';
 import type {
@@ -14,10 +15,6 @@ import {
   WAR_ONLY_OPTIONS,
 } from './tier.constants';
 import './TiersPage.css';
-
-
-const DEFAULT_SOURCE: TierBoardSource = 'ktc';
-const DEFAULT_WAR_BASIS: ValueBasis = 'dynasty_roster_war';
 
 
 function formatSelectedValue(
@@ -56,11 +53,19 @@ function getPositionTone(
 
 
 export const TiersPage = () => {
+  const valuePreference = useValuePreference();
+  const initialSource = valuePreference.preference;
+  const initialWarBasis: ValueBasis = (
+    initialSource === 'ktc'
+    || initialSource === 'fantasycalc'
+  )
+    ? 'dynasty_roster_war'
+    : initialSource;
   const [source, setSource] = useState<TierBoardSource>(
-    DEFAULT_SOURCE,
+    initialSource,
   );
   const [warBasis, setWarBasis] = useState<ValueBasis>(
-    DEFAULT_WAR_BASIS,
+    initialWarBasis,
   );
   const [leagueId, setLeagueId] = useState('');
 

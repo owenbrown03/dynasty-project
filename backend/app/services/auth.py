@@ -8,21 +8,28 @@ from app.schemas.auth import (
     Login,
     ThemePreferenceResponse,
     ThemePreferenceUpdate,
+    ValuePreferenceResponse,
+    ValuePreferenceUpdate,
 )
 from app.core.context import Context
 from app.crud.auth.user import (
     get_theme_preference,
+    get_value_preference,
     get_user_by_credentials,
     insert_user,
     reconcile_session_theme_preference,
+    reconcile_session_value_preference,
     set_theme_preference,
+    set_value_preference,
 )
 from app.crud.auth.session import (
     create_session_by_userid,
     get_session_theme_preference,
+    get_session_value_preference,
     insert_session_by_userid,
     delete_session,
     set_session_theme_preference,
+    set_session_value_preference,
 )
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -72,6 +79,11 @@ async def login(
         session=session,
         db=ctx.db,
     )
+    await reconcile_session_value_preference(
+        user=db_user,
+        session=session,
+        db=ctx.db,
+    )
 
     return build_auth_session_response(
         str(db_user.id),
@@ -92,6 +104,14 @@ async def logout(
             ctx.site_user,
         )
     )
+    value_preference = (
+        get_session_value_preference(
+            ctx.session,
+        )
+        or get_value_preference(
+            ctx.site_user,
+        )
+    )
 
     await delete_session(ctx.session, ctx.response, ctx.db)
 
@@ -105,6 +125,13 @@ async def logout(
         await set_session_theme_preference(
             session=new_session,
             theme_preference=theme_preference,
+            db=ctx.db,
+        )
+
+    if value_preference is not None:
+        await set_session_value_preference(
+            session=new_session,
+            value_preference=value_preference,
             db=ctx.db,
         )
 
@@ -138,5 +165,34 @@ async def update_theme(
     return ThemePreferenceResponse(
         theme_preference=(
             session.settings.get("theme_preference")
+        ),
+    )
+
+
+async def update_value_preference(
+    body: ValuePreferenceUpdate,
+    ctx: Context,
+) -> ValuePreferenceResponse:
+    session = await set_session_value_preference(
+        session=ctx.session,
+        value_preference=body.value_preference,
+        db=ctx.db,
+    )
+
+    if ctx.site_user:
+        user = await set_value_preference(
+            user=ctx.site_user,
+            value_preference=body.value_preference,
+            db=ctx.db,
+        )
+        return ValuePreferenceResponse(
+            value_preference=get_value_preference(
+                user,
+            ),
+        )
+
+    return ValuePreferenceResponse(
+        value_preference=get_session_value_preference(
+            session,
         ),
     )

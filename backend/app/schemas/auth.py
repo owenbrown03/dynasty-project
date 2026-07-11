@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import EmailStr, Field
 
 from app.schemas.base import Base
+from app.services.values.basis import ValueBasis
 
 class Login(Base):
     email: EmailStr
@@ -20,3 +21,11 @@ class ThemePreferenceUpdate(Base):
 
 class ThemePreferenceResponse(Base):
     theme_preference: Literal["light", "dark", "system"] | None
+
+
+class ValuePreferenceUpdate(Base):
+    value_preference: ValueBasis
+
+
+class ValuePreferenceResponse(Base):
+    value_preference: ValueBasis | None

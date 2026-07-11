@@ -10,6 +10,7 @@ import {
 } from 'react-router';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { useValuePreference } from '@/context/useValuePreference';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { useCommissionerOrphans } from '@/hooks/sleeper/useUsers';
 import type {
@@ -26,7 +27,6 @@ import './CommissionerPage.css';
 type CommissionerTab = 'orphans';
 
 const DEFAULT_TAB: CommissionerTab = 'orphans';
-const DEFAULT_VALUE_BASIS: ValueBasis = 'fantasycalc';
 
 
 function isValueBasis(
@@ -355,6 +355,7 @@ export const CommissionerPage = () => {
   const navigate = useNavigate();
   const params = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  const valuePreference = useValuePreference();
   const connection = useSleeperConnection();
 
   const routeUsername = params.username ?? null;
@@ -377,7 +378,7 @@ export const CommissionerPage = () => {
     searchParams.get('basis'),
   )
     ? (searchParams.get('basis') as ValueBasis)
-    : DEFAULT_VALUE_BASIS;
+    : valuePreference.preference;
 
   const orphans = useCommissionerOrphans(
     activeUsername,

@@ -2,25 +2,21 @@ import { useState } from 'react';
 
 import './WaiversPage.css';
 
-import type { ValueBasis } from '@/types';
-
+import { useValuePreference } from '@/context/useValuePreference';
 import { AvailablePlayersTab } from './AvailablePlayersTab';
-import { ValueBasisSelector } from './ValueBasisSelector';
 import { WaiversOverviewTab } from './WaiversOverviewTab';
 import { WaiversTabs } from './WaiversTabs';
 import { BulkClaimsTab } from './BulkClaimsTab';
 
 
 export const WaiversPage = () => {
+  const valuePreference = useValuePreference();
   const [activeTab, setActiveTab] = useState<
     'overview'
     | 'available'
     | 'bulk'
   >('overview');
-
-  const [valueBasis, setValueBasis] = useState<ValueBasis>(
-    'ktc',
-  );
+  const valueBasis = valuePreference.preference;
 
   return (
     <div className="waivers-page">
@@ -40,10 +36,6 @@ export const WaiversPage = () => {
           </p>
         </div>
 
-        <ValueBasisSelector
-          valueBasis={valueBasis}
-          onChange={setValueBasis}
-        />
       </section>
 
       <WaiversTabs

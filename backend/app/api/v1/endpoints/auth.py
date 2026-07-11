@@ -6,12 +6,15 @@ from app.schemas.auth import (
     Login,
     ThemePreferenceResponse,
     ThemePreferenceUpdate,
+    ValuePreferenceResponse,
+    ValuePreferenceUpdate,
 )
 from app.services.auth import (
     login,
     logout,
     register,
     update_theme,
+    update_value_preference,
 )
 
 router = APIRouter()
@@ -55,3 +58,14 @@ async def update_theme_endpoint(
     ctx: ContextDep,
 ):
     return await update_theme(body, ctx)
+
+
+@router.post(
+    "/value",
+    response_model=ValuePreferenceResponse,
+)
+async def update_value_preference_endpoint(
+    body: ValuePreferenceUpdate,
+    ctx: ContextDep,
+):
+    return await update_value_preference(body, ctx)

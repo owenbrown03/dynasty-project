@@ -1,4 +1,5 @@
 import './UserCard.css';
+import { UserAvatar } from '@/components/users/UserAvatar';
 import type { UserMovements } from '../../types';
 
 interface Props {
@@ -8,7 +9,17 @@ interface Props {
 export function UserCard({ user }: Props) {
   return (
     <div className="user-card">
-      <header className="user-header">{user.display_name}</header>
+      <header className="user-header">
+        <div className="player-with-avatar">
+          <UserAvatar
+            avatarId={user.avatar}
+            name={user.display_name}
+            size="sm"
+          />
+
+          <span>{user.display_name}</span>
+        </div>
+      </header>
       <div className="adds">
           {user.adds.map((p, index) => (
              <div key={`add-${index}`}className={p.signal ? "has-signal movement-row" : "movement-row"}>
