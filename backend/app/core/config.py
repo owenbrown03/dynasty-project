@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from cryptography.fernet import Fernet
 
 
 class Settings(BaseSettings):
@@ -50,6 +51,18 @@ class Settings(BaseSettings):
             return f"postgresql+asyncpg://{suffix}"
 
         return self.DATABASE_URL
+
+    @property
+    def encryption_key_bytes(self) -> bytes:
+        key = self.ENCRYPTION_KEY.encode()
+        try:
+            Fernet(key)
+        except ValueError as exc:
+            raise ValueError(
+                "ENCRYPTION_KEY must be a valid Fernet key "
+                "(32 url-safe base64-encoded bytes)."
+            ) from exc
+        return key
 
 
 settings = Settings()

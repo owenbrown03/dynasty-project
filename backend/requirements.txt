@@ -3,7 +3,6 @@ uvicorn
 sqlalchemy
 psycopg2-binary
 httpx
-asyncio
 debugpy
 pydantic
 alembic

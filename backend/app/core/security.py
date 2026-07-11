@@ -1,8 +1,7 @@
-import os
 from cryptography.fernet import Fernet
+from app.core.config import settings
 
-SECRET_ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY").encode()
-cipher = Fernet(SECRET_ENCRYPTION_KEY)
+cipher = Fernet(settings.encryption_key_bytes)
 
 def encrypt_token(token: str) -> str:
     return cipher.encrypt(token.encode()).decode()

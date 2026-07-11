@@ -1,4 +1,5 @@
 from app.core.config import Settings
+import pytest
 
 
 def test_cors_origins_parses_comma_separated_values():
@@ -45,3 +46,18 @@ def test_async_database_url_preserves_existing_async_driver():
     assert settings.async_database_url == (
         "postgresql+asyncpg://user:pass@db:5432/test"
     )
+
+
+def test_encryption_key_bytes_validates_fernet_key():
+    settings = Settings(
+        ENVIRONMENT="test",
+        DATABASE_URL="postgresql://user:pass@db:5432/test",
+        ENCRYPTION_KEY="secret",
+        REDIS_URL="redis://redis:6379/0",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="ENCRYPTION_KEY must be a valid Fernet key",
+    ):
+        _ = settings.encryption_key_bytes

@@ -82,6 +82,14 @@ Environment notes:
 
 - `BACKEND_CORS_ORIGINS` accepts a comma-separated list of allowed frontend origins
 - `VITE_API_BASE_URL` overrides the frontend API target when needed
+- `DATABASE_URL` may be a plain Postgres URL (`postgresql://...`) and the app will normalize it for async runtime usage
+- `ENCRYPTION_KEY` must be a valid Fernet key for token encryption/decryption
+
+Generate a valid Fernet key:
+
+```sh
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
 
 Frontend only:
 
