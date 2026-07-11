@@ -5,72 +5,18 @@ import {
 } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { BOOTSTRAP_QUERY_KEY } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
+import {
+  applyResolvedTheme,
+  getStoredThemePreference,
+  resolveThemePreference,
+  THEME_STORAGE_KEY,
+} from '@/context/theme';
 import type { ThemeContextType } from '@/context/theme-context';
 import { ThemeContext } from '@/context/theme-context';
 import { useBootstrap } from '@/hooks/useBootstrap';
 import type { Bootstrap, ThemePreference } from '@/types';
-
-type ResolvedTheme = 'light' | 'dark';
-
-const STORAGE_KEY = 'dynasty-theme-preference';
-const BOOTSTRAP_KEY = ['bootstrap'] as const;
-
-function isThemePreference(
-  value: string | null,
-): value is ThemePreference {
-  return value === 'light'
-    || value === 'dark'
-    || value === 'system';
-}
-
-function getStoredPreference(): ThemePreference {
-  if (typeof window === 'undefined') {
-    return 'system';
-  }
-
-  const stored = window.localStorage.getItem(
-    STORAGE_KEY,
-  );
-
-  if (isThemePreference(stored)) {
-    return stored;
-  }
-
-  return 'system';
-}
-
-function resolveTheme(
-  preference: ThemePreference,
-): ResolvedTheme {
-  if (preference === 'light' || preference === 'dark') {
-    return preference;
-  }
-
-  if (
-    typeof window !== 'undefined'
-    && window.matchMedia(
-      '(prefers-color-scheme: dark)',
-    ).matches
-  ) {
-    return 'dark';
-  }
-
-  return 'light';
-}
-
-function applyTheme(
-  preference: ThemePreference,
-): ResolvedTheme {
-  const resolved = resolveTheme(
-    preference,
-  );
-
-  document.documentElement.dataset.theme = resolved;
-  document.documentElement.style.colorScheme = resolved;
-
-  return resolved;
-}
 
 export function ThemeProvider({
   children,
@@ -87,13 +33,13 @@ export function ThemeProvider({
 
   const [preference, setPreferenceState] =
     useState<ThemePreference>(
-      getStoredPreference,
+      getStoredThemePreference,
     );
 
   const [resolvedTheme, setResolvedTheme] =
-    useState<ResolvedTheme>(() =>
-      resolveTheme(
-        getStoredPreference(),
+    useState(() =>
+      resolveThemePreference(
+        getStoredThemePreference(),
       )
     );
 
@@ -102,7 +48,7 @@ export function ThemeProvider({
 
     onSuccess: async (_, nextPreference) => {
       queryClient.setQueryData(
-        BOOTSTRAP_KEY,
+        BOOTSTRAP_QUERY_KEY,
         (current: Bootstrap | undefined | null) => {
           if (!current) {
             return current;
@@ -116,7 +62,7 @@ export function ThemeProvider({
       );
 
       await queryClient.invalidateQueries({
-        queryKey: BOOTSTRAP_KEY,
+        queryKey: BOOTSTRAP_QUERY_KEY,
       });
     },
   });
@@ -124,7 +70,7 @@ export function ThemeProvider({
   useEffect(() => {
     const nextPreference = (
       bootstrapPreference
-      ?? getStoredPreference()
+      ?? getStoredThemePreference()
     );
 
     setPreferenceState(
@@ -132,12 +78,12 @@ export function ThemeProvider({
     );
 
     window.localStorage.setItem(
-      STORAGE_KEY,
+      THEME_STORAGE_KEY,
       nextPreference,
     );
 
     setResolvedTheme(
-      applyTheme(
+      applyResolvedTheme(
         nextPreference,
       )
     );
@@ -154,7 +100,7 @@ export function ThemeProvider({
 
     const sync = () => {
       setResolvedTheme(
-        applyTheme(
+        applyResolvedTheme(
           'system',
         )
       );
@@ -180,12 +126,12 @@ export function ThemeProvider({
         );
 
         window.localStorage.setItem(
-          STORAGE_KEY,
+          THEME_STORAGE_KEY,
           nextPreference,
         );
 
         setResolvedTheme(
-          applyTheme(
+          applyResolvedTheme(
             nextPreference,
           )
         );

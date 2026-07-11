@@ -1,11 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { BOOTSTRAP_QUERY_KEY } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import { notify } from '@/utils/notify';
 import { useAuthContext } from '@/context/useAuthContext'
 import { useBootstrap } from './useBootstrap';
-
-const KEY = ['bootstrap'] as const;
 
 export function useAuth() {
   const queryClient = useQueryClient();
@@ -18,7 +17,7 @@ export function useAuth() {
     onSuccess: async () => {
       authContext.close();
       await queryClient.invalidateQueries({
-        queryKey: KEY,
+        queryKey: BOOTSTRAP_QUERY_KEY,
       });
 
       notify.success('Successfully logged in!');
@@ -47,7 +46,10 @@ export function useAuth() {
     mutationFn: api.auth.logout,
 
     onSuccess: () => {
-      queryClient.setQueryData(KEY, null);
+      queryClient.setQueryData(
+        BOOTSTRAP_QUERY_KEY,
+        null,
+      );
 
       notify.success('Successfully logged out.');
     },
