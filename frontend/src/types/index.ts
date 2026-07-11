@@ -40,28 +40,6 @@ export interface Login {
   password: string;
 }
 
-export interface TradeRequest {
-  league_id: string;
-  k_adds: string[];
-  v_adds: number[];
-  k_drops: string[];
-  v_drops: number[];
-  draft_picks: string[];
-  waiver_budget?: number[];
-  expires_at?: number;
-}
-
-export interface WaiverRequest {
-  league_id: string;
-  k_adds: string[];
-  v_adds: number[];
-  k_drops: string[];
-  v_drops: number[];
-  draft_picks: string[];
-  k_settings?: number[];
-  v_settings?: number[];
-}
-
 export interface SendCodeRequest {
   username: string;
   captcha: string;

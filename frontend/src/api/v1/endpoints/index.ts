@@ -8,7 +8,6 @@ import { playerEndpoints } from './sleeper/player.endpoints';
 import { tradeEndpoints } from './sleeper/trade.endpoints';
 import { userEndpoints } from './sleeper/user.endpoints';
 import { waiversEndpoints } from './sleeper/waivers.endpoints';
-import { writeEndpoints } from './sleeper/write.endpoints';
 
 export const api = {
   auth: authEndpoints(client, '/auth'),
@@ -20,5 +19,4 @@ export const api = {
   trades: tradeEndpoints(client, '/sleeper/trades'),
   users: userEndpoints(client, '/sleeper/users'),
   waivers: waiversEndpoints(client, '/sleeper/waivers'),
-  write: writeEndpoints(client, '/sleeper/write'),
 };
