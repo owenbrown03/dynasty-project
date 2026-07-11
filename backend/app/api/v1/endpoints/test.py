@@ -8,6 +8,7 @@ from app.crud.underdog.sync import sync_underdog_adp
 from app.crud.value import get_player_values
 from app.integrations.sleeper.schemas.api import Projection
 from app.services.dashboard.service import get_user_dashboard
+from app.schemas.league import LeagueOverviewItem
 from app.services.leagues.details import LeagueDetails
 from app.services.leagues.overview import get_league_overview
 from app.services.sleeper.projection import sync_projections
@@ -128,7 +129,10 @@ async def dynasty_phase5(
 
     return values[:50]
 
-@router.get("/league_overview/{username}")
+@router.get(
+    "/league_overview/{username}",
+    response_model=list[LeagueOverviewItem],
+)
 async def league_overview(
     username: str,
     ctx: ContextDep,

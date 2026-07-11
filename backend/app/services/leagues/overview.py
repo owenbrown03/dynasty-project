@@ -1,12 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.sleeper.league import get_user_leagues
+from app.schemas.league import LeagueOverviewItem
 
 
 async def get_league_overview(
     db: AsyncSession,
     username: str,
-) -> list[dict[str, str | int | None]]:
+) -> list[LeagueOverviewItem]:
     leagues = await get_user_leagues(
         db,
         username,
@@ -27,12 +28,12 @@ async def get_league_overview(
         )
 
         output.append(
-            {
-                "league_id": league.league_id,
-                "league_name": league.name,
-                "season": league.season,
-                "total_rosters": league.total_rosters,
-            }
+            LeagueOverviewItem(
+                league_id=league.league_id,
+                league_name=league.name,
+                season=league.season,
+                total_rosters=league.total_rosters,
+            )
         )
 
     return output

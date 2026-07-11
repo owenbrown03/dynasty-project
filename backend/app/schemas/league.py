@@ -4,6 +4,13 @@ from app.schemas.base import Base
 from app.schemas.player import PlayerValue
 
 
+class LeagueOverviewItem(Base):
+    league_id: str
+    league_name: str
+    season: str | None = None
+    total_rosters: int | None = None
+
+
 class RosterSummary(Base):
     ktc_total: int
     fantasycalc_total: int
