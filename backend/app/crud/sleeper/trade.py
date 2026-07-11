@@ -1,18 +1,22 @@
-import logging, asyncio
+import asyncio
+import logging
 from collections import defaultdict
-from typing import List, Dict
-from sqlmodel import select
-from sqlalchemy import func, or_, and_
+from typing import Dict, List
+
+from sqlalchemy import and_, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.integrations.sleeper.client import SleeperClient
-from app.models.db.sleeper import api as model
-from app.integrations.sleeper.schemas import api as schema
-from app.integrations.sleeper.schemas import display
 from app.crud.sleeper.league import get_league_map
 from app.crud.sleeper.leaguemate import get_leaguemate_ids
 from app.crud.sleeper.player import get_player_map
 from app.crud.sleeper.user import get_userid_by_username
+from app.integrations.sleeper.schemas import (
+    api as schema,
+)
+from app.integrations.sleeper.schemas import display
+from app.models.db.sleeper import api as model
 
 logger = logging.getLogger(__name__)
 
@@ -261,6 +265,9 @@ async def get_trade_signals(db: AsyncSession, sleeper: SleeperClient, username: 
         logger.info(f"Calculation complete. Identified {len(final_trades)} actionable trade cross-signals.")
         return sorted(final_trades, key=lambda x: x.time_ms, reverse=True)
                 
-    except Exception as e:
-        logger.error(f"Execution runtime error in signal parsing engine: {str(e)}", exc_info=True)
-        raise e
+    except Exception:
+        logger.exception(
+            "Execution runtime error in signal parsing engine for user=%s",
+            username,
+        )
+        raise
