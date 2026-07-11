@@ -8,7 +8,7 @@
 .content {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 20px 24px 30px;
+  padding: 20px clamp(16px, 2vw, 32px) 30px;
   overflow-y: auto;
   background: var(--color-canvas);
 }

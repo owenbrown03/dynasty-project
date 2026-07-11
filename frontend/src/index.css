@@ -4,6 +4,8 @@
   --radius-sm: 3px;
   --radius-md: 6px;
   --radius-lg: 10px;
+  --page-max-width: 1680px;
+  --page-copy-max-width: 860px;
 
   --shadow-overlay: 0 20px 40px rgba(15, 23, 42, 0.18);
 
