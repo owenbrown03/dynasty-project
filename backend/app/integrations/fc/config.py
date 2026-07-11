@@ -1,8 +1,12 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+)
 
 
 class FantasyCalcConfig(BaseSettings):
     base_url: str = "https://api.fantasycalc.com"
 
-    class Config:
-        env_prefix = "FANTASY_CALC_"
+    model_config = SettingsConfigDict(
+        env_prefix="FANTASY_CALC_",
+    )

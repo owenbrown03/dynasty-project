@@ -1,5 +1,7 @@
-from pydantic import Field, computed_field
 from typing import List, Optional
+
+from pydantic import Field, computed_field
+
 from app.schemas.base import Base
 
 class Movement(Base):
@@ -10,8 +12,8 @@ class User(Base):
     raw_display_name: str = Field(alias="display_name", repr=False)
     avatar: Optional[str] = None
     is_placeholder: bool = False
-    adds: List[Movement] = []
-    drops: List[Movement] = []
+    adds: List[Movement] = Field(default_factory=list)
+    drops: List[Movement] = Field(default_factory=list)
 
     @computed_field
     def display_name(self) -> str:
@@ -23,7 +25,4 @@ class Transaction(Base):
     transaction_id: str
     time_ms: int
     league_name: str
-    users: List[User] = []
-
-    class Config:
-        from_attributes = True
+    users: List[User] = Field(default_factory=list)
