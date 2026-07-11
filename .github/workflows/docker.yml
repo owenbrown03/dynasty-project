@@ -1,0 +1,51 @@
+name: Docker
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - codex/**
+  pull_request:
+
+jobs:
+  validate-deploy-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write deployment env file
+        run: |
+          cat <<'EOF' > .env
+          ENVIRONMENT=production
+          DEBUG_MODE=false
+          POSTGRES_USER=user
+          POSTGRES_PASSWORD=password
+          POSTGRES_DB=dynasty
+          DATABASE_URL=postgresql://user:password@db:5432/dynasty
+          REDIS_URL=redis://redis:6379/0
+          ENCRYPTION_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+          BACKEND_CORS_ORIGINS=http://localhost:5173
+          VITE_API_BASE_URL=/api/v1
+          VITE_HCAPTCHA_SITE_KEY=test-site-key
+          EOF
+
+      - name: Validate deployment compose config
+        run: docker compose -f docker-compose.deploy.yml config
+
+  build-backend-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -f backend/Dockerfile backend
+
+  build-frontend-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frontend production image
+        run: docker build -f frontend/Dockerfile.prod frontend
