@@ -167,17 +167,18 @@ async def sync_leagues(
     failed_batches = 0
     fetched_bundle_count = 0
 
-    league_chunks = list(
-        _chunked(
-            leagues,
-            FETCH_CHUNK_SIZE,
-        )
+    total_leagues = len(
+        leagues,
     )
 
-    for chunk_index, league_chunk in enumerate(
-        league_chunks,
-        start=1,
+    for chunk_start in range(
+        0,
+        total_leagues,
+        FETCH_CHUNK_SIZE,
     ):
+        league_chunk = leagues[
+            chunk_start:chunk_start + FETCH_CHUNK_SIZE
+        ]
         bundles = await bounded_gather(
             [
                 fetch_league_bundle(
@@ -190,7 +191,11 @@ async def sync_leagues(
                     existing_refresh=existing_refresh,
                 )
                 for league in league_chunk
-            ]
+            ],
+            log_every=len(league_chunk),
+            progress_total=total_leagues,
+            progress_offset=chunk_start,
+            progress_label="leagues",
         )
 
         bundles = [
@@ -201,18 +206,16 @@ async def sync_leagues(
 
         if not bundles:
             logger.info(
-                "[SYNC] chunk %s/%s had no new data",
-                chunk_index,
-                len(league_chunks),
+                "[SYNC] progress=%s/%s persisted=%s failed_batches=%s",
+                min(
+                    chunk_start + len(league_chunk),
+                    total_leagues,
+                ),
+                total_leagues,
+                success_count,
+                failed_batches,
             )
             continue
-
-        logger.info(
-            "[SYNC] persisting chunk %s/%s bundles=%s",
-            chunk_index,
-            len(league_chunks),
-            len(bundles),
-        )
 
         chunk_success_count, chunk_failed_batches = await _save_bundles(
             db=db,
@@ -224,11 +227,15 @@ async def sync_leagues(
         fetched_bundle_count += len(bundles)
 
         logger.info(
-            "[SYNC] completed chunk %s/%s success=%s failed_batches=%s",
-            chunk_index,
-            len(league_chunks),
+            "[SYNC] progress=%s/%s persisted=%s (+%s) failed_batches=%s",
+            min(
+                chunk_start + len(league_chunk),
+                total_leagues,
+            ),
+            total_leagues,
+            success_count,
             chunk_success_count,
-            chunk_failed_batches,
+            failed_batches,
         )
 
         sync_session = getattr(

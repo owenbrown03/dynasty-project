@@ -91,7 +91,11 @@ def test_sync_leagues_uses_nested_transaction_per_batch(
     ):
         return {"league_id": league.league_id}
 
-    async def fake_bounded_gather(coros):
+    async def fake_bounded_gather(
+        coros,
+        **kwargs,
+    ):
+        del kwargs
         return [await coro for coro in coros]
 
     async def fake_save_league_bundle_to_db(
