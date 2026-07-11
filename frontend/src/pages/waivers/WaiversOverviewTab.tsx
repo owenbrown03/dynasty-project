@@ -1,3 +1,4 @@
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { useWaiverOverview } from '@/hooks/sleeper/useWaivers';
 
 import type { ValueBasis } from '@/types';
@@ -17,9 +18,10 @@ export const WaiversOverviewTab = ({
 
   if (waivers.loading) {
     return (
-      <div className="waivers-loading-state">
-        Loading waiver recommendations...
-      </div>
+      <LoadingState
+        label="Loading waiver recommendations..."
+        className="waivers-loading-state"
+      />
     );
   }
 

@@ -9,6 +9,7 @@ import {
   useSearchParams,
 } from 'react-router';
 
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -533,9 +534,10 @@ export const CommissionerPage = () => {
       {
         activeUsername && orphans.loading
           ? (
-            <div className="commissioner-empty-state">
-              Loading commissioner view...
-            </div>
+            <LoadingState
+              label="Loading commissioner view..."
+              className="commissioner-empty-state"
+            />
           )
           : null
       }

@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react';
 
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import {
@@ -218,9 +219,10 @@ export const BulkClaimsTab = ({
       {
         availability.loading
           ? (
-            <div className="waivers-loading-state">
-              Checking availability across your leagues...
-            </div>
+            <LoadingState
+              label="Checking availability across your leagues..."
+              className="waivers-loading-state"
+            />
           )
           : null
       }

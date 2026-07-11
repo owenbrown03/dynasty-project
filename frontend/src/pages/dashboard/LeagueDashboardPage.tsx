@@ -1,5 +1,6 @@
 import './LeagueDashboardPage.css';
 
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { UsernameInput } from './UsernameInput';
 import { useLeagueDashboard } from '@/hooks/sleeper/useLeagues';
 import { DashboardSummary } from './DashboardSummary';
@@ -15,9 +16,7 @@ export const LeagueDashboardPage = () => {
         <UsernameInput />
 
         <div className="dashboard-container">
-          <p className="loading-text">
-            Loading league dashboard...
-          </p>
+          <LoadingState label="Loading league dashboard..." />
         </div>
       </div>
     );

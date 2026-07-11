@@ -1,3 +1,4 @@
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { TradeCards } from './TradeCards';
 import { useTrades } from '@/hooks/sleeper/useTrades';
 
@@ -7,7 +8,7 @@ export const TradeResearchTab = () => {
   if (trades.fetching) {
     return (
       <div className="trades-container">
-        <p className="loading-text">Fetching trade signals...</p>
+        <LoadingState label="Fetching trade signals..." />
       </div>
     );
   }
