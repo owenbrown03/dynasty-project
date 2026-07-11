@@ -24,6 +24,17 @@ Run the dev server:
 npm run dev
 ```
 
+API base URL configuration:
+
+```sh
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+```
+
+If `VITE_API_BASE_URL` is omitted, the frontend defaults to:
+
+- `http://localhost:8000/api/v1` during localhost development
+- `/api/v1` in non-localhost environments
+
 Build for production:
 
 ```sh
