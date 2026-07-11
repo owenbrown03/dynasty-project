@@ -114,13 +114,6 @@ class WaiverRosterPlayersResponse(Base):
     )
 
 
-from pydantic import Field
-
-from app.schemas.base import Base
-from app.schemas.player import PlayerValue
-from app.services.values.basis import ValueBasis
-
-
 class BulkWaiverPlayerSearchResult(Base):
     player_id: str
 

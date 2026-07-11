@@ -45,6 +45,21 @@ logger = logging.getLogger(__name__)
 DEFAULT_TRADE_EXPIRY_SECONDS = 7 * 24 * 60 * 60
 
 
+def build_bulk_trade_result(
+    *,
+    league_id: str,
+    success: bool,
+    transaction_id: str | None = None,
+    error: str | None = None,
+) -> BulkTradeProposalResult:
+    return BulkTradeProposalResult(
+        league_id=league_id,
+        success=success,
+        transaction_id=transaction_id,
+        error=error,
+    )
+
+
 async def search_bulk_trade_players(
     *,
     db: AsyncSession,
@@ -912,7 +927,7 @@ async def submit_bulk_trade_offers(
     if preflight_errors_by_league_id:
         return BulkTradeProposalResponse(
             results=[
-                BulkTradeProposalResult(
+                build_bulk_trade_result(
                     league_id=offer.league_id,
                     success=False,
                     error=(
@@ -941,7 +956,7 @@ async def submit_bulk_trade_offers(
             )
 
             results.append(
-                BulkTradeProposalResult(
+                build_bulk_trade_result(
                     league_id=offer.league_id,
                     success=True,
                     transaction_id=find_transaction_id(
@@ -961,7 +976,7 @@ async def submit_bulk_trade_offers(
             )
 
             results.append(
-                BulkTradeProposalResult(
+                build_bulk_trade_result(
                     league_id=offer.league_id,
                     success=False,
                     error=str(error),
@@ -975,7 +990,7 @@ async def submit_bulk_trade_offers(
             )
 
             results.append(
-                BulkTradeProposalResult(
+                build_bulk_trade_result(
                     league_id=offer.league_id,
                     success=False,
                     error=(

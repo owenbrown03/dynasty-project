@@ -63,6 +63,23 @@ DYNASTY_VALUE_BASES = {
 }
 
 
+def build_bulk_waiver_claim_result(
+    *,
+    league_id: str,
+    roster_id: int,
+    success: bool,
+    transaction_id: str | None = None,
+    error: str | None = None,
+) -> BulkWaiverClaimResult:
+    return BulkWaiverClaimResult(
+        league_id=league_id,
+        roster_id=roster_id,
+        success=success,
+        transaction_id=transaction_id,
+        error=error,
+    )
+
+
 async def search_bulk_waiver_players(
     *,
     db: AsyncSession,
@@ -560,26 +577,20 @@ async def submit_bulk_claims(
             )
 
             results.append(
-                BulkWaiverClaimResult(
+                build_bulk_waiver_claim_result(
                     league_id=claim.league_id,
                     roster_id=claim.roster_id,
-
                     success=True,
-
-                    transaction_id=(
-                        response.transaction_id
-                    ),
+                    transaction_id=response.transaction_id,
                 )
             )
 
         except HTTPException as exc:
             results.append(
-                BulkWaiverClaimResult(
+                build_bulk_waiver_claim_result(
                     league_id=claim.league_id,
                     roster_id=claim.roster_id,
-
                     success=False,
-
                     error=str(exc.detail),
                 )
             )
@@ -594,12 +605,10 @@ async def submit_bulk_claims(
             )
 
             results.append(
-                BulkWaiverClaimResult(
+                build_bulk_waiver_claim_result(
                     league_id=claim.league_id,
                     roster_id=claim.roster_id,
-
                     success=False,
-
                     error=str(exc),
                 )
             )
@@ -612,12 +621,10 @@ async def submit_bulk_claims(
             )
 
             results.append(
-                BulkWaiverClaimResult(
+                build_bulk_waiver_claim_result(
                     league_id=claim.league_id,
                     roster_id=claim.roster_id,
-
                     success=False,
-
                     error=(
                         "Unexpected error while submitting "
                         "this Sleeper waiver claim."
