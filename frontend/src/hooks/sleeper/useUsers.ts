@@ -3,7 +3,10 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import type {
+  CommissionerLeagueDuesUpdate,
+  CommissionerLeagueNoteUpdate,
   CommissionerOrphansResponse,
+  CommissionerWorkspaceResponse,
   Orphan,
   Roster,
   ValueBasis,
@@ -109,4 +112,56 @@ export function useCommissionerOrphans(
     fetching: query.isFetching,
     error: query.error,
   };
+}
+
+
+export function useCommissionerWorkspace(
+  enabled: boolean,
+) {
+  const query = useQuery<CommissionerWorkspaceResponse>({
+    queryKey: queryKeys.users.commissionerWorkspace,
+    queryFn: async () => api.users
+      .getCommissionerWorkspace()
+      .then((res) => res.data),
+    enabled,
+  });
+
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
+  };
+}
+
+
+export function useSaveCommissionerNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: CommissionerLeagueNoteUpdate,
+    ) => api.users.saveCommissionerNote(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.commissionerWorkspace,
+      });
+    },
+  });
+}
+
+
+export function useSaveCommissionerDues() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: CommissionerLeagueDuesUpdate,
+    ) => api.users.saveCommissionerDues(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.commissionerWorkspace,
+      });
+    },
+  });
 }

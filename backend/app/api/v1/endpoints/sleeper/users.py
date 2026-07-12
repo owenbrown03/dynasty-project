@@ -2,8 +2,20 @@ from fastapi import APIRouter, Query
 
 from app.api.deps import ContextDep
 from app.crud.sleeper.roster import get_user_rosters, get_user_orphans
-from app.schemas.commissioner import CommissionerOrphansResponse
+from app.schemas.commissioner import (
+    CommissionerLeagueDuesEntry,
+    CommissionerLeagueDuesUpdate,
+    CommissionerLeagueNoteUpdate,
+    CommissionerOrphansResponse,
+    CommissionerWorkspaceLeague,
+    CommissionerWorkspaceResponse,
+)
 from app.services.commissioner.orphans import get_commissioner_orphans
+from app.services.commissioner.workspace import (
+    get_commissioner_workspace,
+    save_commissioner_dues,
+    save_commissioner_note,
+)
 from app.services.values.basis import ValueBasis
 from app.tasks.user import sync_user_data_task
 
@@ -46,4 +58,44 @@ async def get_commissioner_orphans_endpoint(
         db=ctx.db,
         username=username,
         value_basis=value_basis,
+    )
+
+
+@router.get(
+    "/commissioner/workspace",
+    response_model=CommissionerWorkspaceResponse,
+)
+async def get_commissioner_workspace_endpoint(
+    ctx: ContextDep,
+):
+    return await get_commissioner_workspace(
+        ctx,
+    )
+
+
+@router.post(
+    "/commissioner/workspace/note",
+    response_model=CommissionerWorkspaceLeague,
+)
+async def save_commissioner_note_endpoint(
+    body: CommissionerLeagueNoteUpdate,
+    ctx: ContextDep,
+):
+    return await save_commissioner_note(
+        body,
+        ctx,
+    )
+
+
+@router.post(
+    "/commissioner/workspace/dues",
+    response_model=CommissionerLeagueDuesEntry,
+)
+async def save_commissioner_dues_endpoint(
+    body: CommissionerLeagueDuesUpdate,
+    ctx: ContextDep,
+):
+    return await save_commissioner_dues(
+        body,
+        ctx,
     )

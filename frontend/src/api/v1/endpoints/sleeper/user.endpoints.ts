@@ -1,7 +1,10 @@
 import { type AxiosInstance } from 'axios';
 
 import {
+  type CommissionerLeagueDuesUpdate,
+  type CommissionerLeagueNoteUpdate,
   type CommissionerOrphansResponse,
+  type CommissionerWorkspaceResponse,
   type Orphan,
   type Roster,
   type ValueBasis,
@@ -21,5 +24,20 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
         value_basis: valueBasis,
       },
     },
+  ),
+  getCommissionerWorkspace: () => client.get<CommissionerWorkspaceResponse>(
+    `${prefix}/commissioner/workspace`,
+  ),
+  saveCommissionerNote: (
+    body: CommissionerLeagueNoteUpdate,
+  ) => client.post(
+    `${prefix}/commissioner/workspace/note`,
+    body,
+  ),
+  saveCommissionerDues: (
+    body: CommissionerLeagueDuesUpdate,
+  ) => client.post(
+    `${prefix}/commissioner/workspace/dues`,
+    body,
   ),
 });

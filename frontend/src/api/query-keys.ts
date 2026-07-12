@@ -22,6 +22,7 @@ export const queryKeys = {
         username ?? null,
         valueBasis,
       ] as const,
+    commissionerWorkspace: ['commissioner-workspace'] as const,
   },
 
   leagues: {

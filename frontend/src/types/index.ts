@@ -353,6 +353,42 @@ export interface CommissionerOrphansResponse {
   orphans: CommissionerOrphanRoster[];
 }
 
+export interface CommissionerLeagueDuesEntry {
+  league_id: string;
+  roster_id: number;
+  roster_name: string;
+  season: string;
+  traded_pick_count: number;
+  buy_in_amount: number | null;
+  is_paid: boolean;
+  paid_at: string | null;
+}
+
+export interface CommissionerWorkspaceLeague {
+  league_id: string;
+  league_name: string;
+  league_season: string;
+  note: string;
+  dues: CommissionerLeagueDuesEntry[];
+}
+
+export interface CommissionerWorkspaceResponse {
+  leagues: CommissionerWorkspaceLeague[];
+}
+
+export interface CommissionerLeagueNoteUpdate {
+  league_id: string;
+  note: string;
+}
+
+export interface CommissionerLeagueDuesUpdate {
+  league_id: string;
+  roster_id: number;
+  season: string;
+  buy_in_amount: number | null;
+  is_paid: boolean;
+}
+
 export interface PlayerValue {
   player_id: string;
 
