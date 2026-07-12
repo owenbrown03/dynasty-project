@@ -141,6 +141,20 @@ export interface LeagueWarPositionSeason {
   values: LeagueWarPositionValue[];
 }
 
+export interface LeagueWarPlayerPoint {
+  player_id: string;
+  name: string;
+  position: string;
+  war: number;
+  rank: number;
+}
+
+export interface LeagueWarPlayerSeason {
+  season: string;
+  source: string;
+  players: LeagueWarPlayerPoint[];
+}
+
 export interface LeaguePick {
   season: string;
   round: number;
@@ -217,6 +231,7 @@ export interface LeagueDetails {
   settings_badges: string[];
   settings_details: LeagueSettingsDetail[];
   war_position_history: LeagueWarPositionSeason[];
+  war_player_history: LeagueWarPlayerSeason[];
   rosters: LeagueRoster[];
 }
 

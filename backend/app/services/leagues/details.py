@@ -35,6 +35,8 @@ from app.services.leagues.models import (
     LeagueOwner,
     LeaguePick,
     LeaguePlayer,
+    LeagueWarPlayerPoint,
+    LeagueWarPlayerSeason,
     LeagueRoster,
     LeagueWarPositionSeason,
     LeagueWarPositionValue,
@@ -164,6 +166,12 @@ class LeagueDetails:
             int(league.season),
         )
         war_position_history = await self.build_war_position_history(
+            db=db,
+            league=league,
+            players=shared.players,
+            current_shared=shared,
+        )
+        war_player_history = await self.build_war_player_history(
             db=db,
             league=league,
             players=shared.players,
@@ -565,6 +573,7 @@ class LeagueDetails:
             settings_badges=build_settings_badges(league),
             settings_details=build_settings_details(league),
             war_position_history=war_position_history,
+            war_player_history=war_player_history,
             rosters=rosters,
         )
 
@@ -628,6 +637,66 @@ class LeagueDetails:
 
         return seasons
 
+    async def build_war_player_history(
+        self,
+        *,
+        db: AsyncSession,
+        league,
+        players: dict,
+        current_shared: WARSharedData,
+    ) -> list[LeagueWarPlayerSeason]:
+        seasons: list[LeagueWarPlayerSeason] = []
+        current_season = int(league.season)
+
+        for season in range(current_season - 4, current_season):
+            stats_rows = await self.war_service.loader.get_season_stats(
+                db,
+                season,
+            )
+
+            if not stats_rows:
+                continue
+
+            season_league = league.model_copy(
+                update={
+                    "season": str(season),
+                },
+            )
+
+            results = await self.war_service.calculate_with_data(
+                league=season_league,
+                shared=WARSharedData(
+                    players=players,
+                    projections=stats_rows,
+                ),
+            )
+
+            seasons.append(
+                LeagueWarPlayerSeason(
+                    season=str(season),
+                    source="historical",
+                    players=self.build_position_rank_points(
+                        results,
+                    ),
+                )
+            )
+
+        current_results = await self.war_service.calculate_with_data(
+            league=league,
+            shared=current_shared,
+        )
+        seasons.append(
+            LeagueWarPlayerSeason(
+                season=str(current_season),
+                source="projection",
+                players=self.build_position_rank_points(
+                    current_results,
+                ),
+            )
+        )
+
+        return seasons
+
     def aggregate_position_war(
         self,
         war_players,
@@ -653,3 +722,44 @@ class LeagueDetails:
             )
             for position in positions
         ]
+
+    def build_position_rank_points(
+        self,
+        war_players,
+    ) -> list[LeagueWarPlayerPoint]:
+        positions = ["QB", "RB", "WR", "TE"]
+        points: list[LeagueWarPlayerPoint] = []
+
+        for position in positions:
+            position_players = sorted(
+                [
+                    player
+                    for player in war_players
+                    if player.position == position
+                    and player.roster_war is not None
+                ],
+                key=lambda player: (
+                    player.roster_war or 0,
+                    player.name,
+                ),
+                reverse=True,
+            )
+
+            for rank, player in enumerate(
+                position_players,
+                start=1,
+            ):
+                points.append(
+                    LeagueWarPlayerPoint(
+                        player_id=player.player_id,
+                        name=player.name,
+                        position=position,
+                        war=round(
+                            player.roster_war or 0,
+                            2,
+                        ),
+                        rank=rank,
+                    )
+                )
+
+        return points

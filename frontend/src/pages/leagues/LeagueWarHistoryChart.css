@@ -37,6 +37,20 @@
   font-weight: 700;
 }
 
+.league-war-history-select {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.league-war-history-select span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .league-war-history-legend {
   flex-wrap: wrap;
 }

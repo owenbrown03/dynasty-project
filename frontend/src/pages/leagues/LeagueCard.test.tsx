@@ -27,6 +27,7 @@ const league: LeagueDetails = {
   total_rosters: 12,
   note: '',
   war_position_history: [],
+  war_player_history: [],
   settings_badges: ['Best Ball', '12 Team'],
   settings_details: [
     { label: 'Season', value: '2026' },
