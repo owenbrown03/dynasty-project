@@ -209,11 +209,6 @@ def build_owned_pick_assets_by_roster_id(
                 )
             )
 
-        effective_slot = (
-            slot
-            if slot is not None
-            else projected_slot
-        )
         is_projected = (
             slot is None
             and projected_slot is not None
@@ -247,7 +242,7 @@ def build_owned_pick_assets_by_roster_id(
                     og_roster_id=og_roster_id,
                     current_owner_roster_id=current_owner_roster_id,
                     roster_name_by_id=roster_name_by_id,
-                    slot=effective_slot,
+                    slot=slot,
                     is_projected=is_projected,
                 ),
                 selected_value=resolved_values_by_pick_key.get(
