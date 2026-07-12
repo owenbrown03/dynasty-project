@@ -15,12 +15,16 @@ from app.schemas.trades import (
     BulkTradePlayerSearchResult,
     BulkTradeProposalRequest,
     BulkTradeProposalResponse,
+    TradeCalculatorPickValueResponse,
     TradeDirection,
 )
 from app.services.trades.bulk import (
     get_bulk_trade_availability,
     search_bulk_trade_players,
     submit_bulk_trade_offers,
+)
+from app.services.trades.calculator import (
+    get_trade_calculator_pick_value,
 )
 from app.tasks.trade import sync_leaguemates_task
 
@@ -138,4 +142,53 @@ async def submit_bulk_trade_offers_endpoint(
         connection=ctx.connection,
         sleeper=ctx.sleeper,
         request=body,
+    )
+
+
+@router.get(
+    "/calculator/pick-value",
+    response_model=TradeCalculatorPickValueResponse,
+)
+async def trade_calculator_pick_value_endpoint(
+    ctx: ContextDep,
+    season: str = Query(
+        ...,
+        min_length=4,
+        max_length=4,
+    ),
+    round_number: int = Query(
+        ...,
+        alias="round",
+        ge=1,
+        le=10,
+    ),
+    slot: int | None = Query(
+        default=None,
+        ge=1,
+        le=32,
+    ),
+    total_rosters: int = Query(
+        default=12,
+        ge=8,
+        le=32,
+    ),
+    num_qbs: int = Query(
+        default=2,
+        ge=1,
+        le=2,
+    ),
+    ppr: int = Query(
+        default=1,
+        ge=0,
+        le=2,
+    ),
+) -> TradeCalculatorPickValueResponse:
+    return await get_trade_calculator_pick_value(
+        ctx.db,
+        season=season,
+        round_number=round_number,
+        slot=slot,
+        total_rosters=total_rosters,
+        num_qbs=num_qbs,
+        ppr=ppr,
     )

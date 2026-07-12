@@ -665,3 +665,14 @@ export interface BulkTradeProposalResult {
 export interface BulkTradeProposalResponse {
   results: BulkTradeProposalResult[];
 }
+
+export interface TradeCalculatorPickValueResponse {
+  season: string;
+  round: number;
+  slot: number | null;
+  total_rosters: number;
+  num_qbs: number;
+  ppr: number;
+  ktc_value: number | null;
+  fc_value: number | null;
+}

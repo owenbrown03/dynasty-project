@@ -6,6 +6,7 @@ import type {
   BulkTradePlayerSearchResult,
   BulkTradeProposalRequest,
   BulkTradeProposalResponse,
+  TradeCalculatorPickValueResponse,
   TradeDirection,
 } from '@/types';
 
@@ -52,5 +53,26 @@ export const tradeEndpoints = (
   ) => client.post<BulkTradeProposalResponse>(
     `${prefix}/bulk/propose`,
     payload,
+  ),
+
+  getTradeCalculatorPickValue: (
+    season: string,
+    round: number,
+    slot: number | null,
+    totalRosters: number,
+    numQbs: number,
+    ppr: number,
+  ) => client.get<TradeCalculatorPickValueResponse>(
+    `${prefix}/calculator/pick-value`,
+    {
+      params: {
+        season,
+        round,
+        slot,
+        total_rosters: totalRosters,
+        num_qbs: numQbs,
+        ppr,
+      },
+    },
   ),
 });
