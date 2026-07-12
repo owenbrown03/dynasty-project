@@ -438,6 +438,7 @@ At minimum, verify:
 - the affected endpoint imports and runs
 - the worker restarts cleanly if worker code changed
 - migrations still apply if schema changed
+- recent FastAPI logs do not show new runtime errors for the changed flow
 
 The repository also has a CI workflow at `.github/workflows/ci.yml` that runs:
 
@@ -467,6 +468,8 @@ docker compose exec api python -c "..."
 docker compose exec db psql ...
 ```
 
+Do not stop at static checks alone if the app stack is available. After backend, schema, auth, sync, or write-path changes, inspect recent API logs and confirm there are no new tracebacks or `500` responses related to the modified flow.
+
 For sync-related changes, verify against the existing ingestion path rather than creating a second path around it.
 
 You have permission to trigger real local backend API calls for verification when that is the most direct way to test a change. Prefer hitting the existing application endpoints over inventing ad hoc scripts when validating request, sync, and worker flows.
@@ -481,6 +484,8 @@ After changing any of the following, restart the worker and verify startup:
 - code directly imported by task execution paths
 
 Do not assume API reload also refreshes the worker.
+
+After worker-affecting changes, inspect recent worker logs and confirm there are no startup/import/runtime errors before considering the change verified.
 
 If a change affects a queued sync or write path, verify both:
 
