@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from sqlmodel import SQLModel, Field
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import JSON, UniqueConstraint
 from typing import Optional
 
 class PlayerValue(SQLModel, table=True):
@@ -25,6 +25,7 @@ class CommissionerLeagueNote(SQLModel, table=True):
         index=True,
     )
     note: str = Field(default="")
+    paid_years_ahead: int = Field(default=1)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     __table_args__ = (
@@ -79,6 +80,10 @@ class FinanceLeagueSeason(SQLModel, table=True):
     season: str = Field(index=True)
     buy_in_amount: float = Field(default=0.0)
     winnings_amount: float = Field(default=0.0)
+    payout_structure: dict[str, float] = Field(
+        default_factory=dict,
+        sa_type=JSON,
+    )
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     __table_args__ = (

@@ -15,6 +15,7 @@ from app.crud.sleeper.personal import (
     upsert_finance_entry,
     upsert_commissioner_dues,
     upsert_commissioner_note,
+    upsert_commissioner_settings,
 )
 from app.crud.sleeper.roster import (
     get_all_rosters_by_league,
@@ -25,6 +26,7 @@ from app.schemas.commissioner import (
     CommissionerLeagueDuesEntry,
     CommissionerLeagueDuesUpdate,
     CommissionerLeagueNoteUpdate,
+    CommissionerLeagueSettingsUpdate,
     CommissionerWorkspaceLeague,
     CommissionerWorkspaceResponse,
 )
@@ -141,8 +143,15 @@ async def get_commissioner_workspace(
             [],
         ):
             season = str(traded_pick.season)
+            paid_years_ahead = (
+                notes_by_league_id[league_id].paid_years_ahead
+                if league_id in notes_by_league_id
+                else 1
+            )
 
-            if int(season) <= int(league.season):
+            if int(season) <= (
+                int(league.season) + paid_years_ahead
+            ):
                 continue
 
             dues_counter[
@@ -262,6 +271,11 @@ async def get_commissioner_workspace(
                     ).note
                     if league_id in notes_by_league_id
                     else ""
+                ),
+                paid_years_ahead=(
+                    notes_by_league_id[league_id].paid_years_ahead
+                    if league_id in notes_by_league_id
+                    else 1
                 ),
                 dues=dues_entries,
             )
@@ -394,6 +408,11 @@ async def save_commissioner_dues(
                 if finance_entry is not None
                 else 0.0
             ),
+            payout_structure=(
+                finance_entry.payout_structure
+                if finance_entry is not None
+                else {}
+            ),
         )
 
     return due_entry.model_copy(
@@ -401,5 +420,45 @@ async def save_commissioner_dues(
             "buy_in_amount": record.buy_in_amount,
             "is_paid": record.is_paid,
             "paid_at": record.paid_at,
+        },
+    )
+
+
+async def save_commissioner_settings(
+    body: CommissionerLeagueSettingsUpdate,
+    ctx: Context,
+) -> CommissionerWorkspaceLeague:
+    _require_commissioner_workspace_context(
+        ctx,
+    )
+
+    workspace = await get_commissioner_workspace(
+        ctx,
+    )
+    league = next(
+        (
+            item
+            for item in workspace.leagues
+            if item.league_id == body.league_id
+        ),
+        None,
+    )
+
+    if league is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="League not available in commissioner workspace",
+        )
+
+    record = await upsert_commissioner_settings(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+        league_id=body.league_id,
+        paid_years_ahead=max(0, body.paid_years_ahead),
+    )
+
+    return league.model_copy(
+        update={
+            "paid_years_ahead": record.paid_years_ahead,
         },
     )

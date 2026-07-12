@@ -28,7 +28,7 @@ async function handleVerificationDelivery(
       return;
     } catch {
       notify.success(
-        `SMTP is not configured here. Open this verification link: ${response.data.verification_url}`,
+        'SMTP is not configured here. Verification link generated, but clipboard access was blocked.',
       );
       return;
     }

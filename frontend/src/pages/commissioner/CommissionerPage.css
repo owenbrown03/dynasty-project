@@ -301,6 +301,23 @@
   gap: 10px;
 }
 
+.commissioner-due-settings {
+  display: grid;
+  gap: 10px;
+}
+
+.commissioner-due-settings label {
+  display: grid;
+  gap: 6px;
+  max-width: 220px;
+}
+
+.commissioner-due-settings span,
+.commissioner-settings-copy {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
 .commissioner-note-editor textarea {
   min-height: 110px;
   padding: 10px 12px;

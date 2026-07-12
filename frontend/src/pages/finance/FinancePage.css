@@ -44,6 +44,52 @@
   gap: 12px;
 }
 
+.finance-tabs {
+  display: flex;
+  width: fit-content;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.finance-tab {
+  padding: 10px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.finance-tab + .finance-tab {
+  border-left: 1px solid var(--color-border);
+}
+
+.finance-tab.active {
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+}
+
+.finance-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.finance-toolbar label {
+  display: grid;
+  gap: 6px;
+  max-width: 220px;
+}
+
+.finance-toolbar span,
+.finance-payout-editor-header span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .finance-summary-card,
 .finance-card {
   padding: 14px;
@@ -132,7 +178,7 @@
 }
 
 .finance-form-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(1, minmax(0, 1fr));
   align-items: end;
 }
 
@@ -145,6 +191,37 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.finance-payout-editor {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.finance-payout-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.finance-payout-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.finance-payout-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.finance-payout-row label {
+  display: grid;
+  gap: 6px;
 }
 
 .finance-chart-card,
@@ -277,6 +354,7 @@
   .finance-season-grid,
   .finance-card-grid,
   .finance-form-grid,
+  .finance-payout-row,
   .finance-card-header {
     grid-template-columns: 1fr;
   }
@@ -284,7 +362,6 @@
   .finance-chart-header,
   .finance-save-bar,
   .finance-bar-row {
-    grid-template-columns: 1fr;
     align-items: flex-start;
   }
 
@@ -292,6 +369,7 @@
     text-align: left;
   }
 
+  .finance-toolbar,
   .finance-chart-header,
   .finance-save-bar {
     flex-direction: column;

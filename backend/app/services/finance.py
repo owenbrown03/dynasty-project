@@ -13,6 +13,7 @@ from app.crud.sleeper.personal import (
 from app.crud.sleeper.roster import get_owned_roster_rows
 from app.schemas.finance import (
     FinanceLeagueSeasonEntry,
+    FinancePlacePayout,
     FinanceLeagueSeasonUpdate,
     FinanceSummaryResponse,
 )
@@ -65,6 +66,106 @@ def calculate_projected_winnings(
         prize_pool * weight / weight_total,
         2,
     )
+
+
+def calculate_rank(
+    *,
+    owned_rows,
+    league_id: str,
+    roster_id: int,
+) -> int | None:
+    other_rosters = [
+        other_roster
+        for other_roster, other_league in owned_rows
+        if other_league.league_id == league_id
+    ]
+    ordered = sorted(
+        other_rosters,
+        key=lambda other: (
+            other.wins,
+            -other.losses,
+            other.fpts,
+            -other.roster_id,
+        ),
+        reverse=True,
+    )
+    return next(
+        (
+            index
+            for index, other in enumerate(
+                ordered,
+                start=1,
+            )
+            if other.roster_id == roster_id
+        ),
+        None,
+    )
+
+
+def normalize_payout_structure(
+    payout_structure: dict[str, float] | None,
+) -> dict[str, float]:
+    if not payout_structure:
+        return {}
+
+    normalized: dict[str, float] = {}
+
+    for key, value in payout_structure.items():
+        if value <= 0:
+            continue
+
+        try:
+            place = int(key)
+        except (
+            TypeError,
+            ValueError,
+        ):
+            continue
+
+        if place <= 0:
+            continue
+
+        normalized[str(place)] = round(
+            float(value),
+            2,
+        )
+
+    return normalized
+
+
+def serialize_payout_structure(
+    payout_structure: dict[str, float] | None,
+) -> list[FinancePlacePayout]:
+    normalized = normalize_payout_structure(
+        payout_structure,
+    )
+    return [
+        FinancePlacePayout(
+            place=int(place),
+            amount=amount,
+        )
+        for place, amount in sorted(
+            normalized.items(),
+            key=lambda item: int(item[0]),
+        )
+    ]
+
+
+def payout_for_rank(
+    payout_structure: dict[str, float] | None,
+    rank: int | None,
+) -> float | None:
+    if rank is None:
+        return None
+
+    normalized = normalize_payout_structure(
+        payout_structure,
+    )
+
+    if str(rank) not in normalized:
+        return None
+
+    return normalized[str(rank)]
 
 
 def _build_buy_in_by_league_season(
@@ -141,39 +242,35 @@ def _build_historical_payouts_by_family_and_rank(
             key,
         )
 
-        if finance_entry is None or finance_entry.winnings_amount <= 0:
+        if finance_entry is None:
             continue
 
-        rank = None
-        if league.total_rosters > 0:
-            other_rosters = [
-                other_roster
-                for other_roster, other_league in owned_rows
-                if other_league.league_id == league.league_id
-            ]
-            ordered = sorted(
-                other_rosters,
-                key=lambda other: (
-                    other.wins,
-                    -other.losses,
-                    other.fpts,
-                    -other.roster_id,
-                ),
-                reverse=True,
-            )
-            rank = next(
-                (
-                    index
-                    for index, other in enumerate(
-                        ordered,
-                        start=1,
-                    )
-                    if other.roster_id == roster.roster_id
-                ),
-                None,
-            )
+        rank = calculate_rank(
+            owned_rows=owned_rows,
+            league_id=league.league_id,
+            roster_id=roster.roster_id,
+        )
 
         if rank is None:
+            continue
+
+        payout_structure = normalize_payout_structure(
+            finance_entry.payout_structure,
+        )
+        actual_winnings = payout_for_rank(
+            payout_structure,
+            rank,
+        )
+        winnings_amount = round(
+            (
+                actual_winnings
+                if actual_winnings is not None
+                else finance_entry.winnings_amount
+            ),
+            2,
+        )
+
+        if winnings_amount <= 0:
             continue
 
         payouts_by_family_and_rank.setdefault(
@@ -185,7 +282,7 @@ def _build_historical_payouts_by_family_and_rank(
             ),
             [],
         ).append(
-            finance_entry.winnings_amount,
+            winnings_amount,
         )
 
     return payouts_by_family_and_rank
@@ -258,35 +355,32 @@ async def get_finance_summary(
             else 0.0
         )
 
-        rank = None
-        if league.total_rosters > 0:
-            # Simple in-season rank proxy using record and points-for.
-            other_rosters = [
-                other_roster
-                for other_roster, other_league in owned_rows
-                if other_league.league_id == league.league_id
-            ]
-            ordered = sorted(
-                other_rosters,
-                key=lambda other: (
-                    other.wins,
-                    -other.losses,
-                    other.fpts,
-                    -other.roster_id,
-                ),
-                reverse=True,
+        rank = (
+            calculate_rank(
+                owned_rows=owned_rows,
+                league_id=league.league_id,
+                roster_id=roster.roster_id,
             )
-            rank = next(
-                (
-                    index
-                    for index, other in enumerate(
-                        ordered,
-                        start=1,
-                    )
-                    if other.roster_id == roster.roster_id
-                ),
-                None,
-            )
+            if league.total_rosters > 0
+            else None
+        )
+        payout_structure = normalize_payout_structure(
+            finance_entry.payout_structure
+            if finance_entry is not None
+            else None,
+        )
+        configured_winnings_amount = payout_for_rank(
+            payout_structure,
+            rank,
+        )
+        winnings_amount = round(
+            (
+                configured_winnings_amount
+                if configured_winnings_amount is not None
+                else winnings_amount
+            ),
+            2,
+        )
 
         projected_winnings_source = "heuristic"
         family_key = family_key_by_league_id.get(
@@ -305,7 +399,18 @@ async def get_finance_summary(
             else []
         )
 
-        if historical_payouts:
+        configured_projected_payout = payout_for_rank(
+            payout_structure,
+            rank,
+        )
+
+        if configured_projected_payout is not None:
+            projected_winnings_amount = round(
+                configured_projected_payout,
+                2,
+            )
+            projected_winnings_source = "configured_place"
+        elif historical_payouts:
             projected_winnings_amount = round(
                 mean(historical_payouts),
                 2,
@@ -326,11 +431,16 @@ async def get_finance_summary(
                 season=league.season,
                 total_rosters=league.total_rosters,
                 rank=rank,
+                finish_place=rank,
+                projected_finish_place=rank,
                 wins=roster.wins,
                 losses=roster.losses,
                 points_for=round(roster.fpts, 2),
                 buy_in_amount=round(buy_in_amount, 2),
-                winnings_amount=round(winnings_amount, 2),
+                winnings_amount=winnings_amount,
+                payout_structure=serialize_payout_structure(
+                    payout_structure,
+                ),
                 projected_winnings_amount=projected_winnings_amount,
                 projected_winnings_source=projected_winnings_source,
                 net_amount=round(
@@ -403,6 +513,12 @@ async def save_finance_entry(
         season=body.season,
         buy_in_amount=body.buy_in_amount,
         winnings_amount=body.winnings_amount,
+        payout_structure=normalize_payout_structure(
+            {
+                str(item.place): item.amount
+                for item in body.payout_structure
+            }
+        ),
     )
 
     updated_summary = await get_finance_summary(

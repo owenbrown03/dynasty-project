@@ -3,13 +3,16 @@ import { type AxiosInstance } from 'axios';
 import {
   type CommissionerLeagueDuesUpdate,
   type CommissionerLeagueNoteUpdate,
+  type CommissionerLeagueSettingsUpdate,
   type CommissionerOrphansResponse,
   type CommissionerWorkspaceResponse,
   type FinanceLeagueSeasonUpdate,
   type FinanceSummaryResponse,
   type Orphan,
   type ReminderCreate,
+  type ReminderDelete,
   type ReminderListResponse,
+  type ReminderTestSendResponse,
   type ReminderUpdate,
   type Roster,
   type ValueBasis,
@@ -45,6 +48,12 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     `${prefix}/commissioner/workspace/dues`,
     body,
   ),
+  saveCommissionerSettings: (
+    body: CommissionerLeagueSettingsUpdate,
+  ) => client.post(
+    `${prefix}/commissioner/workspace/settings`,
+    body,
+  ),
   getFinanceSummary: () => client.get<FinanceSummaryResponse>(
     `${prefix}/finance/summary`,
   ),
@@ -67,6 +76,18 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     body: ReminderUpdate,
   ) => client.post(
     `${prefix}/reminders/update`,
+    body,
+  ),
+  deleteReminder: (
+    body: ReminderDelete,
+  ) => client.post(
+    `${prefix}/reminders/delete`,
+    body,
+  ),
+  testSendReminder: (
+    body: ReminderDelete,
+  ) => client.post<ReminderTestSendResponse>(
+    `${prefix}/reminders/test-send`,
     body,
   ),
 });

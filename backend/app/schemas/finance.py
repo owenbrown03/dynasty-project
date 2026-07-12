@@ -3,6 +3,11 @@ from pydantic import Field
 from app.schemas.base import Base
 
 
+class FinancePlacePayout(Base):
+    place: int
+    amount: float = 0.0
+
+
 class FinanceLeagueSeasonEntry(Base):
     league_id: str
     league_name: str
@@ -12,8 +17,13 @@ class FinanceLeagueSeasonEntry(Base):
     wins: int | None = None
     losses: int | None = None
     points_for: float | None = None
+    finish_place: int | None = None
+    projected_finish_place: int | None = None
     buy_in_amount: float = 0.0
     winnings_amount: float = 0.0
+    payout_structure: list[FinancePlacePayout] = Field(
+        default_factory=list,
+    )
     projected_winnings_amount: float = 0.0
     projected_winnings_source: str = "heuristic"
     net_amount: float = 0.0
@@ -34,3 +44,6 @@ class FinanceLeagueSeasonUpdate(Base):
     season: str
     buy_in_amount: float = 0.0
     winnings_amount: float = 0.0
+    payout_structure: list[FinancePlacePayout] = Field(
+        default_factory=list,
+    )

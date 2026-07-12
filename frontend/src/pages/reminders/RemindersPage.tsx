@@ -5,8 +5,10 @@ import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
 import {
   useCreateReminder,
+  useDeleteReminder,
   useReminders,
   useSaveReminder,
+  useTestSendReminder,
 } from '@/hooks/sleeper/useUsers';
 import type {
   ReminderItem,
@@ -19,7 +21,11 @@ import './RemindersPage.css';
 function ReminderCard({
   reminder,
   onSave,
+  onDelete,
+  onTestSend,
   saving,
+  deleting,
+  testingSend,
 }: {
   reminder: ReminderItem;
   onSave: (
@@ -33,7 +39,15 @@ function ReminderCard({
       completed: boolean;
     },
   ) => Promise<void>;
+  onDelete: (
+    reminder: ReminderItem,
+  ) => Promise<void>;
+  onTestSend: (
+    reminder: ReminderItem,
+  ) => Promise<void>;
   saving: boolean;
+  deleting: boolean;
+  testingSend: boolean;
 }) {
   const [title, setTitle] = useState(reminder.title);
   const [note, setNote] = useState(reminder.note);
@@ -152,6 +166,27 @@ function ReminderCard({
       </label>
 
       <div className="reminder-card-actions">
+        {
+          deliveryChannel === 'email'
+            ? (
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={testingSend}
+                onClick={() => {
+                  void onTestSend(reminder);
+                }}
+              >
+                {
+                  testingSend
+                    ? 'Testing...'
+                    : 'Test email'
+                }
+              </button>
+            )
+            : null
+        }
+
         <button
           type="button"
           className="button-secondary"
@@ -174,6 +209,21 @@ function ReminderCard({
         >
           {saving ? 'Saving...' : 'Save'}
         </button>
+
+        <button
+          type="button"
+          className="button-secondary"
+          disabled={deleting}
+          onClick={() => {
+            void onDelete(reminder);
+          }}
+        >
+          {
+            deleting
+              ? 'Deleting...'
+              : 'Delete'
+          }
+        </button>
       </div>
     </article>
   );
@@ -188,6 +238,8 @@ export function RemindersPage() {
   const leagueOverview = useLeagueOverview();
   const createReminderMutation = useCreateReminder();
   const saveReminderMutation = useSaveReminder();
+  const deleteReminderMutation = useDeleteReminder();
+  const testSendReminderMutation = useTestSendReminder();
   const [newTitle, setNewTitle] = useState('');
   const [newNote, setNewNote] = useState('');
   const [newLeagueId, setNewLeagueId] = useState('');
@@ -249,6 +301,36 @@ export function RemindersPage() {
       notify.success('Reminder saved.');
     } catch {
       notify.error('Unable to save reminder.');
+    }
+  };
+
+  const handleDelete = async (
+    reminder: ReminderItem,
+  ) => {
+    try {
+      await deleteReminderMutation.mutateAsync({
+        id: reminder.id,
+      });
+      notify.success('Reminder deleted.');
+    } catch {
+      notify.error('Unable to delete reminder.');
+    }
+  };
+
+  const handleTestSend = async (
+    reminder: ReminderItem,
+  ) => {
+    try {
+      const response = await testSendReminderMutation.mutateAsync({
+        id: reminder.id,
+      });
+      notify.success(
+        response.delivery === 'smtp'
+          ? `Reminder email sent to ${response.recipient}.`
+          : `SMTP is not configured in this environment, so no email was delivered to ${response.recipient}.`,
+      );
+    } catch {
+      notify.error('Unable to test reminder email.');
     }
   };
 
@@ -411,7 +493,11 @@ export function RemindersPage() {
                         key={reminder.id}
                         reminder={reminder}
                         onSave={handleSave}
+                        onDelete={handleDelete}
+                        onTestSend={handleTestSend}
                         saving={saveReminderMutation.isPending}
+                        deleting={deleteReminderMutation.isPending}
+                        testingSend={testSendReminderMutation.isPending}
                       />
                     ))
                     : (

@@ -399,6 +399,7 @@ export interface CommissionerWorkspaceLeague {
   league_name: string;
   league_season: string;
   note: string;
+  paid_years_ahead: number;
   dues: CommissionerLeagueDuesEntry[];
 }
 
@@ -419,6 +420,16 @@ export interface CommissionerLeagueDuesUpdate {
   is_paid: boolean;
 }
 
+export interface CommissionerLeagueSettingsUpdate {
+  league_id: string;
+  paid_years_ahead: number;
+}
+
+export interface FinancePlacePayout {
+  place: number;
+  amount: number;
+}
+
 export interface FinanceLeagueSeasonEntry {
   league_id: string;
   league_name: string;
@@ -428,10 +439,13 @@ export interface FinanceLeagueSeasonEntry {
   wins: number | null;
   losses: number | null;
   points_for: number | null;
+  finish_place: number | null;
+  projected_finish_place: number | null;
   buy_in_amount: number;
   winnings_amount: number;
+  payout_structure: FinancePlacePayout[];
   projected_winnings_amount: number;
-  projected_winnings_source: 'heuristic' | 'historical_rank';
+  projected_winnings_source: 'heuristic' | 'historical_rank' | 'configured_place';
   net_amount: number;
 }
 
@@ -448,6 +462,7 @@ export interface FinanceLeagueSeasonUpdate {
   season: string;
   buy_in_amount: number;
   winnings_amount: number;
+  payout_structure: FinancePlacePayout[];
 }
 
 export interface ReminderItem {
@@ -479,6 +494,15 @@ export interface ReminderCreate {
 export interface ReminderUpdate extends ReminderCreate {
   id: number;
   completed: boolean;
+}
+
+export interface ReminderDelete {
+  id: number;
+}
+
+export interface ReminderTestSendResponse {
+  delivery: 'smtp' | 'log';
+  recipient: string;
 }
 
 export interface PlayerValue {

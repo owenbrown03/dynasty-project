@@ -68,6 +68,37 @@ async def upsert_commissioner_note(
     return record
 
 
+async def upsert_commissioner_settings(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str,
+    paid_years_ahead: int,
+) -> CommissionerLeagueNote:
+    results = await db.execute(
+        select(CommissionerLeagueNote).where(
+            CommissionerLeagueNote.site_user_id == site_user_id,
+            CommissionerLeagueNote.league_id == league_id,
+        )
+    )
+    record = results.scalar_one_or_none()
+
+    if record is None:
+        record = CommissionerLeagueNote(
+            site_user_id=site_user_id,
+            league_id=league_id,
+            note="",
+        )
+
+    record.paid_years_ahead = paid_years_ahead
+    record.updated_at = datetime.utcnow()
+
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
 async def get_commissioner_dues_by_key(
     *,
     db: AsyncSession,
@@ -165,6 +196,7 @@ async def upsert_finance_entry(
     season: str,
     buy_in_amount: float,
     winnings_amount: float,
+    payout_structure: dict[str, float],
 ) -> FinanceLeagueSeason:
     results = await db.execute(
         select(FinanceLeagueSeason).where(
@@ -184,6 +216,7 @@ async def upsert_finance_entry(
 
     record.buy_in_amount = buy_in_amount
     record.winnings_amount = winnings_amount
+    record.payout_structure = payout_structure
     record.updated_at = datetime.utcnow()
 
     db.add(record)
@@ -287,3 +320,12 @@ async def mark_reminder_email_sent(
     await db.commit()
     await db.refresh(reminder)
     return reminder
+
+
+async def delete_reminder(
+    *,
+    db: AsyncSession,
+    reminder: Reminder,
+) -> None:
+    await db.delete(reminder)
+    await db.commit()

@@ -75,6 +75,7 @@ class CommissionerWorkspaceLeague(Base):
     league_name: str
     league_season: str
     note: str = ""
+    paid_years_ahead: int = 1
     dues: list[CommissionerLeagueDuesEntry] = Field(
         default_factory=list,
     )
@@ -97,3 +98,8 @@ class CommissionerLeagueDuesUpdate(Base):
     season: str
     buy_in_amount: float | None = None
     is_paid: bool = False
+
+
+class CommissionerLeagueSettingsUpdate(Base):
+    league_id: str
+    paid_years_ahead: int = 1

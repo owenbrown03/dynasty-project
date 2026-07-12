@@ -5,13 +5,16 @@ import { api } from '@/api/v1/endpoints';
 import type {
   CommissionerLeagueDuesUpdate,
   CommissionerLeagueNoteUpdate,
+  CommissionerLeagueSettingsUpdate,
   CommissionerOrphansResponse,
   CommissionerWorkspaceResponse,
   FinanceLeagueSeasonUpdate,
   FinanceSummaryResponse,
   Orphan,
   ReminderCreate,
+  ReminderDelete,
   ReminderListResponse,
+  ReminderTestSendResponse,
   ReminderUpdate,
   Roster,
   ValueBasis,
@@ -177,6 +180,22 @@ export function useSaveCommissionerDues() {
 }
 
 
+export function useSaveCommissionerSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: CommissionerLeagueSettingsUpdate,
+    ) => api.users.saveCommissionerSettings(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.commissionerWorkspace,
+      });
+    },
+  });
+}
+
+
 export function useFinanceSummary(
   enabled: boolean,
 ) {
@@ -261,5 +280,32 @@ export function useSaveReminder() {
         queryKey: queryKeys.users.reminders,
       });
     },
+  });
+}
+
+
+export function useDeleteReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: ReminderDelete,
+    ) => api.users.deleteReminder(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.reminders,
+      });
+    },
+  });
+}
+
+
+export function useTestSendReminder() {
+  return useMutation({
+    mutationFn: (
+      body: ReminderDelete,
+    ) => api.users
+      .testSendReminder(body)
+      .then((res) => res.data as ReminderTestSendResponse),
   });
 }

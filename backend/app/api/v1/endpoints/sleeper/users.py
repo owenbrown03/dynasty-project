@@ -6,6 +6,7 @@ from app.schemas.commissioner import (
     CommissionerLeagueDuesEntry,
     CommissionerLeagueDuesUpdate,
     CommissionerLeagueNoteUpdate,
+    CommissionerLeagueSettingsUpdate,
     CommissionerOrphansResponse,
     CommissionerWorkspaceLeague,
     CommissionerWorkspaceResponse,
@@ -17,8 +18,10 @@ from app.schemas.finance import (
 )
 from app.schemas.reminders import (
     ReminderCreate,
+    ReminderDelete,
     ReminderItem,
     ReminderListResponse,
+    ReminderTestSendResponse,
     ReminderUpdate,
 )
 from app.services.commissioner.orphans import get_commissioner_orphans
@@ -26,6 +29,7 @@ from app.services.commissioner.workspace import (
     get_commissioner_workspace,
     save_commissioner_dues,
     save_commissioner_note,
+    save_commissioner_settings,
 )
 from app.services.finance import (
     get_finance_summary,
@@ -34,7 +38,9 @@ from app.services.finance import (
 from app.services.reminders import (
     create_reminder,
     list_reminders,
+    remove_reminder,
     save_reminder,
+    send_test_reminder,
 )
 from app.services.values.basis import ValueBasis
 from app.tasks.user import sync_user_data_task
@@ -121,6 +127,20 @@ async def save_commissioner_dues_endpoint(
     )
 
 
+@router.post(
+    "/commissioner/workspace/settings",
+    response_model=CommissionerWorkspaceLeague,
+)
+async def save_commissioner_settings_endpoint(
+    body: CommissionerLeagueSettingsUpdate,
+    ctx: ContextDep,
+):
+    return await save_commissioner_settings(
+        body,
+        ctx,
+    )
+
+
 @router.get(
     "/finance/summary",
     response_model=FinanceSummaryResponse,
@@ -182,6 +202,34 @@ async def save_reminder_endpoint(
     ctx: ContextDep,
 ):
     return await save_reminder(
+        body,
+        ctx,
+    )
+
+
+@router.post(
+    "/reminders/delete",
+)
+async def delete_reminder_endpoint(
+    body: ReminderDelete,
+    ctx: ContextDep,
+):
+    await remove_reminder(
+        body,
+        ctx,
+    )
+    return {"status": "deleted"}
+
+
+@router.post(
+    "/reminders/test-send",
+    response_model=ReminderTestSendResponse,
+)
+async def test_send_reminder_endpoint(
+    body: ReminderDelete,
+    ctx: ContextDep,
+):
+    return await send_test_reminder(
         body,
         ctx,
     )

@@ -41,3 +41,12 @@ class ReminderUpdate(Base):
     due_season: str | None = None
     delivery_channel: str = "in_app"
     completed: bool = False
+
+
+class ReminderDelete(Base):
+    id: int
+
+
+class ReminderTestSendResponse(Base):
+    delivery: str
+    recipient: str

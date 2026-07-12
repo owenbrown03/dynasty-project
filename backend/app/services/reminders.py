@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 
 from app.core.context import Context
 from app.crud.sleeper.personal import (
+    delete_reminder,
     get_reminder_by_id,
     get_reminders_by_user,
     insert_reminder,
@@ -11,10 +12,13 @@ from app.crud.sleeper.personal import (
 )
 from app.schemas.reminders import (
     ReminderCreate,
+    ReminderDelete,
     ReminderItem,
     ReminderListResponse,
+    ReminderTestSendResponse,
     ReminderUpdate,
 )
+from app.services.email import send_reminder_email_message
 
 
 def _require_reminder_context(
@@ -121,4 +125,65 @@ async def save_reminder(
 
     return to_reminder_item(
         updated,
+    )
+
+
+async def remove_reminder(
+    body: ReminderDelete,
+    ctx: Context,
+) -> None:
+    _require_reminder_context(
+        ctx,
+    )
+
+    reminder = await get_reminder_by_id(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+        reminder_id=body.id,
+    )
+
+    if reminder is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reminder not found",
+        )
+
+    await delete_reminder(
+        db=ctx.db,
+        reminder=reminder,
+    )
+
+
+async def send_test_reminder(
+    body: ReminderDelete,
+    ctx: Context,
+) -> ReminderTestSendResponse:
+    _require_reminder_context(
+        ctx,
+    )
+
+    reminder = await get_reminder_by_id(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+        reminder_id=body.id,
+    )
+
+    if reminder is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reminder not found",
+        )
+
+    delivery = send_reminder_email_message(
+        recipient=ctx.site_user.email,
+        title=reminder.title,
+        note=reminder.note,
+        league_id=reminder.league_id,
+        due_season=reminder.due_season,
+        due_week=reminder.due_week,
+    )
+
+    return ReminderTestSendResponse(
+        delivery=delivery,
+        recipient=ctx.site_user.email,
     )

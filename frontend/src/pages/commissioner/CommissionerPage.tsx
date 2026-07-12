@@ -17,6 +17,7 @@ import {
   useCommissionerOrphans,
   useCommissionerWorkspace,
   useSaveCommissionerDues,
+  useSaveCommissionerSettings,
   useSaveCommissionerNote,
 } from '@/hooks/sleeper/useUsers';
 import { notify } from '@/utils/notify';
@@ -374,8 +375,10 @@ function CommissionerWorkspaceCard({
   league,
   onSaveNote,
   onSaveDues,
+  onSaveSettings,
   savingNote,
   savingDues,
+  savingSettings,
 }: {
   league: CommissionerWorkspaceLeague;
   onSaveNote: (
@@ -387,10 +390,18 @@ function CommissionerWorkspaceCard({
     buyInAmount: number | null,
     isPaid: boolean,
   ) => Promise<void>;
+  onSaveSettings: (
+    leagueId: string,
+    paidYearsAhead: number,
+  ) => Promise<void>;
   savingNote: boolean;
   savingDues: boolean;
+  savingSettings: boolean;
 }) {
   const [note, setNote] = useState(league.note);
+  const [paidYearsAhead, setPaidYearsAhead] = useState(
+    league.paid_years_ahead.toString(),
+  );
   const [duesDrafts, setDuesDrafts] = useState<
     Record<string, { amount: string; isPaid: boolean }>
   >(() => Object.fromEntries(
@@ -405,6 +416,9 @@ function CommissionerWorkspaceCard({
 
   useEffect(() => {
     setNote(league.note);
+    setPaidYearsAhead(
+      league.paid_years_ahead.toString(),
+    );
     setDuesDrafts(
       Object.fromEntries(
         league.dues.map((entry) => [
@@ -433,6 +447,54 @@ function CommissionerWorkspaceCard({
           </p>
         </div>
       </header>
+
+      <section className="commissioner-section">
+        <div className="commissioner-section-header">
+          <p>Dues settings</p>
+        </div>
+
+        <div className="commissioner-due-settings">
+          <label>
+            <span>Years paid ahead</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={paidYearsAhead}
+              onChange={(event) => {
+                setPaidYearsAhead(event.target.value);
+              }}
+            />
+          </label>
+
+          <p className="commissioner-settings-copy">
+            {
+              `Track picks from ${Number(league.league_season) + (Number(paidYearsAhead || '0') + 1)} and later.`
+            }
+          </p>
+
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={savingSettings}
+            onClick={() => {
+              void onSaveSettings(
+                league.league_id,
+                Math.max(
+                  0,
+                  Number(paidYearsAhead) || 0,
+                ),
+              );
+            }}
+          >
+            {
+              savingSettings
+                ? 'Saving...'
+                : 'Save settings'
+            }
+          </button>
+        </div>
+      </section>
 
       <section className="commissioner-section">
         <div className="commissioner-section-header">
@@ -630,6 +692,7 @@ export const CommissionerPage = () => {
   );
   const saveNoteMutation = useSaveCommissionerNote();
   const saveDuesMutation = useSaveCommissionerDues();
+  const saveSettingsMutation = useSaveCommissionerSettings();
 
   const shareUrl = useMemo(() => {
     if (!activeUsername) {
@@ -700,6 +763,21 @@ export const CommissionerPage = () => {
       notify.success('League dues updated.');
     } catch {
       notify.error('Unable to save league dues.');
+    }
+  };
+
+  const handleSaveSettings = async (
+    leagueId: string,
+    paidYearsAhead: number,
+  ) => {
+    try {
+      await saveSettingsMutation.mutateAsync({
+        league_id: leagueId,
+        paid_years_ahead: paidYearsAhead,
+      });
+      notify.success('Dues settings updated.');
+    } catch {
+      notify.error('Unable to save dues settings.');
     }
   };
 
@@ -920,8 +998,10 @@ export const CommissionerPage = () => {
                     league={league}
                     onSaveNote={handleSaveNote}
                     onSaveDues={handleSaveDues}
+                    onSaveSettings={handleSaveSettings}
                     savingNote={saveNoteMutation.isPending}
                     savingDues={saveDuesMutation.isPending}
+                    savingSettings={saveSettingsMutation.isPending}
                   />
                 ))
               }

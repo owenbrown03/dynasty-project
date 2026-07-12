@@ -13,8 +13,13 @@ logger = logging.getLogger(__name__)
 def build_verification_link(
     token: str,
 ) -> str:
+    frontend_base_url = (
+        settings.FRONTEND_BASE_URL.strip()
+        if settings.FRONTEND_BASE_URL
+        else ""
+    ) or "http://localhost:5173"
     return (
-        f"{settings.FRONTEND_BASE_URL.rstrip('/')}"
+        f"{frontend_base_url.rstrip('/')}"
         f"/?verify_email_token={token}"
     )
 
