@@ -198,11 +198,18 @@ async def sync_leagues(
 
     all_league_ids = [l.league_id for l in leagues]
 
-    # Load existing league IDs and sync states in one pass
-    existing_ids, sync_states, incomplete_league_ids = await asyncio.gather(
-        get_existing_leagues(db, all_league_ids),
-        get_sync_states(db, all_league_ids),
-        get_incomplete_league_ids(db, all_league_ids),
+    # AsyncSession does not support concurrent DB operations.
+    existing_ids = await get_existing_leagues(
+        db,
+        all_league_ids,
+    )
+    sync_states = await get_sync_states(
+        db,
+        all_league_ids,
+    )
+    incomplete_league_ids = await get_incomplete_league_ids(
+        db,
+        all_league_ids,
     )
 
     success_count = 0
