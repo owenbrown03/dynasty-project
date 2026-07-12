@@ -4,9 +4,13 @@ import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import {
   useFinanceSummary,
+  useResetFinanceSeason,
+  useSaveFinanceDefaults,
+  useSaveFinanceLeagueDefaults,
   useSaveFinanceSeason,
 } from '@/hooks/sleeper/useUsers';
 import type {
+  FinanceDefaultSettings,
   FinanceLeagueSeasonEntry,
   FinancePlacePayout,
 } from '@/types';
@@ -25,9 +29,13 @@ type FinanceDraftRow = {
   amount: string;
 };
 
-type FinanceDraft = {
+type FinanceSettingsDraft = {
   buyInAmount: string;
   payoutStructure: FinanceDraftRow[];
+};
+
+type FinanceSeasonDraft = FinanceSettingsDraft & {
+  isExcluded: boolean;
 };
 
 
@@ -67,6 +75,32 @@ function ordinal(
 }
 
 
+function parseAmount(
+  value: string,
+) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed)
+    ? parsed
+    : 0;
+}
+
+
+function parseNullableAmount(
+  value: string,
+) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
+
 function getDraftKey(
   entry: FinanceLeagueSeasonEntry,
 ) {
@@ -95,7 +129,22 @@ function buildPayoutRows(
 }
 
 
-function buildDrafts(
+function buildSettingsDraft(
+  settings: FinanceDefaultSettings | {
+    buy_in_amount: number | null;
+    payout_structure: FinancePlacePayout[];
+  },
+) {
+  return {
+    buyInAmount: settings.buy_in_amount?.toString() ?? '',
+    payoutStructure: buildPayoutRows(
+      settings.payout_structure,
+    ),
+  };
+}
+
+
+function buildSeasonDrafts(
   entries: FinanceLeagueSeasonEntry[],
 ) {
   return Object.fromEntries(
@@ -106,19 +155,10 @@ function buildDrafts(
         payoutStructure: buildPayoutRows(
           entry.payout_structure,
         ),
+        isExcluded: entry.is_excluded,
       },
     ]),
-  ) as Record<string, FinanceDraft>;
-}
-
-
-function parseAmount(
-  value: string,
-) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed)
-    ? parsed
-    : 0;
+  ) as Record<string, FinanceSeasonDraft>;
 }
 
 
@@ -155,21 +195,47 @@ function draftRowsEqual(
 }
 
 
-function isDraftDirty(
-  entry: FinanceLeagueSeasonEntry,
-  draft: FinanceDraft | undefined,
+function addPayoutRow(
+  draft: FinanceSettingsDraft,
 ) {
-  if (!draft) {
-    return false;
-  }
-
-  return (
-    parseAmount(draft.buyInAmount) !== entry.buy_in_amount
-    || !draftRowsEqual(
-      draft.payoutStructure,
-      buildPayoutRows(entry.payout_structure),
-    )
+  const nextPlace = (
+    draft.payoutStructure.length
+      ? Math.max(
+          ...draft.payoutStructure.map((row) => (
+            parseAmount(row.place)
+          )),
+        ) + 1
+      : 1
   );
+
+  return {
+    ...draft,
+    payoutStructure: [
+      ...draft.payoutStructure,
+      {
+        place: nextPlace.toString(),
+        amount: '',
+      },
+    ],
+  };
+}
+
+
+function sourceLabel(
+  source: string,
+) {
+  switch (source) {
+    case 'season_override':
+      return 'Season override';
+    case 'league_default':
+      return 'League default';
+    case 'global_default':
+      return 'Global default';
+    case 'commissioner_dues':
+      return 'Commissioner dues';
+    default:
+      return 'Not set';
+  }
 }
 
 
@@ -333,16 +399,120 @@ function FinanceNetChart({
 }
 
 
+function FinancePayoutEditor({
+  draft,
+  onChange,
+}: {
+  draft: FinanceSettingsDraft;
+  onChange: (
+    nextDraft: FinanceSettingsDraft,
+  ) => void;
+}) {
+  return (
+    <div className="finance-payout-editor">
+      <div className="finance-payout-editor-header">
+        <span>Payout structure</span>
+
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={() => {
+            onChange(
+              addPayoutRow(draft),
+            );
+          }}
+        >
+          Add place
+        </button>
+      </div>
+
+      <div className="finance-payout-rows">
+        {
+          draft.payoutStructure.map((row, index) => (
+            <div
+              key={`${row.place}-${index}`}
+              className="finance-payout-row"
+            >
+              <label>
+                <span>Place</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={row.place}
+                  onChange={(event) => {
+                    const nextRows = [...draft.payoutStructure];
+                    nextRows[index] = {
+                      ...row,
+                      place: event.target.value,
+                    };
+                    onChange({
+                      ...draft,
+                      payoutStructure: nextRows,
+                    });
+                  }}
+                />
+              </label>
+
+              <label>
+                <span>{ordinal(parseAmount(row.place) || 1)} payout</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={row.amount}
+                  onChange={(event) => {
+                    const nextRows = [...draft.payoutStructure];
+                    nextRows[index] = {
+                      ...row,
+                      amount: event.target.value,
+                    };
+                    onChange({
+                      ...draft,
+                      payoutStructure: nextRows,
+                    });
+                  }}
+                />
+              </label>
+
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={draft.payoutStructure.length === 1}
+                onClick={() => {
+                  onChange({
+                    ...draft,
+                    payoutStructure: draft.payoutStructure.filter(
+                      (_, rowIndex) => rowIndex !== index,
+                    ),
+                  });
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
+
+
 function FinanceSeasonCard({
   entry,
   draft,
   onDraftChange,
+  onReset,
+  resetPending,
 }: {
   entry: FinanceLeagueSeasonEntry;
-  draft: FinanceDraft;
+  draft: FinanceSeasonDraft;
   onDraftChange: (
-    nextDraft: FinanceDraft,
+    nextDraft: FinanceSeasonDraft,
   ) => void;
+  onReset: () => void;
+  resetPending: boolean;
 }) {
   return (
     <article className="finance-card">
@@ -376,10 +546,12 @@ function FinanceSeasonCard({
         <div>
           <span>Buy-in</span>
           <strong>{formatCurrency(entry.buy_in_amount)}</strong>
+          <small>{sourceLabel(entry.buy_in_source)}</small>
         </div>
         <div>
           <span>Finish payout</span>
           <strong>{formatCurrency(entry.winnings_amount)}</strong>
+          <small>{sourceLabel(entry.payout_source)}</small>
         </div>
         <div>
           <span>
@@ -390,12 +562,48 @@ function FinanceSeasonCard({
             }
           </span>
           <strong>{formatCurrency(entry.projected_winnings_amount)}</strong>
+          <small>{entry.projected_winnings_source}</small>
         </div>
+      </div>
+
+      <div className="finance-inline-flags">
+        <label className="finance-inline-checkbox">
+          <input
+            type="checkbox"
+            checked={draft.isExcluded}
+            onChange={(event) => {
+              onDraftChange({
+                ...draft,
+                isExcluded: event.target.checked,
+              });
+            }}
+          />
+          Exclude this season from totals and charts
+        </label>
+
+        {
+          entry.has_season_override
+            ? (
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={resetPending}
+                onClick={onReset}
+              >
+                {
+                  resetPending
+                    ? 'Resetting...'
+                    : 'Reset to inherited defaults'
+                }
+              </button>
+            )
+            : null
+        }
       </div>
 
       <div className="finance-form-grid">
         <label>
-          <span>Buy-in amount</span>
+          <span>Season buy-in override</span>
           <input
             type="number"
             min="0"
@@ -411,109 +619,15 @@ function FinanceSeasonCard({
         </label>
       </div>
 
-      <div className="finance-payout-editor">
-        <div className="finance-payout-editor-header">
-          <span>Payout structure</span>
-
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={() => {
-              const nextPlace = (
-                draft.payoutStructure.length
-                  ? Math.max(
-                      ...draft.payoutStructure.map((row) => (
-                        parseAmount(row.place)
-                      )),
-                    ) + 1
-                  : 1
-              );
-
-              onDraftChange({
-                ...draft,
-                payoutStructure: [
-                  ...draft.payoutStructure,
-                  {
-                    place: nextPlace.toString(),
-                    amount: '',
-                  },
-                ],
-              });
-            }}
-          >
-            Add place
-          </button>
-        </div>
-
-        <div className="finance-payout-rows">
-          {
-            draft.payoutStructure.map((row, index) => (
-              <div
-                key={`${getDraftKey(entry)}-${index}`}
-                className="finance-payout-row"
-              >
-                <label>
-                  <span>Place</span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={row.place}
-                    onChange={(event) => {
-                      const nextRows = [...draft.payoutStructure];
-                      nextRows[index] = {
-                        ...row,
-                        place: event.target.value,
-                      };
-                      onDraftChange({
-                        ...draft,
-                        payoutStructure: nextRows,
-                      });
-                    }}
-                  />
-                </label>
-
-                <label>
-                  <span>{ordinal(parseAmount(row.place) || 1)} payout</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={row.amount}
-                    onChange={(event) => {
-                      const nextRows = [...draft.payoutStructure];
-                      nextRows[index] = {
-                        ...row,
-                        amount: event.target.value,
-                      };
-                      onDraftChange({
-                        ...draft,
-                        payoutStructure: nextRows,
-                      });
-                    }}
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  className="button-secondary"
-                  disabled={draft.payoutStructure.length === 1}
-                  onClick={() => {
-                    onDraftChange({
-                      ...draft,
-                      payoutStructure: draft.payoutStructure.filter(
-                        (_, rowIndex) => rowIndex !== index,
-                      ),
-                    });
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            ))
-          }
-        </div>
-      </div>
+      <FinancePayoutEditor
+        draft={draft}
+        onChange={(nextDraft) => {
+          onDraftChange({
+            ...draft,
+            ...nextDraft,
+          });
+        }}
+      />
     </article>
   );
 }
@@ -525,19 +639,37 @@ export function FinancePage() {
     connection.linked,
   );
   const saveFinanceMutation = useSaveFinanceSeason();
+  const resetFinanceMutation = useResetFinanceSeason();
+  const saveDefaultsMutation = useSaveFinanceDefaults();
+  const saveLeagueDefaultsMutation = useSaveFinanceLeagueDefaults();
   const [activeTab, setActiveTab] = useState<FinanceTab>('tracker');
-  const [selectedSeason, setSelectedSeason] = useState('all');
-  const [drafts, setDrafts] = useState<
-    Record<string, FinanceDraft>
+  const [chartSeason, setChartSeason] = useState('all');
+  const [seasonDrafts, setSeasonDrafts] = useState<
+    Record<string, FinanceSeasonDraft>
   >({});
+  const [globalDraft, setGlobalDraft] = useState<FinanceSettingsDraft>({
+    buyInAmount: '',
+    payoutStructure: buildPayoutRows([]),
+  });
+  const [bulkDraft, setBulkDraft] = useState<FinanceSettingsDraft>({
+    buyInAmount: '',
+    payoutStructure: buildPayoutRows([]),
+  });
+  const [selectedLeagueFamilies, setSelectedLeagueFamilies] = useState<string[]>([]);
 
   useEffect(() => {
     if (!finance.data) {
       return;
     }
 
-    setDrafts(
-      buildDrafts(finance.data.seasons),
+    setSeasonDrafts(
+      buildSeasonDrafts(finance.data.seasons),
+    );
+    setGlobalDraft(
+      buildSettingsDraft(finance.data.defaults),
+    );
+    setBulkDraft(
+      buildSettingsDraft(finance.data.defaults),
     );
   }, [finance.data]);
 
@@ -550,33 +682,83 @@ export function FinancePage() {
     [finance.data],
   );
 
-  const filteredEntries = useMemo(
-    () => finance.data?.seasons.filter((entry) => (
-      selectedSeason === 'all'
-      || entry.season === selectedSeason
-    )) ?? [],
-    [finance.data, selectedSeason],
+  const trackerEntries = useMemo(
+    () => finance.data?.seasons ?? [],
+    [finance.data],
   );
 
-  const dirtyEntries = useMemo(
-    () => filteredEntries.filter((entry) => (
-      isDraftDirty(
-        entry,
-        drafts[getDraftKey(entry)],
-      )
-    )),
-    [drafts, filteredEntries],
+  const chartEntries = useMemo(
+    () => (
+      finance.data?.seasons.filter((entry) => (
+        !entry.is_excluded
+        && (
+          chartSeason === 'all'
+          || entry.season === chartSeason
+        )
+      )) ?? []
+    ),
+    [chartSeason, finance.data],
   );
+
+  const globalDraftDirty = useMemo(() => (
+    !!finance.data && (
+      parseNullableAmount(globalDraft.buyInAmount) !== finance.data.defaults.buy_in_amount
+      || !draftRowsEqual(
+        globalDraft.payoutStructure,
+        buildPayoutRows(finance.data.defaults.payout_structure),
+      )
+    )
+  ), [finance.data, globalDraft]);
+
+  const dirtyEntries = useMemo(
+    () => trackerEntries.filter((entry) => {
+      const draft = seasonDrafts[getDraftKey(entry)];
+
+      if (!draft) {
+        return false;
+      }
+
+      return (
+        parseAmount(draft.buyInAmount) !== entry.buy_in_amount
+        || draft.isExcluded !== entry.is_excluded
+        || !draftRowsEqual(
+          draft.payoutStructure,
+          buildPayoutRows(entry.payout_structure),
+        )
+      );
+    }),
+    [seasonDrafts, trackerEntries],
+  );
+
+  const uniqueLeagueFamilies = useMemo(() => {
+    const seen = new Map<string, string>();
+
+    for (const entry of trackerEntries) {
+      if (!seen.has(entry.league_family_id)) {
+        seen.set(
+          entry.league_family_id,
+          entry.league_name,
+        );
+      }
+    }
+
+    return Array.from(seen.entries()).map(([leagueFamilyId, leagueName]) => ({
+      leagueFamilyId,
+      leagueName,
+    })).sort((left, right) => (
+      left.leagueName.localeCompare(right.leagueName)
+    ));
+  }, [trackerEntries]);
 
   const handleSaveAll = async () => {
     if (!dirtyEntries.length) {
-      notify.success('No finance changes to save.');
+      notify.success('No season overrides to save.');
       return;
     }
 
     try {
       for (const entry of dirtyEntries) {
-        const draft = drafts[getDraftKey(entry)];
+        const draft = seasonDrafts[getDraftKey(entry)];
 
         await saveFinanceMutation.mutateAsync({
           league_id: entry.league_id,
@@ -584,19 +766,63 @@ export function FinancePage() {
           buy_in_amount: parseAmount(
             draft.buyInAmount,
           ),
-          winnings_amount: entry.winnings_amount,
           payout_structure: normalizeDraftRows(
             draft.payoutStructure,
           ).map((row) => ({
             place: parseAmount(row.place),
             amount: parseAmount(row.amount),
           })),
+          is_excluded: draft.isExcluded,
         });
       }
 
-      notify.success('Finance entries saved.');
+      notify.success('Season overrides saved.');
     } catch {
-      notify.error('Unable to save finance entries.');
+      notify.error('Unable to save finance overrides.');
+    }
+  };
+
+  const handleSaveGlobalDefaults = async () => {
+    try {
+      await saveDefaultsMutation.mutateAsync({
+        buy_in_amount: parseNullableAmount(
+          globalDraft.buyInAmount,
+        ),
+        payout_structure: normalizeDraftRows(
+          globalDraft.payoutStructure,
+        ).map((row) => ({
+          place: parseAmount(row.place),
+          amount: parseAmount(row.amount),
+        })),
+      });
+      notify.success('Global finance defaults saved.');
+    } catch {
+      notify.error('Unable to save global defaults.');
+    }
+  };
+
+  const handleApplyLeagueDefaults = async () => {
+    if (!selectedLeagueFamilies.length) {
+      notify.error('Select at least one league.');
+      return;
+    }
+
+    try {
+      await saveLeagueDefaultsMutation.mutateAsync({
+        league_family_ids: selectedLeagueFamilies,
+        buy_in_amount: parseNullableAmount(
+          bulkDraft.buyInAmount,
+        ),
+        payout_structure: normalizeDraftRows(
+          bulkDraft.payoutStructure,
+        ).map((row) => ({
+          place: parseAmount(row.place),
+          amount: parseAmount(row.amount),
+        })),
+      });
+      notify.success('League defaults applied.');
+    } catch {
+      notify.error('Unable to apply league defaults.');
     }
   };
 
@@ -609,8 +835,8 @@ export function FinancePage() {
             League finance tracker
           </h1>
           <p className="finance-page-description">
-            Track buy-ins and payout structures so dynasty results and current
-            projected winnings can be derived from your finish.
+            Set global defaults once, bulk-apply league-specific settings where
+            needed, and only use season overrides when a year was different.
           </p>
         </div>
       </section>
@@ -705,26 +931,141 @@ export function FinancePage() {
                         </article>
                       </section>
 
-                      <section className="finance-toolbar">
-                        <label>
-                          <span>Season</span>
-                          <select
-                            value={selectedSeason}
-                            onChange={(event) => {
-                              setSelectedSeason(event.target.value);
-                            }}
-                          >
-                            <option value="all">All seasons</option>
+                      <section className="finance-settings-grid">
+                        <article className="finance-settings-card">
+                          <header className="finance-settings-header">
+                            <div>
+                              <p className="finance-card-kicker">Defaults</p>
+                              <h2>Global finance defaults</h2>
+                            </div>
+
+                            <button
+                              type="button"
+                              className="button-primary"
+                              disabled={
+                                !globalDraftDirty
+                                || saveDefaultsMutation.isPending
+                              }
+                              onClick={() => {
+                                void handleSaveGlobalDefaults();
+                              }}
+                            >
+                              {
+                                saveDefaultsMutation.isPending
+                                  ? 'Saving...'
+                                  : 'Save defaults'
+                              }
+                            </button>
+                          </header>
+
+                          <div className="finance-form-grid">
+                            <label>
+                              <span>Default buy-in</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                placeholder="Unset"
+                                value={globalDraft.buyInAmount}
+                                onChange={(event) => {
+                                  setGlobalDraft((current) => ({
+                                    ...current,
+                                    buyInAmount: event.target.value,
+                                  }));
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          <FinancePayoutEditor
+                            draft={globalDraft}
+                            onChange={setGlobalDraft}
+                          />
+                        </article>
+
+                        <article className="finance-settings-card">
+                          <header className="finance-settings-header">
+                            <div>
+                              <p className="finance-card-kicker">Bulk apply</p>
+                              <h2>League-specific defaults</h2>
+                            </div>
+
+                            <button
+                              type="button"
+                              className="button-primary"
+                              disabled={
+                                saveLeagueDefaultsMutation.isPending
+                              }
+                              onClick={() => {
+                                void handleApplyLeagueDefaults();
+                              }}
+                            >
+                              {
+                                saveLeagueDefaultsMutation.isPending
+                                  ? 'Applying...'
+                                  : `Apply to ${selectedLeagueFamilies.length || ''} leagues`
+                              }
+                            </button>
+                          </header>
+
+                          <div className="finance-form-grid">
+                            <label>
+                              <span>League buy-in default</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                placeholder="Unset"
+                                value={bulkDraft.buyInAmount}
+                                onChange={(event) => {
+                                  setBulkDraft((current) => ({
+                                    ...current,
+                                    buyInAmount: event.target.value,
+                                  }));
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          <FinancePayoutEditor
+                            draft={bulkDraft}
+                            onChange={setBulkDraft}
+                          />
+
+                          <div className="finance-league-selector">
                             {
-                              availableSeasons.map((season) => (
-                                <option key={season} value={season}>
-                                  {season}
-                                </option>
+                              uniqueLeagueFamilies.map((league) => (
+                                <label
+                                  key={league.leagueFamilyId}
+                                  className="finance-league-checkbox"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedLeagueFamilies.includes(
+                                      league.leagueFamilyId,
+                                    )}
+                                    onChange={(event) => {
+                                      setSelectedLeagueFamilies((current) => (
+                                        event.target.checked
+                                          ? [
+                                              ...current,
+                                              league.leagueFamilyId,
+                                            ]
+                                          : current.filter(
+                                              (value) => value !== league.leagueFamilyId,
+                                            )
+                                      ));
+                                    }}
+                                  />
+                                  {league.leagueName}
+                                </label>
                               ))
                             }
-                          </select>
-                        </label>
+                          </div>
+                        </article>
+                      </section>
 
+                      <section className="finance-toolbar">
                         <button
                           type="button"
                           className="button-primary"
@@ -736,32 +1077,42 @@ export function FinancePage() {
                           {
                             saveFinanceMutation.isPending
                               ? 'Saving...'
-                              : `Save ${dirtyEntries.length || ''} finance changes`
+                              : `Save ${dirtyEntries.length || ''} season overrides`
                           }
                         </button>
                       </section>
 
                       <section className="finance-season-grid">
                         {
-                          filteredEntries.map((entry) => {
+                          trackerEntries.map((entry) => {
                             const key = getDraftKey(entry);
 
                             return (
                               <FinanceSeasonCard
                                 key={key}
                                 entry={entry}
-                                draft={drafts[key] ?? {
+                                draft={seasonDrafts[key] ?? {
                                   buyInAmount: entry.buy_in_amount.toString(),
                                   payoutStructure: buildPayoutRows(
                                     entry.payout_structure,
                                   ),
+                                  isExcluded: entry.is_excluded,
                                 }}
                                 onDraftChange={(nextDraft) => {
-                                  setDrafts((current) => ({
+                                  setSeasonDrafts((current) => ({
                                     ...current,
                                     [key]: nextDraft,
                                   }));
                                 }}
+                                onReset={() => {
+                                  void resetFinanceMutation.mutateAsync({
+                                    league_id: entry.league_id,
+                                    season: entry.season,
+                                  }).catch(() => {
+                                    notify.error('Unable to reset season override.');
+                                  });
+                                }}
+                                resetPending={resetFinanceMutation.isPending}
                               />
                             );
                           })
@@ -770,14 +1121,37 @@ export function FinancePage() {
                     </>
                   )
                   : (
-                    <section className="finance-chart-grid">
-                      <FinanceTrendChart
-                        entries={finance.data.seasons}
-                      />
-                      <FinanceNetChart
-                        entries={finance.data.seasons}
-                      />
-                    </section>
+                    <>
+                      <section className="finance-toolbar">
+                        <label>
+                          <span>Charts year</span>
+                          <select
+                            value={chartSeason}
+                            onChange={(event) => {
+                              setChartSeason(event.target.value);
+                            }}
+                          >
+                            <option value="all">All years</option>
+                            {
+                              availableSeasons.map((season) => (
+                                <option key={season} value={season}>
+                                  {season}
+                                </option>
+                              ))
+                            }
+                          </select>
+                        </label>
+                      </section>
+
+                      <section className="finance-chart-grid">
+                        <FinanceTrendChart
+                          entries={chartEntries}
+                        />
+                        <FinanceNetChart
+                          entries={chartEntries}
+                        />
+                      </section>
+                    </>
                   )
               }
             </>

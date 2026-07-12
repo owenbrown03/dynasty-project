@@ -9,7 +9,9 @@ from sqlmodel import select
 from app.models.db.sleeper.personal import (
     CommissionerLeagueDues,
     CommissionerLeagueNote,
+    FinanceLeagueDefault,
     FinanceLeagueSeason,
+    FinanceUserDefaults,
     Reminder,
 )
 
@@ -188,6 +190,109 @@ async def get_finance_entries_by_key(
     }
 
 
+async def delete_finance_entry(
+    *,
+    db: AsyncSession,
+    finance_entry: FinanceLeagueSeason,
+) -> None:
+    await db.delete(finance_entry)
+    await db.commit()
+
+
+async def get_finance_user_defaults(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+) -> FinanceUserDefaults | None:
+    results = await db.execute(
+        select(FinanceUserDefaults).where(
+            FinanceUserDefaults.site_user_id == site_user_id,
+        )
+    )
+    return results.scalar_one_or_none()
+
+
+async def upsert_finance_user_defaults(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    buy_in_amount: float | None,
+    payout_structure: dict[str, float] | None,
+) -> FinanceUserDefaults:
+    record = await get_finance_user_defaults(
+        db=db,
+        site_user_id=site_user_id,
+    )
+
+    if record is None:
+        record = FinanceUserDefaults(
+            site_user_id=site_user_id,
+        )
+
+    record.buy_in_amount = buy_in_amount
+    record.payout_structure = payout_structure
+    record.updated_at = datetime.utcnow()
+
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def get_finance_league_defaults_by_family_id(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_family_ids: list[str],
+) -> dict[str, FinanceLeagueDefault]:
+    if not league_family_ids:
+        return {}
+
+    results = await db.execute(
+        select(FinanceLeagueDefault).where(
+            FinanceLeagueDefault.site_user_id == site_user_id,
+            FinanceLeagueDefault.league_family_id.in_(league_family_ids),
+        )
+    )
+    rows = results.scalars().all()
+    return {
+        row.league_family_id: row
+        for row in rows
+    }
+
+
+async def upsert_finance_league_default(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_family_id: str,
+    buy_in_amount: float | None,
+    payout_structure: dict[str, float] | None,
+) -> FinanceLeagueDefault:
+    results = await db.execute(
+        select(FinanceLeagueDefault).where(
+            FinanceLeagueDefault.site_user_id == site_user_id,
+            FinanceLeagueDefault.league_family_id == league_family_id,
+        )
+    )
+    record = results.scalar_one_or_none()
+
+    if record is None:
+        record = FinanceLeagueDefault(
+            site_user_id=site_user_id,
+            league_family_id=league_family_id,
+        )
+
+    record.buy_in_amount = buy_in_amount
+    record.payout_structure = payout_structure
+    record.updated_at = datetime.utcnow()
+
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
 async def upsert_finance_entry(
     *,
     db: AsyncSession,
@@ -197,6 +302,7 @@ async def upsert_finance_entry(
     buy_in_amount: float,
     winnings_amount: float,
     payout_structure: dict[str, float],
+    is_excluded: bool,
 ) -> FinanceLeagueSeason:
     results = await db.execute(
         select(FinanceLeagueSeason).where(
@@ -217,6 +323,7 @@ async def upsert_finance_entry(
     record.buy_in_amount = buy_in_amount
     record.winnings_amount = winnings_amount
     record.payout_structure = payout_structure
+    record.is_excluded = is_excluded
     record.updated_at = datetime.utcnow()
 
     db.add(record)

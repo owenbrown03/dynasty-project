@@ -12,7 +12,10 @@ from app.schemas.commissioner import (
     CommissionerWorkspaceResponse,
 )
 from app.schemas.finance import (
+    FinanceDefaultsUpdate,
+    FinanceLeagueDefaultsUpdate,
     FinanceLeagueSeasonEntry,
+    FinanceSeasonReset,
     FinanceLeagueSeasonUpdate,
     FinanceSummaryResponse,
 )
@@ -33,7 +36,10 @@ from app.services.commissioner.workspace import (
 )
 from app.services.finance import (
     get_finance_summary,
+    reset_finance_entry,
+    save_finance_defaults,
     save_finance_entry,
+    save_finance_league_defaults,
 )
 from app.services.reminders import (
     create_reminder,
@@ -154,6 +160,34 @@ async def get_finance_summary_endpoint(
 
 
 @router.post(
+    "/finance/defaults",
+    response_model=FinanceSummaryResponse,
+)
+async def save_finance_defaults_endpoint(
+    body: FinanceDefaultsUpdate,
+    ctx: ContextDep,
+):
+    return await save_finance_defaults(
+        body,
+        ctx,
+    )
+
+
+@router.post(
+    "/finance/defaults/leagues",
+    response_model=FinanceSummaryResponse,
+)
+async def save_finance_league_defaults_endpoint(
+    body: FinanceLeagueDefaultsUpdate,
+    ctx: ContextDep,
+):
+    return await save_finance_league_defaults(
+        body,
+        ctx,
+    )
+
+
+@router.post(
     "/finance/season",
     response_model=FinanceLeagueSeasonEntry,
 )
@@ -162,6 +196,20 @@ async def save_finance_entry_endpoint(
     ctx: ContextDep,
 ):
     return await save_finance_entry(
+        body,
+        ctx,
+    )
+
+
+@router.post(
+    "/finance/season/reset",
+    response_model=FinanceLeagueSeasonEntry,
+)
+async def reset_finance_entry_endpoint(
+    body: FinanceSeasonReset,
+    ctx: ContextDep,
+):
+    return await reset_finance_entry(
         body,
         ctx,
     )

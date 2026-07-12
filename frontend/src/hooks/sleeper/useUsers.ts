@@ -8,7 +8,10 @@ import type {
   CommissionerLeagueSettingsUpdate,
   CommissionerOrphansResponse,
   CommissionerWorkspaceResponse,
+  FinanceDefaultsUpdate,
+  FinanceLeagueDefaultsUpdate,
   FinanceLeagueSeasonUpdate,
+  FinanceSeasonReset,
   FinanceSummaryResponse,
   Orphan,
   ReminderCreate,
@@ -223,6 +226,54 @@ export function useSaveFinanceSeason() {
     mutationFn: (
       body: FinanceLeagueSeasonUpdate,
     ) => api.users.saveFinanceSeason(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.financeSummary,
+      });
+    },
+  });
+}
+
+
+export function useResetFinanceSeason() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: FinanceSeasonReset,
+    ) => api.users.resetFinanceSeason(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.financeSummary,
+      });
+    },
+  });
+}
+
+
+export function useSaveFinanceDefaults() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: FinanceDefaultsUpdate,
+    ) => api.users.saveFinanceDefaults(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.financeSummary,
+      });
+    },
+  });
+}
+
+
+export function useSaveFinanceLeagueDefaults() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: FinanceLeagueDefaultsUpdate,
+    ) => api.users.saveFinanceLeagueDefaults(body),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.users.financeSummary,

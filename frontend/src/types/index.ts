@@ -432,6 +432,7 @@ export interface FinancePlacePayout {
 
 export interface FinanceLeagueSeasonEntry {
   league_id: string;
+  league_family_id: string;
   league_name: string;
   season: string;
   total_rosters: number;
@@ -444,9 +445,26 @@ export interface FinanceLeagueSeasonEntry {
   buy_in_amount: number;
   winnings_amount: number;
   payout_structure: FinancePlacePayout[];
+  buy_in_source: 'season_override' | 'league_default' | 'global_default' | 'commissioner_dues' | 'none';
+  payout_source: 'season_override' | 'league_default' | 'global_default' | 'none';
+  has_season_override: boolean;
+  has_league_default: boolean;
+  is_excluded: boolean;
   projected_winnings_amount: number;
   projected_winnings_source: 'heuristic' | 'historical_rank' | 'configured_place';
   net_amount: number;
+}
+
+export interface FinanceDefaultSettings {
+  buy_in_amount: number | null;
+  payout_structure: FinancePlacePayout[];
+}
+
+export interface FinanceLeagueDefaultEntry {
+  league_family_id: string;
+  league_name: string;
+  buy_in_amount: number | null;
+  payout_structure: FinancePlacePayout[];
 }
 
 export interface FinanceSummaryResponse {
@@ -454,6 +472,8 @@ export interface FinanceSummaryResponse {
   total_winnings: number;
   total_net: number;
   projected_current_winnings: number;
+  defaults: FinanceDefaultSettings;
+  league_defaults: FinanceLeagueDefaultEntry[];
   seasons: FinanceLeagueSeasonEntry[];
 }
 
@@ -461,8 +481,22 @@ export interface FinanceLeagueSeasonUpdate {
   league_id: string;
   season: string;
   buy_in_amount: number;
-  winnings_amount: number;
   payout_structure: FinancePlacePayout[];
+  is_excluded: boolean;
+}
+
+export interface FinanceSeasonReset {
+  league_id: string;
+  season: string;
+}
+
+export interface FinanceDefaultsUpdate {
+  buy_in_amount: number | null;
+  payout_structure: FinancePlacePayout[];
+}
+
+export interface FinanceLeagueDefaultsUpdate extends FinanceDefaultsUpdate {
+  league_family_ids: string[];
 }
 
 export interface ReminderItem {

@@ -6,7 +6,10 @@ import {
   type CommissionerLeagueSettingsUpdate,
   type CommissionerOrphansResponse,
   type CommissionerWorkspaceResponse,
+  type FinanceDefaultsUpdate,
+  type FinanceLeagueDefaultsUpdate,
   type FinanceLeagueSeasonUpdate,
+  type FinanceSeasonReset,
   type FinanceSummaryResponse,
   type Orphan,
   type ReminderCreate,
@@ -57,10 +60,28 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
   getFinanceSummary: () => client.get<FinanceSummaryResponse>(
     `${prefix}/finance/summary`,
   ),
+  saveFinanceDefaults: (
+    body: FinanceDefaultsUpdate,
+  ) => client.post<FinanceSummaryResponse>(
+    `${prefix}/finance/defaults`,
+    body,
+  ),
+  saveFinanceLeagueDefaults: (
+    body: FinanceLeagueDefaultsUpdate,
+  ) => client.post<FinanceSummaryResponse>(
+    `${prefix}/finance/defaults/leagues`,
+    body,
+  ),
   saveFinanceSeason: (
     body: FinanceLeagueSeasonUpdate,
   ) => client.post(
     `${prefix}/finance/season`,
+    body,
+  ),
+  resetFinanceSeason: (
+    body: FinanceSeasonReset,
+  ) => client.post(
+    `${prefix}/finance/season/reset`,
     body,
   ),
   getReminders: () => client.get<ReminderListResponse>(

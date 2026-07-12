@@ -84,6 +84,7 @@ class FinanceLeagueSeason(SQLModel, table=True):
         default_factory=dict,
         sa_type=JSON,
     )
+    is_excluded: bool = Field(default=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     __table_args__ = (
@@ -92,6 +93,54 @@ class FinanceLeagueSeason(SQLModel, table=True):
             "league_id",
             "season",
             name="uq_financeleagueseason_site_user_league_season",
+        ),
+    )
+
+
+class FinanceUserDefaults(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    site_user_id: uuid.UUID = Field(
+        sa_type=UUID(as_uuid=True),
+        foreign_key="siteuser.id",
+        index=True,
+        unique=True,
+    )
+    buy_in_amount: float | None = Field(
+        default=None,
+        nullable=True,
+    )
+    payout_structure: dict[str, float] | None = Field(
+        default=None,
+        sa_type=JSON,
+        nullable=True,
+    )
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class FinanceLeagueDefault(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    site_user_id: uuid.UUID = Field(
+        sa_type=UUID(as_uuid=True),
+        foreign_key="siteuser.id",
+        index=True,
+    )
+    league_family_id: str = Field(index=True)
+    buy_in_amount: float | None = Field(
+        default=None,
+        nullable=True,
+    )
+    payout_structure: dict[str, float] | None = Field(
+        default=None,
+        sa_type=JSON,
+        nullable=True,
+    )
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "site_user_id",
+            "league_family_id",
+            name="uq_financeleaguedefault_site_user_family",
         ),
     )
 
