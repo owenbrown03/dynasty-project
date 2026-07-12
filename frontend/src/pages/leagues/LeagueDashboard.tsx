@@ -2,6 +2,7 @@ import './LeagueDashboard.css';
 
 import type { LeagueDetails } from '@/types';
 import { LeagueCard } from './LeagueCard';
+import { LeagueWarHistoryChart } from './LeagueWarHistoryChart';
 import { LeagueWarChart } from './LeagueWarChart';
 
 
@@ -17,6 +18,10 @@ export function LeagueDashboard({
 
   return (
     <div className="league-dashboard">
+      <LeagueWarHistoryChart
+        league={league}
+      />
+
       <LeagueWarChart
         league={league}
       />

@@ -129,6 +129,17 @@ export interface LeagueSettingsDetail {
   value: string;
 }
 
+export interface LeagueWarPositionValue {
+  position: string;
+  war: number;
+}
+
+export interface LeagueWarPositionSeason {
+  season: string;
+  source: string;
+  values: LeagueWarPositionValue[];
+}
+
 export interface LeaguePick {
   season: string;
   round: number;
@@ -204,6 +215,7 @@ export interface LeagueDetails {
   note: string;
   settings_badges: string[];
   settings_details: LeagueSettingsDetail[];
+  war_position_history: LeagueWarPositionSeason[];
   rosters: LeagueRoster[];
 }
 

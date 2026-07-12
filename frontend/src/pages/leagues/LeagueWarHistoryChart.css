@@ -1,0 +1,85 @@
+.league-war-history-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.league-war-history-header,
+.league-war-history-legend {
+  display: flex;
+  gap: 12px;
+}
+
+.league-war-history-header {
+  justify-content: space-between;
+  align-items: end;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.league-war-history-header p,
+.league-war-history-header span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.league-war-history-header p {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.league-war-history-header h3 {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.league-war-history-legend {
+  flex-wrap: wrap;
+}
+
+.league-war-history-legend-item {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.league-war-history-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 4px;
+}
+
+.league-war-history-scroll {
+  overflow-x: auto;
+}
+
+.league-war-history-svg {
+  width: 100%;
+  min-width: 680px;
+}
+
+.league-war-history-grid-line {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.league-war-history-axis-label,
+.league-war-history-point-label {
+  fill: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .league-war-history-header {
+    align-items: start;
+    flex-direction: column;
+  }
+}

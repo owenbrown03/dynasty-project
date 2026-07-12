@@ -17,6 +17,7 @@ from app.integrations.sleeper.singleton import get_worker_sleeper_client
 from app.integrations.underdog.client import UnderdogClient
 from app.models.db.sleeper.api import InternalState
 from app.services.sleeper.projection import sync_projections
+from app.services.sleeper.season_stats import sync_recent_regular_season_stats
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,12 @@ async def run_daily_external_syncs(
                 db=db,
                 sleeper=sleeper,
                 season=season,
+                force_update=True,
+            )
+            await sync_recent_regular_season_stats(
+                db=db,
+                sleeper=sleeper,
+                current_season=season,
                 force_update=True,
             )
 

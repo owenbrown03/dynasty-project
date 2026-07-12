@@ -10,6 +10,7 @@ const league: LeagueDetails = {
   season: '2026',
   total_rosters: 12,
   note: '',
+  war_position_history: [],
   settings_badges: [],
   settings_details: [],
   rosters: [

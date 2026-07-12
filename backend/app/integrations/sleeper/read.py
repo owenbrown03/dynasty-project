@@ -229,3 +229,12 @@ class SleeperRead:
             Projection.model_validate(x)
             for x in data
         ]
+
+    async def get_regular_season_stats(
+        self,
+        season: int,
+    ) -> dict:
+        return await self.transport.get(
+            f"v1/stats/nfl/regular/{season}",
+            alt=True,
+        )

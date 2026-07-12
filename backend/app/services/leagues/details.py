@@ -7,6 +7,7 @@ from sqlmodel import select
 
 from app.analytics.war.dynasty.factory import build_dynasty_war_service
 from app.analytics.war.redraft.singleton import war_service
+from app.analytics.war.redraft.service import WARSharedData
 from app.crud.sleeper.draft import (
     get_drafts_by_league_ids,
     get_traded_picks_by_league_ids,
@@ -35,6 +36,8 @@ from app.services.leagues.models import (
     LeaguePick,
     LeaguePlayer,
     LeagueRoster,
+    LeagueWarPositionSeason,
+    LeagueWarPositionValue,
 )
 from app.services.leagues.settings import (
     build_settings_badges,
@@ -159,6 +162,12 @@ class LeagueDetails:
         shared = await self.war_service.load_shared_data(
             db,
             int(league.season),
+        )
+        war_position_history = await self.build_war_position_history(
+            db=db,
+            league=league,
+            players=shared.players,
+            current_shared=shared,
         )
 
         war_players = await self.war_service.calculate_with_data(
@@ -555,5 +564,92 @@ class LeagueDetails:
             ),
             settings_badges=build_settings_badges(league),
             settings_details=build_settings_details(league),
+            war_position_history=war_position_history,
             rosters=rosters,
         )
+
+    async def build_war_position_history(
+        self,
+        *,
+        db: AsyncSession,
+        league,
+        players: dict,
+        current_shared: WARSharedData,
+    ) -> list[LeagueWarPositionSeason]:
+        seasons: list[LeagueWarPositionSeason] = []
+        current_season = int(league.season)
+
+        for season in range(current_season - 4, current_season):
+            stats_rows = await self.war_service.loader.get_season_stats(
+                db,
+                season,
+            )
+
+            if not stats_rows:
+                continue
+
+            season_league = league.model_copy(
+                update={
+                    "season": str(season),
+                },
+            )
+
+            results = await self.war_service.calculate_with_data(
+                league=season_league,
+                shared=WARSharedData(
+                    players=players,
+                    projections=stats_rows,
+                ),
+            )
+
+            seasons.append(
+                LeagueWarPositionSeason(
+                    season=str(season),
+                    source="historical",
+                    values=self.aggregate_position_war(
+                        results,
+                    ),
+                )
+            )
+
+        current_results = await self.war_service.calculate_with_data(
+            league=league,
+            shared=current_shared,
+        )
+        seasons.append(
+            LeagueWarPositionSeason(
+                season=str(current_season),
+                source="projection",
+                values=self.aggregate_position_war(
+                    current_results,
+                ),
+            )
+        )
+
+        return seasons
+
+    def aggregate_position_war(
+        self,
+        war_players,
+    ) -> list[LeagueWarPositionValue]:
+        positions = ["QB", "RB", "WR", "TE"]
+        totals = {
+            position: 0.0
+            for position in positions
+        }
+
+        for player in war_players:
+            if player.position not in totals:
+                continue
+
+            totals[player.position] += (
+                player.roster_war or 0
+            )
+
+        return [
+            LeagueWarPositionValue(
+                position=position,
+                war=round(totals[position], 2),
+            )
+            for position in positions
+        ]

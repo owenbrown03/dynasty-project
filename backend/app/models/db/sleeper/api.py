@@ -363,6 +363,10 @@ class Player(SQLModel, table=True):
         back_populates="player"
     )
 
+    season_stats: list["PlayerSeasonStats"] = Relationship(
+        back_populates="player"
+    )
+
     underdog: "UnderdogPlayerMap" = Relationship(
         back_populates="player"
     )
@@ -466,6 +470,67 @@ class PlayerProjection(SQLModel, table=True):
             "source",
             "projected_points",
             "projected_ppg",
+            "games_played",
+        }
+
+        return {
+            key: value
+            for key, value in self.model_dump().items()
+            if key not in excluded
+        }
+
+
+class PlayerSeasonStats(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    player_id: str = Field(foreign_key="player.player_id", index=True)
+    season: int = Field(index=True)
+    season_type: str = Field(default="regular", index=True)
+    source: str = Field(default="sleeper", index=True)
+    games_played: float = 0
+
+    pass_att: float = 0
+    pass_cmp: float = 0
+    pass_yd: float = 0
+    pass_td: float = 0
+    pass_int: float = 0
+    pass_2pt: float = 0
+
+    rush_att: float = 0
+    rush_yd: float = 0
+    rush_td: float = 0
+    rush_2pt: float = 0
+
+    rec: float = 0
+    rec_yd: float = 0
+    rec_td: float = 0
+    rec_2pt: float = 0
+
+    fum_lost: float = 0
+
+    pass_fd: float = 0
+    rush_fd: float = 0
+    rec_fd: float = 0
+
+    rec_0_4: float = 0
+    rec_5_9: float = 0
+    rec_10_19: float = 0
+    rec_20_29: float = 0
+    rec_30_39: float = 0
+    rec_40p: float = 0
+
+    bonus_rec_rb: float = 0
+    bonus_rec_wr: float = 0
+    bonus_rec_te: float = 0
+
+    player: Optional["Player"] = Relationship(back_populates="season_stats")
+
+    def to_stats(self) -> dict[str, Any]:
+        excluded = {
+            "id",
+            "player_id",
+            "season",
+            "season_type",
+            "source",
             "games_played",
         }
 

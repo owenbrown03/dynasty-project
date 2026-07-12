@@ -80,4 +80,16 @@ class LeagueDetailsResponse(BaseModel):
     note: str = ""
     settings_badges: list[str]
     settings_details: list[LeagueSettingsDetail]
+    war_position_history: list["LeagueWarPositionSeason"] = []
     rosters: list[LeagueRoster]
+
+
+class LeagueWarPositionValue(BaseModel):
+    position: str
+    war: float
+
+
+class LeagueWarPositionSeason(BaseModel):
+    season: str
+    source: str
+    values: list[LeagueWarPositionValue]
