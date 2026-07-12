@@ -310,6 +310,66 @@ class TradedPick(SQLModel, table=True):
     transaction: "Transaction" = Relationship(back_populates="draft_pick")
 
 
+class PlayoffMatchup(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
+    bracket_type: str = Field(index=True)
+    round: int = Field(index=True)
+    matchup_id: int = Field(index=True)
+    team_one_roster_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+    )
+    team_two_roster_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+    )
+    team_one_from_winner_matchup_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+    )
+    team_one_from_loser_matchup_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+    )
+    team_two_from_winner_matchup_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+    )
+    team_two_from_loser_matchup_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+    )
+    winner_roster_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    loser_roster_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    placement: Optional[int] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "league_id",
+            "bracket_type",
+            "round",
+            "matchup_id",
+            name="uq_playoffmatchup_league_bracket_round_matchup",
+        ),
+    )
+
+
 class Player(SQLModel, table=True):
     player_id: str = Field(primary_key=True)
 

@@ -15,6 +15,9 @@ from app.crud.sleeper.personal import (
     upsert_finance_league_default,
     upsert_finance_user_defaults,
 )
+from app.crud.sleeper.league import (
+    get_playoff_matchups_by_league_ids,
+)
 from app.crud.sleeper.roster import get_owned_roster_rows
 from app.schemas.finance import (
     FinanceDefaultSettings,
@@ -110,6 +113,54 @@ def calculate_rank(
         ),
         None,
     )
+
+
+def calculate_final_place_from_brackets(
+    *,
+    league_id: str,
+    roster_id: int,
+    playoff_matchups_by_league_id,
+) -> int | None:
+    matchups = playoff_matchups_by_league_id.get(
+        league_id,
+        [],
+    )
+
+    if not matchups:
+        return None
+
+    winners_participants = {
+        roster_value
+        for matchup in matchups
+        if matchup.bracket_type == "winners"
+        for roster_value in (
+            matchup.team_one_roster_id,
+            matchup.team_two_roster_id,
+        )
+        if roster_value is not None
+    }
+
+    winners_participant_count = len(
+        winners_participants,
+    )
+
+    for matchup in matchups:
+        if matchup.placement is None:
+            continue
+
+        placement_offset = (
+            winners_participant_count
+            if matchup.bracket_type == "losers"
+            else 0
+        )
+
+        if matchup.winner_roster_id == roster_id:
+            return placement_offset + matchup.placement
+
+        if matchup.loser_roster_id == roster_id:
+            return placement_offset + matchup.placement + 1
+
+    return None
 
 
 def normalize_payout_structure(
@@ -391,6 +442,7 @@ def _build_historical_payouts_by_family_and_rank(
     owned_rows,
     resolved_settings_by_key,
     family_key_by_league_id,
+    playoff_matchups_by_league_id,
 ) -> dict[tuple[str, int], list[float]]:
     payouts_by_family_and_rank: dict[
         tuple[str, int],
@@ -412,13 +464,24 @@ def _build_historical_payouts_by_family_and_rank(
             league_id=league.league_id,
             roster_id=roster.roster_id,
         )
+        finish_place = (
+            calculate_final_place_from_brackets(
+                league_id=league.league_id,
+                roster_id=roster.roster_id,
+                playoff_matchups_by_league_id=(
+                    playoff_matchups_by_league_id
+                ),
+            )
+            if league.status == "complete"
+            else rank
+        ) or rank
 
-        if rank is None:
+        if finish_place is None:
             continue
 
         actual_winnings = payout_for_rank(
             resolved["payout_structure"],
-            rank,
+            finish_place,
         )
         winnings_amount = round(
             (
@@ -437,7 +500,7 @@ def _build_historical_payouts_by_family_and_rank(
                 family_key_by_league_id[
                     league.league_id
                 ],
-                rank,
+                finish_place,
             ),
             [],
         ).append(
@@ -478,6 +541,12 @@ async def get_finance_summary(
         db=ctx.db,
         site_user_id=ctx.site_user.id,
         league_ids=league_ids,
+    )
+    playoff_matchups_by_league_id = (
+        await get_playoff_matchups_by_league_ids(
+            ctx.db,
+            league_ids,
+        )
     )
     user_defaults = await get_finance_user_defaults(
         db=ctx.db,
@@ -535,6 +604,9 @@ async def get_finance_summary(
             owned_rows=owned_rows,
             resolved_settings_by_key=resolved_settings_by_key,
             family_key_by_league_id=family_key_by_league_id,
+            playoff_matchups_by_league_id=(
+                playoff_matchups_by_league_id
+            ),
         )
     )
 
@@ -559,10 +631,21 @@ async def get_finance_summary(
             if league.total_rosters > 0
             else None
         )
+        finish_place = (
+            calculate_final_place_from_brackets(
+                league_id=league.league_id,
+                roster_id=roster.roster_id,
+                playoff_matchups_by_league_id=(
+                    playoff_matchups_by_league_id
+                ),
+            )
+            if league.status == "complete"
+            else rank
+        ) or rank
 
         configured_winnings_amount = payout_for_rank(
             resolved["payout_structure"],
-            rank,
+            finish_place,
         )
         winnings_amount = round(
             (
@@ -578,11 +661,11 @@ async def get_finance_summary(
             historical_payouts_by_family_and_rank.get(
                 (
                     family_key,
-                    rank,
+                    finish_place,
                 ),
                 [],
             )
-            if rank is not None
+            if finish_place is not None
             else []
         )
 
@@ -615,7 +698,7 @@ async def get_finance_summary(
                 status=league.status,
                 total_rosters=league.total_rosters,
                 rank=rank,
-                finish_place=rank,
+                finish_place=finish_place,
                 projected_finish_place=rank,
                 wins=roster.wins,
                 losses=roster.losses,
