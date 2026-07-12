@@ -1107,32 +1107,53 @@ export function FinancePage() {
                             <div className="finance-league-selector-list">
                             {
                               uniqueLeagueFamilies.map((league) => (
-                                <label
+                                <div
                                   key={league.leagueFamilyId}
-                                  className="finance-league-checkbox"
+                                  className="finance-league-option"
                                 >
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedLeagueFamilies.includes(
-                                      league.leagueFamilyId,
-                                    )}
-                                    onChange={(event) => {
+                                  <label
+                                    className="finance-league-checkbox"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedLeagueFamilies.includes(
+                                        league.leagueFamilyId,
+                                      )}
+                                      onChange={(event) => {
+                                        setSelectedLeagueFamilies((current) => (
+                                          event.target.checked
+                                            ? [
+                                                ...current,
+                                                league.leagueFamilyId,
+                                              ]
+                                            : current.filter(
+                                                (value) => value !== league.leagueFamilyId,
+                                              )
+                                        ));
+                                      }}
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    className="finance-league-name-button"
+                                    onClick={() => {
                                       setSelectedLeagueFamilies((current) => (
-                                        event.target.checked
-                                          ? [
+                                        current.includes(
+                                          league.leagueFamilyId,
+                                        )
+                                          ? current.filter(
+                                              (value) => value !== league.leagueFamilyId,
+                                            )
+                                          : [
                                               ...current,
                                               league.leagueFamilyId,
                                             ]
-                                          : current.filter(
-                                              (value) => value !== league.leagueFamilyId,
-                                            )
                                       ));
                                     }}
-                                  />
-                                  <span className="finance-league-checkbox-label">
+                                  >
                                     {league.leagueName}
-                                  </span>
-                                </label>
+                                  </button>
+                                </div>
                               ))
                             }
                             </div>
