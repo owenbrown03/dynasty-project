@@ -60,6 +60,11 @@ async def dashboard_endpoint(
         ctx.db,
         ctx.redis,
         username,
+        site_user_id=(
+            ctx.site_user.id
+            if ctx.site_user is not None
+            else None
+        ),
     )
 
 

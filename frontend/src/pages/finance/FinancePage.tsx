@@ -709,6 +709,36 @@ export function FinancePage() {
     ],
   );
 
+  const displayedTrackerEntries = useMemo(() => {
+    if (selectedTrackerSeason !== 'current') {
+      return trackerEntries;
+    }
+
+    const latestByFamily = new Map<string, FinanceLeagueSeasonEntry>();
+
+    for (const entry of trackerEntries) {
+      const existing = latestByFamily.get(
+        entry.league_family_id,
+      );
+
+      if (!existing || Number(entry.season) > Number(existing.season)) {
+        latestByFamily.set(
+          entry.league_family_id,
+          entry,
+        );
+      }
+    }
+
+    return Array.from(
+      latestByFamily.values(),
+    ).sort((left, right) => (
+      left.league_name.localeCompare(right.league_name)
+    ));
+  }, [
+    selectedTrackerSeason,
+    trackerEntries,
+  ]);
+
   const chartEntries = useMemo(
     () => (
       finance.data?.seasons.filter((entry) => (
@@ -733,7 +763,7 @@ export function FinancePage() {
   ), [finance.data, globalDraft]);
 
   const dirtyEntries = useMemo(
-    () => trackerEntries.filter((entry) => {
+    () => displayedTrackerEntries.filter((entry) => {
       const draft = seasonDrafts[getDraftKey(entry)];
 
       if (!draft) {
@@ -749,13 +779,13 @@ export function FinancePage() {
         )
       );
     }),
-    [seasonDrafts, trackerEntries],
+    [displayedTrackerEntries, seasonDrafts],
   );
 
   const uniqueLeagueFamilies = useMemo(() => {
     const seen = new Map<string, string>();
 
-    for (const entry of trackerEntries) {
+    for (const entry of displayedTrackerEntries) {
       if (!seen.has(entry.league_family_id)) {
         seen.set(
           entry.league_family_id,
@@ -770,10 +800,10 @@ export function FinancePage() {
     })).sort((left, right) => (
       left.leagueName.localeCompare(right.leagueName)
     ));
-  }, [trackerEntries]);
+  }, [displayedTrackerEntries]);
 
   const trackerSummary = useMemo(() => {
-    const includedEntries = trackerEntries.filter((entry) => (
+    const includedEntries = displayedTrackerEntries.filter((entry) => (
       !entry.is_excluded
     ));
 
@@ -795,7 +825,7 @@ export function FinancePage() {
         0,
       ),
     };
-  }, [trackerEntries]);
+  }, [displayedTrackerEntries]);
 
   const handleSaveAll = async () => {
     if (!dirtyEntries.length) {
@@ -1219,7 +1249,7 @@ export function FinancePage() {
 
                         <section className="finance-season-grid">
                           {
-                            trackerEntries.map((entry) => {
+                            displayedTrackerEntries.map((entry) => {
                               const key = getDraftKey(entry);
 
                               return (
