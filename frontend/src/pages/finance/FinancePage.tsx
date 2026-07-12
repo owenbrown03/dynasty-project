@@ -22,6 +22,7 @@ import './FinancePage.css';
 
 type FinanceTab =
   | 'tracker'
+  | 'overrides'
   | 'charts';
 
 type FinanceDraftRow = {
@@ -939,6 +940,19 @@ export function FinancePage() {
                 <button
                   type="button"
                   className={
+                    activeTab === 'overrides'
+                      ? 'finance-tab active'
+                      : 'finance-tab'
+                  }
+                  onClick={() => {
+                    setActiveTab('overrides');
+                  }}
+                >
+                  Overrides
+                </button>
+                <button
+                  type="button"
+                  className={
                     activeTab === 'charts'
                       ? 'finance-tab active'
                       : 'finance-tab'
@@ -1160,83 +1174,87 @@ export function FinancePage() {
                           </div>
                         </article>
                       </section>
-
-                      <section className="finance-toolbar">
-                        <label>
-                          <span>Tracker year</span>
-                          <select
-                            value={selectedTrackerSeason}
-                            onChange={(event) => {
-                              setSelectedTrackerSeason(
-                                event.target.value,
-                              );
-                            }}
-                          >
-                            <option value="current">Current leagues</option>
-                            {
-                              availableSeasons.map((season) => (
-                                <option key={season} value={season}>
-                                  {season}
-                                </option>
-                              ))
-                            }
-                          </select>
-                        </label>
-
-                        <button
-                          type="button"
-                          className="button-primary"
-                          disabled={saveFinanceMutation.isPending}
-                          onClick={() => {
-                            void handleSaveAll();
-                          }}
-                        >
-                          {
-                            saveFinanceMutation.isPending
-                              ? 'Saving...'
-                              : `Save ${dirtyEntries.length || ''} season overrides`
-                          }
-                        </button>
-                      </section>
-
-                      <section className="finance-season-grid">
-                        {
-                          trackerEntries.map((entry) => {
-                            const key = getDraftKey(entry);
-
-                            return (
-                              <FinanceSeasonCard
-                                key={key}
-                                entry={entry}
-                                draft={seasonDrafts[key] ?? {
-                                  buyInAmount: entry.buy_in_amount.toString(),
-                                  payoutStructure: buildPayoutRows(
-                                    entry.payout_structure,
-                                  ),
-                                  isExcluded: entry.is_excluded,
-                                }}
-                                onDraftChange={(nextDraft) => {
-                                  setSeasonDrafts((current) => ({
-                                    ...current,
-                                    [key]: nextDraft,
-                                  }));
-                                }}
-                                onReset={() => {
-                                  void resetFinanceMutation.mutateAsync({
-                                    league_id: entry.league_id,
-                                    season: entry.season,
-                                  }).catch(() => {
-                                    notify.error('Unable to reset season override.');
-                                  });
-                                }}
-                                resetPending={resetFinanceMutation.isPending}
-                              />
-                            );
-                          })
-                        }
-                      </section>
                     </>
                   )
+                  : activeTab === 'overrides'
+                    ? (
+                      <>
+                        <section className="finance-toolbar">
+                          <label>
+                            <span>Override year</span>
+                            <select
+                              value={selectedTrackerSeason}
+                              onChange={(event) => {
+                                setSelectedTrackerSeason(
+                                  event.target.value,
+                                );
+                              }}
+                            >
+                              <option value="current">Current leagues</option>
+                              {
+                                availableSeasons.map((season) => (
+                                  <option key={season} value={season}>
+                                    {season}
+                                  </option>
+                                ))
+                              }
+                            </select>
+                          </label>
+
+                          <button
+                            type="button"
+                            className="button-primary"
+                            disabled={saveFinanceMutation.isPending}
+                            onClick={() => {
+                              void handleSaveAll();
+                            }}
+                          >
+                            {
+                              saveFinanceMutation.isPending
+                                ? 'Saving...'
+                                : `Save ${dirtyEntries.length || ''} season overrides`
+                            }
+                          </button>
+                        </section>
+
+                        <section className="finance-season-grid">
+                          {
+                            trackerEntries.map((entry) => {
+                              const key = getDraftKey(entry);
+
+                              return (
+                                <FinanceSeasonCard
+                                  key={key}
+                                  entry={entry}
+                                  draft={seasonDrafts[key] ?? {
+                                    buyInAmount: entry.buy_in_amount.toString(),
+                                    payoutStructure: buildPayoutRows(
+                                      entry.payout_structure,
+                                    ),
+                                    isExcluded: entry.is_excluded,
+                                  }}
+                                  onDraftChange={(nextDraft) => {
+                                    setSeasonDrafts((current) => ({
+                                      ...current,
+                                      [key]: nextDraft,
+                                    }));
+                                  }}
+                                  onReset={() => {
+                                    void resetFinanceMutation.mutateAsync({
+                                      league_id: entry.league_id,
+                                      season: entry.season,
+                                    }).catch(() => {
+                                      notify.error('Unable to reset season override.');
+                                    });
+                                  }}
+                                  resetPending={resetFinanceMutation.isPending}
+                                />
+                              );
+                            })
+                          }
+                        </section>
+                      </>
+                    )
                   : (
                     <>
                       <section className="finance-toolbar">
