@@ -25,6 +25,7 @@ class EmailVerificationRequestResponse(Base):
     email_verified: bool
     verification_email_sent_at: datetime | None = None
     delivery: Literal["smtp", "log"]
+    verification_url: str | None = None
 
 
 class EmailVerificationConfirmRequest(Base):

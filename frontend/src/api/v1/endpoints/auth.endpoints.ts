@@ -2,6 +2,7 @@ import { type AxiosInstance } from 'axios';
 
 import type {
   EmailVerificationConfirmRequest,
+  EmailVerificationRequestResponse,
   Login,
   ThemePreference,
   ValueBasis,
@@ -11,7 +12,9 @@ export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
   register: (credentials: Login) => client.post(`${prefix}/register`, credentials),
   login: (credentials: Login) => client.post(`${prefix}/login`, credentials),
   logout: () => client.post(`${prefix}/logout`),
-  resendVerificationEmail: () => client.post(`${prefix}/email/resend`),
+  resendVerificationEmail: () => client.post<EmailVerificationRequestResponse>(
+    `${prefix}/email/resend`,
+  ),
   verifyEmail: (body: EmailVerificationConfirmRequest) => (
     client.post(`${prefix}/email/verify`, body)
   ),

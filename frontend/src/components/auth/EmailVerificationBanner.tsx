@@ -69,7 +69,8 @@ export function EmailVerificationBanner() {
       <div>
         <strong>Verify your email</strong>
         <p>
-          Check your inbox for the Dynasty Base verification link.
+          Check your inbox for the Dynasty Base verification link. If SMTP is
+          not configured locally, resend will generate a link for you instead.
         </p>
       </div>
 

@@ -2,9 +2,42 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { BOOTSTRAP_QUERY_KEY } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
+import type { EmailVerificationRequestResponse } from '@/types';
 import { notify } from '@/utils/notify';
 import { useAuthContext } from '@/context/useAuthContext'
 import { useBootstrap } from './useBootstrap';
+
+async function handleVerificationDelivery(
+  response: {
+    data: EmailVerificationRequestResponse;
+  },
+) {
+  if (response.data.delivery === 'smtp') {
+    notify.success('Verification email sent.');
+    return;
+  }
+
+  if (response.data.verification_url) {
+    try {
+      await navigator.clipboard.writeText(
+        response.data.verification_url,
+      );
+      notify.success(
+        'SMTP is not configured here. Verification link copied to clipboard.',
+      );
+      return;
+    } catch {
+      notify.success(
+        `SMTP is not configured here. Open this verification link: ${response.data.verification_url}`,
+      );
+      return;
+    }
+  }
+
+  notify.success(
+    'Verification link generated. Check backend logs in local development.',
+  );
+}
 
 export function useAuth() {
   const queryClient = useQueryClient();
@@ -38,7 +71,10 @@ export function useAuth() {
         queryKey: BOOTSTRAP_QUERY_KEY,
       });
 
-      notify.success('Account created. Check your email to verify it.');
+      const resendResponse = await api.auth.resendVerificationEmail();
+      await handleVerificationDelivery(
+        resendResponse,
+      );
     },
 
     onError: () => {
@@ -55,11 +91,9 @@ export function useAuth() {
         queryKey: BOOTSTRAP_QUERY_KEY,
       });
 
-      const delivery = response.data.delivery === 'smtp'
-        ? 'Verification email sent.'
-        : 'Verification link generated. Check backend logs in local development.';
-
-      notify.success(delivery);
+      await handleVerificationDelivery(
+        response,
+      );
     },
 
     onError: () => {

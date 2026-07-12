@@ -23,7 +23,7 @@ def send_email_verification_message(
     *,
     recipient: str,
     token: str,
-) -> str:
+) -> tuple[str, str]:
     verification_link = build_verification_link(
         token,
     )
@@ -34,7 +34,7 @@ def send_email_verification_message(
             recipient,
             verification_link,
         )
-        return "log"
+        return "log", verification_link
 
     message = EmailMessage()
     message["Subject"] = "Verify your Dynasty Base email"
@@ -46,23 +46,35 @@ def send_email_verification_message(
         "If you did not create this account, you can ignore this email.\n"
     )
 
-    with smtplib.SMTP(
-        settings.SMTP_HOST,
-        settings.SMTP_PORT,
-        timeout=10,
-    ) as smtp:
-        if settings.SMTP_USE_TLS:
-            smtp.starttls()
+    try:
+        with smtplib.SMTP(
+            settings.SMTP_HOST,
+            settings.SMTP_PORT,
+            timeout=10,
+        ) as smtp:
+            if settings.SMTP_USE_TLS:
+                smtp.starttls()
 
-        if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
-            smtp.login(
-                settings.SMTP_USERNAME,
-                settings.SMTP_PASSWORD,
-            )
+            if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
+                smtp.login(
+                    settings.SMTP_USERNAME,
+                    settings.SMTP_PASSWORD,
+                )
 
-        smtp.send_message(message)
+            smtp.send_message(message)
+    except (OSError, smtplib.SMTPException):
+        logger.exception(
+            "SMTP email verification failed for %s. Falling back to logged link.",
+            recipient,
+        )
+        logger.info(
+            "Email verification link for %s: %s",
+            recipient,
+            verification_link,
+        )
+        return "log", verification_link
 
-    return "smtp"
+    return "smtp", verification_link
 
 
 def send_reminder_email_message(

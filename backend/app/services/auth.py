@@ -234,6 +234,7 @@ async def request_email_verification(
                 db_user.verification_email_sent_at
             ),
             delivery="log",
+            verification_url=None,
         )
 
     _, raw_token = await create_email_verification_token(
@@ -241,7 +242,7 @@ async def request_email_verification(
         db=ctx.db,
     )
 
-    delivery = send_email_verification_message(
+    delivery, verification_url = send_email_verification_message(
         recipient=db_user.email,
         token=raw_token,
     )
@@ -252,6 +253,11 @@ async def request_email_verification(
             db_user.verification_email_sent_at
         ),
         delivery=delivery,
+        verification_url=(
+            verification_url
+            if delivery == "log"
+            else None
+        ),
     )
 
 

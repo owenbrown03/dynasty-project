@@ -45,6 +45,7 @@ export interface EmailVerificationRequestResponse {
   email_verified: boolean;
   verification_email_sent_at: string | null;
   delivery: 'smtp' | 'log';
+  verification_url: string | null;
 }
 
 export interface EmailVerificationConfirmRequest {
