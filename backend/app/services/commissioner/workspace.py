@@ -250,8 +250,11 @@ async def save_commissioner_note(
         note=body.note,
     )
 
-    league.note = body.note
-    return league
+    return league.model_copy(
+        update={
+            "note": body.note,
+        },
+    )
 
 
 async def save_commissioner_dues(
@@ -306,7 +309,10 @@ async def save_commissioner_dues(
         is_paid=body.is_paid,
     )
 
-    due_entry.buy_in_amount = record.buy_in_amount
-    due_entry.is_paid = record.is_paid
-    due_entry.paid_at = record.paid_at
-    return due_entry
+    return due_entry.model_copy(
+        update={
+            "buy_in_amount": record.buy_in_amount,
+            "is_paid": record.is_paid,
+            "paid_at": record.paid_at,
+        },
+    )
