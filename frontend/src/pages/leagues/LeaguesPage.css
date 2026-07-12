@@ -58,9 +58,39 @@
   min-width: 280px;
 }
 
+.leagues-selector-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.leagues-selector-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.leagues-selector-toggle input {
+  width: 16px;
+  height: 16px;
+}
+
+.leagues-visibility-button {
+  white-space: nowrap;
+}
+
 @media (max-width: 760px) {
   .leagues-selector-panel {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .leagues-selector-controls {
+    justify-content: stretch;
     align-items: stretch;
   }
 

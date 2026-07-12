@@ -12,6 +12,7 @@ from app.models.db.sleeper.personal import (
     FinanceLeagueDefault,
     FinanceLeagueSeason,
     FinanceUserDefaults,
+    HiddenLeague,
     Reminder,
 )
 
@@ -259,6 +260,77 @@ async def get_finance_league_defaults_by_family_id(
         row.league_family_id: row
         for row in rows
     }
+
+
+async def get_hidden_league_ids(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+) -> set[str]:
+    results = await db.execute(
+        select(HiddenLeague.league_id).where(
+            HiddenLeague.site_user_id == site_user_id,
+        )
+    )
+    return set(results.scalars().all())
+
+
+async def get_hidden_league(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str,
+) -> HiddenLeague | None:
+    results = await db.execute(
+        select(HiddenLeague).where(
+            HiddenLeague.site_user_id == site_user_id,
+            HiddenLeague.league_id == league_id,
+        )
+    )
+    return results.scalar_one_or_none()
+
+
+async def hide_league(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str,
+) -> HiddenLeague:
+    record = await get_hidden_league(
+        db=db,
+        site_user_id=site_user_id,
+        league_id=league_id,
+    )
+
+    if record is None:
+        record = HiddenLeague(
+            site_user_id=site_user_id,
+            league_id=league_id,
+        )
+
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def unhide_league(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str,
+) -> None:
+    record = await get_hidden_league(
+        db=db,
+        site_user_id=site_user_id,
+        league_id=league_id,
+    )
+
+    if record is None:
+        return
+
+    await db.delete(record)
+    await db.commit()
 
 
 async def upsert_finance_league_default(

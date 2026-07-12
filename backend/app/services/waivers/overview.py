@@ -23,6 +23,9 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_sleeper_user_id,
+)
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
     project_players_for_waivers,
@@ -113,23 +116,15 @@ async def get_waiver_overview(
             sleeper_username=connection.sleeper_username,
         )
 
-    owned_rosters_stmt = (
-        select(Roster, League)
-        .join(
-            League,
-            League.league_id == Roster.league_id,
-        )
-        .where(
-            Roster.owner_id == connection.sleeper_user_id,
-        )
-        .order_by(League.name)
+    owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
+        db=db,
+        sleeper_user_id=connection.sleeper_user_id,
+        site_user_id=connection.site_user_id,
     )
-
-    owned_rosters_result = await db.execute(
-        owned_rosters_stmt
-    )
-
-    owned_roster_rows = owned_rosters_result.all()
+    owned_roster_rows = [
+        (row.roster, row.league)
+        for row in owned_rows
+    ]
 
     if not owned_roster_rows:
         return WaiverOverviewResponse(

@@ -145,6 +145,28 @@ class FinanceLeagueDefault(SQLModel, table=True):
     )
 
 
+class HiddenLeague(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    site_user_id: uuid.UUID = Field(
+        sa_type=UUID(as_uuid=True),
+        foreign_key="siteuser.id",
+        index=True,
+    )
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "site_user_id",
+            "league_id",
+            name="uq_hiddenleague_site_user_league",
+        ),
+    )
+
+
 class Reminder(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     site_user_id: uuid.UUID = Field(

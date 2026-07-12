@@ -117,6 +117,16 @@ export interface LeagueOverview {
   league_name: string;
   season: string | null;
   total_rosters: number | null;
+  is_hidden: boolean;
+}
+
+export interface LeagueVisibilityUpdate {
+  hidden: boolean;
+}
+
+export interface LeagueVisibilityItem {
+  league_id: string;
+  hidden: boolean;
 }
 
 export interface LeagueOwner {

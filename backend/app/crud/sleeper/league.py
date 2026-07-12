@@ -1081,6 +1081,23 @@ async def get_user_leagues(db: AsyncSession, username: str):
     return result.all()
 
 
+async def get_owned_leagues_by_sleeper_user_id(
+    db: AsyncSession,
+    sleeper_user_id: str,
+):
+    result = await db.execute(
+        select(model.League, model.Roster)
+        .join(
+            model.Roster,
+            model.Roster.league_id == model.League.league_id,
+        )
+        .where(
+            model.Roster.owner_id == sleeper_user_id,
+        )
+    )
+    return result.all()
+
+
 async def get_league_with_rosters(db, league_id: str):
     result = await db.execute(
         select(model.League, model.Roster)
