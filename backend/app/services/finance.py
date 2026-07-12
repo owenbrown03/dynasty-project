@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from statistics import mean
+
 from fastapi import HTTPException, status
 
 from app.core.context import Context
@@ -91,6 +93,104 @@ def _build_buy_in_by_league_season(
     return buy_in_by_league_season
 
 
+def _build_league_family_key_by_league_id(
+    owned_rows,
+) -> dict[str, str]:
+    league_by_id = {
+        league.league_id: league
+        for _, league in owned_rows
+    }
+    family_key_by_league_id: dict[str, str] = {}
+
+    for league_id, league in league_by_id.items():
+        current = league
+        visited: set[str] = set()
+
+        while (
+            current.previous_league_id
+            and current.previous_league_id in league_by_id
+            and current.previous_league_id not in visited
+        ):
+            visited.add(current.league_id)
+            current = league_by_id[
+                current.previous_league_id
+            ]
+
+        family_key_by_league_id[league_id] = current.league_id
+
+    return family_key_by_league_id
+
+
+def _build_historical_payouts_by_family_and_rank(
+    *,
+    owned_rows,
+    finance_entries_by_key,
+    family_key_by_league_id,
+) -> dict[tuple[str, int], list[float]]:
+    payouts_by_family_and_rank: dict[
+        tuple[str, int],
+        list[float],
+    ] = {}
+
+    for roster, league in owned_rows:
+        key = (
+            league.league_id,
+            league.season,
+        )
+        finance_entry = finance_entries_by_key.get(
+            key,
+        )
+
+        if finance_entry is None or finance_entry.winnings_amount <= 0:
+            continue
+
+        rank = None
+        if league.total_rosters > 0:
+            other_rosters = [
+                other_roster
+                for other_roster, other_league in owned_rows
+                if other_league.league_id == league.league_id
+            ]
+            ordered = sorted(
+                other_rosters,
+                key=lambda other: (
+                    other.wins,
+                    -other.losses,
+                    other.fpts,
+                    -other.roster_id,
+                ),
+                reverse=True,
+            )
+            rank = next(
+                (
+                    index
+                    for index, other in enumerate(
+                        ordered,
+                        start=1,
+                    )
+                    if other.roster_id == roster.roster_id
+                ),
+                None,
+            )
+
+        if rank is None:
+            continue
+
+        payouts_by_family_and_rank.setdefault(
+            (
+                family_key_by_league_id[
+                    league.league_id
+                ],
+                rank,
+            ),
+            [],
+        ).append(
+            finance_entry.winnings_amount,
+        )
+
+    return payouts_by_family_and_rank
+
+
 async def get_finance_summary(
     ctx: Context,
 ) -> FinanceSummaryResponse:
@@ -111,6 +211,16 @@ async def get_finance_summary(
         db=ctx.db,
         site_user_id=ctx.site_user.id,
         league_ids=league_ids,
+    )
+    family_key_by_league_id = _build_league_family_key_by_league_id(
+        owned_rows,
+    )
+    historical_payouts_by_family_and_rank = (
+        _build_historical_payouts_by_family_and_rank(
+            owned_rows=owned_rows,
+            finance_entries_by_key=finance_entries_by_key,
+            family_key_by_league_id=family_key_by_league_id,
+        )
     )
     commissioner_dues_by_key = await get_commissioner_dues_by_key(
         db=ctx.db,
@@ -178,12 +288,36 @@ async def get_finance_summary(
                 None,
             )
 
-        projected_winnings_amount = calculate_projected_winnings(
-            buy_in_amount=buy_in_amount,
-            total_rosters=league.total_rosters,
-            playoff_teams=league.playoff_teams,
-            rank=rank,
+        projected_winnings_source = "heuristic"
+        family_key = family_key_by_league_id.get(
+            league.league_id,
+            league.league_id,
         )
+        historical_payouts = (
+            historical_payouts_by_family_and_rank.get(
+                (
+                    family_key,
+                    rank,
+                ),
+                []
+            )
+            if rank is not None
+            else []
+        )
+
+        if historical_payouts:
+            projected_winnings_amount = round(
+                mean(historical_payouts),
+                2,
+            )
+            projected_winnings_source = "historical_rank"
+        else:
+            projected_winnings_amount = calculate_projected_winnings(
+                buy_in_amount=buy_in_amount,
+                total_rosters=league.total_rosters,
+                playoff_teams=league.playoff_teams,
+                rank=rank,
+            )
 
         entries.append(
             FinanceLeagueSeasonEntry(
@@ -198,6 +332,7 @@ async def get_finance_summary(
                 buy_in_amount=round(buy_in_amount, 2),
                 winnings_amount=round(winnings_amount, 2),
                 projected_winnings_amount=projected_winnings_amount,
+                projected_winnings_source=projected_winnings_source,
                 net_amount=round(
                     winnings_amount - buy_in_amount,
                     2,

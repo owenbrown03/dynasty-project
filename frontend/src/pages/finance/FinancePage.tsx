@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -9,10 +9,16 @@ import {
 import type {
   FinanceLeagueSeasonEntry,
 } from '@/types';
-import { notify } from '@/utils/notify';
 import { formatNumber } from '@/utils/format';
+import { notify } from '@/utils/notify';
 
 import './FinancePage.css';
+
+
+type FinanceDraft = {
+  buyInAmount: string;
+  winningsAmount: string;
+};
 
 
 function formatCurrency(
@@ -29,35 +35,267 @@ function formatCurrency(
 }
 
 
+function buildDrafts(
+  entries: FinanceLeagueSeasonEntry[],
+) {
+  return Object.fromEntries(
+    entries.map((entry) => [
+      `${entry.league_id}-${entry.season}`,
+      {
+        buyInAmount: entry.buy_in_amount.toString(),
+        winningsAmount: entry.winnings_amount.toString(),
+      },
+    ]),
+  ) as Record<string, FinanceDraft>;
+}
+
+
+function getDraftKey(
+  entry: FinanceLeagueSeasonEntry,
+) {
+  return `${entry.league_id}-${entry.season}`;
+}
+
+
+function parseDraftAmount(
+  value: string,
+) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed)
+    ? parsed
+    : 0;
+}
+
+
+function isDraftDirty(
+  entry: FinanceLeagueSeasonEntry,
+  draft: FinanceDraft | undefined,
+) {
+  if (!draft) {
+    return false;
+  }
+
+  return (
+    parseDraftAmount(draft.buyInAmount) !== entry.buy_in_amount
+    || parseDraftAmount(draft.winningsAmount) !== entry.winnings_amount
+  );
+}
+
+
+function buildLinePoints(
+  values: number[],
+  width: number,
+  height: number,
+) {
+  if (values.length === 0) {
+    return '';
+  }
+
+  const minValue = Math.min(...values, 0);
+  const maxValue = Math.max(...values, 1);
+  const range = maxValue - minValue || 1;
+
+  return values.map((value, index) => {
+    const x = values.length === 1
+      ? width / 2
+      : (index / (values.length - 1)) * width;
+    const y = height - (
+      ((value - minValue) / range) * height
+    );
+
+    return `${x},${y}`;
+  }).join(' ');
+}
+
+
+function FinanceTrendChart({
+  entries,
+}: {
+  entries: FinanceLeagueSeasonEntry[];
+}) {
+  const chartEntries = [...entries].sort(
+    (left, right) => (
+      Number(left.season) - Number(right.season)
+    ),
+  );
+  const actualValues = chartEntries.map(
+    (entry) => entry.winnings_amount,
+  );
+  const projectedValues = chartEntries.map(
+    (entry) => entry.projected_winnings_amount,
+  );
+  const actualPoints = buildLinePoints(
+    actualValues,
+    320,
+    140,
+  );
+  const projectedPoints = buildLinePoints(
+    projectedValues,
+    320,
+    140,
+  );
+
+  return (
+    <article className="finance-chart-card">
+      <div className="finance-chart-header">
+        <div>
+          <p className="finance-chart-kicker">
+            Trend
+          </p>
+          <h2>Winnings history vs current projection</h2>
+        </div>
+
+        <div className="finance-chart-legend">
+          <span className="finance-legend-item">
+            <i className="finance-legend-line finance-legend-line-actual" />
+            Won
+          </span>
+          <span className="finance-legend-item">
+            <i className="finance-legend-line finance-legend-line-projected" />
+            Projected
+          </span>
+        </div>
+      </div>
+
+      {
+        chartEntries.length > 0
+          ? (
+            <div className="finance-line-chart">
+              <svg viewBox="0 0 320 140" aria-hidden="true">
+                <polyline
+                  fill="none"
+                  stroke="var(--finance-actual-color)"
+                  strokeWidth="3"
+                  points={actualPoints}
+                />
+                <polyline
+                  fill="none"
+                  stroke="var(--finance-projected-color)"
+                  strokeWidth="3"
+                  strokeDasharray="6 6"
+                  points={projectedPoints}
+                />
+                {
+                  chartEntries.map((entry, index) => {
+                    const actualPoint = actualPoints.split(' ')[index];
+                    const projectedPoint = projectedPoints.split(' ')[index];
+                    const [actualX, actualY] = actualPoint.split(',').map(Number);
+                    const [projectedX, projectedY] = projectedPoint.split(',').map(Number);
+
+                    return (
+                      <g key={`${entry.league_id}-${entry.season}`}>
+                        <circle
+                          cx={actualX}
+                          cy={actualY}
+                          r="4"
+                          fill="var(--finance-actual-color)"
+                        />
+                        <circle
+                          cx={projectedX}
+                          cy={projectedY}
+                          r="4"
+                          fill="var(--finance-projected-color)"
+                        />
+                      </g>
+                    );
+                  })
+                }
+              </svg>
+
+              <div className="finance-chart-label-row">
+                {
+                  chartEntries.map((entry) => (
+                    <span key={`${entry.league_id}-${entry.season}`}>
+                      {entry.season}
+                    </span>
+                  ))
+                }
+              </div>
+            </div>
+          )
+          : null
+      }
+    </article>
+  );
+}
+
+
+function FinanceNetChart({
+  entries,
+}: {
+  entries: FinanceLeagueSeasonEntry[];
+}) {
+  const chartEntries = [...entries].sort(
+    (left, right) => (
+      Number(left.season) - Number(right.season)
+    ),
+  );
+  const maxMagnitude = Math.max(
+    ...chartEntries.map((entry) => Math.abs(entry.net_amount)),
+    1,
+  );
+
+  return (
+    <article className="finance-chart-card">
+      <div className="finance-chart-header">
+        <div>
+          <p className="finance-chart-kicker">
+            Net
+          </p>
+          <h2>Season-by-season net results</h2>
+        </div>
+      </div>
+
+      <div className="finance-bar-chart">
+        {
+          chartEntries.map((entry) => {
+            const width = `${(Math.abs(entry.net_amount) / maxMagnitude) * 100}%`;
+
+            return (
+              <div
+                key={`${entry.league_id}-${entry.season}`}
+                className="finance-bar-row"
+              >
+                <div className="finance-bar-copy">
+                  <strong>{entry.season}</strong>
+                  <span>{entry.league_name}</span>
+                </div>
+
+                <div className="finance-bar-track">
+                  <div
+                    className={
+                      entry.net_amount >= 0
+                        ? 'finance-bar finance-bar-positive'
+                        : 'finance-bar finance-bar-negative'
+                    }
+                    style={{ width }}
+                  />
+                </div>
+
+                <strong className="finance-bar-value">
+                  {formatCurrency(entry.net_amount)}
+                </strong>
+              </div>
+            );
+          })
+        }
+      </div>
+    </article>
+  );
+}
+
+
 function FinanceSeasonCard({
   entry,
-  onSave,
-  saving,
+  draft,
+  onDraftChange,
 }: {
   entry: FinanceLeagueSeasonEntry;
-  onSave: (
-    entry: FinanceLeagueSeasonEntry,
-    buyInAmount: number,
-    winningsAmount: number,
-  ) => Promise<void>;
-  saving: boolean;
+  draft: FinanceDraft;
+  onDraftChange: (
+    nextDraft: FinanceDraft,
+  ) => void;
 }) {
-  const [buyInAmount, setBuyInAmount] = useState(
-    entry.buy_in_amount.toString(),
-  );
-  const [winningsAmount, setWinningsAmount] = useState(
-    entry.winnings_amount.toString(),
-  );
-
-  useEffect(() => {
-    setBuyInAmount(
-      entry.buy_in_amount.toString(),
-    );
-    setWinningsAmount(
-      entry.winnings_amount.toString(),
-    );
-  }, [entry]);
-
   return (
     <article className="finance-card">
       <header className="finance-card-header">
@@ -98,7 +336,13 @@ function FinanceSeasonCard({
           <strong>{formatCurrency(entry.winnings_amount)}</strong>
         </div>
         <div>
-          <span>Projected current payout</span>
+          <span>
+            {
+              entry.projected_winnings_source === 'historical_rank'
+                ? 'Projected payout from historical rank'
+                : 'Projected current payout'
+            }
+          </span>
           <strong>{formatCurrency(entry.projected_winnings_amount)}</strong>
         </div>
       </div>
@@ -110,9 +354,12 @@ function FinanceSeasonCard({
             type="number"
             min="0"
             step="1"
-            value={buyInAmount}
+            value={draft.buyInAmount}
             onChange={(event) => {
-              setBuyInAmount(event.target.value);
+              onDraftChange({
+                ...draft,
+                buyInAmount: event.target.value,
+              });
             }}
           />
         </label>
@@ -123,27 +370,15 @@ function FinanceSeasonCard({
             type="number"
             min="0"
             step="1"
-            value={winningsAmount}
+            value={draft.winningsAmount}
             onChange={(event) => {
-              setWinningsAmount(event.target.value);
+              onDraftChange({
+                ...draft,
+                winningsAmount: event.target.value,
+              });
             }}
           />
         </label>
-
-        <button
-          type="button"
-          className="button-secondary"
-          disabled={saving}
-          onClick={() => {
-            void onSave(
-              entry,
-              Number(buyInAmount) || 0,
-              Number(winningsAmount) || 0,
-            );
-          }}
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </button>
       </div>
     </article>
   );
@@ -156,22 +391,57 @@ export function FinancePage() {
     connection.linked,
   );
   const saveFinanceMutation = useSaveFinanceSeason();
+  const [drafts, setDrafts] = useState<
+    Record<string, FinanceDraft>
+  >({});
 
-  const handleSave = async (
-    entry: FinanceLeagueSeasonEntry,
-    buyInAmount: number,
-    winningsAmount: number,
-  ) => {
+  useEffect(() => {
+    if (!finance.data) {
+      return;
+    }
+
+    setDrafts(
+      buildDrafts(
+        finance.data.seasons,
+      ),
+    );
+  }, [finance.data]);
+
+  const dirtyEntries = useMemo(
+    () => finance.data?.seasons.filter((entry) => (
+      isDraftDirty(
+        entry,
+        drafts[getDraftKey(entry)],
+      )
+    )) ?? [],
+    [drafts, finance.data],
+  );
+
+  const handleSaveAll = async () => {
+    if (!finance.data || dirtyEntries.length === 0) {
+      notify.success('No finance changes to save.');
+      return;
+    }
+
     try {
-      await saveFinanceMutation.mutateAsync({
-        league_id: entry.league_id,
-        season: entry.season,
-        buy_in_amount: buyInAmount,
-        winnings_amount: winningsAmount,
-      });
-      notify.success('Finance entry saved.');
+      for (const entry of dirtyEntries) {
+        const draft = drafts[getDraftKey(entry)];
+
+        await saveFinanceMutation.mutateAsync({
+          league_id: entry.league_id,
+          season: entry.season,
+          buy_in_amount: parseDraftAmount(
+            draft.buyInAmount,
+          ),
+          winnings_amount: parseDraftAmount(
+            draft.winningsAmount,
+          ),
+        });
+      }
+
+      notify.success('Finance entries saved.');
     } catch {
-      notify.error('Unable to save finance entry.');
+      notify.error('Unable to save finance entries.');
     }
   };
 
@@ -184,8 +454,8 @@ export function FinancePage() {
             League finance tracker
           </h1>
           <p className="finance-page-description">
-            Track buy-ins, winnings, net results, and a simple in-season payout
-            projection for your linked Sleeper leagues.
+            Track buy-ins, winnings, net results, and current payout
+            projections for your linked Sleeper leagues.
           </p>
         </div>
       </section>
@@ -247,16 +517,64 @@ export function FinancePage() {
                 </article>
               </section>
 
-              <section className="finance-card-grid">
+              <section className="finance-chart-grid">
+                <FinanceTrendChart
+                  entries={finance.data.seasons}
+                />
+                <FinanceNetChart
+                  entries={finance.data.seasons}
+                />
+              </section>
+
+              <section className="finance-save-bar">
+                <div>
+                  <p className="finance-save-bar-kicker">
+                    Draft changes
+                  </p>
+                  <strong>
+                    {dirtyEntries.length} league
+                    {dirtyEntries.length === 1 ? '' : 's'} ready to save
+                  </strong>
+                </div>
+
+                <button
+                  type="button"
+                  className="button-primary"
+                  disabled={saveFinanceMutation.isPending}
+                  onClick={() => {
+                    void handleSaveAll();
+                  }}
+                >
+                  {
+                    saveFinanceMutation.isPending
+                      ? 'Saving...'
+                      : 'Save all finance changes'
+                  }
+                </button>
+              </section>
+
+              <section className="finance-season-grid">
                 {
-                  finance.data.seasons.map((entry) => (
-                    <FinanceSeasonCard
-                      key={`${entry.league_id}-${entry.season}`}
-                      entry={entry}
-                      onSave={handleSave}
-                      saving={saveFinanceMutation.isPending}
-                    />
-                  ))
+                  finance.data.seasons.map((entry) => {
+                    const key = getDraftKey(entry);
+
+                    return (
+                      <FinanceSeasonCard
+                        key={key}
+                        entry={entry}
+                        draft={drafts[key] ?? {
+                          buyInAmount: entry.buy_in_amount.toString(),
+                          winningsAmount: entry.winnings_amount.toString(),
+                        }}
+                        onDraftChange={(nextDraft) => {
+                          setDrafts((current) => ({
+                            ...current,
+                            [key]: nextDraft,
+                          }));
+                        }}
+                      />
+                    );
+                  })
                 }
               </section>
             </>

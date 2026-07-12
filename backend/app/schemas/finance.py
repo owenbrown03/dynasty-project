@@ -15,6 +15,7 @@ class FinanceLeagueSeasonEntry(Base):
     buy_in_amount: float = 0.0
     winnings_amount: float = 0.0
     projected_winnings_amount: float = 0.0
+    projected_winnings_source: str = "heuristic"
     net_amount: float = 0.0
 
 

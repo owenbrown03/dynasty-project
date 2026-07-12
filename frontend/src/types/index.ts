@@ -415,6 +415,7 @@ export interface FinanceLeagueSeasonEntry {
   buy_in_amount: number;
   winnings_amount: number;
   projected_winnings_amount: number;
+  projected_winnings_source: 'heuristic' | 'historical_rank';
   net_amount: number;
 }
 
