@@ -8,6 +8,9 @@ import {
   type FinanceLeagueSeasonUpdate,
   type FinanceSummaryResponse,
   type Orphan,
+  type ReminderCreate,
+  type ReminderListResponse,
+  type ReminderUpdate,
   type Roster,
   type ValueBasis,
 } from '@/types';
@@ -49,6 +52,21 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     body: FinanceLeagueSeasonUpdate,
   ) => client.post(
     `${prefix}/finance/season`,
+    body,
+  ),
+  getReminders: () => client.get<ReminderListResponse>(
+    `${prefix}/reminders`,
+  ),
+  createReminder: (
+    body: ReminderCreate,
+  ) => client.post(
+    `${prefix}/reminders`,
+    body,
+  ),
+  saveReminder: (
+    body: ReminderUpdate,
+  ) => client.post(
+    `${prefix}/reminders/update`,
     body,
   ),
 });

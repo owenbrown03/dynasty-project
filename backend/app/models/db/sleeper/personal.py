@@ -89,3 +89,26 @@ class FinanceLeagueSeason(SQLModel, table=True):
             name="uq_financeleagueseason_site_user_league_season",
         ),
     )
+
+
+class Reminder(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    site_user_id: uuid.UUID = Field(
+        sa_type=UUID(as_uuid=True),
+        foreign_key="siteuser.id",
+        index=True,
+    )
+    league_id: str | None = Field(
+        default=None,
+        foreign_key="league.league_id",
+        index=True,
+    )
+    title: str
+    note: str = Field(default="")
+    due_week: int | None = Field(default=None, index=True)
+    due_season: str | None = Field(default=None, index=True)
+    delivery_channel: str = Field(default="in_app")
+    completed: bool = Field(default=False)
+    email_sent_at: datetime | None = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

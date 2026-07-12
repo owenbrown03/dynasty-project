@@ -419,6 +419,37 @@ export interface FinanceLeagueSeasonUpdate {
   winnings_amount: number;
 }
 
+export interface ReminderItem {
+  id: number;
+  league_id: string | null;
+  title: string;
+  note: string;
+  due_week: number | null;
+  due_season: string | null;
+  delivery_channel: string;
+  completed: boolean;
+  email_sent_at: string | null;
+  updated_at: string;
+}
+
+export interface ReminderListResponse {
+  reminders: ReminderItem[];
+}
+
+export interface ReminderCreate {
+  league_id: string | null;
+  title: string;
+  note: string;
+  due_week: number | null;
+  due_season: string | null;
+  delivery_channel: string;
+}
+
+export interface ReminderUpdate extends ReminderCreate {
+  id: number;
+  completed: boolean;
+}
+
 export interface PlayerValue {
   player_id: string;
 

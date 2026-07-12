@@ -24,6 +24,7 @@ export const queryKeys = {
       ] as const,
     commissionerWorkspace: ['commissioner-workspace'] as const,
     financeSummary: ['finance-summary'] as const,
+    reminders: ['reminders'] as const,
   },
 
   leagues: {

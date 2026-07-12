@@ -9,6 +9,7 @@ import { WaiversPage } from './pages/waivers/WaiversPage';
 import { TiersPage } from './pages/tiers/TiersPage';
 import { CommissionerPage } from './pages/commissioner/CommissionerPage';
 import { FinancePage } from './pages/finance/FinancePage';
+import { RemindersPage } from './pages/reminders/RemindersPage';
 
 export const AppRoutes = () => {
   return (
@@ -21,6 +22,7 @@ export const AppRoutes = () => {
         <Route path="/waivers" element={<WaiversPage />} />
         <Route path="/tiers" element={<TiersPage />} />
         <Route path="/finance" element={<FinancePage />} />
+        <Route path="/reminders" element={<RemindersPage />} />
         <Route path="/commissioner" element={<CommissionerPage />} />
         <Route path="/commissioner/:username" element={<CommissionerPage />} />
         <Route path="/orphans" element={<CommissionerPage />} />

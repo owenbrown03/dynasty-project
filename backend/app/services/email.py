@@ -63,3 +63,55 @@ def send_email_verification_message(
         smtp.send_message(message)
 
     return "smtp"
+
+
+def send_reminder_email_message(
+    *,
+    recipient: str,
+    title: str,
+    note: str,
+    league_id: str | None,
+    due_season: str | None,
+    due_week: int | None,
+) -> str:
+    if not settings.SMTP_HOST or not settings.EMAIL_FROM:
+        logger.info(
+            "Reminder email for %s: %s | league=%s season=%s week=%s | %s",
+            recipient,
+            title,
+            league_id,
+            due_season,
+            due_week,
+            note,
+        )
+        return "log"
+
+    message = EmailMessage()
+    message["Subject"] = f"Dynasty Base reminder: {title}"
+    message["From"] = settings.EMAIL_FROM
+    message["To"] = recipient
+    message.set_content(
+        f"{title}\n\n"
+        f"{note}\n\n"
+        f"League: {league_id or 'General'}\n"
+        f"Season: {due_season or 'Any'}\n"
+        f"Week: {due_week or 'Any'}\n"
+    )
+
+    with smtplib.SMTP(
+        settings.SMTP_HOST,
+        settings.SMTP_PORT,
+        timeout=10,
+    ) as smtp:
+        if settings.SMTP_USE_TLS:
+            smtp.starttls()
+
+        if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
+            smtp.login(
+                settings.SMTP_USERNAME,
+                settings.SMTP_PASSWORD,
+            )
+
+        smtp.send_message(message)
+
+    return "smtp"

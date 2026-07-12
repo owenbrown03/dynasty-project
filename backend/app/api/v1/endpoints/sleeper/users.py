@@ -15,6 +15,12 @@ from app.schemas.finance import (
     FinanceLeagueSeasonUpdate,
     FinanceSummaryResponse,
 )
+from app.schemas.reminders import (
+    ReminderCreate,
+    ReminderItem,
+    ReminderListResponse,
+    ReminderUpdate,
+)
 from app.services.commissioner.orphans import get_commissioner_orphans
 from app.services.commissioner.workspace import (
     get_commissioner_workspace,
@@ -24,6 +30,11 @@ from app.services.commissioner.workspace import (
 from app.services.finance import (
     get_finance_summary,
     save_finance_entry,
+)
+from app.services.reminders import (
+    create_reminder,
+    list_reminders,
+    save_reminder,
 )
 from app.services.values.basis import ValueBasis
 from app.tasks.user import sync_user_data_task
@@ -131,6 +142,46 @@ async def save_finance_entry_endpoint(
     ctx: ContextDep,
 ):
     return await save_finance_entry(
+        body,
+        ctx,
+    )
+
+
+@router.get(
+    "/reminders",
+    response_model=ReminderListResponse,
+)
+async def get_reminders_endpoint(
+    ctx: ContextDep,
+):
+    return await list_reminders(
+        ctx,
+    )
+
+
+@router.post(
+    "/reminders",
+    response_model=ReminderItem,
+)
+async def create_reminder_endpoint(
+    body: ReminderCreate,
+    ctx: ContextDep,
+):
+    return await create_reminder(
+        body,
+        ctx,
+    )
+
+
+@router.post(
+    "/reminders/update",
+    response_model=ReminderItem,
+)
+async def save_reminder_endpoint(
+    body: ReminderUpdate,
+    ctx: ContextDep,
+):
+    return await save_reminder(
         body,
         ctx,
     )

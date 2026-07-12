@@ -10,6 +10,9 @@ import type {
   FinanceLeagueSeasonUpdate,
   FinanceSummaryResponse,
   Orphan,
+  ReminderCreate,
+  ReminderListResponse,
+  ReminderUpdate,
   Roster,
   ValueBasis,
 } from '@/types';
@@ -199,6 +202,58 @@ export function useSaveFinanceSeason() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.users.financeSummary,
+      });
+    },
+  });
+}
+
+
+export function useReminders(
+  enabled: boolean,
+) {
+  const query = useQuery<ReminderListResponse>({
+    queryKey: queryKeys.users.reminders,
+    queryFn: async () => api.users
+      .getReminders()
+      .then((res) => res.data),
+    enabled,
+  });
+
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
+  };
+}
+
+
+export function useCreateReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: ReminderCreate,
+    ) => api.users.createReminder(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.reminders,
+      });
+    },
+  });
+}
+
+
+export function useSaveReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: ReminderUpdate,
+    ) => api.users.saveReminder(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.reminders,
       });
     },
   });

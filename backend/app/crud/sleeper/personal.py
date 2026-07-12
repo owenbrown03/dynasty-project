@@ -10,6 +10,7 @@ from app.models.db.sleeper.personal import (
     CommissionerLeagueDues,
     CommissionerLeagueNote,
     FinanceLeagueSeason,
+    Reminder,
 )
 
 
@@ -189,3 +190,100 @@ async def upsert_finance_entry(
     await db.commit()
     await db.refresh(record)
     return record
+
+
+async def get_reminders_by_user(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+) -> list[Reminder]:
+    results = await db.execute(
+        select(Reminder).where(
+            Reminder.site_user_id == site_user_id,
+        ).order_by(
+            Reminder.completed,
+            Reminder.due_season,
+            Reminder.due_week,
+            Reminder.updated_at.desc(),
+        )
+    )
+    return list(results.scalars().all())
+
+
+async def insert_reminder(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str | None,
+    title: str,
+    note: str,
+    due_week: int | None,
+    due_season: str | None,
+    delivery_channel: str,
+) -> Reminder:
+    reminder = Reminder(
+        site_user_id=site_user_id,
+        league_id=league_id,
+        title=title,
+        note=note,
+        due_week=due_week,
+        due_season=due_season,
+        delivery_channel=delivery_channel,
+    )
+    db.add(reminder)
+    await db.commit()
+    await db.refresh(reminder)
+    return reminder
+
+
+async def update_reminder(
+    *,
+    db: AsyncSession,
+    reminder: Reminder,
+    title: str,
+    note: str,
+    due_week: int | None,
+    due_season: str | None,
+    delivery_channel: str,
+    completed: bool,
+) -> Reminder:
+    reminder.title = title
+    reminder.note = note
+    reminder.due_week = due_week
+    reminder.due_season = due_season
+    reminder.delivery_channel = delivery_channel
+    reminder.completed = completed
+    reminder.updated_at = datetime.utcnow()
+
+    db.add(reminder)
+    await db.commit()
+    await db.refresh(reminder)
+    return reminder
+
+
+async def get_reminder_by_id(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    reminder_id: int,
+) -> Reminder | None:
+    results = await db.execute(
+        select(Reminder).where(
+            Reminder.site_user_id == site_user_id,
+            Reminder.id == reminder_id,
+        )
+    )
+    return results.scalar_one_or_none()
+
+
+async def mark_reminder_email_sent(
+    *,
+    db: AsyncSession,
+    reminder: Reminder,
+) -> Reminder:
+    reminder.email_sent_at = datetime.utcnow()
+    reminder.updated_at = datetime.utcnow()
+    db.add(reminder)
+    await db.commit()
+    await db.refresh(reminder)
+    return reminder
