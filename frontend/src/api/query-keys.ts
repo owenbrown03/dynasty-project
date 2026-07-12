@@ -23,6 +23,7 @@ export const queryKeys = {
         valueBasis,
       ] as const,
     commissionerWorkspace: ['commissioner-workspace'] as const,
+    financeSummary: ['finance-summary'] as const,
   },
 
   leagues: {

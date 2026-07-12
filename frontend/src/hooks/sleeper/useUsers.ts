@@ -7,6 +7,8 @@ import type {
   CommissionerLeagueNoteUpdate,
   CommissionerOrphansResponse,
   CommissionerWorkspaceResponse,
+  FinanceLeagueSeasonUpdate,
+  FinanceSummaryResponse,
   Orphan,
   Roster,
   ValueBasis,
@@ -161,6 +163,42 @@ export function useSaveCommissionerDues() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.users.commissionerWorkspace,
+      });
+    },
+  });
+}
+
+
+export function useFinanceSummary(
+  enabled: boolean,
+) {
+  const query = useQuery<FinanceSummaryResponse>({
+    queryKey: queryKeys.users.financeSummary,
+    queryFn: async () => api.users
+      .getFinanceSummary()
+      .then((res) => res.data),
+    enabled,
+  });
+
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
+  };
+}
+
+
+export function useSaveFinanceSeason() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: FinanceLeagueSeasonUpdate,
+    ) => api.users.saveFinanceSeason(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.financeSummary,
       });
     },
   });

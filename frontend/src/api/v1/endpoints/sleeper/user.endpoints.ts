@@ -5,6 +5,8 @@ import {
   type CommissionerLeagueNoteUpdate,
   type CommissionerOrphansResponse,
   type CommissionerWorkspaceResponse,
+  type FinanceLeagueSeasonUpdate,
+  type FinanceSummaryResponse,
   type Orphan,
   type Roster,
   type ValueBasis,
@@ -38,6 +40,15 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     body: CommissionerLeagueDuesUpdate,
   ) => client.post(
     `${prefix}/commissioner/workspace/dues`,
+    body,
+  ),
+  getFinanceSummary: () => client.get<FinanceSummaryResponse>(
+    `${prefix}/finance/summary`,
+  ),
+  saveFinanceSeason: (
+    body: FinanceLeagueSeasonUpdate,
+  ) => client.post(
+    `${prefix}/finance/season`,
     body,
   ),
 });

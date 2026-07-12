@@ -6,6 +6,7 @@ import {
   Briefcase,
   User,
   HandCoins,
+  Wallet,
   Layers3,
   ChevronLeft,
   ChevronRight,
@@ -45,6 +46,11 @@ export const Sidebar = () => {
       to: '/tiers',
       label: 'Tiers',
       icon: <Layers3 size={20} />,
+    },
+    {
+      to: '/finance',
+      label: 'Finance',
+      icon: <Wallet size={20} />,
     },
     {
       to: commissionerPath,

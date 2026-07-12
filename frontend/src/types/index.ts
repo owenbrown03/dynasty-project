@@ -389,6 +389,36 @@ export interface CommissionerLeagueDuesUpdate {
   is_paid: boolean;
 }
 
+export interface FinanceLeagueSeasonEntry {
+  league_id: string;
+  league_name: string;
+  season: string;
+  total_rosters: number;
+  rank: number | null;
+  wins: number | null;
+  losses: number | null;
+  points_for: number | null;
+  buy_in_amount: number;
+  winnings_amount: number;
+  projected_winnings_amount: number;
+  net_amount: number;
+}
+
+export interface FinanceSummaryResponse {
+  total_buy_ins: number;
+  total_winnings: number;
+  total_net: number;
+  projected_current_winnings: number;
+  seasons: FinanceLeagueSeasonEntry[];
+}
+
+export interface FinanceLeagueSeasonUpdate {
+  league_id: string;
+  season: string;
+  buy_in_amount: number;
+  winnings_amount: number;
+}
+
 export interface PlayerValue {
   player_id: string;
 

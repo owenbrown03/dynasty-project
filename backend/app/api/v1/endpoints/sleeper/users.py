@@ -10,11 +10,20 @@ from app.schemas.commissioner import (
     CommissionerWorkspaceLeague,
     CommissionerWorkspaceResponse,
 )
+from app.schemas.finance import (
+    FinanceLeagueSeasonEntry,
+    FinanceLeagueSeasonUpdate,
+    FinanceSummaryResponse,
+)
 from app.services.commissioner.orphans import get_commissioner_orphans
 from app.services.commissioner.workspace import (
     get_commissioner_workspace,
     save_commissioner_dues,
     save_commissioner_note,
+)
+from app.services.finance import (
+    get_finance_summary,
+    save_finance_entry,
 )
 from app.services.values.basis import ValueBasis
 from app.tasks.user import sync_user_data_task
@@ -96,6 +105,32 @@ async def save_commissioner_dues_endpoint(
     ctx: ContextDep,
 ):
     return await save_commissioner_dues(
+        body,
+        ctx,
+    )
+
+
+@router.get(
+    "/finance/summary",
+    response_model=FinanceSummaryResponse,
+)
+async def get_finance_summary_endpoint(
+    ctx: ContextDep,
+):
+    return await get_finance_summary(
+        ctx,
+    )
+
+
+@router.post(
+    "/finance/season",
+    response_model=FinanceLeagueSeasonEntry,
+)
+async def save_finance_entry_endpoint(
+    body: FinanceLeagueSeasonUpdate,
+    ctx: ContextDep,
+):
+    return await save_finance_entry(
         body,
         ctx,
     )
