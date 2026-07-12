@@ -19,6 +19,8 @@ class LeaguePick(BaseModel):
     current_owner_roster_id: int
     label: str
     slot: int | None = None
+    projected_slot: int | None = None
+    slot_source_label: str | None = None
     fc_value: float | None = None
     ktc_value: float | None = None
 

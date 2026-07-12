@@ -315,6 +315,16 @@ function CommissionerOrphanCard({
                               </span>
 
                               {
+                                pick.slot_source_label
+                                  ? (
+                                    <span className="commissioner-pick-meta">
+                                      {pick.slot_source_label}
+                                    </span>
+                                  )
+                                  : null
+                              }
+
+                              {
                                 pick.value_source_label
                                   ? (
                                     <span className="commissioner-pick-meta">

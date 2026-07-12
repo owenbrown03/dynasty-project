@@ -9,6 +9,8 @@ class DraftPickAsset(Base):
     original_owner_name: str | None = None
     current_owner_name: str | None = None
     slot: int | None = None
+    projected_slot: int | None = None
+    slot_source_label: str | None = None
     label: str
     selected_value: float | None = None
     value_source_label: str | None = None

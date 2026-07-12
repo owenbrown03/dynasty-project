@@ -136,6 +136,8 @@ export interface LeaguePick {
   current_owner_roster_id: number;
   label: string;
   slot: number | null;
+  projected_slot: number | null;
+  slot_source_label: string | null;
   fc_value: number | null;
   ktc_value: number | null;
 }
@@ -322,6 +324,8 @@ export interface CommissionerDraftPickAsset {
   original_owner_name: string | null;
   current_owner_name: string | null;
   slot: number | null;
+  projected_slot: number | null;
+  slot_source_label: string | null;
   label: string;
   selected_value: number | null;
   value_source_label: string | null;

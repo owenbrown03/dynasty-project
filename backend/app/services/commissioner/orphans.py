@@ -10,7 +10,10 @@ from app.crud.sleeper.draft import (
     get_drafts_by_league_ids,
     get_traded_picks_by_league_ids,
 )
-from app.crud.sleeper.league import get_user_leagues
+from app.crud.sleeper.league import (
+    get_sync_states,
+    get_user_leagues,
+)
 from app.crud.sleeper.roster import get_all_rosters_by_league
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
@@ -24,6 +27,9 @@ from app.schemas.player import PlayerValue
 from app.services.draft.picks import (
     build_owned_pick_assets_by_roster_id,
     build_roster_name_by_id,
+)
+from app.services.draft.projection import (
+    build_projected_pick_slots_by_roster_id,
 )
 from app.services.draft.values import (
     get_resolved_pick_values_by_key,
@@ -293,6 +299,10 @@ async def get_commissioner_orphans(
         db,
         orphan_league_ids,
     )
+    sync_states_by_league_id = await get_sync_states(
+        db,
+        orphan_league_ids,
+    )
     traded_picks_by_league_id = (
         await get_traded_picks_by_league_ids(
             db,
@@ -346,6 +356,27 @@ async def get_commissioner_orphans(
             rosters=rosters,
             users_by_id=users_by_id,
         )
+        current_week = (
+            sync_states_by_league_id[league_id].last_synced_week
+            if league_id in sync_states_by_league_id
+            else 0
+        )
+        projected_pick_slots_by_roster_id = (
+            build_projected_pick_slots_by_roster_id(
+                league=league,
+                rosters=rosters,
+                current_week=current_week,
+            )
+        )
+        projected_slots_by_season_and_roster_id = {
+            (
+                str(int(league.season) + 1),
+                roster_id,
+            ): slot
+            for roster_id, slot in (
+                projected_pick_slots_by_roster_id.items()
+            )
+        }
 
         unresolved_pick_assets_by_roster_id = (
             build_owned_pick_assets_by_roster_id(
@@ -360,6 +391,10 @@ async def get_commissioner_orphans(
                     [],
                 ),
                 roster_name_by_id=roster_name_by_id,
+                projected_slots_by_season_and_roster_id=(
+                    projected_slots_by_season_and_roster_id
+                ),
+                projected_slot_week=current_week,
             )
         )
 
@@ -407,6 +442,10 @@ async def get_commissioner_orphans(
                 ),
                 roster_name_by_id=roster_name_by_id,
                 resolved_values_by_pick_key=resolved_pick_values_by_key,
+                projected_slots_by_season_and_roster_id=(
+                    projected_slots_by_season_and_roster_id
+                ),
+                projected_slot_week=current_week,
             )
         )
 

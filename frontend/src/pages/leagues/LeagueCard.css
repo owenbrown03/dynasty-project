@@ -142,12 +142,19 @@
 }
 
 .league-pick-copy {
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
 .league-pick-copy strong {
   font-size: 13px;
   color: var(--color-text-strong);
+}
+
+.league-pick-meta {
+  color: var(--color-text-muted);
+  font-size: 11px;
 }
 
 .league-pick-values {

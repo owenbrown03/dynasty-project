@@ -4,6 +4,9 @@ from collections import defaultdict
 
 from app.models.db.sleeper.api import Draft, League, Roster, User
 from app.schemas.draft import DraftPickAsset
+from app.services.draft.projection import (
+    build_projected_slot_source_label,
+)
 from app.services.draft.values import ResolvedPickValue
 
 
@@ -15,9 +18,14 @@ def build_pick_label(
     current_owner_roster_id: int,
     roster_name_by_id: dict[int, str],
     slot: int | None = None,
+    is_projected: bool = False,
 ) -> str:
     if slot is not None:
-        return f"{season} Pick {round_number}.{slot:02d}"
+        suffix = " (proj.)" if is_projected else ""
+        return (
+            f"{season} Pick {round_number}.{slot:02d}"
+            f"{suffix}"
+        )
 
     original_owner_name = roster_name_by_id.get(
         og_roster_id,
@@ -115,9 +123,18 @@ def build_owned_pick_assets_by_roster_id(
         tuple[str, int, int],
         ResolvedPickValue,
     ] | None = None,
+    projected_slots_by_season_and_roster_id: dict[
+        tuple[str, int],
+        int,
+    ] | None = None,
+    projected_slot_week: int | None = None,
 ) -> dict[int, list[DraftPickAsset]]:
     output: dict[int, list[DraftPickAsset]] = defaultdict(list)
     resolved_values_by_pick_key = resolved_values_by_pick_key or {}
+    projected_slots_by_season_and_roster_id = (
+        projected_slots_by_season_and_roster_id
+        or {}
+    )
 
     start_season = int(league.season)
     seasons = [
@@ -180,6 +197,27 @@ def build_owned_pick_assets_by_roster_id(
             season,
             {},
         ).get(og_roster_id)
+        projected_slot = None
+
+        if slot is None:
+            projected_slot = (
+                projected_slots_by_season_and_roster_id.get(
+                    (
+                        season,
+                        og_roster_id,
+                    )
+                )
+            )
+
+        effective_slot = (
+            slot
+            if slot is not None
+            else projected_slot
+        )
+        is_projected = (
+            slot is None
+            and projected_slot is not None
+        )
 
         output[current_owner_roster_id].append(
             DraftPickAsset(
@@ -194,13 +232,23 @@ def build_owned_pick_assets_by_roster_id(
                     current_owner_roster_id,
                 ),
                 slot=slot,
+                projected_slot=projected_slot,
+                slot_source_label=(
+                    build_projected_slot_source_label(
+                        current_week=projected_slot_week,
+                    )
+                    if is_projected
+                    and projected_slot_week is not None
+                    else None
+                ),
                 label=build_pick_label(
                     season=season,
                     round_number=round_number,
                     og_roster_id=og_roster_id,
                     current_owner_roster_id=current_owner_roster_id,
                     roster_name_by_id=roster_name_by_id,
-                    slot=slot,
+                    slot=effective_slot,
+                    is_projected=is_projected,
                 ),
                 selected_value=resolved_values_by_pick_key.get(
                     (
@@ -232,7 +280,15 @@ def build_owned_pick_assets_by_roster_id(
             key=lambda pick: (
                 int(pick.season),
                 pick.round,
-                pick.slot if pick.slot is not None else 999,
+                (
+                    pick.slot
+                    if pick.slot is not None
+                    else (
+                        pick.projected_slot
+                        if pick.projected_slot is not None
+                        else 999
+                    )
+                ),
                 pick.og_roster_id,
             ),
         )

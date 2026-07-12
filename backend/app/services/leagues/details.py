@@ -9,13 +9,19 @@ from app.crud.sleeper.draft import (
     get_drafts_by_league_ids,
     get_traded_picks_by_league_ids,
 )
-from app.crud.sleeper.league import get_league_with_rosters
+from app.crud.sleeper.league import (
+    get_league_with_rosters,
+    get_sync_states,
+)
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
 from app.models.db.fc.models import FantasyCalcValue
 from app.services.draft.picks import (
     build_owned_pick_assets_by_roster_id,
     build_roster_name_by_id,
+)
+from app.services.draft.projection import (
+    build_projected_pick_slots_by_roster_id,
 )
 from app.services.draft.values import get_resolved_pick_values_by_key
 from app.services.leagues.models import (
@@ -125,6 +131,15 @@ class LeagueDetails:
 
         league = leagues[0][0]
         roster_rows = [roster for _, roster in leagues]
+        sync_states = await get_sync_states(
+            db,
+            [league_id],
+        )
+        current_week = (
+            sync_states[league_id].last_synced_week
+            if league_id in sync_states
+            else 0
+        )
 
         shared = await self.war_service.load_shared_data(
             db,
@@ -182,6 +197,14 @@ class LeagueDetails:
             player.player_id: player
             for player in player_values
         }
+        roster_players_by_roster_id: dict[
+            int,
+            list[LeaguePlayer],
+        ] = {}
+        projected_points_by_roster_id: dict[
+            int,
+            float,
+        ] = {}
 
         num_qbs = (
             2
@@ -213,54 +236,6 @@ class LeagueDetails:
             row.player_id: row
             for row in fantasycalc_rows.scalars().all()
         }
-
-        roster_name_by_id = build_roster_name_by_id(
-            rosters=roster_rows,
-            users_by_id=users,
-        )
-
-        drafts_by_league_id = await get_drafts_by_league_ids(
-            db,
-            [league_id],
-        )
-        traded_picks_by_league_id = await get_traded_picks_by_league_ids(
-            db,
-            [league_id],
-        )
-
-        raw_pick_assets_by_roster_id = build_owned_pick_assets_by_roster_id(
-            league=league,
-            rosters=roster_rows,
-            drafts=drafts_by_league_id.get(league_id, []),
-            traded_picks=traded_picks_by_league_id.get(league_id, []),
-            roster_name_by_id=roster_name_by_id,
-        )
-
-        all_pick_assets = [
-            pick
-            for picks in raw_pick_assets_by_roster_id.values()
-            for pick in picks
-        ]
-
-        fc_pick_values_by_key = await get_resolved_pick_values_by_key(
-            db,
-            picks=all_pick_assets,
-            value_basis=ValueBasis.FANTASYCALC,
-            league_num_qbs=num_qbs,
-            league_total_rosters=league.total_rosters,
-            league_ppr=ppr,
-        )
-
-        ktc_pick_values_by_key = await get_resolved_pick_values_by_key(
-            db,
-            picks=all_pick_assets,
-            value_basis=ValueBasis.KTC,
-            league_num_qbs=num_qbs,
-            league_total_rosters=league.total_rosters,
-            league_ppr=ppr,
-        )
-
-        rosters: list[LeagueRoster] = []
 
         for roster in roster_rows:
             starter_ids = set(roster.starters or [])
@@ -319,6 +294,93 @@ class LeagueDetails:
                 ),
             )
 
+            roster_players_by_roster_id[
+                roster.roster_id
+            ] = roster_players
+            projected_points_by_roster_id[
+                roster.roster_id
+            ] = calculate_projected_starter_points(
+                roster_positions=league.roster_positions or [],
+                players=roster_players,
+            )
+
+        roster_name_by_id = build_roster_name_by_id(
+            rosters=roster_rows,
+            users_by_id=users,
+        )
+
+        drafts_by_league_id = await get_drafts_by_league_ids(
+            db,
+            [league_id],
+        )
+        traded_picks_by_league_id = await get_traded_picks_by_league_ids(
+            db,
+            [league_id],
+        )
+        projected_pick_slots_by_roster_id = (
+            build_projected_pick_slots_by_roster_id(
+                league=league,
+                rosters=roster_rows,
+                current_week=current_week,
+                projected_points_by_roster_id=(
+                    projected_points_by_roster_id
+                ),
+            )
+        )
+        projected_slots_by_season_and_roster_id = {
+            (
+                str(int(league.season) + 1),
+                roster_id,
+            ): slot
+            for roster_id, slot in (
+                projected_pick_slots_by_roster_id.items()
+            )
+        }
+
+        raw_pick_assets_by_roster_id = build_owned_pick_assets_by_roster_id(
+            league=league,
+            rosters=roster_rows,
+            drafts=drafts_by_league_id.get(league_id, []),
+            traded_picks=traded_picks_by_league_id.get(league_id, []),
+            roster_name_by_id=roster_name_by_id,
+            projected_slots_by_season_and_roster_id=(
+                projected_slots_by_season_and_roster_id
+            ),
+            projected_slot_week=current_week,
+        )
+
+        all_pick_assets = [
+            pick
+            for picks in raw_pick_assets_by_roster_id.values()
+            for pick in picks
+        ]
+
+        fc_pick_values_by_key = await get_resolved_pick_values_by_key(
+            db,
+            picks=all_pick_assets,
+            value_basis=ValueBasis.FANTASYCALC,
+            league_num_qbs=num_qbs,
+            league_total_rosters=league.total_rosters,
+            league_ppr=ppr,
+        )
+
+        ktc_pick_values_by_key = await get_resolved_pick_values_by_key(
+            db,
+            picks=all_pick_assets,
+            value_basis=ValueBasis.KTC,
+            league_num_qbs=num_qbs,
+            league_total_rosters=league.total_rosters,
+            league_ppr=ppr,
+        )
+
+        rosters: list[LeagueRoster] = []
+
+        for roster in roster_rows:
+            roster_players = roster_players_by_roster_id.get(
+                roster.roster_id,
+                [],
+            )
+
             picks = []
             total_pick_fc_value = 0.0
             total_pick_ktc_value = 0.0
@@ -358,6 +420,8 @@ class LeagueDetails:
                         current_owner_roster_id=pick.current_owner_roster_id,
                         label=pick.label,
                         slot=pick.slot,
+                        projected_slot=pick.projected_slot,
+                        slot_source_label=pick.slot_source_label,
                         fc_value=fc_value,
                         ktc_value=ktc_value,
                     )
@@ -412,9 +476,9 @@ class LeagueDetails:
                     losses=roster.losses,
                     ties=roster.ties,
                     actual_points_for=round(roster.fpts, 2),
-                    projected_points=calculate_projected_starter_points(
-                        roster_positions=league.roster_positions or [],
-                        players=roster_players,
+                    projected_points=projected_points_by_roster_id.get(
+                        roster.roster_id,
+                        0.0,
                     ),
                     faab_remaining=roster.faab_remaining(league),
                     waiver_position=roster.waiver_position,
@@ -437,7 +501,15 @@ class LeagueDetails:
                         key=lambda pick: (
                             int(pick.season),
                             pick.round,
-                            pick.slot if pick.slot is not None else 999,
+                            (
+                                pick.slot
+                                if pick.slot is not None
+                                else (
+                                    pick.projected_slot
+                                    if pick.projected_slot is not None
+                                    else 999
+                                )
+                            ),
                             pick.og_roster_id,
                         ),
                     ),

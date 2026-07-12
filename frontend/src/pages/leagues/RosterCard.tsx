@@ -36,6 +36,15 @@ function PickList({
           >
             <div className="league-pick-copy">
               <strong>{pick.label}</strong>
+              {
+                pick.slot_source_label
+                  ? (
+                    <span className="league-pick-meta">
+                      {pick.slot_source_label}
+                    </span>
+                  )
+                  : null
+              }
             </div>
 
             <div className="league-pick-values">
