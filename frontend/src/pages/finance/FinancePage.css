@@ -269,7 +269,7 @@
 .finance-inline-checkbox,
 .finance-league-checkbox {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   color: var(--color-text-muted);
   font-size: 13px;
@@ -302,6 +302,15 @@
 .finance-league-checkbox {
   width: auto;
   flex: 0 0 auto;
+}
+
+.finance-inline-checkbox input,
+.finance-league-checkbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-accent, #7aa2ff);
+  cursor: pointer;
 }
 
 .finance-league-option {
