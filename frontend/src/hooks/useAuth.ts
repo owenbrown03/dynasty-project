@@ -32,12 +32,55 @@ export function useAuth() {
   const registerMutation = useMutation({
     mutationFn: api.auth.register,
 
-    onSuccess: () => {
-      notify.success('Successfully registered!');
+    onSuccess: async () => {
+      authContext.close();
+      await queryClient.invalidateQueries({
+        queryKey: BOOTSTRAP_QUERY_KEY,
+      });
+
+      notify.success('Account created. Check your email to verify it.');
     },
 
     onError: () => {
       notify.error('Register failed.');
+    },
+  });
+
+
+  const resendVerificationMutation = useMutation({
+    mutationFn: api.auth.resendVerificationEmail,
+
+    onSuccess: async (response) => {
+      await queryClient.invalidateQueries({
+        queryKey: BOOTSTRAP_QUERY_KEY,
+      });
+
+      const delivery = response.data.delivery === 'smtp'
+        ? 'Verification email sent.'
+        : 'Verification link generated. Check backend logs in local development.';
+
+      notify.success(delivery);
+    },
+
+    onError: () => {
+      notify.error('Unable to send verification email.');
+    },
+  });
+
+
+  const verifyEmailMutation = useMutation({
+    mutationFn: api.auth.verifyEmail,
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: BOOTSTRAP_QUERY_KEY,
+      });
+
+      notify.success('Email verified.');
+    },
+
+    onError: () => {
+      notify.error('Email verification failed.');
     },
   });
 
@@ -72,19 +115,35 @@ export function useAuth() {
     await logoutMutation.mutateAsync();
   };
 
+  const resendVerificationEmail = async (): Promise<void> => {
+    await resendVerificationMutation.mutateAsync();
+  };
+
+  const verifyEmail = async (token: string): Promise<void> => {
+    await verifyEmailMutation.mutateAsync({ token });
+  };
+
   return {
     siteUser: bootstrapQuery.data?.site_user ?? null,
     sleeper: bootstrapQuery.data?.sleeper ?? null,
     isLoggedIn: bootstrapQuery.data?.authenticated ?? false,
+    isEmailVerified: (
+      bootstrapQuery.data?.site_user?.email_verified
+      ?? false
+    ),
 
     isLoading: bootstrapQuery.isLoading,
 
     login,
     register,
     logout,
+    resendVerificationEmail,
+    verifyEmail,
 
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
     isLoggingOut: logoutMutation.isPending,
+    isResendingVerificationEmail: resendVerificationMutation.isPending,
+    isVerifyingEmail: verifyEmailMutation.isPending,
   };
 }

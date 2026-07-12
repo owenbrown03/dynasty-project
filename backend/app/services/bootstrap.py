@@ -6,6 +6,7 @@ from app.crud.auth.session import (
     get_session_value_preference,
 )
 from app.crud.auth.user import (
+    is_email_verified,
     get_theme_preference,
     get_value_preference,
 )
@@ -25,6 +26,12 @@ async def bootstrap(ctx: Context):
         site_user = BootstrapUser(
             id=str(ctx.site_user.id),
             email=ctx.site_user.email,
+            email_verified=is_email_verified(
+                ctx.site_user,
+            ),
+            verification_email_sent_at=(
+                ctx.site_user.verification_email_sent_at
+            ),
         )
 
     sleeper = BootstrapSleeper(

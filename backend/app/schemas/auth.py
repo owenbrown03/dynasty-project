@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import EmailStr, Field
@@ -13,6 +14,21 @@ class Login(Base):
 class AuthSessionResponse(Base):
     authenticated: bool
     user_id: str | None = None
+
+
+class EmailVerificationStatusResponse(Base):
+    email_verified: bool
+    verification_email_sent_at: datetime | None = None
+
+
+class EmailVerificationRequestResponse(Base):
+    email_verified: bool
+    verification_email_sent_at: datetime | None = None
+    delivery: Literal["smtp", "log"]
+
+
+class EmailVerificationConfirmRequest(Base):
+    token: str
 
 
 class ThemePreferenceUpdate(Base):

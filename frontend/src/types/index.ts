@@ -41,6 +41,21 @@ export interface Login {
   password: string;
 }
 
+export interface EmailVerificationRequestResponse {
+  email_verified: boolean;
+  verification_email_sent_at: string | null;
+  delivery: 'smtp' | 'log';
+}
+
+export interface EmailVerificationConfirmRequest {
+  token: string;
+}
+
+export interface EmailVerificationStatusResponse {
+  email_verified: boolean;
+  verification_email_sent_at: string | null;
+}
+
 export interface SendCodeRequest {
   username: string;
   captcha: string;
@@ -63,6 +78,8 @@ export interface VerifyCodeResponse {
 export interface BootstrapUser {
   id: string;
   email: string;
+  email_verified: boolean;
+  verification_email_sent_at: string | null;
 }
 
 export interface BootstrapSleeper {

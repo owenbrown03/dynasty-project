@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal, Optional
 
 from app.schemas.base import Base
@@ -7,6 +8,8 @@ from app.services.values.basis import ValueBasis
 class BootstrapUser(Base):
     id: str
     email: str
+    email_verified: bool = False
+    verification_email_sent_at: datetime | None = None
 
 
 class BootstrapSleeper(Base):
