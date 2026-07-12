@@ -330,6 +330,17 @@
   font-size: 11px;
 }
 
+.commissioner-due-picks {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.commissioner-due-picks li + li {
+  margin-top: 4px;
+}
+
 .commissioner-due-controls {
   display: flex;
   flex-wrap: wrap;

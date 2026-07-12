@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 
 from app.core.context import Context
 from app.crud.sleeper.personal import (
+    get_commissioner_dues_by_key,
     get_finance_entries_by_key,
     upsert_finance_entry,
 )
@@ -64,6 +65,32 @@ def calculate_projected_winnings(
     )
 
 
+def _build_buy_in_by_league_season(
+    dues_by_key,
+) -> dict[tuple[str, str], float]:
+    buy_in_by_league_season: dict[
+        tuple[str, str],
+        float,
+    ] = {}
+
+    for (
+        league_id,
+        _roster_id,
+        season,
+    ), record in dues_by_key.items():
+        if record.buy_in_amount is None:
+            continue
+
+        buy_in_by_league_season[
+            (
+                league_id,
+                season,
+            )
+        ] = record.buy_in_amount
+
+    return buy_in_by_league_season
+
+
 async def get_finance_summary(
     ctx: Context,
 ) -> FinanceSummaryResponse:
@@ -85,6 +112,16 @@ async def get_finance_summary(
         site_user_id=ctx.site_user.id,
         league_ids=league_ids,
     )
+    commissioner_dues_by_key = await get_commissioner_dues_by_key(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+        league_ids=league_ids,
+    )
+    commissioner_buy_in_by_league_season = (
+        _build_buy_in_by_league_season(
+            commissioner_dues_by_key,
+        )
+    )
 
     entries: list[FinanceLeagueSeasonEntry] = []
 
@@ -100,7 +137,10 @@ async def get_finance_summary(
         buy_in_amount = (
             finance_entry.buy_in_amount
             if finance_entry is not None
-            else 0.0
+            else commissioner_buy_in_by_league_season.get(
+                key,
+                0.0,
+            )
         )
         winnings_amount = (
             finance_entry.winnings_amount

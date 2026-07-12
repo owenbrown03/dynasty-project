@@ -372,6 +372,7 @@ export interface CommissionerLeagueDuesEntry {
   roster_name: string;
   season: string;
   traded_pick_count: number;
+  traded_pick_labels: string[];
   buy_in_amount: number | null;
   is_paid: boolean;
   paid_at: string | null;

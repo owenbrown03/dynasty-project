@@ -11,6 +11,8 @@ from app.crud.sleeper.draft import (
 from app.crud.sleeper.personal import (
     get_commissioner_dues_by_key,
     get_commissioner_notes_by_league_id,
+    get_finance_entries_by_key,
+    upsert_finance_entry,
     upsert_commissioner_dues,
     upsert_commissioner_note,
 )
@@ -47,6 +49,23 @@ def _require_commissioner_workspace_context(
         )
 
 
+def _build_traded_pick_label(
+    *,
+    season: str,
+    round_number: int,
+    new_roster_id: int,
+    roster_name_by_id: dict[int, str],
+) -> str:
+    new_owner_name = roster_name_by_id.get(
+        new_roster_id,
+        f"Team {new_roster_id}",
+    )
+    return (
+        f"{season} Round {round_number} "
+        f"(sent to {new_owner_name})"
+    )
+
+
 async def get_commissioner_workspace(
     ctx: Context,
 ) -> CommissionerWorkspaceResponse:
@@ -66,6 +85,11 @@ async def get_commissioner_workspace(
     league_ids = list(leagues_by_id.keys())
 
     notes_by_league_id = await get_commissioner_notes_by_league_id(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+        league_ids=league_ids,
+    )
+    finance_entries_by_key = await get_finance_entries_by_key(
         db=ctx.db,
         site_user_id=ctx.site_user.id,
         league_ids=league_ids,
@@ -107,6 +131,10 @@ async def get_commissioner_workspace(
             users_by_id=users_by_id,
         )
         dues_counter: dict[tuple[int, str], int] = defaultdict(int)
+        traded_pick_labels_by_key: dict[
+            tuple[int, str],
+            list[str],
+        ] = defaultdict(list)
 
         for traded_pick, _ in traded_picks_by_league_id.get(
             league_id,
@@ -123,6 +151,19 @@ async def get_commissioner_workspace(
                     season,
                 )
             ] += 1
+            traded_pick_labels_by_key[
+                (
+                    int(traded_pick.og_roster_id),
+                    season,
+                )
+            ].append(
+                _build_traded_pick_label(
+                    season=season,
+                    round_number=int(traded_pick.round),
+                    new_roster_id=int(traded_pick.new_roster_id),
+                    roster_name_by_id=roster_name_by_id,
+                )
+            )
 
         dues_entries = [
             CommissionerLeagueDuesEntry(
@@ -134,6 +175,15 @@ async def get_commissioner_workspace(
                 ),
                 season=season,
                 traded_pick_count=traded_pick_count,
+                traded_pick_labels=sorted(
+                    traded_pick_labels_by_key.get(
+                        (
+                            roster_id,
+                            season,
+                        ),
+                        [],
+                    )
+                ),
                 buy_in_amount=(
                     dues_by_key.get(
                         (
@@ -147,7 +197,19 @@ async def get_commissioner_workspace(
                         roster_id,
                         season,
                     ) in dues_by_key
-                    else None
+                    else (
+                        finance_entries_by_key.get(
+                            (
+                                league_id,
+                                season,
+                            )
+                        ).buy_in_amount
+                        if (
+                            league_id,
+                            season,
+                        ) in finance_entries_by_key
+                        else None
+                    )
                 ),
                 is_paid=(
                     dues_by_key.get(
@@ -308,6 +370,31 @@ async def save_commissioner_dues(
         buy_in_amount=body.buy_in_amount,
         is_paid=body.is_paid,
     )
+
+    if body.buy_in_amount is not None:
+        finance_entries_by_key = await get_finance_entries_by_key(
+            db=ctx.db,
+            site_user_id=ctx.site_user.id,
+            league_ids=[body.league_id],
+        )
+        finance_entry = finance_entries_by_key.get(
+            (
+                body.league_id,
+                body.season,
+            )
+        )
+        await upsert_finance_entry(
+            db=ctx.db,
+            site_user_id=ctx.site_user.id,
+            league_id=body.league_id,
+            season=body.season,
+            buy_in_amount=body.buy_in_amount,
+            winnings_amount=(
+                finance_entry.winnings_amount
+                if finance_entry is not None
+                else 0.0
+            ),
+        )
 
     return due_entry.model_copy(
         update={

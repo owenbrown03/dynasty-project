@@ -62,6 +62,9 @@ class CommissionerLeagueDuesEntry(Base):
     roster_name: str
     season: str
     traded_pick_count: int = 0
+    traded_pick_labels: list[str] = Field(
+        default_factory=list,
+    )
     buy_in_amount: float | None = None
     is_paid: bool = False
     paid_at: datetime | None = None

@@ -423,7 +423,7 @@ function CommissionerWorkspaceCard({
       <header className="commissioner-card-header">
         <div>
           <p className="commissioner-card-kicker">
-            Private Workspace
+            League Dues Tracker
           </p>
           <h2 className="commissioner-card-title">
             {league.league_name}
@@ -470,7 +470,7 @@ function CommissionerWorkspaceCard({
 
       <section className="commissioner-section">
         <div className="commissioner-section-header">
-          <p>Future-pick dues</p>
+          <p>Future pick dues</p>
         </div>
 
         <div className="commissioner-list">
@@ -495,6 +495,21 @@ function CommissionerWorkspaceCard({
                         <span>
                           {entry.season} dues · {entry.traded_pick_count} future pick trade{entry.traded_pick_count === 1 ? '' : 's'}
                         </span>
+                        {
+                          entry.traded_pick_labels.length > 0
+                            ? (
+                              <ul className="commissioner-due-picks">
+                                {
+                                  entry.traded_pick_labels.map((pickLabel) => (
+                                    <li key={`${key}-${pickLabel}`}>
+                                      {pickLabel}
+                                    </li>
+                                  ))
+                                }
+                              </ul>
+                            )
+                            : null
+                        }
                       </div>
 
                       <div className="commissioner-due-controls">
@@ -797,7 +812,7 @@ export const CommissionerPage = () => {
                   setTab('workspace');
                 }}
               >
-                Private Workspace
+                League Dues Tracker
               </button>
             )
             : null
@@ -867,7 +882,7 @@ export const CommissionerPage = () => {
         activeTab === 'workspace' && !canManageWorkspace
           ? (
             <div className="commissioner-empty-state">
-              Link your Sleeper account and open your own username to use the private commissioner workspace.
+              Link your Sleeper account and open your own username to use the league dues tracker.
             </div>
           )
           : null
@@ -877,7 +892,7 @@ export const CommissionerPage = () => {
         activeTab === 'workspace' && canManageWorkspace && workspace.loading
           ? (
             <LoadingState
-              label="Loading commissioner workspace..."
+              label="Loading league dues tracker..."
               className="commissioner-empty-state"
             />
           )
@@ -888,7 +903,7 @@ export const CommissionerPage = () => {
         activeTab === 'workspace' && canManageWorkspace && !workspace.loading && workspace.error
           ? (
             <div className="commissioner-empty-state">
-              Unable to load your commissioner workspace.
+              Unable to load your league dues tracker.
             </div>
           )
           : null
