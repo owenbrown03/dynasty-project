@@ -90,6 +90,8 @@
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  justify-self: end;
+  flex-wrap: wrap;
 }
 
 .reminder-form-grid {
@@ -112,6 +114,10 @@
   .reminder-card-header,
   .reminder-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .reminder-checkbox {
+    justify-self: start;
   }
 
   .reminder-card-actions {

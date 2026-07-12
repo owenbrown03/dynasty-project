@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
+import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
 import {
   useCreateReminder,
   useReminders,
@@ -184,10 +185,15 @@ export function RemindersPage() {
   const reminders = useReminders(
     connection.linked,
   );
+  const leagueOverview = useLeagueOverview();
   const createReminderMutation = useCreateReminder();
   const saveReminderMutation = useSaveReminder();
   const [newTitle, setNewTitle] = useState('');
   const [newNote, setNewNote] = useState('');
+  const [newLeagueId, setNewLeagueId] = useState('');
+  const [newDueSeason, setNewDueSeason] = useState('');
+  const [newDueWeek, setNewDueWeek] = useState('');
+  const [newDeliveryChannel, setNewDeliveryChannel] = useState('in_app');
 
   const handleCreate = async () => {
     if (!newTitle.trim()) {
@@ -197,15 +203,21 @@ export function RemindersPage() {
 
     try {
       await createReminderMutation.mutateAsync({
-        league_id: null,
+        league_id: newLeagueId || null,
         title: newTitle,
         note: newNote,
-        due_week: null,
-        due_season: null,
-        delivery_channel: 'in_app',
+        due_week: newDueWeek.trim()
+          ? Number(newDueWeek)
+          : null,
+        due_season: newDueSeason.trim() || null,
+        delivery_channel: newDeliveryChannel,
       });
       setNewTitle('');
       setNewNote('');
+      setNewLeagueId('');
+      setNewDueSeason('');
+      setNewDueWeek('');
+      setNewDeliveryChannel('in_app');
       notify.success('Reminder created.');
     } catch {
       notify.error('Unable to create reminder.');
@@ -291,16 +303,78 @@ export function RemindersPage() {
           ? (
             <>
               <section className="reminder-create-card">
-                <label>
-                  <span>Title</span>
-                  <input
-                    value={newTitle}
-                    onChange={(event) => {
-                      setNewTitle(event.target.value);
-                    }}
-                    placeholder="Buy Josh Downs in Week 3"
-                  />
-                </label>
+                <h2>Create reminder</h2>
+
+                <div className="reminder-form-grid">
+                  <label>
+                    <span>Title</span>
+                    <input
+                      value={newTitle}
+                      onChange={(event) => {
+                        setNewTitle(event.target.value);
+                      }}
+                      placeholder="Buy Josh Downs in Week 3"
+                    />
+                  </label>
+
+                  <label>
+                    <span>League</span>
+                    <select
+                      value={newLeagueId}
+                      onChange={(event) => {
+                        setNewLeagueId(event.target.value);
+                      }}
+                    >
+                      <option value="">General reminder</option>
+                      {
+                        leagueOverview.data.map((league) => (
+                          <option
+                            key={league.league_id}
+                            value={league.league_id}
+                          >
+                            {league.league_name}
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Due season</span>
+                    <input
+                      value={newDueSeason}
+                      onChange={(event) => {
+                        setNewDueSeason(event.target.value);
+                      }}
+                      placeholder="2026"
+                    />
+                  </label>
+
+                  <label>
+                    <span>Due week</span>
+                    <input
+                      type="number"
+                      value={newDueWeek}
+                      onChange={(event) => {
+                        setNewDueWeek(event.target.value);
+                      }}
+                      placeholder="3"
+                    />
+                  </label>
+
+                  <label>
+                    <span>Channel</span>
+                    <select
+                      value={newDeliveryChannel}
+                      onChange={(event) => {
+                        setNewDeliveryChannel(event.target.value);
+                      }}
+                    >
+                      <option value="in_app">In app</option>
+                      <option value="email">Email</option>
+                    </select>
+                  </label>
+                </div>
 
                 <label className="reminder-note-field">
                   <span>Note</span>
