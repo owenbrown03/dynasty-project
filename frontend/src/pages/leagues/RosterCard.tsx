@@ -6,6 +6,7 @@ import { UserAvatar } from '@/components/users/UserAvatar';
 import type { LeaguePick, LeagueRoster } from '@/types';
 import { PlayerTable } from './PlayerTable';
 import { formatNumber } from '@/utils/format';
+import { buildRosterConstructionRows } from './rosterConstruction';
 
 
 interface Props {
@@ -61,6 +62,9 @@ function PickList({
 
 export function RosterCard({ roster }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const constructionRows = buildRosterConstructionRows(
+    roster,
+  );
 
   return (
     <div className="roster-card">
@@ -172,6 +176,48 @@ export function RosterCard({ roster }: Props) {
         expanded
           ? (
             <div className="roster-card-details">
+              <section className="league-detail-section">
+                <div className="league-detail-header">
+                  <p>Roster construction</p>
+                </div>
+
+                <div className="roster-construction-grid">
+                  {
+                    constructionRows.map((row) => (
+                      <article
+                        key={row.position}
+                        className="roster-construction-card"
+                      >
+                        <strong>{row.position}</strong>
+                        <span>
+                          {row.playerCount}
+                          {' '}
+                          spots now
+                        </span>
+                        <span>
+                          {row.targetCount}
+                          {' '}
+                          WAR-weighted target
+                        </span>
+                        <span>
+                          {row.warShare.toFixed(1)}
+                          % dynasty WAR share
+                        </span>
+                        <small>
+                          {
+                            row.delta > 0
+                              ? `${row.delta.toFixed(1)} over target`
+                              : row.delta < 0
+                                ? `${Math.abs(row.delta).toFixed(1)} under target`
+                                : 'On target'
+                          }
+                        </small>
+                      </article>
+                    ))
+                  }
+                </div>
+              </section>
+
               <section className="league-detail-section">
                 <div className="league-detail-header">
                   <p>Draft capital</p>
