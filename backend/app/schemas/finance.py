@@ -13,6 +13,7 @@ class FinanceLeagueSeasonEntry(Base):
     league_family_id: str
     league_name: str
     season: str
+    status: str
     total_rosters: int
     rank: int | None = None
     wins: int | None = None

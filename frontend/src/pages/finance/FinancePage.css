@@ -46,8 +46,9 @@
 
 .finance-settings-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
   gap: 12px;
+  align-items: start;
 }
 
 .finance-tabs {
@@ -199,6 +200,7 @@
 .finance-form-grid label {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .finance-chart-grid {
@@ -267,7 +269,7 @@
 .finance-inline-checkbox,
 .finance-league-checkbox {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   color: var(--color-text-muted);
   font-size: 13px;
@@ -275,10 +277,31 @@
 
 .finance-league-selector {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  gap: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--color-border);
+}
+
+.finance-league-selector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.finance-league-selector-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  max-height: 340px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  overflow: auto;
+}
+
+.finance-league-checkbox {
+  width: 100%;
+  min-width: 0;
 }
 
 .finance-chart-card,
@@ -406,6 +429,12 @@
   font-size: 13px;
 }
 
+@media (max-width: 1200px) {
+  .finance-settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 720px) {
   .finance-settings-grid,
   .finance-chart-grid,
@@ -431,7 +460,8 @@
   .finance-chart-header,
   .finance-save-bar,
   .finance-settings-header,
-  .finance-inline-flags {
+  .finance-inline-flags,
+  .finance-league-selector-actions {
     flex-direction: column;
     align-items: flex-start;
   }

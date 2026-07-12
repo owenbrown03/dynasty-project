@@ -38,6 +38,13 @@ type FinanceSeasonDraft = FinanceSettingsDraft & {
   isExcluded: boolean;
 };
 
+const TRACKER_VISIBLE_STATUSES = new Set([
+  'pre_draft',
+  'drafting',
+  'in_season',
+  'post_season',
+]);
+
 
 function formatCurrency(
   value: number,
@@ -683,7 +690,13 @@ export function FinancePage() {
   );
 
   const trackerEntries = useMemo(
-    () => finance.data?.seasons ?? [],
+    () => (
+      finance.data?.seasons.filter((entry) => (
+        TRACKER_VISIBLE_STATUSES.has(
+          entry.status,
+        )
+      )) ?? []
+    ),
     [finance.data],
   );
 
@@ -748,6 +761,31 @@ export function FinancePage() {
     })).sort((left, right) => (
       left.leagueName.localeCompare(right.leagueName)
     ));
+  }, [trackerEntries]);
+
+  const trackerSummary = useMemo(() => {
+    const includedEntries = trackerEntries.filter((entry) => (
+      !entry.is_excluded
+    ));
+
+    return {
+      totalBuyIns: includedEntries.reduce(
+        (sum, entry) => sum + entry.buy_in_amount,
+        0,
+      ),
+      totalWinnings: includedEntries.reduce(
+        (sum, entry) => sum + entry.winnings_amount,
+        0,
+      ),
+      totalNet: includedEntries.reduce(
+        (sum, entry) => sum + entry.net_amount,
+        0,
+      ),
+      projectedCurrentWinnings: includedEntries.reduce(
+        (sum, entry) => sum + entry.projected_winnings_amount,
+        0,
+      ),
+    };
   }, [trackerEntries]);
 
   const handleSaveAll = async () => {
@@ -912,22 +950,22 @@ export function FinancePage() {
                       <section className="finance-summary-grid">
                         <article className="finance-summary-card">
                           <span>Total buy-ins</span>
-                          <strong>{formatCurrency(finance.data.total_buy_ins)}</strong>
+                          <strong>{formatCurrency(trackerSummary.totalBuyIns)}</strong>
                         </article>
 
                         <article className="finance-summary-card">
                           <span>Total winnings</span>
-                          <strong>{formatCurrency(finance.data.total_winnings)}</strong>
+                          <strong>{formatCurrency(trackerSummary.totalWinnings)}</strong>
                         </article>
 
                         <article className="finance-summary-card">
                           <span>Total net</span>
-                          <strong>{formatCurrency(finance.data.total_net)}</strong>
+                          <strong>{formatCurrency(trackerSummary.totalNet)}</strong>
                         </article>
 
                         <article className="finance-summary-card">
                           <span>Projected current payouts</span>
-                          <strong>{formatCurrency(finance.data.projected_current_winnings)}</strong>
+                          <strong>{formatCurrency(trackerSummary.projectedCurrentWinnings)}</strong>
                         </article>
                       </section>
 
@@ -1033,6 +1071,32 @@ export function FinancePage() {
                           />
 
                           <div className="finance-league-selector">
+                            <div className="finance-league-selector-actions">
+                              <button
+                                type="button"
+                                className="button-secondary"
+                                onClick={() => {
+                                  setSelectedLeagueFamilies(
+                                    uniqueLeagueFamilies.map((league) => (
+                                      league.leagueFamilyId
+                                    )),
+                                  );
+                                }}
+                              >
+                                Select all
+                              </button>
+                              <button
+                                type="button"
+                                className="button-secondary"
+                                onClick={() => {
+                                  setSelectedLeagueFamilies([]);
+                                }}
+                              >
+                                Deselect all
+                              </button>
+                            </div>
+
+                            <div className="finance-league-selector-list">
                             {
                               uniqueLeagueFamilies.map((league) => (
                                 <label
@@ -1061,6 +1125,7 @@ export function FinancePage() {
                                 </label>
                               ))
                             }
+                            </div>
                           </div>
                         </article>
                       </section>

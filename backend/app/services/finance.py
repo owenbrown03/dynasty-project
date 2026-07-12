@@ -612,6 +612,7 @@ async def get_finance_summary(
                 league_family_id=family_key,
                 league_name=league.name,
                 season=league.season,
+                status=league.status,
                 total_rosters=league.total_rosters,
                 rank=rank,
                 finish_place=rank,

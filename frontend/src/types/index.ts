@@ -435,6 +435,7 @@ export interface FinanceLeagueSeasonEntry {
   league_family_id: string;
   league_name: string;
   season: string;
+  status: string;
   total_rosters: number;
   rank: number | null;
   wins: number | null;
