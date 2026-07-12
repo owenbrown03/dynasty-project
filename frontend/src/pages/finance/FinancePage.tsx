@@ -650,6 +650,7 @@ export function FinancePage() {
   const saveDefaultsMutation = useSaveFinanceDefaults();
   const saveLeagueDefaultsMutation = useSaveFinanceLeagueDefaults();
   const [activeTab, setActiveTab] = useState<FinanceTab>('tracker');
+  const [selectedTrackerSeason, setSelectedTrackerSeason] = useState('current');
   const [chartSeason, setChartSeason] = useState('all');
   const [seasonDrafts, setSeasonDrafts] = useState<
     Record<string, FinanceSeasonDraft>
@@ -691,13 +692,20 @@ export function FinancePage() {
 
   const trackerEntries = useMemo(
     () => (
-      finance.data?.seasons.filter((entry) => (
-        TRACKER_VISIBLE_STATUSES.has(
-          entry.status,
-        )
-      )) ?? []
+      finance.data?.seasons.filter((entry) => {
+        if (selectedTrackerSeason === 'current') {
+          return TRACKER_VISIBLE_STATUSES.has(
+            entry.status,
+          );
+        }
+
+        return entry.season === selectedTrackerSeason;
+      }) ?? []
     ),
-    [finance.data],
+    [
+      finance.data,
+      selectedTrackerSeason,
+    ],
   );
 
   const chartEntries = useMemo(
@@ -1121,7 +1129,9 @@ export function FinancePage() {
                                       ));
                                     }}
                                   />
-                                  {league.leagueName}
+                                  <span className="finance-league-checkbox-label">
+                                    {league.leagueName}
+                                  </span>
                                 </label>
                               ))
                             }
@@ -1131,6 +1141,27 @@ export function FinancePage() {
                       </section>
 
                       <section className="finance-toolbar">
+                        <label>
+                          <span>Tracker year</span>
+                          <select
+                            value={selectedTrackerSeason}
+                            onChange={(event) => {
+                              setSelectedTrackerSeason(
+                                event.target.value,
+                              );
+                            }}
+                          >
+                            <option value="current">Current leagues</option>
+                            {
+                              availableSeasons.map((season) => (
+                                <option key={season} value={season}>
+                                  {season}
+                                </option>
+                              ))
+                            }
+                          </select>
+                        </label>
+
                         <button
                           type="button"
                           className="button-primary"

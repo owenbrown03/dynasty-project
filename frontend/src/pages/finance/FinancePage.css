@@ -268,7 +268,7 @@
 
 .finance-inline-checkbox,
 .finance-league-checkbox {
-  display: inline-flex;
+  display: flex;
   align-items: flex-start;
   gap: 8px;
   color: var(--color-text-muted);
@@ -302,6 +302,14 @@
 .finance-league-checkbox {
   width: 100%;
   min-width: 0;
+}
+
+.finance-league-checkbox-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-strong);
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .finance-chart-card,
