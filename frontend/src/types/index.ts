@@ -201,6 +201,7 @@ export interface LeagueDetails {
   league_name: string;
   season: string;
   total_rosters: number;
+  note: string;
   settings_badges: string[];
   settings_details: LeagueSettingsDetail[];
   rosters: LeagueRoster[];

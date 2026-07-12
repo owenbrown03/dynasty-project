@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -12,6 +14,9 @@ from app.crud.sleeper.draft import (
 from app.crud.sleeper.league import (
     get_league_with_rosters,
     get_sync_states,
+)
+from app.crud.sleeper.personal import (
+    get_commissioner_notes_by_league_id,
 )
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
@@ -120,6 +125,7 @@ class LeagueDetails:
         db: AsyncSession,
         redis,
         league_id: str,
+        site_user_id: UUID | None = None,
     ):
         leagues = await get_league_with_rosters(
             db,
@@ -131,6 +137,15 @@ class LeagueDetails:
 
         league = leagues[0][0]
         roster_rows = [roster for _, roster in leagues]
+        notes_by_league_id = (
+            await get_commissioner_notes_by_league_id(
+                db=db,
+                site_user_id=site_user_id,
+                league_ids=[league_id],
+            )
+            if site_user_id is not None
+            else {}
+        )
         sync_states = await get_sync_states(
             db,
             [league_id],
@@ -533,6 +548,11 @@ class LeagueDetails:
             league_name=league.name,
             season=str(league.season),
             total_rosters=league.total_rosters,
+            note=(
+                notes_by_league_id[league_id].note
+                if league_id in notes_by_league_id
+                else ""
+            ),
             settings_badges=build_settings_badges(league),
             settings_details=build_settings_details(league),
             rosters=rosters,

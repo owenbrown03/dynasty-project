@@ -30,6 +30,11 @@ async def details_endpoint(
         ctx.db,
         ctx.redis,
         league_id=league_id,
+        site_user_id=(
+            ctx.site_user.id
+            if ctx.site_user is not None
+            else None
+        ),
     )
 
 @router.get("/dashboard/{username}")

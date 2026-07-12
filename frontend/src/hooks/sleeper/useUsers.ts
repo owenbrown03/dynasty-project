@@ -147,9 +147,14 @@ export function useSaveCommissionerNote() {
     mutationFn: (
       body: CommissionerLeagueNoteUpdate,
     ) => api.users.saveCommissionerNote(body),
-    onSuccess: async () => {
+    onSuccess: async (_, body) => {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.users.commissionerWorkspace,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.leagues.details(
+          body.league_id,
+        ),
       });
     },
   });

@@ -77,6 +77,7 @@ class LeagueDetailsResponse(BaseModel):
     league_name: str
     season: str
     total_rosters: int
+    note: str = ""
     settings_badges: list[str]
     settings_details: list[LeagueSettingsDetail]
     rosters: list[LeagueRoster]

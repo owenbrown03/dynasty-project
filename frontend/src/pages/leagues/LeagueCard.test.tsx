@@ -1,8 +1,23 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { vi } from 'vitest';
 
 import { LeagueCard } from './LeagueCard';
 import type { LeagueDetails } from '@/types';
+
+vi.mock('@/hooks/sleeper/useUsers', () => ({
+  useSaveCommissionerNote: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}));
+
+vi.mock('@/utils/notify', () => ({
+  notify: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
 
 const league: LeagueDetails = {
@@ -10,6 +25,7 @@ const league: LeagueDetails = {
   league_name: 'Test League',
   season: '2026',
   total_rosters: 12,
+  note: '',
   settings_badges: ['Best Ball', '12 Team'],
   settings_details: [
     { label: 'Season', value: '2026' },
