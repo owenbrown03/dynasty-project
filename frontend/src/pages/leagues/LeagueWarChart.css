@@ -1,0 +1,86 @@
+.league-war-chart-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.league-war-chart-header,
+.league-war-chart-legend {
+  display: flex;
+  gap: 12px;
+}
+
+.league-war-chart-header {
+  justify-content: space-between;
+  align-items: end;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.league-war-chart-header p,
+.league-war-chart-header span,
+.league-war-chart-legend-item small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.league-war-chart-header p {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.league-war-chart-header h3 {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.league-war-chart-legend {
+  flex-wrap: wrap;
+}
+
+.league-war-chart-legend-item {
+  display: grid;
+  gap: 4px;
+  min-width: 130px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.league-war-chart-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 4px;
+}
+
+.league-war-chart-scroll {
+  overflow-x: auto;
+}
+
+.league-war-chart-svg {
+  width: 100%;
+  min-width: 680px;
+}
+
+.league-war-chart-grid-line {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.league-war-chart-axis-label,
+.league-war-chart-point-label {
+  fill: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .league-war-chart-header {
+    align-items: start;
+    flex-direction: column;
+  }
+}
