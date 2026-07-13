@@ -817,30 +817,26 @@ export function FinancePage() {
     ));
   }, [displayedTrackerEntries]);
 
-  const trackerSummary = useMemo(() => {
-    const includedEntries = displayedTrackerEntries.filter((entry) => (
-      !entry.is_excluded
-    ));
-
+  const overviewSummary = useMemo(() => {
     return {
-      totalBuyIns: includedEntries.reduce(
+      totalBuyIns: chartEntries.reduce(
         (sum, entry) => sum + entry.buy_in_amount,
         0,
       ),
-      totalWinnings: includedEntries.reduce(
+      totalWinnings: chartEntries.reduce(
         (sum, entry) => sum + entry.winnings_amount,
         0,
       ),
-      totalNet: includedEntries.reduce(
+      totalNet: chartEntries.reduce(
         (sum, entry) => sum + entry.net_amount,
         0,
       ),
-      projectedCurrentWinnings: includedEntries.reduce(
+      projectedCurrentWinnings: chartEntries.reduce(
         (sum, entry) => sum + entry.projected_winnings_amount,
         0,
       ),
     };
-  }, [displayedTrackerEntries]);
+  }, [chartEntries]);
 
   const handleSaveAll = async () => {
     if (!dirtyEntries.length) {
@@ -980,7 +976,7 @@ export function FinancePage() {
                     setActiveTab('charts');
                   }}
                 >
-                  Charts
+                  Overview
                 </button>
                 <button
                   type="button"
@@ -1283,28 +1279,28 @@ export function FinancePage() {
                       <section className="finance-summary-grid">
                         <article className="finance-summary-card">
                           <span>Total buy-ins</span>
-                          <strong>{formatCurrency(trackerSummary.totalBuyIns)}</strong>
+                          <strong>{formatCurrency(overviewSummary.totalBuyIns)}</strong>
                         </article>
 
                         <article className="finance-summary-card">
                           <span>Total winnings</span>
-                          <strong>{formatCurrency(trackerSummary.totalWinnings)}</strong>
+                          <strong>{formatCurrency(overviewSummary.totalWinnings)}</strong>
                         </article>
 
                         <article className="finance-summary-card">
                           <span>Total net</span>
-                          <strong>{formatCurrency(trackerSummary.totalNet)}</strong>
+                          <strong>{formatCurrency(overviewSummary.totalNet)}</strong>
                         </article>
 
                         <article className="finance-summary-card">
                           <span>Projected current payouts</span>
-                          <strong>{formatCurrency(trackerSummary.projectedCurrentWinnings)}</strong>
+                          <strong>{formatCurrency(overviewSummary.projectedCurrentWinnings)}</strong>
                         </article>
                       </section>
 
                       <section className="finance-toolbar">
                         <label>
-                          <span>Charts year</span>
+                          <span>Overview year</span>
                           <select
                             value={chartSeason}
                             onChange={(event) => {
