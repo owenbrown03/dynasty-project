@@ -286,6 +286,10 @@ function financeResultLabel(
     return `Finish ${ordinal(entry.finish_place)} of ${entry.total_rosters}`;
   }
 
+  if (entry.projected_finish_place !== null) {
+    return `Projected seed ${ordinal(entry.projected_finish_place)} of ${entry.total_rosters}`;
+  }
+
   if (entry.rank !== null) {
     return `Current rank ${ordinal(entry.rank)} of ${entry.total_rosters}`;
   }
@@ -827,11 +831,6 @@ function FinanceSeasonCard({
           <span>Expected payout</span>
           <strong>{formatCurrency(entry.projected_winnings_amount)}</strong>
           <small>
-            {
-              entry.projected_finish_place !== null
-                ? `Projected seed ${ordinal(entry.projected_finish_place)} · `
-                : ''
-            }
             {projectionSourceLabel(entry.projected_winnings_source)}
           </small>
         </div>
