@@ -13,6 +13,9 @@ from app.models.db.sleeper.personal import (
     FinanceLeagueSeason,
     FinanceUserDefaults,
     HiddenLeague,
+    PersonalProjection,
+    PersonalProjectionOutcome,
+    PersonalRankCurve,
     Reminder,
 )
 
@@ -288,6 +291,213 @@ async def get_hidden_league(
         )
     )
     return results.scalar_one_or_none()
+
+
+async def get_personal_projections_for_player(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    player_id: str,
+) -> list[PersonalProjection]:
+    results = await db.execute(
+        select(PersonalProjection).where(
+            PersonalProjection.site_user_id == site_user_id,
+            PersonalProjection.player_id == player_id,
+        )
+    )
+    return list(results.scalars().all())
+
+
+async def get_personal_projections_for_site_user(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    seasons: list[int] | None = None,
+) -> list[PersonalProjection]:
+    statement = select(PersonalProjection).where(
+        PersonalProjection.site_user_id == site_user_id,
+    )
+
+    if seasons:
+        statement = statement.where(
+            PersonalProjection.season.in_(seasons),
+        )
+
+    results = await db.execute(statement)
+    return list(results.scalars().all())
+
+
+async def get_personal_projection_outcomes(
+    *,
+    db: AsyncSession,
+    projection_ids: list[int],
+) -> dict[int, list[PersonalProjectionOutcome]]:
+    if not projection_ids:
+        return {}
+
+    results = await db.execute(
+        select(PersonalProjectionOutcome).where(
+            PersonalProjectionOutcome.projection_id.in_(
+                projection_ids,
+            )
+        )
+    )
+    rows = list(results.scalars().all())
+    output: dict[int, list[PersonalProjectionOutcome]] = {}
+
+    for row in rows:
+        output.setdefault(
+            row.projection_id,
+            [],
+        ).append(row)
+
+    for items in output.values():
+        items.sort(
+            key=lambda item: item.outcome_index,
+        )
+
+    return output
+
+
+async def get_personal_projection_by_key(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    player_id: str,
+    season: int,
+) -> PersonalProjection | None:
+    results = await db.execute(
+        select(PersonalProjection).where(
+            PersonalProjection.site_user_id == site_user_id,
+            PersonalProjection.player_id == player_id,
+            PersonalProjection.season == season,
+        )
+    )
+    return results.scalar_one_or_none()
+
+
+async def replace_personal_projection_outcomes(
+    *,
+    db: AsyncSession,
+    projection_id: int,
+    outcomes: list[tuple[int, float]],
+) -> list[PersonalProjectionOutcome]:
+    existing = await db.execute(
+        select(PersonalProjectionOutcome).where(
+            PersonalProjectionOutcome.projection_id == projection_id,
+        )
+    )
+
+    for row in existing.scalars().all():
+        await db.delete(row)
+
+    new_rows: list[PersonalProjectionOutcome] = []
+
+    for index, (position_rank, probability) in enumerate(
+        outcomes,
+    ):
+        row = PersonalProjectionOutcome(
+            projection_id=projection_id,
+            outcome_index=index,
+            position_rank=position_rank,
+            probability=probability,
+        )
+        db.add(row)
+        new_rows.append(row)
+
+    await db.flush()
+    return new_rows
+
+
+async def upsert_personal_projection(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    player_id: str,
+    season: int,
+    position: str,
+    default_source: str,
+    is_customized: bool,
+    outcomes: list[tuple[int, float]],
+) -> PersonalProjection:
+    record = await get_personal_projection_by_key(
+        db=db,
+        site_user_id=site_user_id,
+        player_id=player_id,
+        season=season,
+    )
+
+    now = datetime.utcnow()
+
+    if record is None:
+        record = PersonalProjection(
+            site_user_id=site_user_id,
+            player_id=player_id,
+            season=season,
+            position=position,
+            default_source=default_source,
+            is_customized=is_customized,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(record)
+        await db.flush()
+    else:
+        record.position = position
+        record.default_source = default_source
+        record.is_customized = is_customized
+        record.updated_at = now
+        db.add(record)
+        await db.flush()
+
+    await replace_personal_projection_outcomes(
+        db=db,
+        projection_id=record.id,
+        outcomes=outcomes,
+    )
+
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def get_personal_rank_curve_rows(
+    *,
+    db: AsyncSession,
+    settings_fingerprint: str,
+    curve_version: str,
+) -> list[PersonalRankCurve]:
+    results = await db.execute(
+        select(PersonalRankCurve).where(
+            PersonalRankCurve.settings_fingerprint == settings_fingerprint,
+            PersonalRankCurve.curve_version == curve_version,
+        )
+    )
+    return list(results.scalars().all())
+
+
+async def replace_personal_rank_curve_rows(
+    *,
+    db: AsyncSession,
+    settings_fingerprint: str,
+    curve_version: str,
+    rows: list[PersonalRankCurve],
+) -> list[PersonalRankCurve]:
+    existing = await db.execute(
+        select(PersonalRankCurve).where(
+            PersonalRankCurve.settings_fingerprint == settings_fingerprint,
+            PersonalRankCurve.curve_version == curve_version,
+        )
+    )
+
+    for row in existing.scalars().all():
+        await db.delete(row)
+
+    for row in rows:
+        db.add(row)
+
+    await db.commit()
+    return rows
 
 
 async def hide_league(

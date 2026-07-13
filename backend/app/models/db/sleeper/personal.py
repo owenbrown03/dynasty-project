@@ -13,6 +13,91 @@ class PlayerValue(SQLModel, table=True):
     notes: Optional[str] = Field(default=None)
 
 
+class PersonalProjection(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    site_user_id: uuid.UUID = Field(
+        sa_type=UUID(as_uuid=True),
+        foreign_key="siteuser.id",
+        index=True,
+    )
+    player_id: str = Field(
+        foreign_key="player.player_id",
+        index=True,
+    )
+    season: int = Field(index=True)
+    position: str = Field(index=True)
+    default_source: str = Field(default="underdog")
+    is_customized: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "site_user_id",
+            "player_id",
+            "season",
+            name="uq_personalprojection_site_user_player_season",
+        ),
+    )
+
+
+class PersonalProjectionOutcome(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    projection_id: int = Field(
+        foreign_key="personalprojection.id",
+        index=True,
+    )
+    outcome_index: int = Field(default=0)
+    position_rank: int = Field(index=True)
+    probability: float = Field(default=100.0)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "projection_id",
+            "outcome_index",
+            name="uq_personalprojectionoutcome_projection_index",
+        ),
+    )
+
+
+class PersonalRankCurve(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    settings_fingerprint: str = Field(index=True)
+    total_rosters: int = Field(default=12)
+    scoring_settings: dict = Field(
+        default_factory=dict,
+        sa_type=JSON,
+    )
+    roster_positions: list[str] = Field(
+        default_factory=list,
+        sa_type=JSON,
+    )
+    season_start: int = Field(index=True)
+    season_end: int = Field(index=True)
+    position: str = Field(index=True)
+    rank_value: int = Field(index=True)
+    rank_band_start: int = Field(index=True)
+    rank_band_end: int = Field(index=True)
+    sample_size: int = Field(default=0)
+    avg_redraft_starter_war: float = Field(default=0.0)
+    avg_redraft_roster_war: float = Field(default=0.0)
+    curve_version: str = Field(
+        default="league_context_v1",
+        index=True,
+    )
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "settings_fingerprint",
+            "position",
+            "rank_value",
+            "curve_version",
+            name="uq_personalrankcurve_fingerprint_position_rank_version",
+        ),
+    )
+
+
 class CommissionerLeagueNote(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     site_user_id: uuid.UUID = Field(

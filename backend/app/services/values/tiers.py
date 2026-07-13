@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from math import floor
-from types import SimpleNamespace
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +27,9 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.values.canonical import (
+    build_canonical_war_league,
+)
 from app.services.waivers.dynasty import build_dynasty_projection
 
 
@@ -53,48 +55,6 @@ TIER_LABELS = [
 ]
 
 MAX_TIER_PLAYERS = 500
-
-CANONICAL_WAR_ROSTER_POSITIONS = [
-    "QB",
-    "RB",
-    "RB",
-    "WR",
-    "WR",
-    "TE",
-    "FLEX",
-    "FLEX",
-    "SUPER_FLEX",
-    "BN",
-    "BN",
-    "BN",
-    "BN",
-    "BN",
-    "BN",
-]
-
-CANONICAL_WAR_SCORING = {
-    "pass_yd": 0.04,
-    "pass_td": 4.0,
-    "pass_int": -2.0,
-    "rush_yd": 0.1,
-    "rush_td": 6.0,
-    "rec": 1.0,
-    "rec_yd": 0.1,
-    "rec_td": 6.0,
-    "fum_lost": -2.0,
-}
-
-
-def build_canonical_war_league(
-    season: int,
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        season=season,
-        total_rosters=12,
-        scoring_settings=CANONICAL_WAR_SCORING,
-        roster_positions=CANONICAL_WAR_ROSTER_POSITIONS,
-    )
-
 
 def assign_tier_label(
     *,
