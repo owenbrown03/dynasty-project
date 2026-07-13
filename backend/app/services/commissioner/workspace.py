@@ -17,10 +17,7 @@ from app.crud.sleeper.personal import (
     upsert_commissioner_note,
     upsert_commissioner_settings,
 )
-from app.crud.sleeper.roster import (
-    get_all_rosters_by_league,
-    get_owned_roster_rows,
-)
+from app.crud.sleeper.roster import get_all_rosters_by_league
 from app.crud.sleeper.user import get_users
 from app.schemas.commissioner import (
     CommissionerLeagueDuesEntry,
@@ -32,6 +29,9 @@ from app.schemas.commissioner import (
 )
 from app.services.draft.picks import (
     build_roster_name_by_id,
+)
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_sleeper_user_id,
 )
 
 
@@ -75,14 +75,16 @@ async def get_commissioner_workspace(
         ctx,
     )
 
-    owned_rows = await get_owned_roster_rows(
+    owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
         db=ctx.db,
-        connection=ctx.connection,
+        sleeper_user_id=ctx.connection.sleeper_user_id or "",
+        site_user_id=ctx.site_user.id,
+        include_hidden=False,
     )
 
     leagues_by_id = {
-        league.league_id: league
-        for _, league in owned_rows
+        row.league.league_id: row.league
+        for row in owned_rows
     }
     league_ids = list(leagues_by_id.keys())
 

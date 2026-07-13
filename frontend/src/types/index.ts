@@ -594,7 +594,7 @@ export interface FinanceLeagueSeasonEntry {
   has_league_default: boolean;
   is_excluded: boolean;
   projected_winnings_amount: number;
-  projected_winnings_source: 'heuristic' | 'historical_rank' | 'configured_place';
+  projected_winnings_source: 'heuristic' | 'historical_rank' | 'configured_place' | 'seed_probability' | 'no_projection';
   net_amount: number;
 }
 
