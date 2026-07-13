@@ -488,6 +488,25 @@
   font-size: 13px;
 }
 
+.finance-timeline-note {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.finance-timeline-note strong {
+  font-size: 22px;
+}
+
+.finance-timeline-note span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .finance-league-breakdown-card {
   align-content: start;
 }

@@ -48,6 +48,13 @@ type FinanceChartEntry = {
   netAmount: number;
 };
 
+type FinanceTimelinePoint = {
+  week: number;
+  label: string;
+  actualAmount: number | null;
+  projectedAmount: number;
+};
+
 const TRACKER_VISIBLE_STATUSES = new Set([
   'pre_draft',
   'drafting',
@@ -343,6 +350,29 @@ function buildSeasonChartEntries(
     ));
 }
 
+function buildCurrentFinanceTimeline(
+  entries: FinanceLeagueSeasonEntry[],
+): FinanceTimelinePoint[] {
+  if (!entries.length) {
+    return [];
+  }
+
+  return [
+    {
+      week: 1,
+      label: 'Week 1',
+      actualAmount: entries.reduce(
+        (sum, entry) => sum + entry.winnings_amount,
+        0,
+      ),
+      projectedAmount: entries.reduce(
+        (sum, entry) => sum + entry.projected_winnings_amount,
+        0,
+      ),
+    },
+  ];
+}
+
 
 function FinanceTrendChart({
   entries,
@@ -406,6 +436,92 @@ function FinanceTrendChart({
             ))
           }
         </div>
+      </div>
+    </article>
+  );
+}
+
+function FinanceProjectionTimeline({
+  entries,
+  season,
+}: {
+  entries: FinanceLeagueSeasonEntry[];
+  season: string;
+}) {
+  const points = buildCurrentFinanceTimeline(entries);
+  const actualPoints = buildLinePoints(
+    points.map((point) => point.actualAmount ?? 0),
+    320,
+    140,
+  );
+  const projectedPoints = buildLinePoints(
+    points.map((point) => point.projectedAmount),
+    320,
+    140,
+  );
+  const latest = points[points.length - 1];
+
+  return (
+    <article className="finance-chart-card">
+      <div className="finance-chart-header">
+        <div>
+          <p className="finance-chart-kicker">Weekly projection</p>
+          <h2>{season} payout trajectory</h2>
+        </div>
+      </div>
+
+      <div className="finance-chart-legend">
+        <span className="finance-legend-item">
+          <i className="finance-legend-line finance-legend-line-actual" />
+          Actual payout
+        </span>
+        <span className="finance-legend-item">
+          <i className="finance-legend-line finance-legend-line-projected" />
+          Expected payout
+        </span>
+      </div>
+
+      <div className="finance-line-chart">
+        <svg viewBox="0 0 320 140" aria-hidden="true">
+          <polyline
+            fill="none"
+            stroke="var(--finance-actual-color)"
+            strokeWidth="3"
+            points={actualPoints}
+          />
+          <polyline
+            fill="none"
+            stroke="var(--finance-projected-color)"
+            strokeWidth="3"
+            strokeDasharray="6 6"
+            points={projectedPoints}
+          />
+        </svg>
+
+        <div className="finance-chart-label-row">
+          {
+            points.map((point) => (
+              <span key={point.week}>
+                {point.label}
+              </span>
+            ))
+          }
+        </div>
+      </div>
+
+      <div className="finance-timeline-note">
+        <strong>
+          {
+            latest
+              ? formatCurrency(latest.projectedAmount)
+              : formatCurrency(0)
+          }
+        </strong>
+        <span>
+          Current expected payout snapshot. Weekly snapshots are not
+          persisted yet, so this will grow once the sync stores weekly
+          finance history.
+        </span>
       </div>
     </article>
   );
@@ -1443,14 +1559,25 @@ export function FinancePage() {
                               />
                             )
                             : (
+                              <FinanceProjectionTimeline
+                                entries={chartEntries}
+                                season={chartSeason}
+                              />
+                            )
+                        }
+                        {
+                          chartSeason === 'all'
+                            ? (
+                              <FinanceNetChart
+                                entries={seasonChartEntries}
+                              />
+                            )
+                            : (
                               <FinanceLeagueBreakdown
                                 entries={chartEntries}
                               />
                             )
                         }
-                        <FinanceNetChart
-                          entries={seasonChartEntries}
-                        />
                       </section>
                     </>
                   )
