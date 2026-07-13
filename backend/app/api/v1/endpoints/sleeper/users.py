@@ -90,6 +90,7 @@ async def get_commissioner_orphans_endpoint(
         db=ctx.db,
         username=username,
         value_basis=value_basis,
+        site_user_id=ctx.site_user.id if ctx.site_user else None,
     )
 
 

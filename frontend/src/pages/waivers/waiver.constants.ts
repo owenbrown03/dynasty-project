@@ -13,6 +13,10 @@ export const VALUE_BASIS_OPTIONS: Array<{
     label: 'FantasyCalc Value',
   },
   {
+    value: 'my_war',
+    label: 'My WAR',
+  },
+  {
     value: 'dynasty_roster_war',
     label: 'Dynasty Roster WAR',
   },
@@ -29,3 +33,14 @@ export const VALUE_BASIS_OPTIONS: Array<{
     label: 'Redraft Starter WAR',
   },
 ];
+
+export function getValueBasisOptions(
+  includePersonal: boolean,
+) {
+  return VALUE_BASIS_OPTIONS.filter(
+    (option) => (
+      includePersonal
+      || option.value !== 'my_war'
+    ),
+  );
+}

@@ -25,6 +25,10 @@ export function PlayerTable({ players }: Props) {
           <th>R Ro</th>
           <th>D St</th>
           <th>D Ro</th>
+          <th>My R St</th>
+          <th>My R Ro</th>
+          <th>My D St</th>
+          <th>My D Ro</th>
         </tr>
       </thead>
 
@@ -69,6 +73,10 @@ export function PlayerTable({ players }: Props) {
             <td>{formatNumber(player.redraft_roster_war)}</td>
             <td>{formatNumber(player.dynasty_starter_war)}</td>
             <td>{formatNumber(player.dynasty_roster_war)}</td>
+            <td>{formatNumber(player.my_redraft_starter_war)}</td>
+            <td>{formatNumber(player.my_redraft_roster_war)}</td>
+            <td>{formatNumber(player.my_dynasty_starter_war)}</td>
+            <td>{formatNumber(player.my_dynasty_roster_war)}</td>
           </tr>
         ))}
       </tbody>

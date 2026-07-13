@@ -312,11 +312,17 @@ async def get_personal_projections_for_site_user(
     *,
     db: AsyncSession,
     site_user_id: UUID,
+    player_ids: list[str] | None = None,
     seasons: list[int] | None = None,
 ) -> list[PersonalProjection]:
     statement = select(PersonalProjection).where(
         PersonalProjection.site_user_id == site_user_id,
     )
+
+    if player_ids:
+        statement = statement.where(
+            PersonalProjection.player_id.in_(player_ids),
+        )
 
     if seasons:
         statement = statement.where(

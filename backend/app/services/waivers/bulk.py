@@ -38,6 +38,7 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.personal_values import hydrate_personal_player_values
 from app.services.players.search import (
     search_local_dynasty_players,
 )
@@ -60,6 +61,7 @@ logger = logging.getLogger(__name__)
 DYNASTY_VALUE_BASES = {
     ValueBasis.DYNASTY_STARTER_WAR,
     ValueBasis.DYNASTY_ROSTER_WAR,
+    ValueBasis.MY_WAR,
 }
 
 
@@ -232,6 +234,7 @@ async def build_bulk_league_availability(
     *,
     db: AsyncSession,
     redis: RedisClient,
+    site_user_id,
     roster: Roster,
     league: League,
     target_player: Player,
@@ -356,6 +359,13 @@ async def build_bulk_league_availability(
             dynasty_war_by_player_id
         ),
     )
+    if value_basis == ValueBasis.MY_WAR:
+        player_values = await hydrate_personal_player_values(
+            db=db,
+            site_user_id=site_user_id,
+            league=league,
+            player_values=player_values,
+        )
 
     value_by_player_id = {
         player.player_id: player
@@ -483,6 +493,7 @@ async def get_bulk_waiver_availability(
             await build_bulk_league_availability(
                 db=db,
                 redis=redis,
+                site_user_id=connection.site_user_id,
                 roster=roster,
                 league=league,
                 target_player=target_player,

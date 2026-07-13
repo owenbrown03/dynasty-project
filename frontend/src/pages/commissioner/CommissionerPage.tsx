@@ -11,6 +11,7 @@ import {
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { useAuth } from '@/hooks/useAuth';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import {
@@ -29,7 +30,10 @@ import type {
   CommissionerPlayerAsset,
   ValueBasis,
 } from '@/types';
-import { VALUE_BASIS_OPTIONS } from '@/pages/waivers/waiver.constants';
+import {
+  VALUE_BASIS_OPTIONS,
+  getValueBasisOptions,
+} from '@/pages/waivers/waiver.constants';
 
 import './CommissionerPage.css';
 
@@ -655,6 +659,7 @@ export const CommissionerPage = () => {
   const params = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const valuePreference = useValuePreference();
+  const auth = useAuth();
   const connection = useSleeperConnection();
 
   const routeUsername = params.username ?? null;
@@ -830,7 +835,7 @@ export const CommissionerPage = () => {
               }}
             >
               {
-                VALUE_BASIS_OPTIONS.map((option) => (
+                getValueBasisOptions(auth.isLoggedIn).map((option) => (
                   <option
                     key={option.value}
                     value={option.value}

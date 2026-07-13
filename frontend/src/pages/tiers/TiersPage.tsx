@@ -45,7 +45,9 @@ export const TiersPage = () => {
     ? 'dynasty_roster_war'
     : initialSource;
   const [source, setSource] = useState<TierBoardSource>(
-    initialSource,
+    initialSource === 'my_war'
+      ? 'league_war'
+      : initialSource,
   );
   const [warBasis, setWarBasis] = useState<ValueBasis>(
     initialWarBasis,

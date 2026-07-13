@@ -218,6 +218,10 @@ export interface LeaguePlayer {
   redraft_roster_war: number | null;
   dynasty_starter_war: number | null;
   dynasty_roster_war: number | null;
+  my_redraft_starter_war?: number | null;
+  my_redraft_roster_war?: number | null;
+  my_dynasty_starter_war?: number | null;
+  my_dynasty_roster_war?: number | null;
   is_starter: boolean;
 }
 
@@ -328,6 +332,7 @@ export interface Dashboard {
 export type ValueBasis =
   | 'ktc'
   | 'fantasycalc'
+  | 'my_war'
   | 'redraft_starter_war'
   | 'redraft_roster_war'
   | 'dynasty_starter_war'
@@ -674,6 +679,10 @@ export interface PlayerValue {
 
   dynasty_starter_war: number | null;
   dynasty_roster_war: number | null;
+  my_redraft_starter_war?: number | null;
+  my_redraft_roster_war?: number | null;
+  my_dynasty_starter_war?: number | null;
+  my_dynasty_roster_war?: number | null;
 
   dynasty_expected_games_remaining: number | null;
   dynasty_seasons_remaining: number | null;

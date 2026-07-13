@@ -15,7 +15,7 @@ import type {
   ValueBasis,
 } from '@/types';
 import { notify } from '@/utils/notify';
-import { VALUE_BASIS_OPTIONS } from '@/pages/waivers/waiver.constants';
+import { getValueBasisOptions } from '@/pages/waivers/waiver.constants';
 
 const DRAFT_PICK_PROJECTION_METHOD_OPTIONS: Array<{
   value: DraftPickProjectionMethod;
@@ -155,7 +155,9 @@ export const SettingsPage = () => {
               disabled={valuePreference.isSaving}
             >
               {
-                VALUE_BASIS_OPTIONS.map((option) => (
+                getValueBasisOptions(
+                  bootstrap.data?.authenticated ?? false,
+                ).map((option) => (
                   <option
                     key={option.value}
                     value={option.value}

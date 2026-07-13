@@ -40,6 +40,10 @@ class LeaguePlayer(BaseModel):
     redraft_roster_war: float | None = None
     dynasty_starter_war: float | None = None
     dynasty_roster_war: float | None = None
+    my_redraft_starter_war: float | None = None
+    my_redraft_roster_war: float | None = None
+    my_dynasty_starter_war: float | None = None
+    my_dynasty_roster_war: float | None = None
     is_starter: bool = False
 
 

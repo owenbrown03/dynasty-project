@@ -40,6 +40,7 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.personal_values import hydrate_personal_player_values
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
     build_dynasty_projection,
@@ -194,6 +195,7 @@ async def build_league_player_values(
     league,
     player_ids: list[str],
     value_basis: ValueBasis,
+    site_user_id=None,
 ) -> list[PlayerValue]:
     unique_player_ids = list(
         dict.fromkeys(player_ids),
@@ -225,6 +227,7 @@ async def build_league_player_values(
     if value_basis in {
         ValueBasis.DYNASTY_STARTER_WAR,
         ValueBasis.DYNASTY_ROSTER_WAR,
+        ValueBasis.MY_WAR,
     }:
         dynasty_service = build_dynasty_war_service()
 
@@ -242,12 +245,22 @@ async def build_league_player_values(
                     player.player_id
                 ] = projection
 
-    return await get_player_values(
+    player_values = await get_player_values(
         db,
         player_ids=[player.player_id for player in war_players],
         redraft_war_players=war_players,
         dynasty_war_by_player_id=dynasty_war_by_player_id,
     )
+
+    if value_basis == ValueBasis.MY_WAR:
+        player_values = await hydrate_personal_player_values(
+            db=db,
+            site_user_id=site_user_id,
+            league=league,
+            player_values=player_values,
+        )
+
+    return player_values
 
 
 async def get_commissioner_orphans(
@@ -255,6 +268,7 @@ async def get_commissioner_orphans(
     db,
     username: str,
     value_basis: ValueBasis,
+    site_user_id=None,
 ) -> CommissionerOrphansResponse:
     user_leagues = await get_user_leagues(
         db,
@@ -346,6 +360,7 @@ async def get_commissioner_orphans(
             league=league,
             player_ids=all_player_ids,
             value_basis=value_basis,
+            site_user_id=site_user_id,
         )
 
         player_by_id = {

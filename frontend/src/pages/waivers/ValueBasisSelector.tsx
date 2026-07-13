@@ -1,6 +1,7 @@
 import type { ValueBasis } from '@/types';
+import { useBootstrapContext } from '@/context/useBootstrapContext';
 
-import { VALUE_BASIS_OPTIONS } from './waiver.constants';
+import { getValueBasisOptions } from './waiver.constants';
 
 
 interface ValueBasisSelectorProps {
@@ -13,6 +14,11 @@ export const ValueBasisSelector = ({
   valueBasis,
   onChange,
 }: ValueBasisSelectorProps) => {
+  const { bootstrap } = useBootstrapContext();
+  const options = getValueBasisOptions(
+    bootstrap?.authenticated ?? false,
+  );
+
   return (
     <label className="waivers-value-selector">
       <span>Value Basis</span>
@@ -26,7 +32,7 @@ export const ValueBasisSelector = ({
         }}
       >
         {
-          VALUE_BASIS_OPTIONS.map((option) => (
+          options.map((option) => (
             <option
               key={option.value}
               value={option.value}

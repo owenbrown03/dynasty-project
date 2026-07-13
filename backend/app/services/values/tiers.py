@@ -30,6 +30,7 @@ from app.services.values.basis import (
 from app.services.values.canonical import (
     build_canonical_war_league,
 )
+from app.services.personal_values import hydrate_personal_player_values
 from app.services.waivers.dynasty import build_dynasty_projection
 
 
@@ -115,6 +116,7 @@ async def load_player_values_for_basis(
     *,
     db: AsyncSession,
     value_basis: ValueBasis,
+    site_user_id=None,
     league=None,
     season: int,
 ) -> list[PlayerValue]:
@@ -151,6 +153,7 @@ async def load_player_values_for_basis(
     if value_basis in {
         ValueBasis.DYNASTY_STARTER_WAR,
         ValueBasis.DYNASTY_ROSTER_WAR,
+        ValueBasis.MY_WAR,
     }:
         dynasty_war_by_player_id = (
             await build_dynasty_values_by_player_id(
@@ -158,12 +161,22 @@ async def load_player_values_for_basis(
             )
         )
 
-    return await get_player_values(
+    player_values = await get_player_values(
         db,
         player_ids=[player.player_id for player in war_players],
         redraft_war_players=war_players,
         dynasty_war_by_player_id=dynasty_war_by_player_id,
     )
+
+    if value_basis == ValueBasis.MY_WAR and league is not None:
+        player_values = await hydrate_personal_player_values(
+            db=db,
+            site_user_id=site_user_id,
+            league=league,
+            player_values=player_values,
+        )
+
+    return player_values
 
 
 async def resolve_league_war_context(
@@ -217,6 +230,7 @@ async def get_player_tier_board(
         ValueBasis.REDRAFT_ROSTER_WAR,
         ValueBasis.DYNASTY_STARTER_WAR,
         ValueBasis.DYNASTY_ROSTER_WAR,
+        ValueBasis.MY_WAR,
     }:
         if league_id:
             league = await resolve_league_war_context(
@@ -239,6 +253,7 @@ async def get_player_tier_board(
     player_values = await load_player_values_for_basis(
         db=ctx.db,
         value_basis=value_basis,
+        site_user_id=ctx.site_user.id if ctx.site_user else None,
         league=league,
         season=effective_season,
     )

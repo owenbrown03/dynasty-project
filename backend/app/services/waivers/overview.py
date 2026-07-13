@@ -23,6 +23,7 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.personal_values import hydrate_personal_player_values
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
@@ -243,6 +244,13 @@ async def get_waiver_overview(
             redraft_war_players=redraft_war_players,
             dynasty_war_by_player_id=dynasty_war_by_player_id,
         )
+        if value_basis == ValueBasis.MY_WAR:
+            enriched_values = await hydrate_personal_player_values(
+                db=db,
+                site_user_id=connection.site_user_id,
+                league=league,
+                player_values=enriched_values,
+            )
 
         enriched_by_player_id = {
             player.player_id: player

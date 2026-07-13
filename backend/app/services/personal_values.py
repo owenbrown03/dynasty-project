@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 from fastapi import HTTPException, status
 from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.war.dynasty.factory import build_dynasty_war_service
 from app.analytics.war.redraft.constants import FANTASY_GAMES_PER_SEASON
@@ -26,6 +27,7 @@ from app.crud.sleeper.personal import (
     upsert_personal_projection,
 )
 from app.crud.value import get_player_values
+from app.schemas.player import PlayerValue
 from app.schemas.personal_values import (
     PersonalProjectionSeasonItem,
     PersonalValueDetailResponse,
@@ -371,7 +373,8 @@ def _get_projection_end_season(
 
 def _compute_custom_metrics(
     *,
-    player: Player,
+    position: str,
+    age: float | None,
     seasons: list[PersonalProjectionSeasonItem],
     current_season: int,
     curve_rows_by_position: dict[str, list[PersonalRankCurve]],
@@ -388,7 +391,7 @@ def _compute_custom_metrics(
     current_redraft = (
         _weighted_redraft_values(
             curve_rows_by_position=curve_rows_by_position,
-            position=player.position,
+            position=position,
             outcomes=current_projection.outcomes,
         )
         if current_projection is not None
@@ -401,7 +404,7 @@ def _compute_custom_metrics(
     for season_item in seasons:
         weighted = _weighted_redraft_values(
             curve_rows_by_position=curve_rows_by_position,
-            position=player.position,
+            position=position,
             outcomes=season_item.outcomes,
         )
 
@@ -427,14 +430,14 @@ def _compute_custom_metrics(
             else None
         ),
         dynasty_starter_war=_project_custom_dynasty_war(
-            age=calculate_age(player.birth_date),
-            position=player.position,
+            age=age,
+            position=position,
             current_season=current_season,
             season_values=dynasty_redraft_by_season,
         ),
         dynasty_roster_war=_project_custom_dynasty_war(
-            age=calculate_age(player.birth_date),
-            position=player.position,
+            age=age,
+            position=position,
             current_season=current_season,
             season_values=dynasty_roster_by_season,
         ),
@@ -577,7 +580,7 @@ def _project_custom_dynasty_war(
 
 async def _ensure_personal_rank_curve(
     *,
-    ctx: Context,
+    db: AsyncSession,
     league,
 ) -> dict[str, list[PersonalRankCurve]]:
     settings_fingerprint = _build_settings_fingerprint(
@@ -586,7 +589,7 @@ async def _ensure_personal_rank_curve(
         roster_positions=league.roster_positions,
     )
     existing = await get_personal_rank_curve_rows(
-        db=ctx.db,
+        db=db,
         settings_fingerprint=settings_fingerprint,
         curve_version=CURVE_VERSION,
     )
@@ -601,7 +604,7 @@ async def _ensure_personal_rank_curve(
     )
 
     players = await war_service.loader.get_players(
-        ctx.db,
+        db,
     )
     ranked_by_position: dict[str, dict[int, list[tuple[float, float]]]] = {
         position: defaultdict(list)
@@ -613,7 +616,7 @@ async def _ensure_personal_rank_curve(
         season_end + 1,
     ):
         stats_rows = await war_service.loader.get_season_stats(
-            ctx.db,
+            db,
             season,
         )
 
@@ -722,7 +725,7 @@ async def _ensure_personal_rank_curve(
         )
 
     await replace_personal_rank_curve_rows(
-        db=ctx.db,
+        db=db,
         settings_fingerprint=settings_fingerprint,
         curve_version=CURVE_VERSION,
         rows=curve_rows,
@@ -891,7 +894,8 @@ def _merge_saved_projection_seasons(
 
 def _build_projection_context(
     *,
-    player: Player,
+    position: str,
+    age: float | None,
     base_season: int,
     end_season: int,
     default_position_rank: int | None,
@@ -907,7 +911,8 @@ def _build_projection_context(
         outcomes_by_projection_id=outcomes_by_projection_id,
     )
     custom_values = _compute_custom_metrics(
-        player=player,
+        position=position,
+        age=age,
         seasons=seasons,
         current_season=base_season,
         curve_rows_by_position=curve_rows_by_position,
@@ -921,6 +926,99 @@ def _build_projection_context(
             for season in seasons
         ),
     )
+
+
+async def hydrate_personal_player_values(
+    *,
+    db: AsyncSession,
+    site_user_id,
+    league,
+    player_values: list[PlayerValue],
+) -> list[PlayerValue]:
+    if site_user_id is None or not player_values:
+        return player_values
+
+    current_season = int(league.season)
+    curve_rows_by_position = await _ensure_personal_rank_curve(
+        db=db,
+        league=league,
+    )
+    supported_player_ids = [
+        player.player_id
+        for player in player_values
+        if player.position in DYNASTY_POSITIONS
+    ]
+
+    if not supported_player_ids:
+        return player_values
+
+    saved_projections = await get_personal_projections_for_site_user(
+        db=db,
+        site_user_id=site_user_id,
+        player_ids=supported_player_ids,
+    )
+    outcomes_by_projection_id = await get_personal_projection_outcomes(
+        db=db,
+        projection_ids=[
+            projection.id
+            for projection in saved_projections
+            if projection.id is not None
+        ],
+    )
+    saved_by_player_id: dict[str, list] = defaultdict(list)
+
+    for projection in saved_projections:
+        saved_by_player_id[
+            projection.player_id
+        ].append(projection)
+
+    hydrated_values: list[PlayerValue] = []
+
+    for player in player_values:
+        if player.position not in DYNASTY_POSITIONS:
+            hydrated_values.append(player)
+            continue
+
+        projection_context = _build_projection_context(
+            position=player.position,
+            age=player.age,
+            base_season=current_season,
+            end_season=_get_projection_end_season(
+                base_season=current_season,
+                age=player.age,
+                position=player.position,
+            ),
+            default_position_rank=_parse_position_rank(
+                player.position,
+                player.underdog_position_rank,
+            ),
+            saved_projections=saved_by_player_id.get(
+                player.player_id,
+                [],
+            ),
+            outcomes_by_projection_id=outcomes_by_projection_id,
+            curve_rows_by_position=curve_rows_by_position,
+        )
+        hydrated_values.append(
+            player.model_copy(
+                update={
+                    "my_redraft_starter_war": _round_metric(
+                        projection_context.custom_values.redraft_starter_war,
+                    ),
+                    "my_redraft_roster_war": _round_metric(
+                        projection_context.custom_values.redraft_roster_war,
+                    ),
+                    "my_dynasty_starter_war": _round_metric(
+                        projection_context.custom_values.dynasty_starter_war,
+                    ),
+                    "my_dynasty_roster_war": _round_metric(
+                        projection_context.custom_values.dynasty_roster_war,
+                    ),
+                },
+            )
+        )
+
+    return hydrated_values
 
 
 async def search_personal_value_players(
@@ -1019,11 +1117,12 @@ async def get_personal_value_detail(
         ],
     )
     curve_rows_by_position = await _ensure_personal_rank_curve(
-        ctx=ctx,
+        db=ctx.db,
         league=league,
     )
     projection_context = _build_projection_context(
-        player=player,
+        position=player.position,
+        age=calculate_age(player.birth_date),
         base_season=current_season,
         end_season=end_season,
         default_position_rank=default_position_rank,
@@ -1089,7 +1188,7 @@ async def get_personal_value_pool(
     )
     current_season = int(league.season)
     curve_rows_by_position = await _ensure_personal_rank_curve(
-        ctx=ctx,
+        db=ctx.db,
         league=league,
     )
 
@@ -1202,7 +1301,8 @@ async def get_personal_value_pool(
             continue
 
         projection_context = _build_projection_context(
-            player=player,
+            position=player.position,
+            age=calculate_age(player.birth_date),
             base_season=current_season,
             end_season=_get_projection_end_season(
                 base_season=current_season,

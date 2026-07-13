@@ -64,10 +64,17 @@ export function ValuePreferenceProvider({
   });
 
   useEffect(() => {
-    const nextPreference = (
+    let nextPreference = (
       bootstrapPreference
       ?? getStoredValuePreference()
     );
+
+    if (
+      nextPreference === 'my_war'
+      && bootstrap.data?.authenticated !== true
+    ) {
+      nextPreference = 'ktc';
+    }
 
     setPreferenceState(
       nextPreference,
@@ -77,7 +84,7 @@ export function ValuePreferenceProvider({
       VALUE_PREFERENCE_STORAGE_KEY,
       nextPreference,
     );
-  }, [bootstrapPreference]);
+  }, [bootstrap.data?.authenticated, bootstrapPreference]);
 
   const value = useMemo<ValuePreferenceContextType>(
     () => ({
