@@ -571,8 +571,11 @@ function FinanceNetChart({
 }: {
   entries: FinanceChartEntry[];
 }) {
+  const sortedEntries = [...entries].sort((left, right) => (
+    Number(right.label) - Number(left.label)
+  ));
   const maxMagnitude = Math.max(
-    ...entries.map((entry) => Math.abs(entry.netAmount)),
+    ...sortedEntries.map((entry) => Math.abs(entry.netAmount)),
     1,
   );
 
@@ -587,7 +590,7 @@ function FinanceNetChart({
 
       <div className="finance-bar-chart">
         {
-          entries.map((entry) => (
+          sortedEntries.map((entry) => (
             <div
               key={entry.key}
               className="finance-bar-row"
