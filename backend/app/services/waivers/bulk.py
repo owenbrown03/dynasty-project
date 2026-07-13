@@ -16,6 +16,7 @@ from app.analytics.war.dynasty.factory import (
 from app.analytics.war.dynasty.models import DynastyProjection
 from app.analytics.war.redraft.models import PlayerWAR
 from app.analytics.war.redraft.service import WARService
+from app.crud.auth.user import get_war_value_settings_by_user_id
 from app.crud.value import get_player_values
 from app.infrastructure.redis.client import RedisClient
 from app.integrations.sleeper.client import SleeperClient
@@ -38,6 +39,7 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.personal_values import hydrate_personal_player_values
 from app.services.players.search import (
     search_local_dynasty_players,
 )
@@ -50,8 +52,10 @@ from app.services.waivers.dynasty import (
     build_dynasty_projection,
 )
 from app.crud.sleeper.player import get_bulk_target_player
-from app.crud.sleeper.roster import get_owned_roster_rows
 from app.utils.age import calculate_age
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_sleeper_user_id,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -60,6 +64,8 @@ logger = logging.getLogger(__name__)
 DYNASTY_VALUE_BASES = {
     ValueBasis.DYNASTY_STARTER_WAR,
     ValueBasis.DYNASTY_ROSTER_WAR,
+    ValueBasis.SLEEPER_WAR,
+    ValueBasis.MY_WAR,
 }
 
 
@@ -232,6 +238,7 @@ async def build_bulk_league_availability(
     *,
     db: AsyncSession,
     redis: RedisClient,
+    site_user_id,
     roster: Roster,
     league: League,
     target_player: Player,
@@ -348,6 +355,11 @@ async def build_bulk_league_availability(
             )
         )
 
+    war_value_settings = await get_war_value_settings_by_user_id(
+        db=db,
+        site_user_id=site_user_id,
+    )
+
     player_values = await get_player_values(
         db=db,
         player_ids=relevant_player_ids,
@@ -356,6 +368,27 @@ async def build_bulk_league_availability(
             dynasty_war_by_player_id
         ),
     )
+    effective_value_basis = value_basis
+
+    if value_basis == ValueBasis.MY_WAR:
+        try:
+            player_values = await hydrate_personal_player_values(
+                db=db,
+                site_user_id=site_user_id,
+                league=league,
+                player_values=player_values,
+            )
+        except HTTPException as exc:
+            if exc.status_code != status.HTTP_400_BAD_REQUEST:
+                raise
+
+            logger.warning(
+                "Falling back from my_war in bulk waivers "
+                "league=%s reason=%s",
+                league.league_id,
+                exc.detail,
+            )
+            effective_value_basis = ValueBasis.SLEEPER_WAR
 
     value_by_player_id = {
         player.player_id: player
@@ -369,7 +402,8 @@ async def build_bulk_league_availability(
     add_selected_value = (
         get_player_value(
             player=add_player_value,
-            basis=value_basis,
+            basis=effective_value_basis,
+            war_value_settings=war_value_settings,
         )
         if add_player_value is not None
         else None
@@ -389,7 +423,8 @@ async def build_bulk_league_availability(
 
         selected_value = get_player_value(
             player=player,
-            basis=value_basis,
+            basis=effective_value_basis,
+            war_value_settings=war_value_settings,
         )
 
         if selected_value is None:
@@ -457,10 +492,36 @@ async def get_bulk_waiver_availability(
         player_id=player_id,
     )
 
-    owned_roster_rows = await get_owned_roster_rows(
+    if not connection.sleeper_user_id:
+        return BulkWaiverAvailabilityResponse(
+            player=BulkWaiverPlayerSearchResult(
+                player_id=target_player.player_id,
+                name=target_player.full_name,
+                position=target_player.position,
+                team=target_player.team,
+                age=calculate_age(
+                    target_player.birth_date,
+                ),
+            ),
+            value_basis=value_basis,
+            value_label=get_value_label(
+                value_basis,
+                await get_war_value_settings_by_user_id(
+                    db=db,
+                    site_user_id=connection.site_user_id,
+                ),
+            ),
+        )
+
+    owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
         db=db,
-        connection=connection,
+        sleeper_user_id=connection.sleeper_user_id,
+        site_user_id=connection.site_user_id,
     )
+    owned_roster_rows = [
+        (row.roster, row.league)
+        for row in owned_rows
+    ]
 
     league_ids = [
         league.league_id
@@ -483,6 +544,7 @@ async def get_bulk_waiver_availability(
             await build_bulk_league_availability(
                 db=db,
                 redis=redis,
+                site_user_id=connection.site_user_id,
                 roster=roster,
                 league=league,
                 target_player=target_player,
@@ -514,6 +576,10 @@ async def get_bulk_waiver_availability(
         value_basis=value_basis,
         value_label=get_value_label(
             value_basis,
+            await get_war_value_settings_by_user_id(
+                db=db,
+                site_user_id=connection.site_user_id,
+            ),
         ),
 
         leagues=league_availability,

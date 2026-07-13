@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.analytics.war.dynasty.factory import (
     build_dynasty_war_service,
 )
+from app.crud.auth.user import get_war_value_settings_by_user_id
 from app.analytics.war.redraft.service import WARService
 from app.crud.value import get_player_values
 from app.infrastructure.redis.client import RedisClient
@@ -23,6 +24,7 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.personal_values import hydrate_personal_player_values
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
@@ -36,6 +38,7 @@ from .constants import WAIVER_CANDIDATE_LIMIT
 def get_best_available_player(
     available_players: list[PlayerValue],
     value_basis: ValueBasis,
+    war_value_settings=None,
 ) -> tuple[PlayerValue | None, float | None]:
     candidates = [
         (
@@ -43,6 +46,7 @@ def get_best_available_player(
             get_player_value(
                 player=player,
                 basis=value_basis,
+                war_value_settings=war_value_settings,
             ),
         )
         for player in available_players
@@ -66,6 +70,7 @@ def get_best_available_player(
 def get_suggested_drop(
     roster_players: list[PlayerValue],
     value_basis: ValueBasis,
+    war_value_settings=None,
 ) -> tuple[PlayerValue | None, float | None]:
     candidates = [
         (
@@ -73,6 +78,7 @@ def get_suggested_drop(
             get_player_value(
                 player=player,
                 basis=value_basis,
+                war_value_settings=war_value_settings,
             ),
         )
         for player in roster_players
@@ -160,6 +166,10 @@ async def get_waiver_overview(
         )
 
     dynasty_war_service = build_dynasty_war_service()
+    war_value_settings = await get_war_value_settings_by_user_id(
+        db=db,
+        site_user_id=connection.site_user_id,
+    )
 
     overview_cards: list[WaiverLeagueOverview] = []
 
@@ -243,6 +253,13 @@ async def get_waiver_overview(
             redraft_war_players=redraft_war_players,
             dynasty_war_by_player_id=dynasty_war_by_player_id,
         )
+        if value_basis == ValueBasis.MY_WAR:
+            enriched_values = await hydrate_personal_player_values(
+                db=db,
+                site_user_id=connection.site_user_id,
+                league=league,
+                player_values=enriched_values,
+            )
 
         enriched_by_player_id = {
             player.player_id: player
@@ -265,6 +282,7 @@ async def get_waiver_overview(
             get_best_available_player(
                 available_players=available_values,
                 value_basis=value_basis,
+                war_value_settings=war_value_settings,
             )
         )
 
@@ -272,6 +290,7 @@ async def get_waiver_overview(
             get_suggested_drop(
                 roster_players=drop_candidate_values,
                 value_basis=value_basis,
+                war_value_settings=war_value_settings,
             )
         )
 
@@ -329,7 +348,10 @@ async def get_waiver_overview(
                 ),
 
                 value_basis=value_basis,
-                value_label=get_value_label(value_basis),
+                value_label=get_value_label(
+                    value_basis,
+                    war_value_settings,
+                ),
 
                 suggested_add=suggested_add,
                 suggested_drop=suggested_drop,

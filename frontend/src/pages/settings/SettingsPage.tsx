@@ -13,9 +13,13 @@ import type {
   DraftPickProjectionPhaseMethod,
   DraftPickProjectionSettings,
   ValueBasis,
+  WarValueConfig,
+  WarValueScope,
+  WarValueSettings,
+  WarValueTimeframe,
 } from '@/types';
 import { notify } from '@/utils/notify';
-import { VALUE_BASIS_OPTIONS } from '@/pages/waivers/waiver.constants';
+import { getValueBasisOptions } from '@/pages/waivers/waiver.constants';
 
 const DRAFT_PICK_PROJECTION_METHOD_OPTIONS: Array<{
   value: DraftPickProjectionMethod;
@@ -58,6 +62,59 @@ const DRAFT_PICK_PRE_SWITCH_OPTIONS: Array<{
   })),
 ];
 
+const DEFAULT_WAR_VALUE_SETTINGS: WarValueSettings = {
+  sleeper_projection: {
+    timeframe: 'dynasty',
+    scope: 'roster',
+  },
+  my: {
+    timeframe: 'dynasty',
+    scope: 'roster',
+  },
+};
+
+const WAR_TIMEFRAME_OPTIONS: Array<{
+  value: WarValueTimeframe;
+  label: string;
+}> = [
+  {
+    value: 'dynasty',
+    label: 'Dynasty',
+  },
+  {
+    value: 'redraft',
+    label: 'Redraft',
+  },
+];
+
+const WAR_SCOPE_OPTIONS: Array<{
+  value: WarValueScope;
+  label: string;
+}> = [
+  {
+    value: 'roster',
+    label: 'Roster',
+  },
+  {
+    value: 'starter',
+    label: 'Starter',
+  },
+];
+
+function updateWarConfig(
+  settings: WarValueSettings,
+  key: keyof WarValueSettings,
+  patch: Partial<WarValueConfig>,
+): WarValueSettings {
+  return {
+    ...settings,
+    [key]: {
+      ...settings[key],
+      ...patch,
+    },
+  };
+}
+
 export const SettingsPage = () => {
   const queryClient = useQueryClient();
   const bootstrap = useBootstrap();
@@ -65,6 +122,10 @@ export const SettingsPage = () => {
   const valuePreference = useValuePreference();
   const draftPickProjectionSettings = (
     bootstrap.data?.draft_pick_projection_settings
+  );
+  const warValueSettings = (
+    bootstrap.data?.war_value_settings
+    ?? DEFAULT_WAR_VALUE_SETTINGS
   );
 
   const updateDraftPickProjectionSettings = useMutation({
@@ -94,10 +155,45 @@ export const SettingsPage = () => {
     },
   });
 
+  const updateWarValueSettings = useMutation({
+    mutationFn: api.auth.updateWarValueSettings,
+    onSuccess: async (response) => {
+      queryClient.setQueryData(
+        BOOTSTRAP_QUERY_KEY,
+        (current: Bootstrap | undefined | null) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+            war_value_settings: response.data.settings,
+          };
+        },
+      );
+
+      await queryClient.invalidateQueries({
+        queryKey: BOOTSTRAP_QUERY_KEY,
+      });
+      notify.success('WAR value settings saved.');
+    },
+    onError: () => {
+      notify.error('Unable to save WAR value settings.');
+    },
+  });
+
   const saveDraftPickProjectionSettings = async (
     nextSettings: DraftPickProjectionSettings,
   ) => {
     await updateDraftPickProjectionSettings.mutateAsync(
+      nextSettings,
+    );
+  };
+
+  const saveWarValueSettings = async (
+    nextSettings: WarValueSettings,
+  ) => {
+    await updateWarValueSettings.mutateAsync(
       nextSettings,
     );
   };
@@ -111,6 +207,137 @@ export const SettingsPage = () => {
           <p className="settings-page-description">
             Control account defaults and how the app projects future rookie picks in draft capital views.
           </p>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <div className="settings-card-header">
+          <div>
+            <p>WAR</p>
+            <h2>Value basis mapping</h2>
+          </div>
+        </div>
+
+        <div className="settings-grid">
+          <div className="settings-field">
+            <span>Sleeper projection WAR</span>
+
+            <div className="settings-inline-controls">
+              <select
+                value={warValueSettings.sleeper_projection.timeframe}
+                disabled={updateWarValueSettings.isPending}
+                onChange={(event) => {
+                  void saveWarValueSettings(
+                    updateWarConfig(
+                      warValueSettings,
+                      'sleeper_projection',
+                      {
+                        timeframe: event.target.value as WarValueTimeframe,
+                      },
+                    ),
+                  );
+                }}
+              >
+                {
+                  WAR_TIMEFRAME_OPTIONS.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </option>
+                  ))
+                }
+              </select>
+
+              <select
+                value={warValueSettings.sleeper_projection.scope}
+                disabled={updateWarValueSettings.isPending}
+                onChange={(event) => {
+                  void saveWarValueSettings(
+                    updateWarConfig(
+                      warValueSettings,
+                      'sleeper_projection',
+                      {
+                        scope: event.target.value as WarValueScope,
+                      },
+                    ),
+                  );
+                }}
+              >
+                {
+                  WAR_SCOPE_OPTIONS.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+          </div>
+
+          <div className="settings-field">
+            <span>My WAR</span>
+
+            <div className="settings-inline-controls">
+              <select
+                value={warValueSettings.my.timeframe}
+                disabled={updateWarValueSettings.isPending}
+                onChange={(event) => {
+                  void saveWarValueSettings(
+                    updateWarConfig(
+                      warValueSettings,
+                      'my',
+                      {
+                        timeframe: event.target.value as WarValueTimeframe,
+                      },
+                    ),
+                  );
+                }}
+              >
+                {
+                  WAR_TIMEFRAME_OPTIONS.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </option>
+                  ))
+                }
+              </select>
+
+              <select
+                value={warValueSettings.my.scope}
+                disabled={updateWarValueSettings.isPending}
+                onChange={(event) => {
+                  void saveWarValueSettings(
+                    updateWarConfig(
+                      warValueSettings,
+                      'my',
+                      {
+                        scope: event.target.value as WarValueScope,
+                      },
+                    ),
+                  );
+                }}
+              >
+                {
+                  WAR_SCOPE_OPTIONS.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -155,7 +382,9 @@ export const SettingsPage = () => {
               disabled={valuePreference.isSaving}
             >
               {
-                VALUE_BASIS_OPTIONS.map((option) => (
+                getValueBasisOptions(
+                  bootstrap.data?.authenticated ?? false,
+                ).map((option) => (
                   <option
                     key={option.value}
                     value={option.value}

@@ -9,6 +9,10 @@ from app.services.draft.projection import (
     DraftPickProjectionPhaseMethod,
 )
 from app.services.values.basis import ValueBasis
+from app.services.values.war_settings import (
+    WarScope,
+    WarTimeframe,
+)
 
 class Login(Base):
     email: EmailStr
@@ -50,6 +54,28 @@ class ValuePreferenceUpdate(Base):
 
 class ValuePreferenceResponse(Base):
     value_preference: ValueBasis | None
+
+
+class WarValueConfig(Base):
+    timeframe: WarTimeframe = "dynasty"
+    scope: WarScope = "roster"
+
+
+class WarValueSettings(Base):
+    sleeper_projection: WarValueConfig = Field(
+        default_factory=WarValueConfig,
+    )
+    my: WarValueConfig = Field(
+        default_factory=WarValueConfig,
+    )
+
+
+class WarValueSettingsUpdate(Base):
+    settings: WarValueSettings
+
+
+class WarValueSettingsResponse(Base):
+    settings: WarValueSettings
 
 
 class DraftPickProjectionSettings(Base):

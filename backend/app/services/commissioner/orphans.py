@@ -6,6 +6,7 @@ from app.analytics.war.dynasty.factory import (
     build_dynasty_war_service,
 )
 from app.analytics.war.redraft.singleton import war_service
+from app.crud.auth.user import get_war_value_settings_by_user_id
 from app.crud.sleeper.draft import (
     get_drafts_by_league_ids,
     get_traded_picks_by_league_ids,
@@ -40,6 +41,7 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.personal_values import hydrate_personal_player_values
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
     build_dynasty_projection,
@@ -85,10 +87,12 @@ def build_settings_badges(
 def to_commissioner_player(
     player: PlayerValue,
     value_basis: ValueBasis,
+    war_value_settings=None,
 ) -> CommissionerPlayerAsset:
     selected_value = get_player_value(
         player,
         value_basis,
+        war_value_settings,
     )
 
     return CommissionerPlayerAsset(
@@ -194,6 +198,7 @@ async def build_league_player_values(
     league,
     player_ids: list[str],
     value_basis: ValueBasis,
+    site_user_id=None,
 ) -> list[PlayerValue]:
     unique_player_ids = list(
         dict.fromkeys(player_ids),
@@ -225,6 +230,8 @@ async def build_league_player_values(
     if value_basis in {
         ValueBasis.DYNASTY_STARTER_WAR,
         ValueBasis.DYNASTY_ROSTER_WAR,
+        ValueBasis.SLEEPER_WAR,
+        ValueBasis.MY_WAR,
     }:
         dynasty_service = build_dynasty_war_service()
 
@@ -242,12 +249,22 @@ async def build_league_player_values(
                     player.player_id
                 ] = projection
 
-    return await get_player_values(
+    player_values = await get_player_values(
         db,
         player_ids=[player.player_id for player in war_players],
         redraft_war_players=war_players,
         dynasty_war_by_player_id=dynasty_war_by_player_id,
     )
+
+    if value_basis == ValueBasis.MY_WAR:
+        player_values = await hydrate_personal_player_values(
+            db=db,
+            site_user_id=site_user_id,
+            league=league,
+            player_values=player_values,
+        )
+
+    return player_values
 
 
 async def get_commissioner_orphans(
@@ -255,6 +272,7 @@ async def get_commissioner_orphans(
     db,
     username: str,
     value_basis: ValueBasis,
+    site_user_id=None,
 ) -> CommissionerOrphansResponse:
     user_leagues = await get_user_leagues(
         db,
@@ -327,6 +345,10 @@ async def get_commissioner_orphans(
     )
 
     orphan_cards: list[CommissionerOrphanRoster] = []
+    war_value_settings = await get_war_value_settings_by_user_id(
+        db=db,
+        site_user_id=site_user_id,
+    )
 
     for league_id in orphan_league_ids:
         league = leagues_by_id[league_id]
@@ -346,6 +368,7 @@ async def get_commissioner_orphans(
             league=league,
             player_ids=all_player_ids,
             value_basis=value_basis,
+            site_user_id=site_user_id,
         )
 
         player_by_id = {
@@ -475,6 +498,7 @@ async def get_commissioner_orphans(
                 to_commissioner_player(
                     player_by_id[player_id],
                     value_basis,
+                    war_value_settings,
                 )
                 for player_id in (roster.players or [])
                 if player_id in player_by_id
@@ -553,6 +577,9 @@ async def get_commissioner_orphans(
     return CommissionerOrphansResponse(
         username=username,
         value_basis=value_basis,
-        value_label=get_value_label(value_basis),
+        value_label=get_value_label(
+            value_basis,
+            war_value_settings,
+        ),
         orphans=orphan_cards,
     )

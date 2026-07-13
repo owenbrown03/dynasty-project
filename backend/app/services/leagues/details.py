@@ -49,6 +49,7 @@ from app.services.leagues.settings import (
     build_settings_details,
 )
 from app.services.values.basis import ValueBasis
+from app.services.personal_values import hydrate_personal_player_values
 from app.services.waivers.dynasty import build_dynasty_projection
 
 WAR_PLAYER_DISPLAY_LIMIT = 500
@@ -233,6 +234,12 @@ class LeagueDetails:
             war_players,
             dynasty_war_by_player_id=dynasty_war_by_player_id,
         )
+        player_values = await hydrate_personal_player_values(
+            db=db,
+            site_user_id=site_user_id,
+            league=league,
+            player_values=player_values,
+        )
 
         player_map = {
             player.player_id: player
@@ -318,6 +325,10 @@ class LeagueDetails:
                         redraft_roster_war=player.redraft_roster_war,
                         dynasty_starter_war=player.dynasty_starter_war,
                         dynasty_roster_war=player.dynasty_roster_war,
+                        my_redraft_starter_war=player.my_redraft_starter_war,
+                        my_redraft_roster_war=player.my_redraft_roster_war,
+                        my_dynasty_starter_war=player.my_dynasty_starter_war,
+                        my_dynasty_roster_war=player.my_dynasty_roster_war,
                         is_starter=player_id in starter_ids,
                     )
                 )

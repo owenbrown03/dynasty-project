@@ -21,6 +21,21 @@ import type {
   ValueBasis,
 } from '@/types';
 
+function normalizeVisiblePreference(
+  value: ValueBasis,
+): ValueBasis {
+  if (
+    value === 'redraft_starter_war'
+    || value === 'redraft_roster_war'
+    || value === 'dynasty_starter_war'
+    || value === 'dynasty_roster_war'
+  ) {
+    return 'sleeper_war';
+  }
+
+  return value;
+}
+
 export function ValuePreferenceProvider({
   children,
 }: {
@@ -64,10 +79,20 @@ export function ValuePreferenceProvider({
   });
 
   useEffect(() => {
-    const nextPreference = (
+    let nextPreference = (
       bootstrapPreference
       ?? getStoredValuePreference()
     );
+    nextPreference = normalizeVisiblePreference(
+      nextPreference,
+    );
+
+    if (
+      nextPreference === 'my_war'
+      && bootstrap.data?.authenticated !== true
+    ) {
+      nextPreference = 'ktc';
+    }
 
     setPreferenceState(
       nextPreference,
@@ -77,7 +102,7 @@ export function ValuePreferenceProvider({
       VALUE_PREFERENCE_STORAGE_KEY,
       nextPreference,
     );
-  }, [bootstrapPreference]);
+  }, [bootstrap.data?.authenticated, bootstrapPreference]);
 
   const value = useMemo<ValuePreferenceContextType>(
     () => ({

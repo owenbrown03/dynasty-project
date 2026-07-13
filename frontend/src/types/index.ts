@@ -107,6 +107,7 @@ export interface Bootstrap {
   sleeper: BootstrapSleeper;
   theme_preference: ThemePreference | null;
   value_preference: ValueBasis | null;
+  war_value_settings: WarValueSettings;
   draft_pick_projection_settings: DraftPickProjectionSettings;
 }
 
@@ -114,6 +115,24 @@ export type ThemePreference =
   | 'light'
   | 'dark'
   | 'system';
+
+export type WarValueTimeframe =
+  | 'redraft'
+  | 'dynasty';
+
+export type WarValueScope =
+  | 'starter'
+  | 'roster';
+
+export interface WarValueConfig {
+  timeframe: WarValueTimeframe;
+  scope: WarValueScope;
+}
+
+export interface WarValueSettings {
+  sleeper_projection: WarValueConfig;
+  my: WarValueConfig;
+}
 
 export type DraftPickProjectionMethod =
   | 'reverse_standings'
@@ -218,6 +237,10 @@ export interface LeaguePlayer {
   redraft_roster_war: number | null;
   dynasty_starter_war: number | null;
   dynasty_roster_war: number | null;
+  my_redraft_starter_war?: number | null;
+  my_redraft_roster_war?: number | null;
+  my_dynasty_starter_war?: number | null;
+  my_dynasty_roster_war?: number | null;
   is_starter: boolean;
 }
 
@@ -328,6 +351,8 @@ export interface Dashboard {
 export type ValueBasis =
   | 'ktc'
   | 'fantasycalc'
+  | 'sleeper_war'
+  | 'my_war'
   | 'redraft_starter_war'
   | 'redraft_roster_war'
   | 'dynasty_starter_war'
@@ -361,6 +386,91 @@ export interface TierBoard {
   war_league_id: string | null;
   war_league_name: string | null;
   tiers: TierBoardGroup[];
+}
+
+export interface PersonalValueSearchResult {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  underdog_position_rank: string | null;
+  ktc_value: number | null;
+  fc_value: number | null;
+  dynasty_roster_war: number | null;
+}
+
+export interface PersonalProjectionOutcomeItem {
+  position_rank: number;
+  probability: number;
+}
+
+export interface PersonalProjectionSeasonItem {
+  season: number;
+  outcomes: PersonalProjectionOutcomeItem[];
+  default_position_rank: number | null;
+  is_customized: boolean;
+}
+
+export interface PersonalValueMetrics {
+  redraft_starter_war: number | null;
+  redraft_roster_war: number | null;
+  dynasty_starter_war: number | null;
+  dynasty_roster_war: number | null;
+}
+
+export interface PersonalValuePlayer {
+  player_id: string;
+  name: string;
+  position: string;
+  team: string | null;
+  age: number | null;
+  underdog_position_rank: string | null;
+  ktc_value: number | null;
+  fc_value: number | null;
+}
+
+export interface PersonalValueLeagueContext {
+  league_id: string;
+  league_name: string;
+  season: number;
+  total_rosters: number;
+}
+
+export interface PersonalValueDetail {
+  context: PersonalValueLeagueContext;
+  player: PersonalValuePlayer;
+  market_values: PersonalValueMetrics;
+  custom_values: PersonalValueMetrics;
+  delta_values: PersonalValueMetrics;
+  seasons: PersonalProjectionSeasonItem[];
+}
+
+export interface PersonalValuePoolItem {
+  player: PersonalValuePlayer;
+  market_values: PersonalValueMetrics;
+  custom_values: PersonalValueMetrics;
+  delta_values: PersonalValueMetrics;
+  is_customized: boolean;
+}
+
+export interface PersonalValuePoolGroup {
+  position: string;
+  players: PersonalValuePoolItem[];
+}
+
+export interface PersonalValuePoolResponse {
+  context: PersonalValueLeagueContext;
+  groups: PersonalValuePoolGroup[];
+}
+
+export interface PersonalProjectionSeasonUpdate {
+  season: number;
+  outcomes: PersonalProjectionOutcomeItem[];
+}
+
+export interface PersonalValueUpdateRequest {
+  seasons: PersonalProjectionSeasonUpdate[];
 }
 
 export interface CommissionerPlayerAsset {
@@ -589,6 +699,10 @@ export interface PlayerValue {
 
   dynasty_starter_war: number | null;
   dynasty_roster_war: number | null;
+  my_redraft_starter_war?: number | null;
+  my_redraft_roster_war?: number | null;
+  my_dynasty_starter_war?: number | null;
+  my_dynasty_roster_war?: number | null;
 
   dynasty_expected_games_remaining: number | null;
   dynasty_seasons_remaining: number | null;

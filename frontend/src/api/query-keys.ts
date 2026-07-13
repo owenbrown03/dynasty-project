@@ -144,6 +144,18 @@ export const queryKeys = {
         valueBasis,
         leagueId ?? null,
       ] as const,
+    personalSearch: (query: string) =>
+      ['personal-values-search', query] as const,
+    personalDetail: (
+      leagueId: string | undefined,
+      playerId: string | undefined,
+    ) =>
+      [
+        'personal-values-detail',
+        leagueId ?? null,
+        playerId ?? null,
+      ] as const,
+    personalDetailRoot: ['personal-values-detail'] as const,
   },
 } as const;
 

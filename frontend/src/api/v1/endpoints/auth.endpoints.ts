@@ -7,6 +7,7 @@ import type {
   Login,
   ThemePreference,
   ValueBasis,
+  WarValueSettings,
 } from '@/types/index';
 
 export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
@@ -30,6 +31,12 @@ export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
   ) => client.post(
     `${prefix}/value`,
     { value_preference },
+  ),
+  updateWarValueSettings: (
+    settings: WarValueSettings,
+  ) => client.post(
+    `${prefix}/war-value`,
+    { settings },
   ),
   updateDraftPickProjectionSettings: (
     settings: DraftPickProjectionSettings,

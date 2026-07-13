@@ -11,7 +11,7 @@ import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { useTheme } from '@/context/useTheme';
 import { useValuePreference } from '@/context/useValuePreference';
-import { VALUE_BASIS_OPTIONS } from '@/pages/waivers/waiver.constants';
+import { getValueBasisOptions } from '@/pages/waivers/waiver.constants';
 import type { ValueBasis } from '@/types';
 import brandLogo from '@/assets/logo.png';
 
@@ -193,7 +193,7 @@ export const Navbar = () => {
                       disabled={valuePreference.isSaving}
                     >
                       {
-                        VALUE_BASIS_OPTIONS.map((option) => (
+                        getValueBasisOptions(auth.isLoggedIn).map((option) => (
                           <option
                             key={option.value}
                             value={option.value}

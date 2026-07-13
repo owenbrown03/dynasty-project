@@ -22,6 +22,9 @@ from .sleeper.connection import(
 )
 from .sleeper.personal import(
     PlayerValue,
+    PersonalProjection,
+    PersonalProjectionOutcome,
+    PersonalRankCurve,
 )
 from .ktc.models import(
     KTCPlayerMap,

@@ -12,6 +12,7 @@ from app.analytics.war.dynasty.factory import (
 from app.analytics.war.redraft.models import PlayerWAR
 from app.analytics.war.redraft.service import WARService
 from app.analytics.war.dynasty.models import DynastyProjection
+from app.crud.auth.user import get_war_value_settings_by_user_id
 from app.crud.value import get_player_values
 from app.infrastructure.redis.client import RedisClient
 from app.models.db.sleeper.api import League, Roster
@@ -28,6 +29,7 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.personal_values import hydrate_personal_player_values
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
@@ -307,6 +309,10 @@ async def get_available_waiver_players(
             available_war_players=available_war_players,
         )
     )
+    war_value_settings = await get_war_value_settings_by_user_id(
+        db=db,
+        site_user_id=connection.site_user_id,
+    )
 
     player_values = await get_player_values(
         db=db,
@@ -314,6 +320,13 @@ async def get_available_waiver_players(
         redraft_war_players=redraft_war_players,
         dynasty_war_by_player_id=dynasty_war_by_player_id,
     )
+    if value_basis == ValueBasis.MY_WAR:
+        player_values = await hydrate_personal_player_values(
+            db=db,
+            site_user_id=connection.site_user_id,
+            league=league,
+            player_values=player_values,
+        )
 
     available_players: list[WaiverAvailablePlayer] = []
 
@@ -321,6 +334,7 @@ async def get_available_waiver_players(
         selected_value = get_player_value(
             player=player,
             basis=value_basis,
+            war_value_settings=war_value_settings,
         )
 
         available_players.append(
@@ -342,7 +356,10 @@ async def get_available_waiver_players(
         roster_id=roster.roster_id,
 
         value_basis=value_basis,
-        value_label=get_value_label(value_basis),
+        value_label=get_value_label(
+            value_basis,
+            war_value_settings,
+        ),
 
         total_players=len(sorted_players),
         players=sorted_players,
@@ -404,6 +421,10 @@ async def get_roster_waiver_players(
             available_war_players=roster_war_players,
         )
     )
+    war_value_settings = await get_war_value_settings_by_user_id(
+        db=db,
+        site_user_id=connection.site_user_id,
+    )
 
     player_values = await get_player_values(
         db=db,
@@ -411,6 +432,13 @@ async def get_roster_waiver_players(
         redraft_war_players=redraft_war_players,
         dynasty_war_by_player_id=dynasty_war_by_player_id,
     )
+    if value_basis == ValueBasis.MY_WAR:
+        player_values = await hydrate_personal_player_values(
+            db=db,
+            site_user_id=connection.site_user_id,
+            league=league,
+            player_values=player_values,
+        )
 
     roster_players: list[WaiverRosterPlayer] = []
 
@@ -418,6 +446,7 @@ async def get_roster_waiver_players(
         selected_value = get_player_value(
             player=player,
             basis=value_basis,
+            war_value_settings=war_value_settings,
         )
 
         roster_players.append(
@@ -445,7 +474,10 @@ async def get_roster_waiver_players(
         roster_id=roster.roster_id,
 
         value_basis=value_basis,
-        value_label=get_value_label(value_basis),
+        value_label=get_value_label(
+            value_basis,
+            war_value_settings,
+        ),
 
         total_players=len(roster_players),
         players=roster_players,

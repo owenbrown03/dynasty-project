@@ -8,6 +8,7 @@ import {
   HandCoins,
   Wallet,
   Bell,
+  Radar,
   Layers3,
   Settings,
   ChevronLeft,
@@ -48,6 +49,11 @@ export const Sidebar = () => {
       to: '/tiers',
       label: 'Tiers',
       icon: <Layers3 size={20} />,
+    },
+    {
+      to: '/my-values',
+      label: 'My Values',
+      icon: <Radar size={20} />,
     },
     {
       to: '/finance',

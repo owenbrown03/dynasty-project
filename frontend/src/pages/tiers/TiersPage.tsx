@@ -39,13 +39,16 @@ export const TiersPage = () => {
   const valuePreference = useValuePreference();
   const initialSource = valuePreference.preference;
   const initialWarBasis: ValueBasis = (
-    initialSource === 'ktc'
-    || initialSource === 'fantasycalc'
+    initialSource === 'my_war'
+    || initialSource === 'sleeper_war'
   )
-    ? 'dynasty_roster_war'
-    : initialSource;
+    ? initialSource
+    : 'sleeper_war';
   const [source, setSource] = useState<TierBoardSource>(
-    initialSource,
+    initialSource === 'my_war'
+      || initialSource === 'sleeper_war'
+      ? 'league_war'
+      : initialSource,
   );
   const [warBasis, setWarBasis] = useState<ValueBasis>(
     initialWarBasis,

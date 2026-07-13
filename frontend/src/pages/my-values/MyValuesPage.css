@@ -1,0 +1,554 @@
+.my-values-page {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+}
+
+.my-values-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--color-border-strong);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--position-pick-color) 16%, transparent), transparent 38%),
+    linear-gradient(180deg, var(--color-surface-raised), var(--color-surface));
+}
+
+.my-values-title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.my-values-description {
+  max-width: 760px;
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.my-values-header-controls {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.my-values-control {
+  display: grid;
+  gap: 6px;
+}
+
+.my-values-control-grow {
+  min-width: 0;
+}
+
+.my-values-control span,
+.my-values-panel-header p,
+.my-values-position-group-header p,
+.my-values-season-card-header p,
+.my-values-metric-card span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.my-values-control select,
+.my-values-control input,
+.my-values-outcome-field input {
+  min-height: 46px;
+  font-size: 15px;
+}
+
+.my-values-header-chip {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.my-values-header-chip span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.my-values-header-chip strong {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.my-values-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  min-width: 0;
+  align-items: start;
+}
+
+.my-values-pool-panel,
+.my-values-search-card,
+.my-values-editor-card {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.my-values-pool-panel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.my-values-pool-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.my-values-pool-summary {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.my-values-filter-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.my-values-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.my-values-filter-header span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.my-values-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 180px) minmax(0, 180px) minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.my-values-editor-panel {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  align-content: start;
+  align-self: start;
+}
+
+.my-values-search-card,
+.my-values-editor-card {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  align-self: start;
+}
+
+.my-values-panel-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.my-values-panel-header h2 {
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.my-values-pool-note,
+.my-values-search-empty,
+.my-values-empty-season,
+.my-values-season-actions p,
+.my-values-player-identity p,
+.my-values-metric-meta p {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.my-values-position-group {
+  display: grid;
+  gap: 10px;
+}
+
+.my-values-position-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.my-values-position-group-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.my-values-position-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.my-values-search-results,
+.my-values-outcome-list,
+.my-values-season-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.my-values-search-result {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  text-align: left;
+}
+
+.my-values-pool-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.my-values-pool-player strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.my-values-pool-player p,
+.my-values-search-metrics span,
+.my-values-pool-values span,
+.my-values-player-tag-row span,
+.my-values-default-pill {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.my-values-pool-values,
+.my-values-search-metrics,
+.my-values-player-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.my-values-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  max-height: 70vh;
+}
+
+.my-values-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.my-values-table th,
+.my-values-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.my-values-table th {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--color-surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.my-values-th-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-transform: inherit;
+}
+
+.my-values-table tbody tr {
+  cursor: pointer;
+}
+
+.my-values-table tbody tr:hover {
+  background: color-mix(in srgb, var(--position-pick-color) 6%, var(--color-surface-raised));
+}
+
+.my-values-table tbody tr.selected {
+  background: color-mix(in srgb, var(--position-pick-color) 10%, var(--color-surface-raised));
+}
+
+.my-values-table-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.my-values-table-player strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.my-values-table-player p {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.my-values-search-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 12px;
+}
+
+.my-values-editor-card {
+  min-width: 0;
+}
+
+.my-values-player-hero {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.my-values-player-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.my-values-player-identity h2 {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.my-values-player-position {
+  font-weight: 700;
+}
+
+.my-values-player-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.my-values-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.my-values-metric-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.my-values-metric-card strong {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.my-values-metric-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.my-values-metric-meta .positive {
+  color: #5fd28b;
+}
+
+.my-values-metric-meta .negative {
+  color: #ff7b87;
+}
+
+.my-values-metric-meta .neutral {
+  color: var(--color-text-muted);
+}
+
+.my-values-season-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.my-values-season-card {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.my-values-season-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.my-values-season-card-header h3 {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.my-values-default-pill {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  white-space: nowrap;
+}
+
+.my-values-season-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.my-values-season-actions p {
+  max-width: 48ch;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.my-values-season-actions button {
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.my-values-future-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.my-values-outcome-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.my-values-outcome-row button {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.my-values-outcome-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.my-values-outcome-field span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.my-values-current-rank-field {
+  max-width: 220px;
+}
+
+.my-values-current-rank-field input {
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .my-values-header,
+  .my-values-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1350px) {
+  .my-values-season-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .my-values-search-controls,
+  .my-values-pool-toolbar,
+  .my-values-filter-row,
+  .my-values-metric-grid,
+  .my-values-season-grid,
+  .my-values-future-controls,
+  .my-values-season-actions,
+  .my-values-outcome-row {
+    grid-template-columns: 1fr;
+  }
+
+  .my-values-season-actions button,
+  .my-values-current-rank-field {
+    width: 100%;
+    max-width: none;
+  }
+
+  .my-values-player-hero {
+    display: grid;
+  }
+
+  .my-values-player-identity {
+    align-items: start;
+  }
+}
