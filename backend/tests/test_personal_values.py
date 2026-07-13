@@ -1,7 +1,16 @@
 from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
+
+from app.schemas.personal_values import (
+    PersonalProjectionOutcomeItem,
+    PersonalProjectionSeasonUpdate,
+    PersonalValueUpdateRequest,
+)
 from app.services.personal_values import (
     _merge_saved_projection_seasons,
+    _validate_projection_update,
 )
 
 
@@ -55,3 +64,33 @@ def test_merge_saved_projection_seasons_returns_new_frozen_items():
         (55, 40.0),
     ]
     assert future.is_customized is True
+
+
+def test_validate_projection_update_rejects_empty_future_outcomes():
+    payload = PersonalValueUpdateRequest(
+        seasons=[
+            PersonalProjectionSeasonUpdate(
+                season=2026,
+                outcomes=[
+                    PersonalProjectionOutcomeItem(
+                        position_rank=48,
+                        probability=100,
+                    ),
+                ],
+            ),
+            PersonalProjectionSeasonUpdate(
+                season=2027,
+                outcomes=[],
+            ),
+        ],
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        _validate_projection_update(
+            base_season=2026,
+            end_season=2027,
+            payload=payload,
+        )
+
+    assert exc.value.status_code == 400
+    assert exc.value.detail == "2027 must have at least one projection outcome."

@@ -475,6 +475,12 @@ def _validate_projection_update(
 
         seen.add(item.season)
 
+        if not item.outcomes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{item.season} must have at least one projection outcome.",
+            )
+
         if item.season == base_season:
             if len(item.outcomes) != 1:
                 raise HTTPException(
@@ -491,21 +497,20 @@ def _validate_projection_update(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"{item.season} current-year probability must be 100%.",
                 )
-        if item.outcomes:
-            total_probability = sum(
-                float(outcome.probability)
-                for outcome in item.outcomes
-            )
+        total_probability = sum(
+            float(outcome.probability)
+            for outcome in item.outcomes
+        )
 
-            if not isclose(
-                total_probability,
-                100.0,
-                abs_tol=0.01,
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"{item.season} probabilities must total 100%.",
-                )
+        if not isclose(
+            total_probability,
+            100.0,
+            abs_tol=0.01,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{item.season} probabilities must total 100%.",
+            )
 
         for outcome in item.outcomes:
             if outcome.position_rank <= 0:

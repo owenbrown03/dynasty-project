@@ -312,6 +312,42 @@ function cloneOutcomes(
   }));
 }
 
+function getFallbackOutcomes(
+  season: PersonalProjectionSeasonItem | undefined,
+) {
+  if (season?.outcomes.length) {
+    return cloneOutcomes(season.outcomes);
+  }
+
+  return [
+    {
+      position_rank:
+        season?.default_position_rank ?? 1,
+      probability: 100,
+    },
+  ];
+}
+
+function getDefaultFutureOutcomes(
+  seasons: PersonalProjectionSeasonItem[],
+  currentSeason: number,
+) {
+  const futureSeasons = seasons.filter(
+    (season) => season.season !== currentSeason,
+  );
+  const uncustomizedFutureSeason = futureSeasons.find(
+    (season) => !season.is_customized,
+  );
+  const baseFutureSeason = (
+    uncustomizedFutureSeason
+    ?? futureSeasons[0]
+  );
+
+  return getFallbackOutcomes(
+    baseFutureSeason,
+  );
+}
+
 
 function outcomesEqual(
   left: PersonalProjectionOutcomeItem[],
@@ -453,9 +489,10 @@ export const MyValuesPage = () => {
       );
 
       setDefaultFutureOutcomes(
-        firstFutureSeason
-          ? cloneOutcomes(firstFutureSeason.outcomes)
-          : [],
+        getDefaultFutureOutcomes(
+          cloned,
+          detailData.context.season,
+        ),
       );
       setSpecificFutureYear(
         firstFutureSeason?.season ?? '',
@@ -654,6 +691,10 @@ export const MyValuesPage = () => {
           return seasonItem;
         }
 
+        if (seasonItem.outcomes.length <= 1) {
+          return seasonItem;
+        }
+
         return {
           ...seasonItem,
           is_customized: (
@@ -697,9 +738,11 @@ export const MyValuesPage = () => {
     outcomeIndex: number,
   ) => {
     setDefaultFutureOutcomes((current) =>
-      current.filter(
-        (_, index) => index !== outcomeIndex,
-      ),
+      current.length <= 1
+        ? current
+        : current.filter(
+          (_, index) => index !== outcomeIndex,
+        ),
     );
   };
 
@@ -713,13 +756,11 @@ export const MyValuesPage = () => {
     setEditableSeasons(
       cloneSeasons(detailData.seasons),
     );
-    const firstFutureSeason = detailData.seasons.find(
-      (season) => season.season !== detailData.context.season,
-    );
     setDefaultFutureOutcomes(
-      firstFutureSeason
-        ? cloneOutcomes(firstFutureSeason.outcomes)
-        : [],
+      getDefaultFutureOutcomes(
+        detailData.seasons,
+        detailData.context.season,
+      ),
     );
   };
 
@@ -730,7 +771,15 @@ export const MyValuesPage = () => {
 
     try {
       const currentSeason = currentProjectionSeason;
-      const defaultFuturePayload = defaultFutureOutcomes.map(
+      const fallbackFuturePayload = getDefaultFutureOutcomes(
+        editableSeasons,
+        currentSeason ?? 0,
+      );
+      const defaultFuturePayload = (
+        defaultFutureOutcomes.length
+          ? defaultFutureOutcomes
+          : fallbackFuturePayload
+      ).map(
         (outcome) => ({
           position_rank: Number(outcome.position_rank),
           probability: Number(outcome.probability),
@@ -883,6 +932,11 @@ export const MyValuesPage = () => {
   const selectedFutureSeason = futureSeasons.find(
     (season) => season.season === specificFutureYear,
   ) ?? futureSeasons[0];
+  const visibleFutureOutcomes = (
+    futureProjectionMode === 'default'
+      ? defaultFutureOutcomes
+      : selectedFutureSeason?.outcomes ?? []
+  );
   const marketValues = detail.data?.market_values;
   const customValues = detail.data?.custom_values;
   const deltaValues = detail.data?.delta_values;
@@ -1515,21 +1569,13 @@ export const MyValuesPage = () => {
 
                             <div className="my-values-outcome-list">
                               {
-                                (
-                                  futureProjectionMode === 'default'
-                                    ? defaultFutureOutcomes
-                                    : selectedFutureSeason.outcomes
-                                ).length === 0
+                                visibleFutureOutcomes.length === 0
                                   ? (
                                     <div className="my-values-empty-season">
-                                      No future outcomes added yet.
+                                      Future outcomes default to the player&apos;s Underdog rank.
                                     </div>
                                   )
-                                  : (
-                                    futureProjectionMode === 'default'
-                                      ? defaultFutureOutcomes
-                                      : selectedFutureSeason.outcomes
-                                  ).map((outcome, index) => (
+                                  : visibleFutureOutcomes.map((outcome, index) => (
                                     <div
                                       key={`${futureProjectionMode}-${selectedFutureSeason.season}-${index}`}
                                       className="my-values-outcome-row"
@@ -1590,6 +1636,7 @@ export const MyValuesPage = () => {
                                       <button
                                         type="button"
                                         className="button-secondary"
+                                        disabled={visibleFutureOutcomes.length <= 1}
                                         onClick={() => {
                                           if (futureProjectionMode === 'default') {
                                             handleRemoveDefaultFutureOutcome(index);
