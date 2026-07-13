@@ -21,9 +21,9 @@ import './FinancePage.css';
 
 
 type FinanceTab =
-  | 'tracker'
-  | 'overrides'
-  | 'charts';
+  | 'charts'
+  | 'settings'
+  | 'overrides';
 
 type FinanceDraftRow = {
   place: string;
@@ -665,7 +665,7 @@ export function FinancePage() {
   const resetFinanceMutation = useResetFinanceSeason();
   const saveDefaultsMutation = useSaveFinanceDefaults();
   const saveLeagueDefaultsMutation = useSaveFinanceLeagueDefaults();
-  const [activeTab, setActiveTab] = useState<FinanceTab>('tracker');
+  const [activeTab, setActiveTab] = useState<FinanceTab>('charts');
   const [selectedTrackerSeason, setSelectedTrackerSeason] = useState('current');
   const [chartSeason, setChartSeason] = useState('all');
   const [seasonDrafts, setSeasonDrafts] = useState<
@@ -972,15 +972,28 @@ export function FinancePage() {
                 <button
                   type="button"
                   className={
-                    activeTab === 'tracker'
+                    activeTab === 'charts'
                       ? 'finance-tab active'
                       : 'finance-tab'
                   }
                   onClick={() => {
-                    setActiveTab('tracker');
+                    setActiveTab('charts');
                   }}
                 >
-                  Tracker
+                  Charts
+                </button>
+                <button
+                  type="button"
+                  className={
+                    activeTab === 'settings'
+                      ? 'finance-tab active'
+                      : 'finance-tab'
+                  }
+                  onClick={() => {
+                    setActiveTab('settings');
+                  }}
+                >
+                  Settings
                 </button>
                 <button
                   type="button"
@@ -995,47 +1008,12 @@ export function FinancePage() {
                 >
                   Overrides
                 </button>
-                <button
-                  type="button"
-                  className={
-                    activeTab === 'charts'
-                      ? 'finance-tab active'
-                      : 'finance-tab'
-                  }
-                  onClick={() => {
-                    setActiveTab('charts');
-                  }}
-                >
-                  Charts
-                </button>
               </div>
 
               {
-                activeTab === 'tracker'
+                activeTab === 'settings'
                   ? (
                     <>
-                      <section className="finance-summary-grid">
-                        <article className="finance-summary-card">
-                          <span>Total buy-ins</span>
-                          <strong>{formatCurrency(trackerSummary.totalBuyIns)}</strong>
-                        </article>
-
-                        <article className="finance-summary-card">
-                          <span>Total winnings</span>
-                          <strong>{formatCurrency(trackerSummary.totalWinnings)}</strong>
-                        </article>
-
-                        <article className="finance-summary-card">
-                          <span>Total net</span>
-                          <strong>{formatCurrency(trackerSummary.totalNet)}</strong>
-                        </article>
-
-                        <article className="finance-summary-card">
-                          <span>Projected current payouts</span>
-                          <strong>{formatCurrency(trackerSummary.projectedCurrentWinnings)}</strong>
-                        </article>
-                      </section>
-
                       <section className="finance-settings-grid">
                         <article className="finance-settings-card">
                           <header className="finance-settings-header">
@@ -1302,6 +1280,28 @@ export function FinancePage() {
                     )
                   : (
                     <>
+                      <section className="finance-summary-grid">
+                        <article className="finance-summary-card">
+                          <span>Total buy-ins</span>
+                          <strong>{formatCurrency(trackerSummary.totalBuyIns)}</strong>
+                        </article>
+
+                        <article className="finance-summary-card">
+                          <span>Total winnings</span>
+                          <strong>{formatCurrency(trackerSummary.totalWinnings)}</strong>
+                        </article>
+
+                        <article className="finance-summary-card">
+                          <span>Total net</span>
+                          <strong>{formatCurrency(trackerSummary.totalNet)}</strong>
+                        </article>
+
+                        <article className="finance-summary-card">
+                          <span>Projected current payouts</span>
+                          <strong>{formatCurrency(trackerSummary.projectedCurrentWinnings)}</strong>
+                        </article>
+                      </section>
+
                       <section className="finance-toolbar">
                         <label>
                           <span>Charts year</span>

@@ -15,6 +15,7 @@ from app.crud.sleeper.personal import (
     get_finance_entries_by_key,
     get_finance_league_defaults_by_family_id,
     get_finance_user_defaults,
+    get_hidden_league_ids,
     upsert_finance_entry,
     upsert_finance_league_default,
     upsert_finance_user_defaults,
@@ -25,6 +26,7 @@ from app.crud.sleeper.league import (
 )
 from app.crud.value import get_player_values
 from app.analytics.war.redraft.singleton import war_service
+from app.crud.sleeper.roster import get_owned_roster_rows
 from app.schemas.finance import (
     FinanceDefaultSettings,
     FinanceLeagueDefaultEntry,
@@ -41,9 +43,6 @@ from app.services.draft.projection import (
     build_projected_pick_slots_by_roster_id,
 )
 from app.services.leagues.models import LeaguePlayer
-from app.services.leagues.selection import (
-    get_visible_owned_league_rows_by_sleeper_user_id,
-)
 from app.services.leagues.details import (
     calculate_projected_starter_points,
 )
@@ -783,20 +782,18 @@ async def get_finance_summary(
         ctx,
     )
 
-    if not ctx.connection.sleeper_user_id:
-        return FinanceSummaryResponse()
-
-    visible_owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
+    raw_owned_rows = await get_owned_roster_rows(
         db=ctx.db,
-        sleeper_user_id=ctx.connection.sleeper_user_id,
+        connection=ctx.connection,
+    )
+    hidden_league_ids = await get_hidden_league_ids(
+        db=ctx.db,
         site_user_id=ctx.site_user.id,
     )
     owned_rows = [
-        (
-            row.roster,
-            row.league,
-        )
-        for row in visible_owned_rows
+        (roster, league)
+        for roster, league in raw_owned_rows
+        if league.league_id not in hidden_league_ids
     ]
 
     league_ids = [
