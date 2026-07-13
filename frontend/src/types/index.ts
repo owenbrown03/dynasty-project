@@ -363,6 +363,89 @@ export interface TierBoard {
   tiers: TierBoardGroup[];
 }
 
+export interface PersonalValueSearchResult {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  underdog_position_rank: string | null;
+  ktc_value: number | null;
+  fc_value: number | null;
+  dynasty_roster_war: number | null;
+}
+
+export interface PersonalProjectionOutcomeItem {
+  position_rank: number;
+  probability: number;
+}
+
+export interface PersonalProjectionSeasonItem {
+  season: number;
+  outcomes: PersonalProjectionOutcomeItem[];
+  default_position_rank: number | null;
+  is_customized: boolean;
+}
+
+export interface PersonalValueMetrics {
+  redraft_starter_war: number | null;
+  redraft_roster_war: number | null;
+  dynasty_starter_war: number | null;
+  dynasty_roster_war: number | null;
+}
+
+export interface PersonalValuePlayer {
+  player_id: string;
+  name: string;
+  position: string;
+  team: string | null;
+  age: number | null;
+  underdog_position_rank: string | null;
+}
+
+export interface PersonalValueLeagueContext {
+  league_id: string;
+  league_name: string;
+  season: number;
+  total_rosters: number;
+}
+
+export interface PersonalValueDetail {
+  context: PersonalValueLeagueContext;
+  player: PersonalValuePlayer;
+  market_values: PersonalValueMetrics;
+  custom_values: PersonalValueMetrics;
+  delta_values: PersonalValueMetrics;
+  seasons: PersonalProjectionSeasonItem[];
+}
+
+export interface PersonalValuePoolItem {
+  player: PersonalValuePlayer;
+  market_values: PersonalValueMetrics;
+  custom_values: PersonalValueMetrics;
+  delta_values: PersonalValueMetrics;
+  is_customized: boolean;
+}
+
+export interface PersonalValuePoolGroup {
+  position: string;
+  players: PersonalValuePoolItem[];
+}
+
+export interface PersonalValuePoolResponse {
+  context: PersonalValueLeagueContext;
+  groups: PersonalValuePoolGroup[];
+}
+
+export interface PersonalProjectionSeasonUpdate {
+  season: number;
+  outcomes: PersonalProjectionOutcomeItem[];
+}
+
+export interface PersonalValueUpdateRequest {
+  seasons: PersonalProjectionSeasonUpdate[];
+}
+
 export interface CommissionerPlayerAsset {
   player_id: string;
   name: string;

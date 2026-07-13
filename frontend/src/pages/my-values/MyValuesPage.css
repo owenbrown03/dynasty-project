@@ -1,0 +1,386 @@
+.my-values-page {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+}
+
+.my-values-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--color-border-strong);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--position-pick-color) 16%, transparent), transparent 38%),
+    linear-gradient(180deg, var(--color-surface-raised), var(--color-surface));
+}
+
+.my-values-title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.my-values-description {
+  max-width: 760px;
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.my-values-header-controls {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.my-values-control {
+  display: grid;
+  gap: 6px;
+}
+
+.my-values-control-grow {
+  min-width: 0;
+}
+
+.my-values-control span,
+.my-values-panel-header p,
+.my-values-position-group-header p,
+.my-values-season-card-header p,
+.my-values-metric-card span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.my-values-control select,
+.my-values-control input,
+.my-values-outcome-field input {
+  min-height: 46px;
+  font-size: 15px;
+}
+
+.my-values-header-chip {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.my-values-header-chip span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.my-values-header-chip strong {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.my-values-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.5fr);
+  gap: 18px;
+  min-width: 0;
+}
+
+.my-values-pool-panel,
+.my-values-search-card,
+.my-values-editor-card {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.my-values-pool-panel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.my-values-editor-panel {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.my-values-search-card,
+.my-values-editor-card {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.my-values-panel-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.my-values-panel-header h2 {
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.my-values-pool-note,
+.my-values-search-empty,
+.my-values-empty-season,
+.my-values-season-actions p,
+.my-values-player-identity p,
+.my-values-metric-meta p {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.my-values-position-group {
+  display: grid;
+  gap: 10px;
+}
+
+.my-values-position-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.my-values-position-group-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.my-values-position-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.my-values-pool-list,
+.my-values-search-results,
+.my-values-outcome-list,
+.my-values-season-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.my-values-pool-item,
+.my-values-search-result {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  text-align: left;
+}
+
+.my-values-pool-item.selected {
+  border-color: var(--position-pick-color);
+  background: color-mix(in srgb, var(--position-pick-color) 10%, var(--color-surface-raised));
+}
+
+.my-values-pool-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.my-values-pool-player strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.my-values-pool-player p,
+.my-values-search-metrics span,
+.my-values-pool-values span,
+.my-values-player-tag-row span,
+.my-values-default-pill {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.my-values-pool-values,
+.my-values-search-metrics,
+.my-values-player-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.my-values-search-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 12px;
+}
+
+.my-values-editor-card {
+  min-width: 0;
+}
+
+.my-values-player-hero {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.my-values-player-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.my-values-player-identity h2 {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.my-values-player-position {
+  font-weight: 700;
+}
+
+.my-values-player-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.my-values-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.my-values-metric-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.my-values-metric-card strong {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.my-values-metric-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.my-values-metric-meta .positive {
+  color: #5fd28b;
+}
+
+.my-values-metric-meta .negative {
+  color: #ff7b87;
+}
+
+.my-values-metric-meta .neutral {
+  color: var(--color-text-muted);
+}
+
+.my-values-season-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.my-values-season-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.my-values-season-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.my-values-season-card-header h3 {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.my-values-default-pill {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.my-values-season-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.my-values-outcome-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.my-values-outcome-field {
+  display: grid;
+  gap: 6px;
+}
+
+.my-values-outcome-field span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1100px) {
+  .my-values-header,
+  .my-values-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .my-values-search-controls,
+  .my-values-metric-grid,
+  .my-values-season-grid,
+  .my-values-outcome-row {
+    grid-template-columns: 1fr;
+  }
+
+  .my-values-player-hero {
+    display: grid;
+  }
+
+  .my-values-player-identity {
+    align-items: start;
+  }
+}

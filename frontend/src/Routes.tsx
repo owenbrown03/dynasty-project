@@ -9,6 +9,7 @@ import { WaiversPage } from './pages/waivers/WaiversPage';
 import { TiersPage } from './pages/tiers/TiersPage';
 import { CommissionerPage } from './pages/commissioner/CommissionerPage';
 import { FinancePage } from './pages/finance/FinancePage';
+import { MyValuesPage } from './pages/my-values/MyValuesPage';
 import { RemindersPage } from './pages/reminders/RemindersPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 
@@ -22,6 +23,7 @@ export const AppRoutes = () => {
         <Route path="/trades" element={<TradesPage />} />
         <Route path="/waivers" element={<WaiversPage />} />
         <Route path="/tiers" element={<TiersPage />} />
+        <Route path="/my-values" element={<MyValuesPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/reminders" element={<RemindersPage />} />
         <Route path="/settings" element={<SettingsPage />} />
