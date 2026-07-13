@@ -401,7 +401,12 @@ async def fetch_league_bundle(
     )
 
     should_fetch_brackets = (
-        league.status == "complete"
+        getattr(
+            league,
+            "status",
+            None,
+        )
+        == "complete"
     )
 
     if not needs_refresh and not should_fetch_brackets:
@@ -455,17 +460,21 @@ async def fetch_league_bundle(
                 for transaction in batch
             ]
 
-            return {
+            bundle = {
                 "league_id": league_id,
                 "transactions": transactions,
-                "winners_bracket": winners_bracket,
-                "losers_bracket": losers_bracket,
                 "transactions_only": True,
                 "synced_week": max(
                     last_synced_week,
                     curr_week,
                 ),
             }
+
+            if should_fetch_brackets:
+                bundle["winners_bracket"] = winners_bracket
+                bundle["losers_bracket"] = losers_bracket
+
+            return bundle
 
         (
             league_obj,
