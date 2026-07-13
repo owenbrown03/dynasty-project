@@ -467,6 +467,61 @@ function FinanceNetChart({
   );
 }
 
+function FinanceLeagueBreakdown({
+  entries,
+}: {
+  entries: FinanceLeagueSeasonEntry[];
+}) {
+  const sortedEntries = [...entries].sort((left, right) => (
+    right.net_amount - left.net_amount
+  ));
+
+  return (
+    <article className="finance-chart-card finance-league-breakdown-card">
+      <div className="finance-chart-header">
+        <div>
+          <p className="finance-chart-kicker">League results</p>
+          <h2>League net breakdown</h2>
+        </div>
+      </div>
+
+      <div className="finance-league-breakdown">
+        {
+          sortedEntries.map((entry) => (
+            <div
+              key={getDraftKey(entry)}
+              className="finance-league-breakdown-row"
+            >
+              <div>
+                <strong>{entry.league_name}</strong>
+                <span>
+                  {
+                    entry.finish_place !== null
+                      ? `Finish ${ordinal(entry.finish_place)} of ${entry.total_rosters}`
+                      : `${entry.total_rosters} teams`
+                  }
+                </span>
+              </div>
+              <div>
+                <span>Net</span>
+                <strong>{formatCurrency(entry.net_amount)}</strong>
+              </div>
+              <div>
+                <span>Finish payout</span>
+                <strong>{formatCurrency(entry.winnings_amount)}</strong>
+              </div>
+              <div>
+                <span>Expected payout</span>
+                <strong>{formatCurrency(entry.projected_winnings_amount)}</strong>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </article>
+  );
+}
+
 
 function FinancePayoutEditor({
   draft,
@@ -1380,9 +1435,19 @@ export function FinancePage() {
                       </section>
 
                       <section className="finance-chart-grid">
-                        <FinanceTrendChart
-                          entries={seasonChartEntries}
-                        />
+                        {
+                          chartSeason === 'all'
+                            ? (
+                              <FinanceTrendChart
+                                entries={seasonChartEntries}
+                              />
+                            )
+                            : (
+                              <FinanceLeagueBreakdown
+                                entries={chartEntries}
+                              />
+                            )
+                        }
                         <FinanceNetChart
                           entries={seasonChartEntries}
                         />
