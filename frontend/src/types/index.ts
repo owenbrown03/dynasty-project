@@ -87,6 +87,7 @@ export interface BootstrapSleeper {
   linked: boolean;
   sleeper_username: string | null;
   sleeper_user_id: string | null;
+  sleeper_avatar: string | null;
   can_read: boolean;
   can_write: boolean;
 }
@@ -95,6 +96,7 @@ export interface SleeperConnection {
   linked: boolean;
   sleeper_username: string | null;
   sleeper_user_id: string | null;
+  sleeper_avatar: string | null;
   can_read: boolean;
   can_write: boolean;
 }
@@ -105,12 +107,23 @@ export interface Bootstrap {
   sleeper: BootstrapSleeper;
   theme_preference: ThemePreference | null;
   value_preference: ValueBasis | null;
+  draft_pick_projection_settings: DraftPickProjectionSettings;
 }
 
 export type ThemePreference =
   | 'light'
   | 'dark'
   | 'system';
+
+export type DraftPickProjectionMethod =
+  | 'reverse_standings'
+  | 'max_pf';
+
+export interface DraftPickProjectionSettings {
+  enabled: boolean;
+  start_week: number;
+  method: DraftPickProjectionMethod;
+}
 
 export interface LeagueOverview {
   league_id: string;
@@ -162,6 +175,7 @@ export interface LeagueWarPlayerPoint {
 export interface LeagueWarPlayerSeason {
   season: string;
   source: string;
+  war_type: string;
   players: LeagueWarPlayerPoint[];
 }
 
@@ -238,6 +252,7 @@ export interface LeagueDetails {
   season: string;
   total_rosters: number;
   note: string;
+  draft_pick_projection_summary: string | null;
   settings_badges: string[];
   settings_details: LeagueSettingsDetail[];
   war_position_history: LeagueWarPositionSeason[];

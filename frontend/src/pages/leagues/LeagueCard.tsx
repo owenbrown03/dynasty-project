@@ -121,6 +121,7 @@ export function LeagueCard({
           <RosterCard
             key={roster.roster_id}
             roster={roster}
+            draftPickProjectionSummary={league.draft_pick_projection_summary}
           />
         ))}
       </div>

@@ -7,17 +7,38 @@ import type { LeaguePick, LeagueRoster } from '@/types';
 import { PlayerTable } from './PlayerTable';
 import { formatNumber } from '@/utils/format';
 import { buildRosterConstructionRows } from './rosterConstruction';
+import {
+  getDraftPickColor,
+  getPositionColor,
+} from '@/utils/positions';
 
 
 interface Props {
   roster: LeagueRoster;
+  draftPickProjectionSummary?: string | null;
+}
+
+function formatProjectedPickLabel(
+  pick: LeaguePick,
+) {
+  if (pick.projected_slot === null) {
+    return null;
+  }
+
+  return (
+    `${pick.season} Pick ${pick.round}.${String(
+      pick.projected_slot,
+    ).padStart(2, '0')}`
+  );
 }
 
 
 function PickList({
   picks,
+  draftPickProjectionSummary,
 }: {
   picks: LeaguePick[];
+  draftPickProjectionSummary?: string | null;
 }) {
   if (picks.length === 0) {
     return (
@@ -30,18 +51,35 @@ function PickList({
   return (
     <div className="league-pick-list">
       {
+        picks.some((pick) => pick.projected_slot !== null)
+        && draftPickProjectionSummary
+          ? (
+            <div className="league-pick-summary">
+              {draftPickProjectionSummary}
+            </div>
+          )
+          : null
+      }
+      {
         picks.map((pick) => (
           <div
             key={`${pick.season}-${pick.round}-${pick.og_roster_id}`}
             className="league-pick-row"
+            style={{
+              borderLeftColor: getDraftPickColor(),
+            }}
           >
             <div className="league-pick-copy">
               <strong>{pick.label}</strong>
               {
-                pick.slot_source_label
+                pick.projected_slot !== null
                   ? (
                     <span className="league-pick-meta">
-                      {pick.slot_source_label}
+                      {
+                        `Projection currently assumes ${formatProjectedPickLabel(
+                          pick,
+                        )}. ${pick.slot_source_label ?? ''}`.trim()
+                      }
                     </span>
                   )
                   : null
@@ -58,9 +96,10 @@ function PickList({
     </div>
   );
 }
-
-
-export function RosterCard({ roster }: Props) {
+export function RosterCard({
+  roster,
+  draftPickProjectionSummary,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
   const constructionRows = buildRosterConstructionRows(
     roster,
@@ -187,6 +226,9 @@ export function RosterCard({ roster }: Props) {
                       <article
                         key={row.position}
                         className="roster-construction-card"
+                        style={{
+                          borderTopColor: getPositionColor(row.position),
+                        }}
                       >
                         <strong>{row.position}</strong>
                         <span>
@@ -220,18 +262,21 @@ export function RosterCard({ roster }: Props) {
 
               <section className="league-detail-section">
                 <div className="league-detail-header">
-                  <p>Draft capital</p>
-                </div>
-
-                <PickList picks={roster.picks} />
-              </section>
-
-              <section className="league-detail-section">
-                <div className="league-detail-header">
                   <p>Roster table</p>
                 </div>
 
                 <PlayerTable players={roster.players} />
+              </section>
+
+              <section className="league-detail-section">
+                <div className="league-detail-header">
+                  <p>Draft capital</p>
+                </div>
+
+                <PickList
+                  picks={roster.picks}
+                  draftPickProjectionSummary={draftPickProjectionSummary}
+                />
               </section>
             </div>
           )

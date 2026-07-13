@@ -9,6 +9,7 @@ import {
   Wallet,
   Bell,
   Layers3,
+  Settings,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -57,6 +58,11 @@ export const Sidebar = () => {
       to: '/reminders',
       label: 'Reminders',
       icon: <Bell size={20} />,
+    },
+    {
+      to: '/settings',
+      label: 'Settings',
+      icon: <Settings size={20} />,
     },
     {
       to: commissionerPath,

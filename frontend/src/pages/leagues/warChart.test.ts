@@ -10,6 +10,7 @@ const league: LeagueDetails = {
   season: '2026',
   total_rosters: 12,
   note: '',
+  draft_pick_projection_summary: null,
   war_position_history: [],
   war_player_history: [],
   settings_badges: [],
@@ -144,22 +145,22 @@ describe('buildLeaguePositionWarSeries', () => {
     expect(series).toEqual([
       {
         position: 'QB',
-        color: '#1f6feb',
+        color: 'var(--position-qb-color)',
         values: [2.25, 2.5, 4.1, 4.4],
       },
       {
         position: 'RB',
-        color: '#d97706',
+        color: 'var(--position-rb-color)',
         values: [1.75, 1.9, 2.8, 3.1],
       },
       {
         position: 'WR',
-        color: '#059669',
+        color: 'var(--position-wr-color)',
         values: [1.2, 1.45, 2.4, 2.8],
       },
       {
         position: 'TE',
-        color: '#c2410c',
+        color: 'var(--position-te-color)',
         values: [0, 0, 0, 0],
       },
     ]);

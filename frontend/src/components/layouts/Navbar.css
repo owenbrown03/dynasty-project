@@ -155,6 +155,11 @@
   min-width: 112px;
 }
 
+.navbar-settings-link {
+  justify-content: center;
+  text-decoration: none;
+}
+
 @media (max-width: 980px) {
   .navbar {
     align-items: stretch;

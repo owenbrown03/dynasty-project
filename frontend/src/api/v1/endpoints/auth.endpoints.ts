@@ -1,6 +1,7 @@
 import { type AxiosInstance } from 'axios';
 
 import type {
+  DraftPickProjectionSettings,
   EmailVerificationConfirmRequest,
   EmailVerificationRequestResponse,
   Login,
@@ -29,5 +30,11 @@ export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
   ) => client.post(
     `${prefix}/value`,
     { value_preference },
+  ),
+  updateDraftPickProjectionSettings: (
+    settings: DraftPickProjectionSettings,
+  ) => client.post(
+    `${prefix}/draft-pick-projection`,
+    { settings },
   ),
 });
