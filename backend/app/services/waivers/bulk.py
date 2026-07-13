@@ -52,8 +52,10 @@ from app.services.waivers.dynasty import (
     build_dynasty_projection,
 )
 from app.crud.sleeper.player import get_bulk_target_player
-from app.crud.sleeper.roster import get_owned_roster_rows
 from app.utils.age import calculate_age
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_sleeper_user_id,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -490,10 +492,36 @@ async def get_bulk_waiver_availability(
         player_id=player_id,
     )
 
-    owned_roster_rows = await get_owned_roster_rows(
+    if not connection.sleeper_user_id:
+        return BulkWaiverAvailabilityResponse(
+            player=BulkWaiverPlayerSearchResult(
+                player_id=target_player.player_id,
+                name=target_player.full_name,
+                position=target_player.position,
+                team=target_player.team,
+                age=calculate_age(
+                    target_player.birth_date,
+                ),
+            ),
+            value_basis=value_basis,
+            value_label=get_value_label(
+                value_basis,
+                await get_war_value_settings_by_user_id(
+                    db=db,
+                    site_user_id=connection.site_user_id,
+                ),
+            ),
+        )
+
+    owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
         db=db,
-        connection=connection,
+        sleeper_user_id=connection.sleeper_user_id,
+        site_user_id=connection.site_user_id,
     )
+    owned_roster_rows = [
+        (row.roster, row.league)
+        for row in owned_rows
+    ]
 
     league_ids = [
         league.league_id
