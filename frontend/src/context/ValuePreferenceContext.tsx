@@ -21,6 +21,21 @@ import type {
   ValueBasis,
 } from '@/types';
 
+function normalizeVisiblePreference(
+  value: ValueBasis,
+): ValueBasis {
+  if (
+    value === 'redraft_starter_war'
+    || value === 'redraft_roster_war'
+    || value === 'dynasty_starter_war'
+    || value === 'dynasty_roster_war'
+  ) {
+    return 'sleeper_war';
+  }
+
+  return value;
+}
+
 export function ValuePreferenceProvider({
   children,
 }: {
@@ -67,6 +82,9 @@ export function ValuePreferenceProvider({
     let nextPreference = (
       bootstrapPreference
       ?? getStoredValuePreference()
+    );
+    nextPreference = normalizeVisiblePreference(
+      nextPreference,
     );
 
     if (

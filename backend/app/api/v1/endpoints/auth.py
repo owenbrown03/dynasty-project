@@ -13,6 +13,8 @@ from app.schemas.auth import (
     ThemePreferenceUpdate,
     ValuePreferenceResponse,
     ValuePreferenceUpdate,
+    WarValueSettingsResponse,
+    WarValueSettingsUpdate,
 )
 from app.services.auth import (
     login,
@@ -22,6 +24,7 @@ from app.services.auth import (
     update_theme,
     update_draft_pick_projection_settings,
     update_value_preference,
+    update_war_value_settings,
     verify_email,
 )
 
@@ -100,6 +103,17 @@ async def update_value_preference_endpoint(
     ctx: ContextDep,
 ):
     return await update_value_preference(body, ctx)
+
+
+@router.post(
+    "/war-value",
+    response_model=WarValueSettingsResponse,
+)
+async def update_war_value_settings_endpoint(
+    body: WarValueSettingsUpdate,
+    ctx: ContextDep,
+):
+    return await update_war_value_settings(body, ctx)
 
 
 @router.post(

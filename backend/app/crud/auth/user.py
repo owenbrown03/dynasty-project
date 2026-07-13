@@ -20,6 +20,9 @@ from app.services.values.basis import (
     DEFAULT_VALUE_BASIS,
     ValueBasis,
 )
+from app.services.values.war_settings import (
+    normalize_war_value_settings,
+)
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 VALID_THEME_PREFERENCES = {"light", "dark", "system"}
@@ -244,6 +247,64 @@ def get_draft_pick_projection_settings(
     )
 
 
+def get_war_value_settings(
+    user: SiteUser | None,
+) -> dict[str, object]:
+    if not user:
+        return normalize_war_value_settings(
+            None,
+        )
+
+    return normalize_war_value_settings(
+        (user.settings or {}).get(
+            "war_value_settings",
+        )
+    )
+
+
+async def get_war_value_settings_by_user_id(
+    *,
+    db: AsyncSession,
+    site_user_id,
+) -> dict[str, object]:
+    if site_user_id is None:
+        return normalize_war_value_settings(
+            None,
+        )
+
+    user = await db.get(
+        SiteUser,
+        site_user_id,
+    )
+
+    return get_war_value_settings(
+        user,
+    )
+
+
+async def set_war_value_settings(
+    *,
+    user: SiteUser,
+    war_value_settings: dict[str, object],
+    db: AsyncSession,
+) -> SiteUser:
+    settings = dict(
+        user.settings or {}
+    )
+
+    settings["war_value_settings"] = (
+        normalize_war_value_settings(
+            war_value_settings,
+        )
+    )
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 async def set_draft_pick_projection_settings(
     *,
     user: SiteUser,
@@ -350,6 +411,40 @@ async def reconcile_session_draft_pick_projection_settings(
     )
     settings["draft_pick_projection_settings"] = (
         normalize_draft_pick_projection_settings(
+            session_settings,
+        )
+    )
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def reconcile_session_war_value_settings(
+    *,
+    user: SiteUser,
+    session: UserSession | None,
+    db: AsyncSession,
+) -> SiteUser:
+    if not session:
+        return user
+
+    session_settings = (
+        (session.settings or {}).get(
+            "war_value_settings",
+        )
+    )
+
+    if session_settings is None:
+        return user
+
+    settings = dict(
+        user.settings or {}
+    )
+    settings["war_value_settings"] = (
+        normalize_war_value_settings(
             session_settings,
         )
     )

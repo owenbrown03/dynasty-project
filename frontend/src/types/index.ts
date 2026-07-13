@@ -107,6 +107,7 @@ export interface Bootstrap {
   sleeper: BootstrapSleeper;
   theme_preference: ThemePreference | null;
   value_preference: ValueBasis | null;
+  war_value_settings: WarValueSettings;
   draft_pick_projection_settings: DraftPickProjectionSettings;
 }
 
@@ -114,6 +115,24 @@ export type ThemePreference =
   | 'light'
   | 'dark'
   | 'system';
+
+export type WarValueTimeframe =
+  | 'redraft'
+  | 'dynasty';
+
+export type WarValueScope =
+  | 'starter'
+  | 'roster';
+
+export interface WarValueConfig {
+  timeframe: WarValueTimeframe;
+  scope: WarValueScope;
+}
+
+export interface WarValueSettings {
+  sleeper_projection: WarValueConfig;
+  my: WarValueConfig;
+}
 
 export type DraftPickProjectionMethod =
   | 'reverse_standings'
@@ -332,6 +351,7 @@ export interface Dashboard {
 export type ValueBasis =
   | 'ktc'
   | 'fantasycalc'
+  | 'sleeper_war'
   | 'my_war'
   | 'redraft_starter_war'
   | 'redraft_roster_war'

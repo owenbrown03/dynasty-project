@@ -8,6 +8,9 @@ from app.services.draft.projection import (
     normalize_draft_pick_projection_settings,
 )
 from app.services.values.basis import ValueBasis
+from app.services.values.war_settings import (
+    normalize_war_value_settings,
+)
 
 VALID_THEME_PREFERENCES = {"light", "dark", "system"}
 VALID_VALUE_PREFERENCES = {
@@ -137,6 +140,44 @@ def get_session_draft_pick_projection_settings(
             "draft_pick_projection_settings",
         )
     )
+
+
+def get_session_war_value_settings(
+    session: UserSession | None,
+) -> dict[str, object]:
+    if not session:
+        return normalize_war_value_settings(
+            None,
+        )
+
+    return normalize_war_value_settings(
+        (session.settings or {}).get(
+            "war_value_settings",
+        )
+    )
+
+
+async def set_session_war_value_settings(
+    *,
+    session: UserSession,
+    war_value_settings: dict[str, object],
+    db: AsyncSession,
+) -> UserSession:
+    settings = dict(
+        session.settings or {}
+    )
+
+    settings["war_value_settings"] = (
+        normalize_war_value_settings(
+            war_value_settings,
+        )
+    )
+    session.settings = settings
+
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
 
 
 async def set_session_draft_pick_projection_settings(

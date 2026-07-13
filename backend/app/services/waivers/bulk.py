@@ -16,6 +16,7 @@ from app.analytics.war.dynasty.factory import (
 from app.analytics.war.dynasty.models import DynastyProjection
 from app.analytics.war.redraft.models import PlayerWAR
 from app.analytics.war.redraft.service import WARService
+from app.crud.auth.user import get_war_value_settings_by_user_id
 from app.crud.value import get_player_values
 from app.infrastructure.redis.client import RedisClient
 from app.integrations.sleeper.client import SleeperClient
@@ -61,6 +62,7 @@ logger = logging.getLogger(__name__)
 DYNASTY_VALUE_BASES = {
     ValueBasis.DYNASTY_STARTER_WAR,
     ValueBasis.DYNASTY_ROSTER_WAR,
+    ValueBasis.SLEEPER_WAR,
     ValueBasis.MY_WAR,
 }
 
@@ -351,6 +353,11 @@ async def build_bulk_league_availability(
             )
         )
 
+    war_value_settings = await get_war_value_settings_by_user_id(
+        db=db,
+        site_user_id=site_user_id,
+    )
+
     player_values = await get_player_values(
         db=db,
         player_ids=relevant_player_ids,
@@ -380,6 +387,7 @@ async def build_bulk_league_availability(
         get_player_value(
             player=add_player_value,
             basis=value_basis,
+            war_value_settings=war_value_settings,
         )
         if add_player_value is not None
         else None
@@ -400,6 +408,7 @@ async def build_bulk_league_availability(
         selected_value = get_player_value(
             player=player,
             basis=value_basis,
+            war_value_settings=war_value_settings,
         )
 
         if selected_value is None:
@@ -525,6 +534,10 @@ async def get_bulk_waiver_availability(
         value_basis=value_basis,
         value_label=get_value_label(
             value_basis,
+            await get_war_value_settings_by_user_id(
+                db=db,
+                site_user_id=connection.site_user_id,
+            ),
         ),
 
         leagues=league_availability,

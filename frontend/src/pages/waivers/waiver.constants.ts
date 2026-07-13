@@ -13,9 +13,19 @@ export const VALUE_BASIS_OPTIONS: Array<{
     label: 'FantasyCalc Value',
   },
   {
+    value: 'sleeper_war',
+    label: 'Sleeper Projection WAR',
+  },
+  {
     value: 'my_war',
     label: 'My WAR',
   },
+];
+
+export const LEGACY_WAR_BASIS_OPTIONS: Array<{
+  value: ValueBasis;
+  label: string;
+}> = [
   {
     value: 'dynasty_roster_war',
     label: 'Dynasty Roster WAR',

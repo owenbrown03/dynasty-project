@@ -16,6 +16,8 @@ from app.schemas.auth import (
     ThemePreferenceUpdate,
     ValuePreferenceResponse,
     ValuePreferenceUpdate,
+    WarValueSettingsResponse,
+    WarValueSettingsUpdate,
 )
 from app.core.context import Context
 from app.crud.auth.user import (
@@ -25,26 +27,31 @@ from app.crud.auth.user import (
     get_email_verification_by_token,
     get_theme_preference,
     get_value_preference,
+    get_war_value_settings,
     get_user_by_credentials,
     is_email_verified,
     insert_user,
     reconcile_session_theme_preference,
     reconcile_session_draft_pick_projection_settings,
     reconcile_session_value_preference,
+    reconcile_session_war_value_settings,
     set_draft_pick_projection_settings,
     set_theme_preference,
     set_value_preference,
+    set_war_value_settings,
 )
 from app.crud.auth.session import (
     create_session_by_userid,
     get_session_draft_pick_projection_settings,
     get_session_theme_preference,
     get_session_value_preference,
+    get_session_war_value_settings,
     insert_session_by_userid,
     delete_session,
     set_session_draft_pick_projection_settings,
     set_session_theme_preference,
     set_session_value_preference,
+    set_session_war_value_settings,
 )
 from app.models.db.auth import SiteUser
 from app.services.email import (
@@ -112,6 +119,11 @@ async def login(
         session=session,
         db=ctx.db,
     )
+    await reconcile_session_war_value_settings(
+        user=db_user,
+        session=session,
+        db=ctx.db,
+    )
 
     return build_auth_session_response(
         str(db_user.id),
@@ -148,6 +160,14 @@ async def logout(
             ctx.site_user,
         )
     )
+    war_value_settings = (
+        get_session_war_value_settings(
+            ctx.session,
+        )
+        or get_war_value_settings(
+            ctx.site_user,
+        )
+    )
 
     await delete_session(ctx.session, ctx.response, ctx.db)
 
@@ -176,6 +196,11 @@ async def logout(
         draft_pick_projection_settings=(
             draft_pick_projection_settings
         ),
+        db=ctx.db,
+    )
+    await set_session_war_value_settings(
+        session=new_session,
+        war_value_settings=war_value_settings,
         db=ctx.db,
     )
 
@@ -270,6 +295,36 @@ async def update_draft_pick_projection_settings(
 
     return DraftPickProjectionSettingsResponse(
         settings=get_session_draft_pick_projection_settings(
+            session,
+        ),
+    )
+
+
+async def update_war_value_settings(
+    body: WarValueSettingsUpdate,
+    ctx: Context,
+) -> WarValueSettingsResponse:
+    settings_payload = body.settings.model_dump()
+    session = await set_session_war_value_settings(
+        session=ctx.session,
+        war_value_settings=settings_payload,
+        db=ctx.db,
+    )
+
+    if ctx.site_user:
+        user = await set_war_value_settings(
+            user=ctx.site_user,
+            war_value_settings=settings_payload,
+            db=ctx.db,
+        )
+        return WarValueSettingsResponse(
+            settings=get_war_value_settings(
+                user,
+            ),
+        )
+
+    return WarValueSettingsResponse(
+        settings=get_session_war_value_settings(
             session,
         ),
     )

@@ -27,6 +27,7 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.values.war_settings import WarValueSettings
 from app.services.values.canonical import (
     build_canonical_war_league,
 )
@@ -117,6 +118,7 @@ async def load_player_values_for_basis(
     db: AsyncSession,
     value_basis: ValueBasis,
     site_user_id=None,
+    war_value_settings: WarValueSettings | None = None,
     league=None,
     season: int,
 ) -> list[PlayerValue]:
@@ -153,6 +155,7 @@ async def load_player_values_for_basis(
     if value_basis in {
         ValueBasis.DYNASTY_STARTER_WAR,
         ValueBasis.DYNASTY_ROSTER_WAR,
+        ValueBasis.SLEEPER_WAR,
         ValueBasis.MY_WAR,
     }:
         dynasty_war_by_player_id = (
@@ -230,6 +233,7 @@ async def get_player_tier_board(
         ValueBasis.REDRAFT_ROSTER_WAR,
         ValueBasis.DYNASTY_STARTER_WAR,
         ValueBasis.DYNASTY_ROSTER_WAR,
+        ValueBasis.SLEEPER_WAR,
         ValueBasis.MY_WAR,
     }:
         if league_id:
@@ -254,8 +258,16 @@ async def get_player_tier_board(
         db=ctx.db,
         value_basis=value_basis,
         site_user_id=ctx.site_user.id if ctx.site_user else None,
+        war_value_settings=ctx.site_user.settings.get("war_value_settings")
+        if ctx.site_user and ctx.site_user.settings
+        else None,
         league=league,
         season=effective_season,
+    )
+    war_value_settings = (
+        ctx.site_user.settings.get("war_value_settings")
+        if ctx.site_user and ctx.site_user.settings
+        else None
     )
 
     ranked_players = []
@@ -264,6 +276,7 @@ async def get_player_tier_board(
         selected_value = get_player_value(
             player,
             value_basis,
+            war_value_settings,
         )
 
         if selected_value is None:
@@ -325,6 +338,7 @@ async def get_player_tier_board(
         value_basis=value_basis,
         value_label=get_value_label(
             value_basis,
+            war_value_settings,
         ),
         season=effective_season,
         war_context=war_context,

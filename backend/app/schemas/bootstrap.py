@@ -2,7 +2,10 @@ from datetime import datetime
 from typing import Literal, Optional
 
 from app.schemas.base import Base
-from app.schemas.auth import DraftPickProjectionSettings
+from app.schemas.auth import (
+    DraftPickProjectionSettings,
+    WarValueSettings,
+)
 from app.services.values.basis import ValueBasis
 
 
@@ -28,4 +31,5 @@ class BootstrapResponse(Base):
     sleeper: BootstrapSleeper
     theme_preference: Literal["light", "dark", "system"] | None = None
     value_preference: ValueBasis | None = None
+    war_value_settings: WarValueSettings
     draft_pick_projection_settings: DraftPickProjectionSettings

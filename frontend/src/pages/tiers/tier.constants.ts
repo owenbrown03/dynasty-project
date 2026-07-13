@@ -10,7 +10,10 @@ export const TIER_SOURCE_OPTIONS: Array<{
   label: string;
 }> = [
   ...VALUE_BASIS_OPTIONS.filter(
-    (option) => option.value !== 'my_war',
+    (option) => ![
+      'sleeper_war',
+      'my_war',
+    ].includes(option.value),
   ),
   {
     value: 'league_war',
@@ -21,10 +24,7 @@ export const TIER_SOURCE_OPTIONS: Array<{
 
 export const WAR_ONLY_OPTIONS = VALUE_BASIS_OPTIONS.filter(
   (option) => [
-    'dynasty_roster_war',
-    'dynasty_starter_war',
-    'redraft_roster_war',
-    'redraft_starter_war',
+    'sleeper_war',
     'my_war',
   ].includes(
     option.value,

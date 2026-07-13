@@ -6,6 +6,7 @@ from app.analytics.war.dynasty.factory import (
     build_dynasty_war_service,
 )
 from app.analytics.war.redraft.singleton import war_service
+from app.crud.auth.user import get_war_value_settings_by_user_id
 from app.crud.sleeper.draft import (
     get_drafts_by_league_ids,
     get_traded_picks_by_league_ids,
@@ -86,10 +87,12 @@ def build_settings_badges(
 def to_commissioner_player(
     player: PlayerValue,
     value_basis: ValueBasis,
+    war_value_settings=None,
 ) -> CommissionerPlayerAsset:
     selected_value = get_player_value(
         player,
         value_basis,
+        war_value_settings,
     )
 
     return CommissionerPlayerAsset(
@@ -227,6 +230,7 @@ async def build_league_player_values(
     if value_basis in {
         ValueBasis.DYNASTY_STARTER_WAR,
         ValueBasis.DYNASTY_ROSTER_WAR,
+        ValueBasis.SLEEPER_WAR,
         ValueBasis.MY_WAR,
     }:
         dynasty_service = build_dynasty_war_service()
@@ -341,6 +345,10 @@ async def get_commissioner_orphans(
     )
 
     orphan_cards: list[CommissionerOrphanRoster] = []
+    war_value_settings = await get_war_value_settings_by_user_id(
+        db=db,
+        site_user_id=site_user_id,
+    )
 
     for league_id in orphan_league_ids:
         league = leagues_by_id[league_id]
@@ -490,6 +498,7 @@ async def get_commissioner_orphans(
                 to_commissioner_player(
                     player_by_id[player_id],
                     value_basis,
+                    war_value_settings,
                 )
                 for player_id in (roster.players or [])
                 if player_id in player_by_id
@@ -568,6 +577,9 @@ async def get_commissioner_orphans(
     return CommissionerOrphansResponse(
         username=username,
         value_basis=value_basis,
-        value_label=get_value_label(value_basis),
+        value_label=get_value_label(
+            value_basis,
+            war_value_settings,
+        ),
         orphans=orphan_cards,
     )

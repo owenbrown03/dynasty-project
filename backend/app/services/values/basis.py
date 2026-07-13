@@ -3,11 +3,17 @@ from __future__ import annotations
 from enum import StrEnum
 
 from app.schemas.player import PlayerValue
+from app.services.values.war_settings import (
+    WarValueConfig,
+    WarValueSettings,
+    normalize_war_value_settings,
+)
 
 
 class ValueBasis(StrEnum):
     KTC = "ktc"
     FANTASYCALC = "fantasycalc"
+    SLEEPER_WAR = "sleeper_war"
     MY_WAR = "my_war"
 
     REDRAFT_STARTER_WAR = "redraft_starter_war"
@@ -20,9 +26,45 @@ class ValueBasis(StrEnum):
 DEFAULT_VALUE_BASIS = ValueBasis.KTC
 
 
+def _get_war_field(
+    *,
+    prefix: str,
+    config: WarValueConfig,
+) -> str:
+    base = f"{config['timeframe']}_{config['scope']}_war"
+
+    if not prefix:
+        return base
+
+    return f"{prefix}_{base}"
+
+
+def _get_configured_war_value(
+    *,
+    player: PlayerValue,
+    prefix: str,
+    config: WarValueConfig,
+) -> float | None:
+    value = getattr(
+        player,
+        _get_war_field(
+            prefix=prefix,
+            config=config,
+        ),
+        None,
+    )
+
+    return (
+        float(value)
+        if value is not None
+        else None
+    )
+
+
 def get_player_value(
     player: PlayerValue,
     basis: ValueBasis,
+    war_value_settings: WarValueSettings | None = None,
 ) -> float | None:
     """
     Returns the player value for the selected valuation basis.
@@ -30,6 +72,10 @@ def get_player_value(
     Missing values remain None so a missing KTC/FantasyCalc/WAR value
     is never silently treated as zero.
     """
+
+    normalized_war_settings = normalize_war_value_settings(
+        war_value_settings,
+    )
 
     match basis:
         case ValueBasis.KTC:
@@ -46,8 +92,21 @@ def get_player_value(
                 else None
             )
 
+        case ValueBasis.SLEEPER_WAR:
+            return _get_configured_war_value(
+                player=player,
+                prefix="",
+                config=normalized_war_settings[
+                    "sleeper_projection"
+                ],
+            )
+
         case ValueBasis.MY_WAR:
-            return player.my_dynasty_roster_war
+            return _get_configured_war_value(
+                player=player,
+                prefix="my",
+                config=normalized_war_settings["my"],
+            )
 
         case ValueBasis.REDRAFT_STARTER_WAR:
             return player.redraft_starter_war
@@ -66,7 +125,12 @@ def get_player_value(
 
 def get_value_label(
     basis: ValueBasis,
+    war_value_settings: WarValueSettings | None = None,
 ) -> str:
+    normalized_war_settings = normalize_war_value_settings(
+        war_value_settings,
+    )
+
     match basis:
         case ValueBasis.KTC:
             return "KTC Value"
@@ -74,8 +138,21 @@ def get_value_label(
         case ValueBasis.FANTASYCALC:
             return "FantasyCalc Value"
 
+        case ValueBasis.SLEEPER_WAR:
+            config = normalized_war_settings[
+                "sleeper_projection"
+            ]
+            return (
+                f"Sleeper {config['timeframe'].title()} "
+                f"{config['scope'].title()} WAR"
+            )
+
         case ValueBasis.MY_WAR:
-            return "My WAR"
+            config = normalized_war_settings["my"]
+            return (
+                f"My {config['timeframe'].title()} "
+                f"{config['scope'].title()} WAR"
+            )
 
         case ValueBasis.REDRAFT_STARTER_WAR:
             return "Redraft Starter WAR"
