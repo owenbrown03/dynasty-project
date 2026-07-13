@@ -401,6 +401,8 @@ export interface PersonalValuePlayer {
   team: string | null;
   age: number | null;
   underdog_position_rank: string | null;
+  ktc_value: number | null;
+  fc_value: number | null;
 }
 
 export interface PersonalValueLeagueContext {

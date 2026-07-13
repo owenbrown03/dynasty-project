@@ -78,6 +78,13 @@ class _ProjectionContext:
     is_customized: bool
 
 
+@dataclass(frozen=True)
+class _MarketSnapshot:
+    metrics: PersonalValueMetrics
+    ktc_value: float | None
+    fc_value: float | None
+
+
 def _require_personal_values_context(
     ctx: Context,
 ) -> None:
@@ -714,7 +721,7 @@ async def _load_market_values_by_player_id(
     ctx: Context,
     league,
     player_ids: list[str] | None = None,
-) -> dict[str, PersonalValueMetrics]:
+) -> dict[str, _MarketSnapshot]:
     shared = await war_service.load_shared_data(
         ctx.db,
         int(league.season),
@@ -757,18 +764,30 @@ async def _load_market_values_by_player_id(
     )
 
     return {
-        value.player_id: PersonalValueMetrics(
-            redraft_starter_war=_round_metric(
-                value.redraft_starter_war,
+        value.player_id: _MarketSnapshot(
+            metrics=PersonalValueMetrics(
+                redraft_starter_war=_round_metric(
+                    value.redraft_starter_war,
+                ),
+                redraft_roster_war=_round_metric(
+                    value.redraft_roster_war,
+                ),
+                dynasty_starter_war=_round_metric(
+                    value.dynasty_starter_war,
+                ),
+                dynasty_roster_war=_round_metric(
+                    value.dynasty_roster_war,
+                ),
             ),
-            redraft_roster_war=_round_metric(
-                value.redraft_roster_war,
+            ktc_value=(
+                float(value.ktc_value)
+                if value.ktc_value is not None
+                else None
             ),
-            dynasty_starter_war=_round_metric(
-                value.dynasty_starter_war,
-            ),
-            dynasty_roster_war=_round_metric(
-                value.dynasty_roster_war,
+            fc_value=(
+                float(value.fc_value)
+                if value.fc_value is not None
+                else None
             ),
         )
         for value in values
@@ -807,36 +826,50 @@ def _merge_saved_projection_seasons(
     saved_projections,
     outcomes_by_projection_id: dict[int, list],
 ) -> list[PersonalProjectionSeasonItem]:
-    seasons = _build_default_projection_seasons(
+    base_seasons = _build_default_projection_seasons(
         base_season=base_season,
         default_position_rank=default_position_rank,
     )
-    seasons_by_year = {
-        season_item.season: season_item
-        for season_item in seasons
-    }
+    saved_payload_by_season: dict[int, tuple[list[dict[str, float]], bool]] = {}
 
     for projection in saved_projections:
-        season_item = seasons_by_year.get(
-            projection.season,
+        saved_payload_by_season[
+            projection.season
+        ] = (
+            [
+                {
+                    "position_rank": outcome.position_rank,
+                    "probability": outcome.probability,
+                }
+                for outcome in outcomes_by_projection_id.get(
+                    projection.id,
+                    [],
+                )
+            ],
+            projection.is_customized,
         )
 
-        if season_item is None:
-            continue
+    merged_seasons: list[PersonalProjectionSeasonItem] = []
 
-        season_item.outcomes = [
-            {
-                "position_rank": outcome.position_rank,
-                "probability": outcome.probability,
-            }
-            for outcome in outcomes_by_projection_id.get(
-                projection.id,
-                [],
+    for season_item in base_seasons:
+        saved_outcomes, is_customized = saved_payload_by_season.get(
+            season_item.season,
+            (
+                season_item.outcomes,
+                season_item.is_customized,
+            ),
+        )
+
+        merged_seasons.append(
+            PersonalProjectionSeasonItem(
+                season=season_item.season,
+                default_position_rank=season_item.default_position_rank,
+                outcomes=saved_outcomes,
+                is_customized=is_customized,
             )
-        ]
-        season_item.is_customized = projection.is_customized
+        )
 
-    return seasons
+    return merged_seasons
 
 
 def _build_projection_context(
@@ -886,13 +919,14 @@ async def search_personal_value_players(
         query=query,
     )
     market_values_by_player_id: dict[str, PersonalValueMetrics] = {}
+    market_snapshots_by_player_id: dict[str, _MarketSnapshot] = {}
 
     if league_id and results:
         league = await _resolve_league_context(
             ctx=ctx,
             league_id=league_id,
         )
-        market_values_by_player_id = await _load_market_values_by_player_id(
+        market_snapshots_by_player_id = await _load_market_values_by_player_id(
             ctx=ctx,
             league=league,
             player_ids=[
@@ -912,10 +946,10 @@ async def search_personal_value_players(
             ktc_value=item.ktc_value,
             fc_value=item.fc_value,
             dynasty_roster_war=(
-                market_values_by_player_id[
+                market_snapshots_by_player_id[
                     item.player_id
-                ].dynasty_roster_war
-                if item.player_id in market_values_by_player_id
+                ].metrics.dynasty_roster_war
+                if item.player_id in market_snapshots_by_player_id
                 else None
             ),
         )
@@ -972,15 +1006,20 @@ async def get_personal_value_detail(
         outcomes_by_projection_id=outcomes_by_projection_id,
         curve_rows_by_position=curve_rows_by_position,
     )
-    market_values_by_player_id = await _load_market_values_by_player_id(
+    market_snapshots_by_player_id = await _load_market_values_by_player_id(
         ctx=ctx,
         league=league,
         player_ids=[player.player_id],
     )
-    market_values = market_values_by_player_id.get(
+    market_snapshot = market_snapshots_by_player_id.get(
         player.player_id,
-        PersonalValueMetrics(),
+        _MarketSnapshot(
+            metrics=PersonalValueMetrics(),
+            ktc_value=None,
+            fc_value=None,
+        ),
     )
+    market_values = market_snapshot.metrics
     delta_values = _build_delta_values(
         custom_values=projection_context.custom_values,
         market_values=market_values,
@@ -1000,6 +1039,8 @@ async def get_personal_value_detail(
             team=player.team,
             age=calculate_age(player.birth_date),
             underdog_position_rank=underdog_position_rank,
+            ktc_value=market_snapshot.ktc_value,
+            fc_value=market_snapshot.fc_value,
         ),
         market_values=market_values,
         custom_values=projection_context.custom_values,
@@ -1027,12 +1068,12 @@ async def get_personal_value_pool(
         league=league,
     )
 
-    market_values_by_player_id = await _load_market_values_by_player_id(
+    market_snapshots_by_player_id = await _load_market_values_by_player_id(
         ctx=ctx,
         league=league,
     )
     player_ids = list(
-        market_values_by_player_id.keys(),
+        market_snapshots_by_player_id.keys(),
     )
 
     if not player_ids:
@@ -1107,7 +1148,7 @@ async def get_personal_value_pool(
         for position in POOL_POSITIONS
     }
 
-    for player_id, market_values in market_values_by_player_id.items():
+    for player_id, market_snapshot in market_snapshots_by_player_id.items():
         player = players.get(player_id)
 
         if player is None or player.position not in POOL_POSITIONS:
@@ -1150,16 +1191,18 @@ async def get_personal_value_pool(
             team=player.team,
             age=calculate_age(player.birth_date),
             underdog_position_rank=underdog_position_rank,
+            ktc_value=market_snapshot.ktc_value,
+            fc_value=market_snapshot.fc_value,
         )
 
         groups[player.position].append(
             PersonalValuePoolItem(
                 player=player_payload,
-                market_values=market_values,
+                market_values=market_snapshot.metrics,
                 custom_values=projection_context.custom_values,
                 delta_values=_build_delta_values(
                     custom_values=projection_context.custom_values,
-                    market_values=market_values,
+                    market_values=market_snapshot.metrics,
                 ),
                 is_customized=projection_context.is_customized,
             )

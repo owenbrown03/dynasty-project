@@ -391,6 +391,8 @@ async def replace_personal_projection_outcomes(
     for row in existing.scalars().all():
         await db.delete(row)
 
+    await db.flush()
+
     new_rows: list[PersonalProjectionOutcome] = []
 
     for index, (position_rank, probability) in enumerate(

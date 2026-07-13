@@ -48,6 +48,8 @@ class PersonalValuePlayer(Base):
     team: str | None = None
     age: float | None = None
     underdog_position_rank: str | None = None
+    ktc_value: float | None = None
+    fc_value: float | None = None
 
 
 class PersonalValueDetailResponse(Base):
