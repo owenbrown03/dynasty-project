@@ -5,7 +5,6 @@ import type { LeagueDetails } from '@/types';
 import './LeagueDashboard.css';
 
 import { LeagueCard } from './LeagueCard';
-import { LeagueWarChart } from './LeagueWarChart';
 import { LeagueWarSeasonChart } from './LeagueWarSeasonChart';
 
 
@@ -58,15 +57,9 @@ export function LeagueDashboard({
       {
         activeTab === 'overview'
           ? (
-            <>
-              <LeagueWarChart
-                league={league}
-              />
-
-              <LeagueCard
-                league={league}
-              />
-            </>
+            <LeagueCard
+              league={league}
+            />
           )
           : (
             <LeagueWarSeasonChart

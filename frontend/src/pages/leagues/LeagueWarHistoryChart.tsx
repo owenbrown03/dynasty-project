@@ -1,23 +1,20 @@
 import type { LeagueDetails } from '@/types';
+import { getPositionColor } from '@/utils/positions';
 
 import './LeagueWarHistoryChart.css';
 
 const POSITIONS = [
   {
     key: 'QB',
-    color: '#1f6feb',
   },
   {
     key: 'RB',
-    color: '#d97706',
   },
   {
     key: 'WR',
-    color: '#059669',
   },
   {
     key: 'TE',
-    color: '#c2410c',
   },
 ] as const;
 
@@ -76,7 +73,7 @@ export function LeagueWarHistoryChart({
               <span
                 className="league-war-history-swatch"
                 style={{
-                  backgroundColor: position.color,
+                  backgroundColor: getPositionColor(position.key),
                 }}
               />
               <strong>{position.key}</strong>
@@ -119,6 +116,7 @@ export function LeagueWarHistoryChart({
 
           {
             POSITIONS.map((position) => {
+              const color = getPositionColor(position.key);
               const points = league.war_position_history.map((season, index) => {
                 const value = season.values.find(
                   (item) => item.position === position.key,
@@ -130,7 +128,7 @@ export function LeagueWarHistoryChart({
                 <g key={position.key}>
                   <polyline
                     fill="none"
-                    stroke={position.color}
+                    stroke={color}
                     strokeWidth="3"
                     points={points}
                     strokeLinecap="round"
@@ -150,7 +148,7 @@ export function LeagueWarHistoryChart({
                             cx={x}
                             cy={y}
                             r="5"
-                            fill={position.color}
+                            fill={color}
                           />
                           <text
                             x={x}

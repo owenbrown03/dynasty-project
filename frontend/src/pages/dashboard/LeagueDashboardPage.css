@@ -47,13 +47,23 @@
 
 .dashboard-hero-meta {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
   min-width: 180px;
   padding: 10px 12px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
+}
+
+.dashboard-hero-meta-copy {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.dashboard-profile-avatar {
+  flex-shrink: 0;
 }
 
 .dashboard-meta-label,

@@ -4,31 +4,29 @@ import type {
   LeagueDetails,
   LeagueWarPlayerPoint,
 } from '@/types';
+import { getPositionColor } from '@/utils/positions';
 
 import './LeagueWarHistoryChart.css';
 
 const POSITIONS = [
   {
     key: 'QB',
-    color: '#1f6feb',
   },
   {
     key: 'RB',
-    color: '#d97706',
   },
   {
     key: 'WR',
-    color: '#059669',
   },
   {
     key: 'TE',
-    color: '#c2410c',
   },
 ] as const;
 
 const WIDTH = 720;
 const HEIGHT = 300;
 const PADDING = 36;
+const Y_AXIS_TICK_COUNT = 5;
 
 interface Props {
   league: LeagueDetails;
@@ -46,20 +44,44 @@ function buildPositionPoints(
 export function LeagueWarSeasonChart({
   league,
 }: Props) {
+  const [selectedWarType, setSelectedWarType] = useState<
+    'starter' | 'roster'
+  >('roster');
+  const [hoveredPlayer, setHoveredPlayer] = useState<{
+    color: string;
+    label: string;
+    war: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const [selectedSeason, setSelectedSeason] = useState(
-    league.war_player_history[
-      league.war_player_history.length - 1
-    ]?.season ?? '',
+    league.war_player_history.find(
+      (season) => season.war_type === 'roster'
+        && season.source === 'projection',
+    )?.season
+      ?? league.war_player_history.find(
+        (season) => season.war_type === 'roster',
+      )?.season
+      ?? '',
+  );
+  const availableSeasons = useMemo(
+    () => league.war_player_history.filter(
+      (season) => season.war_type === selectedWarType,
+    ),
+    [
+      league.war_player_history,
+      selectedWarType,
+    ],
   );
 
   const selectedHistory = useMemo(
-    () => league.war_player_history.find(
+    () => availableSeasons.find(
       (season) => season.season === selectedSeason,
-    ) ?? league.war_player_history[
-      league.war_player_history.length - 1
+    ) ?? availableSeasons[
+      availableSeasons.length - 1
     ],
     [
-      league.war_player_history,
+      availableSeasons,
       selectedSeason,
     ],
   );
@@ -72,12 +94,31 @@ export function LeagueWarSeasonChart({
     ...selectedHistory.players.map((player) => player.rank),
     1,
   );
+  const minWar = Math.min(
+    ...selectedHistory.players.map((player) => player.war),
+    0,
+  );
   const maxWar = Math.max(
     ...selectedHistory.players.map((player) => player.war),
-    1,
+    0,
   );
   const drawableWidth = WIDTH - PADDING * 2;
   const drawableHeight = HEIGHT - PADDING * 2;
+  const warRange = Math.max(
+    maxWar - minWar,
+    1,
+  );
+  const yAxisValues = Array.from(
+    {
+      length: Y_AXIS_TICK_COUNT,
+    },
+    (_, index) => (
+      minWar + (
+        (warRange / Math.max(Y_AXIS_TICK_COUNT - 1, 1))
+        * index
+      )
+    ),
+  );
   const toX = (rank: number) => (
     PADDING + (
       ((rank - 1) / Math.max(maxRank - 1, 1))
@@ -86,7 +127,7 @@ export function LeagueWarSeasonChart({
   );
   const toY = (war: number) => (
     HEIGHT - PADDING - (
-      (war / maxWar)
+      ((war - minWar) / warRange)
       * drawableHeight
     )
   );
@@ -100,17 +141,43 @@ export function LeagueWarSeasonChart({
         </div>
 
         <label className="league-war-history-select">
+          <span>WAR type</span>
+          <select
+            value={selectedWarType}
+            onChange={(event) => {
+              const nextWarType = event.target.value as 'starter' | 'roster';
+              setHoveredPlayer(null);
+              setSelectedWarType(nextWarType);
+              setSelectedSeason(
+                league.war_player_history.find(
+                  (season) => season.war_type === nextWarType
+                    && season.source === 'projection',
+                )?.season
+                  ?? league.war_player_history.find(
+                    (season) => season.war_type === nextWarType,
+                  )?.season
+                  ?? '',
+              );
+            }}
+          >
+            <option value="roster">Roster WAR</option>
+            <option value="starter">Starter WAR</option>
+          </select>
+        </label>
+
+        <label className="league-war-history-select">
           <span>Season</span>
           <select
             value={selectedHistory.season}
             onChange={(event) => {
+              setHoveredPlayer(null);
               setSelectedSeason(event.target.value);
             }}
           >
             {
-              league.war_player_history.map((season) => (
+              availableSeasons.map((season) => (
                 <option
-                  key={`${season.season}-${season.source}`}
+                  key={`${season.season}-${season.source}-${season.war_type}`}
                   value={season.season}
                 >
                   {
@@ -135,7 +202,7 @@ export function LeagueWarSeasonChart({
               <span
                 className="league-war-history-swatch"
                 style={{
-                  backgroundColor: position.color,
+                  backgroundColor: getPositionColor(position.key),
                 }}
               />
               <strong>{position.key}</strong>
@@ -152,12 +219,11 @@ export function LeagueWarSeasonChart({
           aria-label="Player WAR by position rank"
         >
           {
-            Array.from({ length: 5 }).map((_, index) => {
-              const value = (maxWar / 4) * index;
+            yAxisValues.map((value) => {
               const y = toY(value);
 
               return (
-                <g key={index}>
+                <g key={value}>
                   <line
                     x1={PADDING}
                     y1={y}
@@ -179,6 +245,7 @@ export function LeagueWarSeasonChart({
 
           {
             POSITIONS.map((position) => {
+              const color = getPositionColor(position.key);
               const points = buildPositionPoints(
                 selectedHistory.players,
                 position.key,
@@ -191,7 +258,7 @@ export function LeagueWarSeasonChart({
                 <g key={position.key}>
                   <polyline
                     fill="none"
-                    stroke={position.color}
+                    stroke={color}
                     strokeWidth="3"
                     points={linePoints}
                     strokeLinecap="round"
@@ -205,17 +272,66 @@ export function LeagueWarSeasonChart({
                         cx={toX(player.rank)}
                         cy={toY(player.war)}
                         r="4"
-                        fill={position.color}
-                      >
-                        <title>
-                          {`${player.name} (${player.position}${player.rank}) • ${player.war.toFixed(2)} WAR`}
-                        </title>
-                      </circle>
+                        fill={color}
+                        className="league-war-history-point"
+                        onMouseEnter={() => {
+                          setHoveredPlayer({
+                            color,
+                            label: `${player.name} (${player.position}${player.rank})`,
+                            war: player.war,
+                            x: toX(player.rank),
+                            y: toY(player.war),
+                          });
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredPlayer((current) => (
+                            current?.label === `${player.name} (${player.position}${player.rank})`
+                              ? null
+                              : current
+                          ));
+                        }}
+                      />
                     ))
                   }
                 </g>
               );
             })
+          }
+
+          {
+            hoveredPlayer
+              ? (
+                <g
+                  className="league-war-history-tooltip"
+                  transform={`translate(${Math.min(
+                    hoveredPlayer.x + 10,
+                    WIDTH - 220,
+                  )} ${Math.max(hoveredPlayer.y - 48, 12)})`}
+                >
+                  <rect
+                    width={200}
+                    height={40}
+                    rx={6}
+                    fill="var(--color-surface-raised)"
+                    stroke={hoveredPlayer.color}
+                  />
+                  <text
+                    x={10}
+                    y={17}
+                    className="league-war-history-tooltip-label"
+                  >
+                    {hoveredPlayer.label}
+                  </text>
+                  <text
+                    x={10}
+                    y={31}
+                    className="league-war-history-tooltip-value"
+                  >
+                    {`${hoveredPlayer.war.toFixed(2)} WAR`}
+                  </text>
+                </g>
+              )
+              : null
           }
 
           {

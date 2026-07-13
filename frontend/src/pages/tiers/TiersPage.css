@@ -170,26 +170,6 @@
   font-size: 11px;
 }
 
-.tier-player-qb {
-  border-left: 3px solid #c55b52;
-}
-
-.tier-player-rb {
-  border-left: 3px solid #6fa85b;
-}
-
-.tier-player-wr {
-  border-left: 3px solid #5f89d8;
-}
-
-.tier-player-te {
-  border-left: 3px solid #d3ab4f;
-}
-
-.tier-player-neutral {
-  border-left: 3px solid var(--color-border-strong);
-}
-
 .tiers-empty-state {
   padding: 42px 24px;
   border: 1px dashed var(--color-border-strong);

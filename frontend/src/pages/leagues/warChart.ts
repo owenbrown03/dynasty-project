@@ -1,4 +1,5 @@
 import type { LeagueDetails } from '@/types';
+import { getPositionColor } from '@/utils/positions';
 
 export const WAR_CHART_METRICS = [
   {
@@ -35,22 +36,12 @@ export interface LeaguePositionWarSeries {
   values: number[];
 }
 
-const POSITION_COLORS: Record<
-  (typeof WAR_CHART_POSITIONS)[number],
-  string
-> = {
-  QB: '#1f6feb',
-  RB: '#d97706',
-  WR: '#059669',
-  TE: '#c2410c',
-};
-
 export function buildLeaguePositionWarSeries(
   league: LeagueDetails,
 ): LeaguePositionWarSeries[] {
   return WAR_CHART_POSITIONS.map((position) => ({
     position,
-    color: POSITION_COLORS[position],
+    color: getPositionColor(position),
     values: WAR_CHART_METRICS.map(({ key }) =>
       roundWar(
         sumPositionWar(

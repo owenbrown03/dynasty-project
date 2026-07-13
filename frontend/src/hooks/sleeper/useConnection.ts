@@ -33,6 +33,7 @@ export function useSleeperConnection() {
   return {
     connection: sleeper ?? null,
     username: sleeper?.sleeper_username ?? null,
+    avatar: sleeper?.sleeper_avatar ?? null,
     canRead: sleeper?.can_read ?? false,
     canWrite: sleeper?.can_write ?? false,
     linked: sleeper?.linked ?? false,

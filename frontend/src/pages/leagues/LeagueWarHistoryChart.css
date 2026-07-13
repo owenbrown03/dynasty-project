@@ -91,6 +91,26 @@
   font-weight: 600;
 }
 
+.league-war-history-point {
+  cursor: pointer;
+}
+
+.league-war-history-tooltip {
+  pointer-events: none;
+}
+
+.league-war-history-tooltip-label {
+  fill: var(--color-text-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.league-war-history-tooltip-value {
+  fill: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
 @media (max-width: 720px) {
   .league-war-history-header {
     align-items: start;

@@ -126,6 +126,46 @@ export const LeaguesPage = () => {
         </div>
 
         <div className="leagues-selector-controls">
+          <div className="leagues-selector-top-row">
+            <LeagueSelector
+              leagues={
+                overview.data
+              }
+              selectedLeague={
+                selectedLeague
+              }
+              onSelect={
+                setSelectedLeague
+              }
+            />
+
+            {
+              bootstrap.data?.authenticated
+              && selectedLeagueEntry
+                ? (
+                  <button
+                    type="button"
+                    className="button-secondary leagues-visibility-button"
+                    disabled={visibility.saving}
+                    onClick={() => {
+                      void handleVisibilityChange(
+                        !selectedLeagueEntry.is_hidden
+                      );
+                    }}
+                  >
+                    {
+                      visibility.saving
+                        ? 'Saving...'
+                        : selectedLeagueEntry.is_hidden
+                          ? 'Unhide league'
+                          : 'Hide league'
+                    }
+                  </button>
+                )
+                : null
+            }
+          </div>
+
           <label className="leagues-selector-toggle">
             <input
               type="checkbox"
@@ -140,44 +180,6 @@ export const LeaguesPage = () => {
             />
             <span>Show hidden leagues</span>
           </label>
-
-          <LeagueSelector
-            leagues={
-              overview.data
-            }
-            selectedLeague={
-              selectedLeague
-            }
-            onSelect={
-              setSelectedLeague
-            }
-          />
-
-          {
-            bootstrap.data?.authenticated
-            && selectedLeagueEntry
-              ? (
-                <button
-                  type="button"
-                  className="button-secondary leagues-visibility-button"
-                  disabled={visibility.saving}
-                  onClick={() => {
-                    void handleVisibilityChange(
-                      !selectedLeagueEntry.is_hidden
-                    );
-                  }}
-                >
-                  {
-                    visibility.saving
-                      ? 'Saving...'
-                      : selectedLeagueEntry.is_hidden
-                        ? 'Unhide league'
-                        : 'Hide league'
-                  }
-                </button>
-              )
-              : null
-          }
         </div>
       </section>
 
