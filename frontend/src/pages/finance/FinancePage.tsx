@@ -1276,6 +1276,27 @@ export function FinancePage() {
                     )
                   : (
                     <>
+                      <section className="finance-overview-controls">
+                        <label>
+                          <span>Year</span>
+                          <select
+                            value={chartSeason}
+                            onChange={(event) => {
+                              setChartSeason(event.target.value);
+                            }}
+                          >
+                            <option value="all">All years</option>
+                            {
+                              availableSeasons.map((season) => (
+                                <option key={season} value={season}>
+                                  {season}
+                                </option>
+                              ))
+                            }
+                          </select>
+                        </label>
+                      </section>
+
                       <section className="finance-summary-grid">
                         <article className="finance-summary-card">
                           <span>Total buy-ins</span>
@@ -1296,27 +1317,6 @@ export function FinancePage() {
                           <span>Projected current payouts</span>
                           <strong>{formatCurrency(overviewSummary.projectedCurrentWinnings)}</strong>
                         </article>
-                      </section>
-
-                      <section className="finance-toolbar">
-                        <label>
-                          <span>Overview year</span>
-                          <select
-                            value={chartSeason}
-                            onChange={(event) => {
-                              setChartSeason(event.target.value);
-                            }}
-                          >
-                            <option value="all">All years</option>
-                            {
-                              availableSeasons.map((season) => (
-                                <option key={season} value={season}>
-                                  {season}
-                                </option>
-                              ))
-                            }
-                          </select>
-                        </label>
                       </section>
 
                       <section className="finance-chart-grid">

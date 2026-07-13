@@ -89,12 +89,31 @@
 }
 
 .finance-toolbar span,
+.finance-overview-controls span,
 .finance-payout-editor-header span {
   color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.finance-overview-controls {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.finance-overview-controls label {
+  display: grid;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.finance-overview-controls select {
+  min-height: 46px;
+  padding-inline: 14px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .finance-summary-card,
@@ -489,6 +508,7 @@
   }
 
   .finance-toolbar,
+  .finance-overview-controls,
   .finance-chart-header,
   .finance-save-bar,
   .finance-settings-header,
@@ -496,6 +516,11 @@
   .finance-league-selector-actions {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .finance-overview-controls label {
+    width: 100%;
+    min-width: 0;
   }
 
   .finance-bar-row {
