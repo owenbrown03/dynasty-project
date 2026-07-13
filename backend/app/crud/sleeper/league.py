@@ -687,14 +687,14 @@ async def save_league_bundle_to_db(
         for r in roster_dicts:
             owner = r.get("owner_id")
             if owner and str(owner) not in user_ids:
-            user_dicts.append({
-                "user_id": str(owner),
-                "username": f"orphan_{owner[:8]}",
-                "display_name": "Orphan",
-                "avatar": None,
-                "is_placeholder": True,
-            })
-            user_ids.add(str(owner))
+                user_dicts.append({
+                    "user_id": str(owner),
+                    "username": f"orphan_{owner[:8]}",
+                    "display_name": "Orphan",
+                    "avatar": None,
+                    "is_placeholder": True,
+                })
+                user_ids.add(str(owner))
 
         if league_dict:
             await _bulk_upsert(db, model.League, [league_dict], "league_id")
