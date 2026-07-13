@@ -3,8 +3,22 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import type {
+  CommissionerLeagueDuesUpdate,
+  CommissionerLeagueNoteUpdate,
+  CommissionerLeagueSettingsUpdate,
   CommissionerOrphansResponse,
+  CommissionerWorkspaceResponse,
+  FinanceDefaultsUpdate,
+  FinanceLeagueDefaultsUpdate,
+  FinanceLeagueSeasonUpdate,
+  FinanceSeasonReset,
+  FinanceSummaryResponse,
   Orphan,
+  ReminderCreate,
+  ReminderDelete,
+  ReminderListResponse,
+  ReminderTestSendResponse,
+  ReminderUpdate,
   Roster,
   ValueBasis,
 } from '@/types';
@@ -109,4 +123,240 @@ export function useCommissionerOrphans(
     fetching: query.isFetching,
     error: query.error,
   };
+}
+
+
+export function useCommissionerWorkspace(
+  enabled: boolean,
+) {
+  const query = useQuery<CommissionerWorkspaceResponse>({
+    queryKey: queryKeys.users.commissionerWorkspace,
+    queryFn: async () => api.users
+      .getCommissionerWorkspace()
+      .then((res) => res.data),
+    enabled,
+  });
+
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
+  };
+}
+
+
+export function useSaveCommissionerNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: CommissionerLeagueNoteUpdate,
+    ) => api.users.saveCommissionerNote(body),
+    onSuccess: async (_, body) => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.commissionerWorkspace,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.leagues.details(
+          body.league_id,
+        ),
+      });
+    },
+  });
+}
+
+
+export function useSaveCommissionerDues() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: CommissionerLeagueDuesUpdate,
+    ) => api.users.saveCommissionerDues(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.commissionerWorkspace,
+      });
+    },
+  });
+}
+
+
+export function useSaveCommissionerSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: CommissionerLeagueSettingsUpdate,
+    ) => api.users.saveCommissionerSettings(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.commissionerWorkspace,
+      });
+    },
+  });
+}
+
+
+export function useFinanceSummary(
+  enabled: boolean,
+) {
+  const query = useQuery<FinanceSummaryResponse>({
+    queryKey: queryKeys.users.financeSummary,
+    queryFn: async () => api.users
+      .getFinanceSummary()
+      .then((res) => res.data),
+    enabled,
+  });
+
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
+  };
+}
+
+
+export function useSaveFinanceSeason() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: FinanceLeagueSeasonUpdate,
+    ) => api.users.saveFinanceSeason(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.financeSummary,
+      });
+    },
+  });
+}
+
+
+export function useResetFinanceSeason() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: FinanceSeasonReset,
+    ) => api.users.resetFinanceSeason(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.financeSummary,
+      });
+    },
+  });
+}
+
+
+export function useSaveFinanceDefaults() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: FinanceDefaultsUpdate,
+    ) => api.users.saveFinanceDefaults(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.financeSummary,
+      });
+    },
+  });
+}
+
+
+export function useSaveFinanceLeagueDefaults() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: FinanceLeagueDefaultsUpdate,
+    ) => api.users.saveFinanceLeagueDefaults(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.financeSummary,
+      });
+    },
+  });
+}
+
+
+export function useReminders(
+  enabled: boolean,
+) {
+  const query = useQuery<ReminderListResponse>({
+    queryKey: queryKeys.users.reminders,
+    queryFn: async () => api.users
+      .getReminders()
+      .then((res) => res.data),
+    enabled,
+  });
+
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
+  };
+}
+
+
+export function useCreateReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: ReminderCreate,
+    ) => api.users.createReminder(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.reminders,
+      });
+    },
+  });
+}
+
+
+export function useSaveReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: ReminderUpdate,
+    ) => api.users.saveReminder(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.reminders,
+      });
+    },
+  });
+}
+
+
+export function useDeleteReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      body: ReminderDelete,
+    ) => api.users.deleteReminder(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.reminders,
+      });
+    },
+  });
+}
+
+
+export function useTestSendReminder() {
+  return useMutation({
+    mutationFn: (
+      body: ReminderDelete,
+    ) => api.users
+      .testSendReminder(body)
+      .then((res) => res.data as ReminderTestSendResponse),
+  });
 }

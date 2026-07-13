@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     SLEEPER_REST_BASE: str = "https://api.sleeper.app/v1"
     SLEEPER_REST_ALT: str = "https://api.sleeper.app"
     SLEEPER_GRAPHQL_URL: str = "https://sleeper.com/graphql"
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+    EMAIL_FROM: str | None = None
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_USE_TLS: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",

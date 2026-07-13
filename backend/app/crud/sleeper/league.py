@@ -96,6 +96,37 @@ async def get_sync_states(
     }
 
 
+async def get_playoff_matchups_by_league_ids(
+    db: AsyncSession,
+    league_ids: List[str],
+) -> dict[str, list[model.PlayoffMatchup]]:
+    if not league_ids:
+        return {}
+
+    result = await db.execute(
+        select(
+            model.PlayoffMatchup,
+        ).where(
+            model.PlayoffMatchup.league_id.in_(
+                league_ids,
+            )
+        )
+    )
+
+    rows = result.scalars().all()
+    by_league_id: dict[str, list[model.PlayoffMatchup]] = {}
+
+    for row in rows:
+        by_league_id.setdefault(
+            row.league_id,
+            [],
+        ).append(
+            row,
+        )
+
+    return by_league_id
+
+
 def was_synced_today(
     sync_state: model.LeagueSyncState | None,
 ) -> bool:
@@ -198,11 +229,18 @@ async def sync_leagues(
 
     all_league_ids = [l.league_id for l in leagues]
 
-    # Load existing league IDs and sync states in one pass
-    existing_ids, sync_states, incomplete_league_ids = await asyncio.gather(
-        get_existing_leagues(db, all_league_ids),
-        get_sync_states(db, all_league_ids),
-        get_incomplete_league_ids(db, all_league_ids),
+    # AsyncSession does not support concurrent DB operations.
+    existing_ids = await get_existing_leagues(
+        db,
+        all_league_ids,
+    )
+    sync_states = await get_sync_states(
+        db,
+        all_league_ids,
+    )
+    incomplete_league_ids = await get_incomplete_league_ids(
+        db,
+        all_league_ids,
     )
 
     success_count = 0
@@ -362,7 +400,16 @@ async def fetch_league_bundle(
         or not was_synced_today(sync_state)
     )
 
-    if not needs_refresh:
+    should_fetch_brackets = (
+        getattr(
+            league,
+            "status",
+            None,
+        )
+        == "complete"
+    )
+
+    if not needs_refresh and not should_fetch_brackets:
         return None
 
     transaction_weeks = get_transaction_weeks_to_fetch(
@@ -377,15 +424,33 @@ async def fetch_league_bundle(
             == "transactions_only"
             and not full_refresh_due
         ):
-            tx_lists = await asyncio.gather(
-                *[
-                    sleeper.read.get_transactions(
-                        league_id,
-                        week,
-                    )
-                    for week in transaction_weeks
-                ],
-                return_exceptions=True,
+            tx_lists, winners_bracket, losers_bracket = await asyncio.gather(
+                asyncio.gather(
+                    *[
+                        sleeper.read.get_transactions(
+                            league_id,
+                            week,
+                        )
+                        for week in transaction_weeks
+                    ],
+                    return_exceptions=True,
+                ),
+                sleeper.read.get_winners_bracket(
+                    league_id,
+                )
+                if should_fetch_brackets
+                else asyncio.sleep(
+                    0,
+                    result=[],
+                ),
+                sleeper.read.get_losers_bracket(
+                    league_id,
+                )
+                if should_fetch_brackets
+                else asyncio.sleep(
+                    0,
+                    result=[],
+                ),
             )
 
             transactions = [
@@ -395,7 +460,7 @@ async def fetch_league_bundle(
                 for transaction in batch
             ]
 
-            return {
+            bundle = {
                 "league_id": league_id,
                 "transactions": transactions,
                 "transactions_only": True,
@@ -405,12 +470,20 @@ async def fetch_league_bundle(
                 ),
             }
 
+            if should_fetch_brackets:
+                bundle["winners_bracket"] = winners_bracket
+                bundle["losers_bracket"] = losers_bracket
+
+            return bundle
+
         (
             league_obj,
             users,
             rosters,
             drafts,
             tx_lists,
+            winners_bracket,
+            losers_bracket,
         ) = await asyncio.gather(
             sleeper.read.get_league(
                 league_id,
@@ -434,6 +507,22 @@ async def fetch_league_bundle(
                 ],
                 return_exceptions=True,
             ),
+            sleeper.read.get_winners_bracket(
+                league_id,
+            )
+            if should_fetch_brackets
+            else asyncio.sleep(
+                0,
+                result=[],
+            ),
+            sleeper.read.get_losers_bracket(
+                league_id,
+            )
+            if should_fetch_brackets
+            else asyncio.sleep(
+                0,
+                result=[],
+            ),
         )
 
         transactions = [
@@ -453,6 +542,8 @@ async def fetch_league_bundle(
             "drafts": drafts,
 
             "transactions": transactions,
+            "winners_bracket": winners_bracket,
+            "losers_bracket": losers_bracket,
 
             # Keep this false so save_league_bundle_to_db()
             # upserts the latest roster state.
@@ -564,6 +655,12 @@ async def save_league_bundle_to_db(
         if bundle.get("transactions_only"):
             # Known league — only save new transactions
             await _save_transactions(db, bundle.get("transactions", []), league_id)
+            await _save_playoff_matchups(
+                db,
+                bundle.get("winners_bracket", []),
+                bundle.get("losers_bracket", []),
+                league_id,
+            )
             await db.flush()
             return True
 
@@ -623,6 +720,12 @@ async def save_league_bundle_to_db(
             )
 
         await _save_transactions(db, bundle.get("transactions", []), league_id)
+        await _save_playoff_matchups(
+            db,
+            bundle.get("winners_bracket", []),
+            bundle.get("losers_bracket", []),
+            league_id,
+        )
 
         await db.flush()
 
@@ -750,6 +853,83 @@ async def _save_transactions(
                 pick_dicts,
             )
         )
+
+
+def _playoff_matchup_to_db(
+    *,
+    matchup,
+    league_id: str,
+    bracket_type: str,
+) -> dict:
+    return {
+        "league_id": league_id,
+        "bracket_type": bracket_type,
+        "round": matchup.r,
+        "matchup_id": matchup.m,
+        "team_one_roster_id": matchup.t1,
+        "team_two_roster_id": matchup.t2,
+        "team_one_from_winner_matchup_id": (
+            matchup.t1_from.w
+            if matchup.t1_from is not None
+            else None
+        ),
+        "team_one_from_loser_matchup_id": (
+            matchup.t1_from.l
+            if matchup.t1_from is not None
+            else None
+        ),
+        "team_two_from_winner_matchup_id": (
+            matchup.t2_from.w
+            if matchup.t2_from is not None
+            else None
+        ),
+        "team_two_from_loser_matchup_id": (
+            matchup.t2_from.l
+            if matchup.t2_from is not None
+            else None
+        ),
+        "winner_roster_id": matchup.w,
+        "loser_roster_id": matchup.l,
+        "placement": matchup.p,
+    }
+
+
+async def _save_playoff_matchups(
+    db: AsyncSession,
+    winners_bracket: list,
+    losers_bracket: list,
+    league_id: str,
+) -> None:
+    matchup_dicts = [
+        _playoff_matchup_to_db(
+            matchup=matchup,
+            league_id=league_id,
+            bracket_type="winners",
+        )
+        for matchup in winners_bracket or []
+    ] + [
+        _playoff_matchup_to_db(
+            matchup=matchup,
+            league_id=league_id,
+            bracket_type="losers",
+        )
+        for matchup in losers_bracket or []
+    ]
+
+    if not matchup_dicts:
+        return
+
+    await _bulk_upsert(
+        db,
+        model.PlayoffMatchup,
+        matchup_dicts,
+        [
+            "league_id",
+            "bracket_type",
+            "round",
+            "matchup_id",
+        ],
+    )
 
 
 # --------------------------------------------------
@@ -906,6 +1086,23 @@ async def get_user_leagues(db: AsyncSession, username: str):
         .join(model.Roster, model.Roster.league_id == model.League.league_id)
         .join(model.User, model.User.user_id == model.Roster.owner_id)
         .where(model.User.display_name == username)
+    )
+    return result.all()
+
+
+async def get_owned_leagues_by_sleeper_user_id(
+    db: AsyncSession,
+    sleeper_user_id: str,
+):
+    result = await db.execute(
+        select(model.League, model.Roster)
+        .join(
+            model.Roster,
+            model.Roster.league_id == model.League.league_id,
+        )
+        .where(
+            model.Roster.owner_id == sleeper_user_id,
+        )
     )
     return result.all()
 

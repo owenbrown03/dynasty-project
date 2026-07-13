@@ -6,7 +6,10 @@ import {
   Briefcase,
   User,
   HandCoins,
+  Wallet,
+  Bell,
   Layers3,
+  Settings,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -45,6 +48,21 @@ export const Sidebar = () => {
       to: '/tiers',
       label: 'Tiers',
       icon: <Layers3 size={20} />,
+    },
+    {
+      to: '/finance',
+      label: 'Finance',
+      icon: <Wallet size={20} />,
+    },
+    {
+      to: '/reminders',
+      label: 'Reminders',
+      icon: <Bell size={20} />,
+    },
+    {
+      to: '/settings',
+      label: 'Settings',
+      icon: <Settings size={20} />,
     },
     {
       to: commissionerPath,

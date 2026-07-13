@@ -116,6 +116,20 @@
   font-size: 11px;
 }
 
+.league-note-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.league-note-editor textarea {
+  min-height: 108px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+  resize: vertical;
+}
+
 .league-settings-item strong {
   color: var(--color-text-strong);
   font-size: 13px;
@@ -132,6 +146,15 @@
   gap: 6px;
 }
 
+.league-pick-summary {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .league-pick-row {
   display: flex;
   justify-content: space-between;
@@ -142,12 +165,19 @@
 }
 
 .league-pick-copy {
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
 .league-pick-copy strong {
   font-size: 13px;
   color: var(--color-text-strong);
+}
+
+.league-pick-meta {
+  color: var(--color-text-muted);
+  font-size: 11px;
 }
 
 .league-pick-values {

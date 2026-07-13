@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import Field
 
 from app.schemas.base import Base
@@ -52,3 +54,52 @@ class CommissionerOrphansResponse(Base):
     orphans: list[CommissionerOrphanRoster] = Field(
         default_factory=list,
     )
+
+
+class CommissionerLeagueDuesEntry(Base):
+    league_id: str
+    roster_id: int
+    roster_name: str
+    season: str
+    traded_pick_count: int = 0
+    traded_pick_labels: list[str] = Field(
+        default_factory=list,
+    )
+    buy_in_amount: float | None = None
+    is_paid: bool = False
+    paid_at: datetime | None = None
+
+
+class CommissionerWorkspaceLeague(Base):
+    league_id: str
+    league_name: str
+    league_season: str
+    note: str = ""
+    paid_years_ahead: int = 1
+    dues: list[CommissionerLeagueDuesEntry] = Field(
+        default_factory=list,
+    )
+
+
+class CommissionerWorkspaceResponse(Base):
+    leagues: list[CommissionerWorkspaceLeague] = Field(
+        default_factory=list,
+    )
+
+
+class CommissionerLeagueNoteUpdate(Base):
+    league_id: str
+    note: str = ""
+
+
+class CommissionerLeagueDuesUpdate(Base):
+    league_id: str
+    roster_id: int
+    season: str
+    buy_in_amount: float | None = None
+    is_paid: bool = False
+
+
+class CommissionerLeagueSettingsUpdate(Base):
+    league_id: str
+    paid_years_ahead: int = 1

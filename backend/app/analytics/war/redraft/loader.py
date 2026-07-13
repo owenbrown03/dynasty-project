@@ -1,6 +1,6 @@
 from sqlmodel import select
 
-from app.models.db.sleeper.api import Player, League, PlayerProjection
+from app.models.db.sleeper.api import Player, League, PlayerProjection, PlayerSeasonStats
 
 class PlayerValueLoader:
 
@@ -31,6 +31,24 @@ class PlayerValueLoader:
             select(PlayerProjection)
             .where(
                 PlayerProjection.season == season
+            )
+        )
+
+        return result.scalars().all()
+
+
+    async def get_season_stats(
+        self,
+        db,
+        season,
+        *,
+        season_type: str = "regular",
+    ):
+        result = await db.execute(
+            select(PlayerSeasonStats)
+            .where(
+                PlayerSeasonStats.season == season,
+                PlayerSeasonStats.season_type == season_type,
             )
         )
 

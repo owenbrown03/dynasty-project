@@ -2,6 +2,7 @@ import './PlayerTable.css';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import type { LeaguePlayer } from '@/types';
 import { formatNumber } from '@/utils/format';
+import { getPositionColor } from '@/utils/positions';
 
 interface Props {
   players: LeaguePlayer[];
@@ -50,7 +51,14 @@ export function PlayerTable({ players }: Props) {
                 </span>
               </div>
             </td>
-            <td>{player.position ?? '-'}</td>
+            <td
+              className="player-table-position-cell"
+              style={{
+                color: getPositionColor(player.position),
+              }}
+            >
+              {player.position ?? '-'}
+            </td>
             <td>{player.team ?? '-'}</td>
             <td>{formatNumber(player.projected_points)}</td>
             <td>{formatNumber(player.ktc_value)}</td>

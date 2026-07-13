@@ -1,6 +1,8 @@
 import './LeagueDashboardPage.css';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
+import { UserAvatar } from '@/components/users/UserAvatar';
+import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { UsernameInput } from './UsernameInput';
 import { useLeagueDashboard } from '@/hooks/sleeper/useLeagues';
 import { DashboardSummary } from './DashboardSummary';
@@ -9,6 +11,7 @@ import { TopAssets } from './TopAssets';
 
 export const LeagueDashboardPage = () => {
   const dashboard = useLeagueDashboard();
+  const connection = useSleeperConnection();
 
   if (dashboard.fetching) {
     return (
@@ -65,13 +68,22 @@ export const LeagueDashboardPage = () => {
 
           {dashboard.username && (
             <div className="dashboard-hero-meta">
-              <span className="dashboard-meta-label">
-                Sleeper profile
-              </span>
+              <UserAvatar
+                avatarId={connection.avatar}
+                name={dashboard.username}
+                size="lg"
+                className="dashboard-profile-avatar"
+              />
 
-              <strong className="dashboard-meta-value">
-                {dashboard.username}
-              </strong>
+              <div className="dashboard-hero-meta-copy">
+                <span className="dashboard-meta-label">
+                  Sleeper profile
+                </span>
+
+                <strong className="dashboard-meta-value">
+                  {dashboard.username}
+                </strong>
+              </div>
             </div>
           )}
         </section>

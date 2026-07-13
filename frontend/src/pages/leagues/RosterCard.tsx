@@ -6,17 +6,24 @@ import { UserAvatar } from '@/components/users/UserAvatar';
 import type { LeaguePick, LeagueRoster } from '@/types';
 import { PlayerTable } from './PlayerTable';
 import { formatNumber } from '@/utils/format';
+import { buildRosterConstructionRows } from './rosterConstruction';
+import {
+  getDraftPickColor,
+  getPositionColor,
+} from '@/utils/positions';
 
 
 interface Props {
   roster: LeagueRoster;
+  draftPickProjectionSummary?: string | null;
 }
-
 
 function PickList({
   picks,
+  draftPickProjectionSummary,
 }: {
   picks: LeaguePick[];
+  draftPickProjectionSummary?: string | null;
 }) {
   if (picks.length === 0) {
     return (
@@ -29,10 +36,23 @@ function PickList({
   return (
     <div className="league-pick-list">
       {
+        picks.some((pick) => pick.projected_slot !== null)
+        && draftPickProjectionSummary
+          ? (
+            <div className="league-pick-summary">
+              {draftPickProjectionSummary}
+            </div>
+          )
+          : null
+      }
+      {
         picks.map((pick) => (
           <div
             key={`${pick.season}-${pick.round}-${pick.og_roster_id}`}
             className="league-pick-row"
+            style={{
+              borderLeftColor: getDraftPickColor(),
+            }}
           >
             <div className="league-pick-copy">
               <strong>{pick.label}</strong>
@@ -48,10 +68,14 @@ function PickList({
     </div>
   );
 }
-
-
-export function RosterCard({ roster }: Props) {
+export function RosterCard({
+  roster,
+  draftPickProjectionSummary,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
+  const constructionRows = buildRosterConstructionRows(
+    roster,
+  );
 
   return (
     <div className="roster-card">
@@ -165,10 +189,47 @@ export function RosterCard({ roster }: Props) {
             <div className="roster-card-details">
               <section className="league-detail-section">
                 <div className="league-detail-header">
-                  <p>Draft capital</p>
+                  <p>Roster construction</p>
                 </div>
 
-                <PickList picks={roster.picks} />
+                <div className="roster-construction-grid">
+                  {
+                    constructionRows.map((row) => (
+                      <article
+                        key={row.position}
+                        className="roster-construction-card"
+                        style={{
+                          borderTopColor: getPositionColor(row.position),
+                        }}
+                      >
+                        <strong>{row.position}</strong>
+                        <span>
+                          {row.playerCount}
+                          {' '}
+                          spots now
+                        </span>
+                        <span>
+                          {row.targetCount}
+                          {' '}
+                          WAR-weighted target
+                        </span>
+                        <span>
+                          {row.warShare.toFixed(1)}
+                          % dynasty WAR share
+                        </span>
+                        <small>
+                          {
+                            row.delta > 0
+                              ? `${row.delta.toFixed(1)} over target`
+                              : row.delta < 0
+                                ? `${Math.abs(row.delta).toFixed(1)} under target`
+                                : 'On target'
+                          }
+                        </small>
+                      </article>
+                    ))
+                  }
+                </div>
               </section>
 
               <section className="league-detail-section">
@@ -177,6 +238,17 @@ export function RosterCard({ roster }: Props) {
                 </div>
 
                 <PlayerTable players={roster.players} />
+              </section>
+
+              <section className="league-detail-section">
+                <div className="league-detail-header">
+                  <p>Draft capital</p>
+                </div>
+
+                <PickList
+                  picks={roster.picks}
+                  draftPickProjectionSummary={draftPickProjectionSummary}
+                />
               </section>
             </div>
           )

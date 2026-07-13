@@ -1,22 +1,31 @@
-import { useQuery } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import type {
   LeagueOverview,
   LeagueDetails,
-  Dashboard
+  Dashboard,
+  LeagueVisibilityItem,
+  LeagueVisibilityUpdate,
 } from '@/types';
 
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
 
-export function useLeagueOverview() {
+export function useLeagueOverview(
+  includeHidden = false,
+) {
   const { username } = useSleeperConnection();
 
   const query = useQuery<LeagueOverview[]>({
     queryKey: queryKeys.leagues.overview(
       username,
+      includeHidden,
     ),
 
     queryFn: async () => {
@@ -25,7 +34,10 @@ export function useLeagueOverview() {
       }
 
       return api.leagues
-        .getOverview(username)
+        .getOverview(
+          username,
+          includeHidden,
+        )
         .then(res => res.data);
     },
 
@@ -37,6 +49,50 @@ export function useLeagueOverview() {
     username,
     loading: query.isLoading,
     fetching: query.isFetching,
+  };
+}
+
+
+export function useLeagueVisibility() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<
+    LeagueVisibilityItem,
+    Error,
+    {
+      leagueId: string;
+      payload: LeagueVisibilityUpdate;
+    }
+  >({
+    mutationFn: async ({
+      leagueId,
+      payload,
+    }) => {
+      return api.leagues
+        .setVisibility(
+          leagueId,
+          payload,
+        )
+        .then((res) => res.data);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.leagues.overviewRoot,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.waivers.overviewRoot,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.waivers.leaguesRoot,
+        }),
+      ]);
+    },
+  });
+
+  return {
+    setLeagueVisibility: mutation.mutateAsync,
+    saving: mutation.isPending,
   };
 }
 

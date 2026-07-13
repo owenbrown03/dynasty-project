@@ -156,3 +156,14 @@ class BulkTradeProposalResponse(Base):
     results: list[BulkTradeProposalResult] = Field(
         default_factory=list,
     )
+
+
+class TradeCalculatorPickValueResponse(Base):
+    season: str
+    round: int
+    slot: int | None = None
+    total_rosters: int
+    num_qbs: int
+    ppr: int
+    ktc_value: float | None = None
+    fc_value: float | None = None

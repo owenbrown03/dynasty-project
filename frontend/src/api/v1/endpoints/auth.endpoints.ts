@@ -1,6 +1,9 @@
 import { type AxiosInstance } from 'axios';
 
 import type {
+  DraftPickProjectionSettings,
+  EmailVerificationConfirmRequest,
+  EmailVerificationRequestResponse,
   Login,
   ThemePreference,
   ValueBasis,
@@ -10,6 +13,12 @@ export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
   register: (credentials: Login) => client.post(`${prefix}/register`, credentials),
   login: (credentials: Login) => client.post(`${prefix}/login`, credentials),
   logout: () => client.post(`${prefix}/logout`),
+  resendVerificationEmail: () => client.post<EmailVerificationRequestResponse>(
+    `${prefix}/email/resend`,
+  ),
+  verifyEmail: (body: EmailVerificationConfirmRequest) => (
+    client.post(`${prefix}/email/verify`, body)
+  ),
   updateThemePreference: (
     theme_preference: ThemePreference,
   ) => client.post(
@@ -21,5 +30,11 @@ export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
   ) => client.post(
     `${prefix}/value`,
     { value_preference },
+  ),
+  updateDraftPickProjectionSettings: (
+    settings: DraftPickProjectionSettings,
+  ) => client.post(
+    `${prefix}/draft-pick-projection`,
+    { settings },
   ),
 });

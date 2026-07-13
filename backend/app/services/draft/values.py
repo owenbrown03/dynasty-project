@@ -19,6 +19,16 @@ class ResolvedPickValue:
     source_label: str | None = None
 
 
+def get_effective_pick_slot(
+    pick: DraftPickAsset,
+) -> int | None:
+    return (
+        pick.slot
+        if pick.slot is not None
+        else pick.projected_slot
+    )
+
+
 def get_pick_bucket(
     *,
     slot: int,
@@ -109,8 +119,15 @@ def resolve_fantasycalc_pick_value(
         if row.is_exact_slot and row.slot is not None
     }
 
-    if pick.slot is not None and pick.slot in exact_by_slot:
-        exact = exact_by_slot[pick.slot]
+    effective_slot = get_effective_pick_slot(
+        pick,
+    )
+
+    if (
+        effective_slot is not None
+        and effective_slot in exact_by_slot
+    ):
+        exact = exact_by_slot[effective_slot]
         return ResolvedPickValue(
             value=float(exact.value),
             source_label=exact.source_name,
@@ -143,12 +160,16 @@ def resolve_ktc_pick_value(
     if not rows:
         return ResolvedPickValue(value=None)
 
+    effective_slot = get_effective_pick_slot(
+        pick,
+    )
+
     bucket = (
         get_pick_bucket(
-            slot=pick.slot,
+            slot=effective_slot,
             total_rosters=total_rosters,
         )
-        if pick.slot is not None
+        if effective_slot is not None
         else "mid"
     )
 

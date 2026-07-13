@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { BOOTSTRAP_QUERY_KEY } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import { notify } from '@/utils/notify';
 import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
-
-const KEY = ['sleeper-connection'] as const;
 
 export const useSleeperAuth = () => {
   const [connectId, setConnectId] =
@@ -42,7 +41,7 @@ export const useSleeperAuth = () => {
       );
 
       await queryClient.invalidateQueries({
-        queryKey: KEY,
+        queryKey: BOOTSTRAP_QUERY_KEY,
       });
 
       close();

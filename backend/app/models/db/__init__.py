@@ -15,6 +15,7 @@ from .sleeper.api import(
     TradedPick,
     Player,
     PlayerProjection,
+    PlayerSeasonStats,
 )
 from .sleeper.connection import(
     SleeperConnection,

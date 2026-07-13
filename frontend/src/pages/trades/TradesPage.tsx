@@ -3,12 +3,16 @@ import {
 } from 'react';
 
 import { BulkOffersTab } from './BulkOffersTab';
+import { TradeCalculatorTab } from './TradeCalculatorTab';
 import { TradeResearchTab } from './TradeResearchTab';
 
 import './TradesPage.css';
 
 
-type TradesTab = 'bulk-offers' | 'research';
+type TradesTab =
+  | 'bulk-offers'
+  | 'calculator'
+  | 'research';
 
 
 export const TradesPage = () => {
@@ -46,6 +50,20 @@ export const TradesPage = () => {
 
         <button
           className={
+            activeTab === 'calculator'
+              ? 'trades-tab-button active'
+              : 'trades-tab-button'
+          }
+          onClick={() => {
+            setActiveTab('calculator');
+          }}
+          type="button"
+        >
+          Calculator
+        </button>
+
+        <button
+          className={
             activeTab === 'research'
               ? 'trades-tab-button active'
               : 'trades-tab-button'
@@ -62,7 +80,9 @@ export const TradesPage = () => {
       {
         activeTab === 'bulk-offers'
           ? <BulkOffersTab />
-          : <TradeResearchTab />
+          : activeTab === 'calculator'
+            ? <TradeCalculatorTab />
+            : <TradeResearchTab />
       }
     </main>
   );

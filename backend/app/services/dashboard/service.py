@@ -24,7 +24,6 @@ from .cards import (
 from .crud import (
     get_all_league_rosters,
     get_user_by_name,
-    get_user_leagues,
 )
 from .summary import (
     build_summary,
@@ -32,9 +31,19 @@ from .summary import (
 from .top_assets import (
     build_top_assets,
 )
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_username,
+)
 
 
 logger = logging.getLogger(__name__)
+
+CURRENT_DASHBOARD_STATUSES = {
+    "pre_draft",
+    "drafting",
+    "in_season",
+    "post_season",
+}
 
 
 def get_league_season(
@@ -318,6 +327,8 @@ async def get_user_dashboard(
     db,
     redis,
     username: str,
+    *,
+    site_user_id=None,
 ):
     """
     Returns the user's cross-league dashboard.
@@ -339,10 +350,30 @@ async def get_user_dashboard(
             f"User {username} not found"
         )
 
-    leagues = await get_user_leagues(
-        db,
-        user.user_id,
+    visible_rows = await get_visible_owned_league_rows_by_username(
+        db=db,
+        username=username,
+        site_user_id=site_user_id,
     )
+    current_rows = [
+        row
+        for row in visible_rows
+        if row.league.status in CURRENT_DASHBOARD_STATUSES
+    ]
+
+    selected_rows = (
+        current_rows
+        if current_rows
+        else visible_rows
+    )
+
+    leagues = {
+        row.league.league_id: {
+            "league": row.league,
+            "user_rosters": [row.roster],
+        }
+        for row in selected_rows
+    }
 
     if not leagues:
         return {
@@ -396,6 +427,12 @@ async def get_user_dashboard(
             player_maps_by_league_id
         ),
         user_id=user.user_id,
+    )
+    league_cards.sort(
+        key=lambda league: (
+            league["dynasty_roster_war_rank"],
+            league["league_name"].lower(),
+        ),
     )
 
     summary = build_summary(

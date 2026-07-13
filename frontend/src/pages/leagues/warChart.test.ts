@@ -1,0 +1,168 @@
+import { describe, expect, it } from 'vitest';
+
+import type { LeagueDetails } from '@/types';
+
+import { buildLeaguePositionWarSeries } from './warChart';
+
+const league: LeagueDetails = {
+  league_id: 'league-1',
+  league_name: 'WAR Test League',
+  season: '2026',
+  total_rosters: 12,
+  note: '',
+  draft_pick_projection_summary: null,
+  war_position_history: [],
+  war_player_history: [],
+  settings_badges: [],
+  settings_details: [],
+  rosters: [
+    {
+      roster_id: 1,
+      owner: {
+        user_id: 'user-1',
+        display_name: 'Alpha',
+        avatar: null,
+      },
+      rank: 1,
+      record: '0-0',
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      actual_points_for: 0,
+      projected_points: 0,
+      faab_remaining: 100,
+      waiver_position: 1,
+      total_moves: 0,
+      open_roster_spots: 0,
+      average_age: null,
+      total_ktc_value: 0,
+      total_fc_value: 0,
+      total_redraft_starter_war: 0,
+      total_redraft_roster_war: 0,
+      total_dynasty_starter_war: 0,
+      total_dynasty_roster_war: 0,
+      total_pick_ktc_value: 0,
+      total_pick_fc_value: 0,
+      total_asset_ktc_value: 0,
+      total_asset_fc_value: 0,
+      picks: [],
+      players: [
+        {
+          player_id: 'qb-1',
+          name: 'QB One',
+          position: 'QB',
+          team: 'BUF',
+          age: 27,
+          underdog_position_rank: null,
+          projected_points: 0,
+          ktc_value: null,
+          fc_value: null,
+          fc_trend_30_day: null,
+          redraft_starter_war: 2.25,
+          redraft_roster_war: 2.5,
+          dynasty_starter_war: 4.1,
+          dynasty_roster_war: 4.4,
+          is_starter: true,
+        },
+        {
+          player_id: 'wr-1',
+          name: 'WR One',
+          position: 'WR',
+          team: 'MIN',
+          age: 25,
+          underdog_position_rank: null,
+          projected_points: 0,
+          ktc_value: null,
+          fc_value: null,
+          fc_trend_30_day: null,
+          redraft_starter_war: 1.2,
+          redraft_roster_war: 1.45,
+          dynasty_starter_war: 2.4,
+          dynasty_roster_war: 2.8,
+          is_starter: true,
+        },
+      ],
+    },
+    {
+      roster_id: 2,
+      owner: {
+        user_id: 'user-2',
+        display_name: 'Beta',
+        avatar: null,
+      },
+      rank: 2,
+      record: '0-0',
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      actual_points_for: 0,
+      projected_points: 0,
+      faab_remaining: 100,
+      waiver_position: 2,
+      total_moves: 0,
+      open_roster_spots: 0,
+      average_age: null,
+      total_ktc_value: 0,
+      total_fc_value: 0,
+      total_redraft_starter_war: 0,
+      total_redraft_roster_war: 0,
+      total_dynasty_starter_war: 0,
+      total_dynasty_roster_war: 0,
+      total_pick_ktc_value: 0,
+      total_pick_fc_value: 0,
+      total_asset_ktc_value: 0,
+      total_asset_fc_value: 0,
+      picks: [],
+      players: [
+        {
+          player_id: 'rb-1',
+          name: 'RB One',
+          position: 'RB',
+          team: 'DET',
+          age: 23,
+          underdog_position_rank: null,
+          projected_points: 0,
+          ktc_value: null,
+          fc_value: null,
+          fc_trend_30_day: null,
+          redraft_starter_war: 1.75,
+          redraft_roster_war: 1.9,
+          dynasty_starter_war: 2.8,
+          dynasty_roster_war: 3.1,
+          is_starter: true,
+        },
+      ],
+    },
+  ],
+};
+
+describe('buildLeaguePositionWarSeries', () => {
+  it('aggregates WAR totals by position across the league', () => {
+    const series = buildLeaguePositionWarSeries(
+      league,
+    );
+
+    expect(series).toEqual([
+      {
+        position: 'QB',
+        color: 'var(--position-qb-color)',
+        values: [2.25, 2.5, 4.1, 4.4],
+      },
+      {
+        position: 'RB',
+        color: 'var(--position-rb-color)',
+        values: [1.75, 1.9, 2.8, 3.1],
+      },
+      {
+        position: 'WR',
+        color: 'var(--position-wr-color)',
+        values: [1.2, 1.45, 2.4, 2.8],
+      },
+      {
+        position: 'TE',
+        color: 'var(--position-te-color)',
+        values: [0, 0, 0, 0],
+      },
+    ]);
+  });
+});

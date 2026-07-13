@@ -50,6 +50,8 @@ export function LeagueSelector({
               }
             >
               {league.league_name}
+              {league.is_hidden ? ' (hidden)' : ''}
+              {league.season ? ` - ${league.season}` : ''}
             </option>
           )
         )

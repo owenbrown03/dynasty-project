@@ -9,6 +9,16 @@ class LeagueOverviewItem(Base):
     league_name: str
     season: str | None = None
     total_rosters: int | None = None
+    is_hidden: bool = False
+
+
+class LeagueVisibilityUpdate(Base):
+    hidden: bool
+
+
+class LeagueVisibilityItem(Base):
+    league_id: str
+    hidden: bool
 
 
 class RosterSummary(Base):

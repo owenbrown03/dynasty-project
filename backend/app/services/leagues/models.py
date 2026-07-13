@@ -19,6 +19,8 @@ class LeaguePick(BaseModel):
     current_owner_roster_id: int
     label: str
     slot: int | None = None
+    projected_slot: int | None = None
+    slot_source_label: str | None = None
     fc_value: float | None = None
     ktc_value: float | None = None
 
@@ -75,6 +77,36 @@ class LeagueDetailsResponse(BaseModel):
     league_name: str
     season: str
     total_rosters: int
+    note: str = ""
+    draft_pick_projection_summary: str | None = None
     settings_badges: list[str]
     settings_details: list[LeagueSettingsDetail]
+    war_position_history: list["LeagueWarPositionSeason"] = []
+    war_player_history: list["LeagueWarPlayerSeason"] = []
     rosters: list[LeagueRoster]
+
+
+class LeagueWarPositionValue(BaseModel):
+    position: str
+    war: float
+
+
+class LeagueWarPositionSeason(BaseModel):
+    season: str
+    source: str
+    values: list[LeagueWarPositionValue]
+
+
+class LeagueWarPlayerPoint(BaseModel):
+    player_id: str
+    name: str
+    position: str
+    war: float
+    rank: int
+
+
+class LeagueWarPlayerSeason(BaseModel):
+    season: str
+    source: str
+    war_type: str
+    players: list[LeagueWarPlayerPoint]

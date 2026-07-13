@@ -1,6 +1,10 @@
 import './LeagueCard.css';
 
+import { useEffect, useState } from 'react';
+
+import { useSaveCommissionerNote } from '@/hooks/sleeper/useUsers';
 import type { LeagueDetails } from '@/types';
+import { notify } from '@/utils/notify';
 import { RosterCard } from './RosterCard';
 
 
@@ -12,6 +16,25 @@ interface Props {
 export function LeagueCard({
   league,
 }: Props) {
+  const saveNoteMutation = useSaveCommissionerNote();
+  const [note, setNote] = useState(league.note);
+
+  useEffect(() => {
+    setNote(league.note);
+  }, [league.note]);
+
+  const handleSaveNote = async () => {
+    try {
+      await saveNoteMutation.mutateAsync({
+        league_id: league.league_id,
+        note,
+      });
+      notify.success('League note saved.');
+    } catch {
+      notify.error('Unable to save league note.');
+    }
+  };
+
   return (
     <div className="league-card">
       <header className="league-header">
@@ -62,11 +85,43 @@ export function LeagueCard({
         </div>
       </section>
 
+      <section className="league-detail-section">
+        <div className="league-detail-header">
+          <p>League notes</p>
+        </div>
+
+        <div className="league-note-editor">
+          <textarea
+            value={note}
+            onChange={(event) => {
+              setNote(event.target.value);
+            }}
+            placeholder="Add your roster build plan, position needs, and future pick strategy..."
+          />
+
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={saveNoteMutation.isPending}
+            onClick={() => {
+              void handleSaveNote();
+            }}
+          >
+            {
+              saveNoteMutation.isPending
+                ? 'Saving...'
+                : 'Save notes'
+            }
+          </button>
+        </div>
+      </section>
+
       <div className="rosters">
         {league.rosters.map((roster) => (
           <RosterCard
             key={roster.roster_id}
             roster={roster}
+            draftPickProjectionSummary={league.draft_pick_projection_summary}
           />
         ))}
       </div>

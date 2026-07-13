@@ -13,6 +13,7 @@ import type {
   BulkTradePlayerSearchResult,
   BulkTradeProposalRequest,
   BulkTradeProposalResponse,
+  TradeCalculatorPickValueResponse,
   TradeDirection,
 } from '@/types';
 
@@ -142,4 +143,27 @@ export function useSubmitBulkTradeOffers() {
     error: mutation.error,
     reset: mutation.reset,
   };
+}
+
+
+export async function fetchTradeCalculatorPickValue(
+  season: string,
+  round: number,
+  slot: number | null,
+  totalRosters: number,
+  numQbs: number,
+  ppr: number,
+) {
+  return api.trades.getTradeCalculatorPickValue(
+    season,
+    round,
+    slot,
+    totalRosters,
+    numQbs,
+    ppr,
+  ).then(
+    (
+      response,
+    ): TradeCalculatorPickValueResponse => response.data,
+  );
 }

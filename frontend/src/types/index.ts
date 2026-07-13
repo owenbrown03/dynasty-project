@@ -41,6 +41,22 @@ export interface Login {
   password: string;
 }
 
+export interface EmailVerificationRequestResponse {
+  email_verified: boolean;
+  verification_email_sent_at: string | null;
+  delivery: 'smtp' | 'log';
+  verification_url: string | null;
+}
+
+export interface EmailVerificationConfirmRequest {
+  token: string;
+}
+
+export interface EmailVerificationStatusResponse {
+  email_verified: boolean;
+  verification_email_sent_at: string | null;
+}
+
 export interface SendCodeRequest {
   username: string;
   captcha: string;
@@ -63,12 +79,15 @@ export interface VerifyCodeResponse {
 export interface BootstrapUser {
   id: string;
   email: string;
+  email_verified: boolean;
+  verification_email_sent_at: string | null;
 }
 
 export interface BootstrapSleeper {
   linked: boolean;
   sleeper_username: string | null;
   sleeper_user_id: string | null;
+  sleeper_avatar: string | null;
   can_read: boolean;
   can_write: boolean;
 }
@@ -77,6 +96,7 @@ export interface SleeperConnection {
   linked: boolean;
   sleeper_username: string | null;
   sleeper_user_id: string | null;
+  sleeper_avatar: string | null;
   can_read: boolean;
   can_write: boolean;
 }
@@ -87,6 +107,7 @@ export interface Bootstrap {
   sleeper: BootstrapSleeper;
   theme_preference: ThemePreference | null;
   value_preference: ValueBasis | null;
+  draft_pick_projection_settings: DraftPickProjectionSettings;
 }
 
 export type ThemePreference =
@@ -94,11 +115,38 @@ export type ThemePreference =
   | 'dark'
   | 'system';
 
+export type DraftPickProjectionMethod =
+  | 'reverse_standings'
+  | 'max_pf'
+  | 'redraft_starter_war'
+  | 'redraft_roster_war';
+
+export type DraftPickProjectionPhaseMethod =
+  | 'none'
+  | DraftPickProjectionMethod;
+
+export interface DraftPickProjectionSettings {
+  enabled: boolean;
+  switch_week: number;
+  before_week_method: DraftPickProjectionPhaseMethod;
+  from_week_method: DraftPickProjectionMethod;
+}
+
 export interface LeagueOverview {
   league_id: string;
   league_name: string;
   season: string | null;
   total_rosters: number | null;
+  is_hidden: boolean;
+}
+
+export interface LeagueVisibilityUpdate {
+  hidden: boolean;
+}
+
+export interface LeagueVisibilityItem {
+  league_id: string;
+  hidden: boolean;
 }
 
 export interface LeagueOwner {
@@ -112,6 +160,32 @@ export interface LeagueSettingsDetail {
   value: string;
 }
 
+export interface LeagueWarPositionValue {
+  position: string;
+  war: number;
+}
+
+export interface LeagueWarPositionSeason {
+  season: string;
+  source: string;
+  values: LeagueWarPositionValue[];
+}
+
+export interface LeagueWarPlayerPoint {
+  player_id: string;
+  name: string;
+  position: string;
+  war: number;
+  rank: number;
+}
+
+export interface LeagueWarPlayerSeason {
+  season: string;
+  source: string;
+  war_type: string;
+  players: LeagueWarPlayerPoint[];
+}
+
 export interface LeaguePick {
   season: string;
   round: number;
@@ -119,6 +193,8 @@ export interface LeaguePick {
   current_owner_roster_id: number;
   label: string;
   slot: number | null;
+  projected_slot: number | null;
+  slot_source_label: string | null;
   fc_value: number | null;
   ktc_value: number | null;
 }
@@ -182,8 +258,12 @@ export interface LeagueDetails {
   league_name: string;
   season: string;
   total_rosters: number;
+  note: string;
+  draft_pick_projection_summary: string | null;
   settings_badges: string[];
   settings_details: LeagueSettingsDetail[];
+  war_position_history: LeagueWarPositionSeason[];
+  war_player_history: LeagueWarPlayerSeason[];
   rosters: LeagueRoster[];
 }
 
@@ -305,6 +385,8 @@ export interface CommissionerDraftPickAsset {
   original_owner_name: string | null;
   current_owner_name: string | null;
   slot: number | null;
+  projected_slot: number | null;
+  slot_source_label: string | null;
   label: string;
   selected_value: number | null;
   value_source_label: string | null;
@@ -330,6 +412,164 @@ export interface CommissionerOrphansResponse {
   value_basis: ValueBasis;
   value_label: string;
   orphans: CommissionerOrphanRoster[];
+}
+
+export interface CommissionerLeagueDuesEntry {
+  league_id: string;
+  roster_id: number;
+  roster_name: string;
+  season: string;
+  traded_pick_count: number;
+  traded_pick_labels: string[];
+  buy_in_amount: number | null;
+  is_paid: boolean;
+  paid_at: string | null;
+}
+
+export interface CommissionerWorkspaceLeague {
+  league_id: string;
+  league_name: string;
+  league_season: string;
+  note: string;
+  paid_years_ahead: number;
+  dues: CommissionerLeagueDuesEntry[];
+}
+
+export interface CommissionerWorkspaceResponse {
+  leagues: CommissionerWorkspaceLeague[];
+}
+
+export interface CommissionerLeagueNoteUpdate {
+  league_id: string;
+  note: string;
+}
+
+export interface CommissionerLeagueDuesUpdate {
+  league_id: string;
+  roster_id: number;
+  season: string;
+  buy_in_amount: number | null;
+  is_paid: boolean;
+}
+
+export interface CommissionerLeagueSettingsUpdate {
+  league_id: string;
+  paid_years_ahead: number;
+}
+
+export interface FinancePlacePayout {
+  place: number;
+  amount: number;
+}
+
+export interface FinanceLeagueSeasonEntry {
+  league_id: string;
+  league_family_id: string;
+  league_name: string;
+  season: string;
+  status: string;
+  total_rosters: number;
+  rank: number | null;
+  wins: number | null;
+  losses: number | null;
+  points_for: number | null;
+  finish_place: number | null;
+  projected_finish_place: number | null;
+  buy_in_amount: number;
+  winnings_amount: number;
+  payout_structure: FinancePlacePayout[];
+  buy_in_source: 'season_override' | 'league_default' | 'global_default' | 'commissioner_dues' | 'none';
+  payout_source: 'season_override' | 'league_default' | 'global_default' | 'none';
+  has_season_override: boolean;
+  has_league_default: boolean;
+  is_excluded: boolean;
+  projected_winnings_amount: number;
+  projected_winnings_source: 'heuristic' | 'historical_rank' | 'configured_place';
+  net_amount: number;
+}
+
+export interface FinanceDefaultSettings {
+  buy_in_amount: number | null;
+  payout_structure: FinancePlacePayout[];
+}
+
+export interface FinanceLeagueDefaultEntry {
+  league_family_id: string;
+  league_name: string;
+  buy_in_amount: number | null;
+  payout_structure: FinancePlacePayout[];
+}
+
+export interface FinanceSummaryResponse {
+  total_buy_ins: number;
+  total_winnings: number;
+  total_net: number;
+  projected_current_winnings: number;
+  defaults: FinanceDefaultSettings;
+  league_defaults: FinanceLeagueDefaultEntry[];
+  seasons: FinanceLeagueSeasonEntry[];
+}
+
+export interface FinanceLeagueSeasonUpdate {
+  league_id: string;
+  season: string;
+  buy_in_amount: number;
+  payout_structure: FinancePlacePayout[];
+  is_excluded: boolean;
+}
+
+export interface FinanceSeasonReset {
+  league_id: string;
+  season: string;
+}
+
+export interface FinanceDefaultsUpdate {
+  buy_in_amount: number | null;
+  payout_structure: FinancePlacePayout[];
+}
+
+export interface FinanceLeagueDefaultsUpdate extends FinanceDefaultsUpdate {
+  league_family_ids: string[];
+}
+
+export interface ReminderItem {
+  id: number;
+  league_id: string | null;
+  title: string;
+  note: string;
+  due_week: number | null;
+  due_season: string | null;
+  delivery_channel: string;
+  completed: boolean;
+  email_sent_at: string | null;
+  updated_at: string;
+}
+
+export interface ReminderListResponse {
+  reminders: ReminderItem[];
+}
+
+export interface ReminderCreate {
+  league_id: string | null;
+  title: string;
+  note: string;
+  due_week: number | null;
+  due_season: string | null;
+  delivery_channel: string;
+}
+
+export interface ReminderUpdate extends ReminderCreate {
+  id: number;
+  completed: boolean;
+}
+
+export interface ReminderDelete {
+  id: number;
+}
+
+export interface ReminderTestSendResponse {
+  delivery: 'smtp' | 'log';
+  recipient: string;
 }
 
 export interface PlayerValue {
@@ -607,4 +847,15 @@ export interface BulkTradeProposalResult {
 
 export interface BulkTradeProposalResponse {
   results: BulkTradeProposalResult[];
+}
+
+export interface TradeCalculatorPickValueResponse {
+  season: string;
+  round: number;
+  slot: number | null;
+  total_rosters: number;
+  num_qbs: number;
+  ppr: number;
+  ktc_value: number | null;
+  fc_value: number | null;
 }

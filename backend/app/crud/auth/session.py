@@ -4,6 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, delete
 
 from app.models.db.auth import UserSession
+from app.services.draft.projection import (
+    normalize_draft_pick_projection_settings,
+)
 from app.services.values.basis import ValueBasis
 
 VALID_THEME_PREFERENCES = {"light", "dark", "system"}
@@ -113,6 +116,44 @@ async def set_session_value_preference(
     )
 
     settings["value_preference"] = value_preference.value
+    session.settings = settings
+
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+def get_session_draft_pick_projection_settings(
+    session: UserSession | None,
+) -> dict[str, object]:
+    if not session:
+        return normalize_draft_pick_projection_settings(
+            None,
+        )
+
+    return normalize_draft_pick_projection_settings(
+        (session.settings or {}).get(
+            "draft_pick_projection_settings",
+        )
+    )
+
+
+async def set_session_draft_pick_projection_settings(
+    *,
+    session: UserSession,
+    draft_pick_projection_settings: dict[str, object],
+    db: AsyncSession,
+) -> UserSession:
+    settings = dict(
+        session.settings or {}
+    )
+
+    settings["draft_pick_projection_settings"] = (
+        normalize_draft_pick_projection_settings(
+            draft_pick_projection_settings,
+        )
+    )
     session.settings = settings
 
     db.add(session)

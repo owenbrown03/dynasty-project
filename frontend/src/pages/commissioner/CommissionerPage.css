@@ -296,6 +296,88 @@
   font-size: 12px;
 }
 
+.commissioner-note-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.commissioner-due-settings {
+  display: grid;
+  gap: 10px;
+}
+
+.commissioner-due-settings label {
+  display: grid;
+  gap: 6px;
+  max-width: 220px;
+}
+
+.commissioner-due-settings span,
+.commissioner-settings-copy {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.commissioner-note-editor textarea {
+  min-height: 110px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+  resize: vertical;
+}
+
+.commissioner-due-row {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.commissioner-due-copy strong {
+  display: block;
+  font-size: 13px;
+}
+
+.commissioner-due-copy span {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.commissioner-due-picks {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.commissioner-due-picks li + li {
+  margin-top: 4px;
+}
+
+.commissioner-due-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.commissioner-due-controls input[type='number'] {
+  width: 120px;
+}
+
+.commissioner-due-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 @media (max-width: 1040px) {
   .commissioner-page-header {
     flex-direction: column;
@@ -324,5 +406,10 @@
 
   .commissioner-username-row {
     flex-direction: column;
+  }
+
+  .commissioner-due-controls {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

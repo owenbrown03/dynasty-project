@@ -9,6 +9,7 @@ import type {
   TierBoardSource,
   ValueBasis,
 } from '@/types';
+import { getPositionColor } from '@/utils/positions';
 
 import {
   TIER_SOURCE_OPTIONS,
@@ -31,24 +32,6 @@ function formatSelectedValue(
   }
 
   return player.selected_value.toFixed(2);
-}
-
-
-function getPositionTone(
-  position: string | null,
-) {
-  switch (position) {
-    case 'QB':
-      return 'qb';
-    case 'RB':
-      return 'rb';
-    case 'WR':
-      return 'wr';
-    case 'TE':
-      return 'te';
-    default:
-      return 'neutral';
-  }
 }
 
 
@@ -295,7 +278,12 @@ export const TiersPage = () => {
                             ? tier.players.map((player) => (
                                 <article
                                   key={player.player_id}
-                                  className={`tier-player tier-player-${getPositionTone(player.position)}`}
+                                  className="tier-player"
+                                  style={{
+                                    borderLeftColor: getPositionColor(
+                                      player.position,
+                                    ),
+                                  }}
                                 >
                                   <div className="tier-player-main">
                                     <div className="player-with-avatar">

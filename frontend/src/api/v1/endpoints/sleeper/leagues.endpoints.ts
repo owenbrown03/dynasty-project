@@ -3,7 +3,9 @@ import { type AxiosInstance } from 'axios';
 import type {
   LeagueOverview,
   LeagueDetails,
-  Dashboard
+  Dashboard,
+  LeagueVisibilityItem,
+  LeagueVisibilityUpdate,
 } from '@/types';
 
 export const leaguesEndpoints = (
@@ -12,10 +14,16 @@ export const leaguesEndpoints = (
 ) => ({
 
   getOverview: (
-    username: string
+    username: string,
+    includeHidden = false,
   ) =>
     client.get<LeagueOverview[]>(
-      `${prefix}/overview/${username}`
+      `${prefix}/overview/${username}`,
+      {
+        params: {
+          include_hidden: includeHidden,
+        },
+      },
     ),
 
 
@@ -32,6 +40,15 @@ export const leaguesEndpoints = (
   ) =>
     client.get<Dashboard>(
       `${prefix}/dashboard/${username}`
+    ),
+
+  setVisibility: (
+    leagueId: string,
+    payload: LeagueVisibilityUpdate,
+  ) =>
+    client.put<LeagueVisibilityItem>(
+      `${prefix}/visibility/${leagueId}`,
+      payload,
     ),
 
 });

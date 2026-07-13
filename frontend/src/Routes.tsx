@@ -8,6 +8,9 @@ import { LeaguesPage } from './pages/leagues/LeaguesPage';
 import { WaiversPage } from './pages/waivers/WaiversPage';
 import { TiersPage } from './pages/tiers/TiersPage';
 import { CommissionerPage } from './pages/commissioner/CommissionerPage';
+import { FinancePage } from './pages/finance/FinancePage';
+import { RemindersPage } from './pages/reminders/RemindersPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 
 export const AppRoutes = () => {
   return (
@@ -19,6 +22,9 @@ export const AppRoutes = () => {
         <Route path="/trades" element={<TradesPage />} />
         <Route path="/waivers" element={<WaiversPage />} />
         <Route path="/tiers" element={<TiersPage />} />
+        <Route path="/finance" element={<FinancePage />} />
+        <Route path="/reminders" element={<RemindersPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/commissioner" element={<CommissionerPage />} />
         <Route path="/commissioner/:username" element={<CommissionerPage />} />
         <Route path="/orphans" element={<CommissionerPage />} />

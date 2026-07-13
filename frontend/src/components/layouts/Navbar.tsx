@@ -205,6 +205,16 @@ export const Navbar = () => {
                     </select>
                   </label>
 
+                  <Link
+                    to="/settings"
+                    className="button-secondary navbar-settings-link"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                    }}
+                  >
+                    Open settings
+                  </Link>
+
                   {auth.isLoggedIn ? (
                     <button
                       className="button-primary"

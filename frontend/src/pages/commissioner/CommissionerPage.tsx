@@ -13,8 +13,17 @@ import { LoadingState } from '@/components/feedback/LoadingState';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
-import { useCommissionerOrphans } from '@/hooks/sleeper/useUsers';
+import {
+  useCommissionerOrphans,
+  useCommissionerWorkspace,
+  useSaveCommissionerDues,
+  useSaveCommissionerSettings,
+  useSaveCommissionerNote,
+} from '@/hooks/sleeper/useUsers';
+import { notify } from '@/utils/notify';
 import type {
+  CommissionerLeagueDuesEntry,
+  CommissionerWorkspaceLeague,
   CommissionerLineupSlot,
   CommissionerOrphanRoster,
   CommissionerPlayerAsset,
@@ -25,9 +34,9 @@ import { VALUE_BASIS_OPTIONS } from '@/pages/waivers/waiver.constants';
 import './CommissionerPage.css';
 
 
-type CommissionerTab = 'orphans';
-
-const DEFAULT_TAB: CommissionerTab = 'orphans';
+type CommissionerTab =
+  | 'orphans'
+  | 'workspace';
 
 
 function isValueBasis(
@@ -315,6 +324,16 @@ function CommissionerOrphanCard({
                               </span>
 
                               {
+                                pick.slot_source_label
+                                  ? (
+                                    <span className="commissioner-pick-meta">
+                                      {pick.slot_source_label}
+                                    </span>
+                                  )
+                                  : null
+                              }
+
+                              {
                                 pick.value_source_label
                                   ? (
                                     <span className="commissioner-pick-meta">
@@ -352,6 +371,285 @@ function CommissionerOrphanCard({
 }
 
 
+function CommissionerWorkspaceCard({
+  league,
+  onSaveNote,
+  onSaveDues,
+  onSaveSettings,
+  savingNote,
+  savingDues,
+  savingSettings,
+}: {
+  league: CommissionerWorkspaceLeague;
+  onSaveNote: (
+    leagueId: string,
+    note: string,
+  ) => Promise<void>;
+  onSaveDues: (
+    entry: CommissionerLeagueDuesEntry,
+    buyInAmount: number | null,
+    isPaid: boolean,
+  ) => Promise<void>;
+  onSaveSettings: (
+    leagueId: string,
+    paidYearsAhead: number,
+  ) => Promise<void>;
+  savingNote: boolean;
+  savingDues: boolean;
+  savingSettings: boolean;
+}) {
+  const [note, setNote] = useState(league.note);
+  const [paidYearsAhead, setPaidYearsAhead] = useState(
+    league.paid_years_ahead.toString(),
+  );
+  const [duesDrafts, setDuesDrafts] = useState<
+    Record<string, { amount: string; isPaid: boolean }>
+  >(() => Object.fromEntries(
+    league.dues.map((entry) => [
+      `${entry.roster_id}-${entry.season}`,
+      {
+        amount: entry.buy_in_amount?.toString() ?? '',
+        isPaid: entry.is_paid,
+      },
+    ]),
+  ));
+
+  useEffect(() => {
+    setNote(league.note);
+    setPaidYearsAhead(
+      league.paid_years_ahead.toString(),
+    );
+    setDuesDrafts(
+      Object.fromEntries(
+        league.dues.map((entry) => [
+          `${entry.roster_id}-${entry.season}`,
+          {
+            amount: entry.buy_in_amount?.toString() ?? '',
+            isPaid: entry.is_paid,
+          },
+        ]),
+      ),
+    );
+  }, [league]);
+
+  return (
+    <article className="commissioner-card">
+      <header className="commissioner-card-header">
+        <div>
+          <p className="commissioner-card-kicker">
+            League Dues Tracker
+          </p>
+          <h2 className="commissioner-card-title">
+            {league.league_name}
+          </h2>
+          <p className="commissioner-card-subtitle">
+            {league.league_season} season
+          </p>
+        </div>
+      </header>
+
+      <section className="commissioner-section">
+        <div className="commissioner-section-header">
+          <p>Dues settings</p>
+        </div>
+
+        <div className="commissioner-due-settings">
+          <label>
+            <span>Years paid ahead</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={paidYearsAhead}
+              onChange={(event) => {
+                setPaidYearsAhead(event.target.value);
+              }}
+            />
+          </label>
+
+          <p className="commissioner-settings-copy">
+            {
+              `Track picks from ${Number(league.league_season) + (Number(paidYearsAhead || '0') + 1)} and later.`
+            }
+          </p>
+
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={savingSettings}
+            onClick={() => {
+              void onSaveSettings(
+                league.league_id,
+                Math.max(
+                  0,
+                  Number(paidYearsAhead) || 0,
+                ),
+              );
+            }}
+          >
+            {
+              savingSettings
+                ? 'Saving...'
+                : 'Save settings'
+            }
+          </button>
+        </div>
+      </section>
+
+      <section className="commissioner-section">
+        <div className="commissioner-section-header">
+          <p>League notes</p>
+        </div>
+
+        <div className="commissioner-note-editor">
+          <textarea
+            value={note}
+            onChange={(event) => {
+              setNote(event.target.value);
+            }}
+            placeholder="League notes, roster plans, and reminders..."
+          />
+
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={savingNote}
+            onClick={() => {
+              void onSaveNote(
+                league.league_id,
+                note,
+              );
+            }}
+          >
+            {
+              savingNote
+                ? 'Saving...'
+                : 'Save notes'
+            }
+          </button>
+        </div>
+      </section>
+
+      <section className="commissioner-section">
+        <div className="commissioner-section-header">
+          <p>Future pick dues</p>
+        </div>
+
+        <div className="commissioner-list">
+          {
+            league.dues.length > 0
+              ? league.dues.map((entry) => {
+                  const key = `${entry.roster_id}-${entry.season}`;
+                  const draft = duesDrafts[key] ?? {
+                    amount: '',
+                    isPaid: entry.is_paid,
+                  };
+
+                  return (
+                    <div
+                      key={key}
+                      className="commissioner-due-row"
+                    >
+                      <div className="commissioner-due-copy">
+                        <strong>
+                          {entry.roster_name}
+                        </strong>
+                        <span>
+                          {entry.season} dues · {entry.traded_pick_count} future pick trade{entry.traded_pick_count === 1 ? '' : 's'}
+                        </span>
+                        {
+                          entry.traded_pick_labels.length > 0
+                            ? (
+                              <ul className="commissioner-due-picks">
+                                {
+                                  entry.traded_pick_labels.map((pickLabel) => (
+                                    <li key={`${key}-${pickLabel}`}>
+                                      {pickLabel}
+                                    </li>
+                                  ))
+                                }
+                              </ul>
+                            )
+                            : null
+                        }
+                      </div>
+
+                      <div className="commissioner-due-controls">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={draft.amount}
+                          placeholder="Buy-in"
+                          onChange={(event) => {
+                            setDuesDrafts((current) => ({
+                              ...current,
+                              [key]: {
+                                ...draft,
+                                amount: event.target.value,
+                              },
+                            }));
+                          }}
+                        />
+
+                        <label className="commissioner-due-toggle">
+                          <input
+                            type="checkbox"
+                            checked={draft.isPaid}
+                            onChange={(event) => {
+                              setDuesDrafts((current) => ({
+                                ...current,
+                                [key]: {
+                                  ...draft,
+                                  isPaid: event.target.checked,
+                                },
+                              }));
+                            }}
+                          />
+                          <span>Paid</span>
+                        </label>
+
+                        <button
+                          type="button"
+                          className="button-secondary"
+                          disabled={savingDues}
+                          onClick={() => {
+                            const parsedAmount = draft.amount.trim()
+                              ? Number(draft.amount)
+                              : null;
+
+                            void onSaveDues(
+                              entry,
+                              Number.isFinite(parsedAmount)
+                                ? parsedAmount
+                                : null,
+                              draft.isPaid,
+                            );
+                          }}
+                        >
+                          {
+                            savingDues
+                              ? 'Saving...'
+                              : 'Save'
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              : (
+                <div className="commissioner-empty-note">
+                  No future traded picks detected for dues tracking.
+                </div>
+              )
+          }
+        </div>
+      </section>
+    </article>
+  );
+}
+
+
 export const CommissionerPage = () => {
   const navigate = useNavigate();
   const params = useParams();
@@ -370,9 +668,9 @@ export const CommissionerPage = () => {
   }, [activeUsername]);
 
   const activeTab = (
-    searchParams.get('tab') === 'orphans'
-      ? 'orphans'
-      : DEFAULT_TAB
+    searchParams.get('tab') === 'workspace'
+      ? 'workspace'
+      : 'orphans'
   ) as CommissionerTab;
 
   const valueBasis = isValueBasis(
@@ -385,6 +683,16 @@ export const CommissionerPage = () => {
     activeUsername,
     valueBasis,
   );
+  const canManageWorkspace = (
+    Boolean(connection.username)
+    && activeUsername === connection.username
+  );
+  const workspace = useCommissionerWorkspace(
+    canManageWorkspace,
+  );
+  const saveNoteMutation = useSaveCommissionerNote();
+  const saveDuesMutation = useSaveCommissionerDues();
+  const saveSettingsMutation = useSaveCommissionerSettings();
 
   const shareUrl = useMemo(() => {
     if (!activeUsername) {
@@ -422,6 +730,55 @@ export const CommissionerPage = () => {
     navigate(
       `/commissioner/${encodeURIComponent(trimmed)}?tab=${activeTab}&basis=${valueBasis}`,
     );
+  };
+
+  const handleSaveNote = async (
+    leagueId: string,
+    note: string,
+  ) => {
+    try {
+      await saveNoteMutation.mutateAsync({
+        league_id: leagueId,
+        note,
+      });
+      notify.success('League notes saved.');
+    } catch {
+      notify.error('Unable to save league notes.');
+    }
+  };
+
+  const handleSaveDues = async (
+    entry: CommissionerLeagueDuesEntry,
+    buyInAmount: number | null,
+    isPaid: boolean,
+  ) => {
+    try {
+      await saveDuesMutation.mutateAsync({
+        league_id: entry.league_id,
+        roster_id: entry.roster_id,
+        season: entry.season,
+        buy_in_amount: buyInAmount,
+        is_paid: isPaid,
+      });
+      notify.success('League dues updated.');
+    } catch {
+      notify.error('Unable to save league dues.');
+    }
+  };
+
+  const handleSaveSettings = async (
+    leagueId: string,
+    paidYearsAhead: number,
+  ) => {
+    try {
+      await saveSettingsMutation.mutateAsync({
+        league_id: leagueId,
+        paid_years_ahead: paidYearsAhead,
+      });
+      notify.success('Dues settings updated.');
+    } catch {
+      notify.error('Unable to save dues settings.');
+    }
   };
 
   return (
@@ -519,6 +876,25 @@ export const CommissionerPage = () => {
         >
           Available Orphans
         </button>
+        {
+          canManageWorkspace
+            ? (
+              <button
+                className={
+                  activeTab === 'workspace'
+                    ? 'commissioner-tab-button active'
+                    : 'commissioner-tab-button'
+                }
+                type="button"
+                onClick={() => {
+                  setTab('workspace');
+                }}
+              >
+                League Dues Tracker
+              </button>
+            )
+            : null
+        }
       </div>
 
       {
@@ -532,7 +908,7 @@ export const CommissionerPage = () => {
       }
 
       {
-        activeUsername && orphans.loading
+        activeTab === 'orphans' && activeUsername && orphans.loading
           ? (
             <LoadingState
               label="Loading commissioner view..."
@@ -543,7 +919,7 @@ export const CommissionerPage = () => {
       }
 
       {
-        activeUsername && !orphans.loading && orphans.error
+        activeTab === 'orphans' && activeUsername && !orphans.loading && orphans.error
           ? (
             <div className="commissioner-empty-state">
               Unable to load commissioner data for "{activeUsername}".
@@ -553,7 +929,7 @@ export const CommissionerPage = () => {
       }
 
       {
-        activeUsername && !orphans.loading && orphans.data && orphans.data.orphans.length === 0
+        activeTab === 'orphans' && activeUsername && !orphans.loading && orphans.data && orphans.data.orphans.length === 0
           ? (
             <div className="commissioner-empty-state">
               No orphan rosters found for "{activeUsername}".
@@ -563,7 +939,7 @@ export const CommissionerPage = () => {
       }
 
       {
-        activeUsername && orphans.data && orphans.data.orphans.length > 0
+        activeTab === 'orphans' && activeUsername && orphans.data && orphans.data.orphans.length > 0
           ? (
             <section className="commissioner-card-grid">
               {
@@ -572,6 +948,60 @@ export const CommissionerPage = () => {
                     key={`${orphan.league_id}-${orphan.roster_id}`}
                     orphan={orphan}
                     valueBasis={valueBasis}
+                  />
+                ))
+              }
+            </section>
+          )
+          : null
+      }
+
+      {
+        activeTab === 'workspace' && !canManageWorkspace
+          ? (
+            <div className="commissioner-empty-state">
+              Link your Sleeper account and open your own username to use the league dues tracker.
+            </div>
+          )
+          : null
+      }
+
+      {
+        activeTab === 'workspace' && canManageWorkspace && workspace.loading
+          ? (
+            <LoadingState
+              label="Loading league dues tracker..."
+              className="commissioner-empty-state"
+            />
+          )
+          : null
+      }
+
+      {
+        activeTab === 'workspace' && canManageWorkspace && !workspace.loading && workspace.error
+          ? (
+            <div className="commissioner-empty-state">
+              Unable to load your league dues tracker.
+            </div>
+          )
+          : null
+      }
+
+      {
+        activeTab === 'workspace' && workspace.data
+          ? (
+            <section className="commissioner-card-grid">
+              {
+                workspace.data.leagues.map((league) => (
+                  <CommissionerWorkspaceCard
+                    key={league.league_id}
+                    league={league}
+                    onSaveNote={handleSaveNote}
+                    onSaveDues={handleSaveDues}
+                    onSaveSettings={handleSaveSettings}
+                    savingNote={saveNoteMutation.isPending}
+                    savingDues={saveDuesMutation.isPending}
+                    savingSettings={saveSettingsMutation.isPending}
                   />
                 ))
               }

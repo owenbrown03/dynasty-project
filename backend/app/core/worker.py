@@ -8,6 +8,7 @@ from app.infrastructure.http.manager import HTTPClientManager
 from app.integrations.sleeper.singleton import get_worker_sleeper_client
 from app.core.logger import setup_logging
 from app.tasks.maintenance import run_daily_external_syncs_task
+from app.tasks.reminders import send_due_reminder_emails_task
 
 setup_logging()
 
@@ -17,6 +18,7 @@ DAILY_EXTERNAL_SYNC_CHECK_INTERVAL_SECONDS = 60 * 60
 async def enqueue_daily_external_sync_checks():
     while True:
         await run_daily_external_syncs_task.kiq()
+        await send_due_reminder_emails_task.kiq()
         await asyncio.sleep(
             DAILY_EXTERNAL_SYNC_CHECK_INTERVAL_SECONDS,
         )

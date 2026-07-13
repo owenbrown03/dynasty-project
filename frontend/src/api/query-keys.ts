@@ -22,13 +22,22 @@ export const queryKeys = {
         username ?? null,
         valueBasis,
       ] as const,
+    commissionerWorkspace: ['commissioner-workspace'] as const,
+    financeSummary: ['finance-summary'] as const,
+    reminders: ['reminders'] as const,
   },
 
   leagues: {
     overviewRoot: ['league-overview'] as const,
     overview: (
       username: string | null | undefined,
-    ) => ['league-overview', username ?? null] as const,
+      includeHidden = false,
+    ) =>
+      [
+        'league-overview',
+        username ?? null,
+        includeHidden,
+      ] as const,
     details: (
       leagueId: string | undefined,
     ) => ['league-details', leagueId ?? null] as const,
@@ -78,6 +87,7 @@ export const queryKeys = {
     leagues: (
       username: string | null | undefined,
     ) => ['waiver-leagues', username ?? null] as const,
+    leaguesRoot: ['waiver-leagues'] as const,
     availablePlayers: (
       username: string | null | undefined,
       leagueId: string | undefined,
