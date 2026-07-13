@@ -1387,7 +1387,7 @@ export const MyValuesPage = () => {
                                 }
                               </div>
 
-                              <label className="my-values-outcome-field">
+                              <label className="my-values-outcome-field my-values-current-rank-field">
                                 <span>Projected finish</span>
                                 <input
                                   type="number"
