@@ -44,6 +44,13 @@
   gap: 12px;
 }
 
+.finance-overview-summary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  gap: 12px;
+  align-items: stretch;
+}
+
 .finance-settings-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
@@ -101,12 +108,13 @@
 .finance-overview-controls {
   display: flex;
   justify-content: flex-end;
+  align-items: stretch;
 }
 
 .finance-overview-controls label {
   display: grid;
   gap: 6px;
-  min-width: 260px;
+  width: 100%;
 }
 
 .finance-overview-controls select {
@@ -488,6 +496,7 @@
 
 @media (max-width: 720px) {
   .finance-settings-grid,
+  .finance-overview-summary-row,
   .finance-chart-grid,
   .finance-season-grid,
   .finance-card-grid,
@@ -520,7 +529,6 @@
 
   .finance-overview-controls label {
     width: 100%;
-    min-width: 0;
   }
 
   .finance-bar-row {

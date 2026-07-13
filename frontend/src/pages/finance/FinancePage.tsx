@@ -1276,47 +1276,49 @@ export function FinancePage() {
                     )
                   : (
                     <>
-                      <section className="finance-overview-controls">
-                        <label>
-                          <span>Year</span>
-                          <select
-                            value={chartSeason}
-                            onChange={(event) => {
-                              setChartSeason(event.target.value);
-                            }}
-                          >
-                            <option value="all">All years</option>
-                            {
-                              availableSeasons.map((season) => (
-                                <option key={season} value={season}>
-                                  {season}
-                                </option>
-                              ))
-                            }
-                          </select>
-                        </label>
-                      </section>
+                      <section className="finance-overview-summary-row">
+                        <div className="finance-summary-grid">
+                          <article className="finance-summary-card">
+                            <span>Total buy-ins</span>
+                            <strong>{formatCurrency(overviewSummary.totalBuyIns)}</strong>
+                          </article>
 
-                      <section className="finance-summary-grid">
-                        <article className="finance-summary-card">
-                          <span>Total buy-ins</span>
-                          <strong>{formatCurrency(overviewSummary.totalBuyIns)}</strong>
-                        </article>
+                          <article className="finance-summary-card">
+                            <span>Total winnings</span>
+                            <strong>{formatCurrency(overviewSummary.totalWinnings)}</strong>
+                          </article>
 
-                        <article className="finance-summary-card">
-                          <span>Total winnings</span>
-                          <strong>{formatCurrency(overviewSummary.totalWinnings)}</strong>
-                        </article>
+                          <article className="finance-summary-card">
+                            <span>Total net</span>
+                            <strong>{formatCurrency(overviewSummary.totalNet)}</strong>
+                          </article>
 
-                        <article className="finance-summary-card">
-                          <span>Total net</span>
-                          <strong>{formatCurrency(overviewSummary.totalNet)}</strong>
-                        </article>
+                          <article className="finance-summary-card">
+                            <span>Projected current payouts</span>
+                            <strong>{formatCurrency(overviewSummary.projectedCurrentWinnings)}</strong>
+                          </article>
+                        </div>
 
-                        <article className="finance-summary-card">
-                          <span>Projected current payouts</span>
-                          <strong>{formatCurrency(overviewSummary.projectedCurrentWinnings)}</strong>
-                        </article>
+                        <div className="finance-overview-controls">
+                          <label>
+                            <span>Year</span>
+                            <select
+                              value={chartSeason}
+                              onChange={(event) => {
+                                setChartSeason(event.target.value);
+                              }}
+                            >
+                              <option value="all">All years</option>
+                              {
+                                availableSeasons.map((season) => (
+                                  <option key={season} value={season}>
+                                    {season}
+                                  </option>
+                                ))
+                              }
+                            </select>
+                          </label>
+                        </div>
                       </section>
 
                       <section className="finance-chart-grid">
