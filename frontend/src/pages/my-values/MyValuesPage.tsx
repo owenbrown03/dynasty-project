@@ -59,6 +59,34 @@ function formatMetric(
 }
 
 
+function formatMarketNumber(
+  value: number | null | undefined,
+) {
+  if (value == null) {
+    return '--';
+  }
+
+  return Math.round(value).toLocaleString();
+}
+
+
+function getSortMetricFromPoolItem(
+  item: PersonalValuePoolItem,
+  sortKey: SearchSortKey,
+) {
+  if (sortKey === 'fantasycalc') {
+    return item.player.fc_value ?? Number.NEGATIVE_INFINITY;
+  }
+
+  if (sortKey === 'war') {
+    return item.custom_values.dynasty_roster_war
+      ?? Number.NEGATIVE_INFINITY;
+  }
+
+  return item.player.ktc_value ?? Number.NEGATIVE_INFINITY;
+}
+
+
 function buildEmptyOutcome(): PersonalProjectionOutcomeItem {
   return {
     position_rank: 1,
@@ -144,6 +172,7 @@ export const MyValuesPage = () => {
   const [leagueId, setLeagueId] = useState('');
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [poolFilter, setPoolFilter] = useState('');
   const [searchSort, setSearchSort] = useState<SearchSortKey>(
     getDefaultSearchSort(valuePreference.preference),
   );
@@ -253,6 +282,57 @@ export const MyValuesPage = () => {
     return items;
   }, [
     search.data,
+    searchSort,
+  ]);
+
+  const filteredPoolGroups = useMemo(() => {
+    const normalizedFilter = poolFilter
+      .trim()
+      .toLowerCase();
+    const groups = pool.data?.groups ?? [];
+
+    return groups
+      .map((group) => {
+        const players = [...group.players]
+          .filter((item) => {
+            if (!normalizedFilter) {
+              return true;
+            }
+
+            const haystack = [
+              item.player.name,
+              item.player.team ?? '',
+              item.player.position,
+              item.player.underdog_position_rank ?? '',
+            ]
+              .join(' ')
+              .toLowerCase();
+
+            return haystack.includes(
+              normalizedFilter,
+            );
+          });
+
+        players.sort((left, right) => left.player.name.localeCompare(right.player.name));
+        players.sort((left, right) => (
+          getSortMetricFromPoolItem(
+            right,
+            searchSort,
+          ) - getSortMetricFromPoolItem(
+            left,
+            searchSort,
+          )
+        ));
+
+        return {
+          ...group,
+          players,
+        };
+      })
+      .filter((group) => group.players.length > 0);
+  }, [
+    pool.data,
+    poolFilter,
     searchSort,
   ]);
 
@@ -419,8 +499,12 @@ export const MyValuesPage = () => {
     searchSort === 'fantasycalc'
       ? 'FantasyCalc'
       : searchSort === 'war'
-        ? 'Market WAR'
+        ? 'My dynasty roster WAR'
         : 'KTC'
+  );
+  const filteredPoolCount = filteredPoolGroups.reduce(
+    (total, group) => total + group.players.length,
+    0,
   );
 
   return (
@@ -462,7 +546,7 @@ export const MyValuesPage = () => {
           </label>
 
           <div className="my-values-header-chip">
-            <span>Default search sort</span>
+            <span>Default table sort</span>
             <strong>{pageSummaryMetric}</strong>
           </div>
         </div>
@@ -488,7 +572,42 @@ export const MyValuesPage = () => {
           </div>
 
           <div className="my-values-pool-note">
-            Default pool includes players with Underdog positional ranks, then keeps any extra players you save custom projections for.
+            This is the main projection sheet. It starts with every underdog-ranked player, then keeps any extra players you save custom projections for.
+          </div>
+
+          <div className="my-values-pool-toolbar">
+            <label className="my-values-control my-values-control-grow">
+              <span>Filter table</span>
+              <input
+                value={poolFilter}
+                placeholder="Search player, team, rank"
+                onChange={(event) => {
+                  setPoolFilter(
+                    event.target.value,
+                  );
+                }}
+              />
+            </label>
+
+            <label className="my-values-control">
+              <span>Sort table by</span>
+              <select
+                value={searchSort}
+                onChange={(event) => {
+                  setSearchSort(
+                    event.target.value as SearchSortKey,
+                  );
+                }}
+              >
+                <option value="ktc">KTC</option>
+                <option value="fantasycalc">FantasyCalc</option>
+                <option value="war">My dynasty roster WAR</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="my-values-pool-summary">
+            Showing {filteredPoolCount} players, grouped by position and sorted by {pageSummaryMetric}.
           </div>
 
           {
@@ -500,7 +619,7 @@ export const MyValuesPage = () => {
           }
 
           {
-            !pool.loading && pool.data?.groups.map((group) => (
+            !pool.loading && filteredPoolGroups.map((group) => (
               <section
                 key={group.position}
                 className="my-values-position-group"
@@ -518,51 +637,71 @@ export const MyValuesPage = () => {
                   <p>{group.players.length} players</p>
                 </div>
 
-                <div className="my-values-pool-list">
-                  {
-                    group.players.map((item) => (
-                      <button
-                        key={item.player.player_id}
-                        type="button"
-                        className={[
-                          'my-values-pool-item',
-                          selectedPlayerId === item.player.player_id
-                            ? 'selected'
-                            : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                        onClick={() => {
-                          setSelectedPlayerId(
-                            item.player.player_id,
-                          );
-                        }}
-                      >
-                        <div className="my-values-pool-player">
-                          <PlayerAvatar
-                            playerId={item.player.player_id}
-                            name={item.player.name}
-                            size="sm"
-                          />
-                          <div>
-                            <strong>{item.player.name}</strong>
-                            <p>
-                              {item.player.team ?? '--'} · {item.player.underdog_position_rank ?? 'No UD rank'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="my-values-pool-values">
-                          <span>
-                            My D Ro WAR {formatMetric(item.custom_values.dynasty_roster_war)}
-                          </span>
-                          <span>
-                            Delta {item.delta_values.dynasty_roster_war == null ? '--' : `${item.delta_values.dynasty_roster_war > 0 ? '+' : ''}${formatMetric(item.delta_values.dynasty_roster_war)}`}
-                          </span>
-                        </div>
-                      </button>
-                    ))
-                  }
+                <div className="my-values-table-wrap">
+                  <table className="my-values-table">
+                    <thead>
+                      <tr>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>UD Rank</th>
+                        <th>KTC</th>
+                        <th>FC</th>
+                        <th>Market D Ro</th>
+                        <th>My D Ro</th>
+                        <th>Delta</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {
+                        group.players.map((item) => (
+                          <tr
+                            key={item.player.player_id}
+                            className={
+                              selectedPlayerId === item.player.player_id
+                                ? 'selected'
+                                : ''
+                            }
+                            onClick={() => {
+                              setSelectedPlayerId(
+                                item.player.player_id,
+                              );
+                            }}
+                          >
+                            <td>
+                              <div className="my-values-table-player">
+                                <PlayerAvatar
+                                  playerId={item.player.player_id}
+                                  name={item.player.name}
+                                  size="sm"
+                                />
+                                <div>
+                                  <strong>{item.player.name}</strong>
+                                  <p>
+                                    {item.is_customized
+                                      ? 'Customized'
+                                      : 'Underdog default'}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td>{item.player.team ?? '--'}</td>
+                            <td>{item.player.underdog_position_rank ?? '--'}</td>
+                            <td>{formatMarketNumber(item.player.ktc_value)}</td>
+                            <td>{formatMarketNumber(item.player.fc_value)}</td>
+                            <td>{formatMetric(item.market_values.dynasty_roster_war)}</td>
+                            <td>{formatMetric(item.custom_values.dynasty_roster_war)}</td>
+                            <td>
+                              {
+                                item.delta_values.dynasty_roster_war == null
+                                  ? '--'
+                                  : `${item.delta_values.dynasty_roster_war > 0 ? '+' : ''}${formatMetric(item.delta_values.dynasty_roster_war)}`
+                              }
+                            </td>
+                          </tr>
+                        ))
+                      }
+                    </tbody>
+                  </table>
                 </div>
               </section>
             ))
@@ -574,7 +713,7 @@ export const MyValuesPage = () => {
             <div className="my-values-panel-header">
               <div>
                 <p>Add players</p>
-                <h2>Search outside the default pool</h2>
+                <h2>Add players missing from the sheet</h2>
               </div>
             </div>
 
@@ -590,22 +729,6 @@ export const MyValuesPage = () => {
                     );
                   }}
                 />
-              </label>
-
-              <label className="my-values-control">
-                <span>Sort results by</span>
-                <select
-                  value={searchSort}
-                  onChange={(event) => {
-                    setSearchSort(
-                      event.target.value as SearchSortKey,
-                    );
-                  }}
-                >
-                  <option value="ktc">KTC</option>
-                  <option value="fantasycalc">FantasyCalc</option>
-                  <option value="war">Market WAR</option>
-                </select>
               </label>
             </div>
 
@@ -658,7 +781,7 @@ export const MyValuesPage = () => {
                 )
                 : (
                   <div className="my-values-search-empty">
-                    Search at least two characters. Results default to your saved value system, with KTC used as the fallback.
+                    Search at least two characters to add players who are missing from the default underdog-backed sheet.
                   </div>
                 )
             }
@@ -699,6 +822,8 @@ export const MyValuesPage = () => {
                             <span>{selectedPlayer.team ?? '--'}</span>
                             <span>Age {selectedPlayer.age ?? '--'}</span>
                             <span>{selectedPlayer.underdog_position_rank ?? 'No UD rank'}</span>
+                            <span>KTC {formatMarketNumber(selectedPlayer.ktc_value)}</span>
+                            <span>FC {formatMarketNumber(selectedPlayer.fc_value)}</span>
                           </div>
                           <h2>{selectedPlayer.name}</h2>
                           <p>

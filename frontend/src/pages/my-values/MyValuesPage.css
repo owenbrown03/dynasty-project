@@ -108,6 +108,17 @@
   min-width: 0;
 }
 
+.my-values-pool-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 12px;
+}
+
+.my-values-pool-summary {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
 .my-values-editor-panel {
   display: grid;
   gap: 18px;
@@ -169,7 +180,6 @@
   border-radius: 999px;
 }
 
-.my-values-pool-list,
 .my-values-search-results,
 .my-values-outcome-list,
 .my-values-season-grid {
@@ -177,7 +187,6 @@
   gap: 10px;
 }
 
-.my-values-pool-item,
 .my-values-search-result {
   display: grid;
   gap: 10px;
@@ -186,11 +195,6 @@
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
   text-align: left;
-}
-
-.my-values-pool-item.selected {
-  border-color: var(--position-pick-color);
-  background: color-mix(in srgb, var(--position-pick-color) 10%, var(--color-surface-raised));
 }
 
 .my-values-pool-player {
@@ -221,6 +225,65 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 12px;
+}
+
+.my-values-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.my-values-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.my-values-table th,
+.my-values-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.my-values-table th {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--color-surface);
+}
+
+.my-values-table tbody tr {
+  cursor: pointer;
+}
+
+.my-values-table tbody tr:hover {
+  background: color-mix(in srgb, var(--position-pick-color) 6%, var(--color-surface-raised));
+}
+
+.my-values-table tbody tr.selected {
+  background: color-mix(in srgb, var(--position-pick-color) 10%, var(--color-surface-raised));
+}
+
+.my-values-table-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.my-values-table-player strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.my-values-table-player p {
+  color: var(--color-text-muted);
+  font-size: 11px;
 }
 
 .my-values-search-controls {
@@ -370,6 +433,7 @@
 
 @media (max-width: 760px) {
   .my-values-search-controls,
+  .my-values-pool-toolbar,
   .my-values-metric-grid,
   .my-values-season-grid,
   .my-values-outcome-row {
