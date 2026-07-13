@@ -57,6 +57,10 @@ interface TableFilter {
   value: string;
 }
 
+type FutureProjectionMode =
+  | 'default'
+  | 'year';
+
 const POSITION_ORDER: Record<string, number> = {
   QB: 0,
   RB: 1,
@@ -300,6 +304,30 @@ function cloneSeasons(
 }
 
 
+function cloneOutcomes(
+  outcomes: PersonalProjectionOutcomeItem[],
+) {
+  return outcomes.map((outcome) => ({
+    ...outcome,
+  }));
+}
+
+
+function outcomesEqual(
+  left: PersonalProjectionOutcomeItem[],
+  right: PersonalProjectionOutcomeItem[],
+) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((outcome, index) => (
+    outcome.position_rank === right[index].position_rank
+    && Number(outcome.probability) === Number(right[index].probability)
+  ));
+}
+
+
 function getPoolPlayerIds(
   poolItems: PersonalValuePoolItem[],
 ) {
@@ -382,6 +410,14 @@ export const MyValuesPage = () => {
   const [editableSeasons, setEditableSeasons] = useState<
     PersonalProjectionSeasonItem[]
   >([]);
+  const [futureProjectionMode, setFutureProjectionMode] =
+    useState<FutureProjectionMode>('default');
+  const [specificFutureYear, setSpecificFutureYear] = useState<
+    number | ''
+  >('');
+  const [defaultFutureOutcomes, setDefaultFutureOutcomes] = useState<
+    PersonalProjectionOutcomeItem[]
+  >([]);
 
   useEffect(() => {
     if (
@@ -406,12 +442,30 @@ export const MyValuesPage = () => {
   }, [valuePreference.preference]);
 
   useEffect(() => {
-    if (detail.data) {
-      setEditableSeasons(
-        cloneSeasons(detail.data.seasons),
+    const detailData = detail.data;
+
+    if (detailData) {
+      const cloned = cloneSeasons(detailData.seasons);
+      setEditableSeasons(cloned);
+
+      const firstFutureSeason = cloned.find(
+        (season) => season.season !== detailData.context.season,
       );
+
+      setDefaultFutureOutcomes(
+        firstFutureSeason
+          ? cloneOutcomes(firstFutureSeason.outcomes)
+          : [],
+      );
+      setSpecificFutureYear(
+        firstFutureSeason?.season ?? '',
+      );
+      setFutureProjectionMode('default');
     } else {
       setEditableSeasons([]);
+      setDefaultFutureOutcomes([]);
+      setSpecificFutureYear('');
+      setFutureProjectionMode('default');
     }
   }, [detail.data]);
 
@@ -518,6 +572,11 @@ export const MyValuesPage = () => {
 
         return {
           ...seasonItem,
+          is_customized: (
+            seasonItem.season !== currentProjectionSeason
+              ? true
+              : seasonItem.is_customized
+          ),
           outcomes: seasonItem.outcomes.map(
             (outcome, index) =>
               index === outcomeIndex
@@ -544,6 +603,11 @@ export const MyValuesPage = () => {
 
         return {
           ...seasonItem,
+          is_customized: (
+            seasonItem.season !== currentProjectionSeason
+              ? true
+              : seasonItem.is_customized
+          ),
           outcomes: [
             {
               position_rank: nextRank,
@@ -566,6 +630,11 @@ export const MyValuesPage = () => {
 
         return {
           ...seasonItem,
+          is_customized: (
+            seasonItem.season !== currentProjectionSeason
+              ? true
+              : seasonItem.is_customized
+          ),
           outcomes: [
             ...seasonItem.outcomes,
             buildEmptyOutcome(),
@@ -587,6 +656,11 @@ export const MyValuesPage = () => {
 
         return {
           ...seasonItem,
+          is_customized: (
+            seasonItem.season !== currentProjectionSeason
+              ? true
+              : seasonItem.is_customized
+          ),
           outcomes: seasonItem.outcomes.filter(
             (_, index) => index !== outcomeIndex,
           ),
@@ -595,13 +669,57 @@ export const MyValuesPage = () => {
     );
   };
 
+  const handleDefaultFutureOutcomeChange = (
+    outcomeIndex: number,
+    field: 'position_rank' | 'probability',
+    value: number,
+  ) => {
+    setDefaultFutureOutcomes((current) =>
+      current.map((outcome, index) =>
+        index === outcomeIndex
+          ? {
+            ...outcome,
+            [field]: value,
+          }
+          : outcome,
+      ),
+    );
+  };
+
+  const handleAddDefaultFutureOutcome = () => {
+    setDefaultFutureOutcomes((current) => [
+      ...current,
+      buildEmptyOutcome(),
+    ]);
+  };
+
+  const handleRemoveDefaultFutureOutcome = (
+    outcomeIndex: number,
+  ) => {
+    setDefaultFutureOutcomes((current) =>
+      current.filter(
+        (_, index) => index !== outcomeIndex,
+      ),
+    );
+  };
+
   const handleReset = () => {
-    if (!detail.data) {
+    const detailData = detail.data;
+
+    if (!detailData) {
       return;
     }
 
     setEditableSeasons(
-      cloneSeasons(detail.data.seasons),
+      cloneSeasons(detailData.seasons),
+    );
+    const firstFutureSeason = detailData.seasons.find(
+      (season) => season.season !== detailData.context.season,
+    );
+    setDefaultFutureOutcomes(
+      firstFutureSeason
+        ? cloneOutcomes(firstFutureSeason.outcomes)
+        : [],
     );
   };
 
@@ -611,11 +729,39 @@ export const MyValuesPage = () => {
     }
 
     try {
+      const currentSeason = currentProjectionSeason;
+      const defaultFuturePayload = defaultFutureOutcomes.map(
+        (outcome) => ({
+          position_rank: Number(outcome.position_rank),
+          probability: Number(outcome.probability),
+        }),
+      );
+      const submittedSeasons = editableSeasons.map(
+        (season) => {
+          if (
+            currentSeason != null
+            && season.season !== currentSeason
+            && !season.is_customized
+            && !outcomesEqual(
+              season.outcomes,
+              defaultFutureOutcomes,
+            )
+          ) {
+            return {
+              ...season,
+              outcomes: defaultFuturePayload,
+            };
+          }
+
+          return season;
+        },
+      );
+
       await saveProjection.savePersonalValue({
         leagueId,
         playerId: selectedPlayerId,
         payload: {
-          seasons: editableSeasons.map(
+          seasons: submittedSeasons.map(
             (season) => ({
               season: season.season,
               outcomes: season.outcomes.map(
@@ -723,6 +869,20 @@ export const MyValuesPage = () => {
   const currentProjectionSeason = (
     detail.data?.context.season
   );
+  const currentEditableSeason = editableSeasons.find(
+    (season) => season.season === currentProjectionSeason,
+  );
+  const futureSeasons = editableSeasons.filter(
+    (season) => season.season !== currentProjectionSeason,
+  );
+  const minFutureSeason = futureSeasons[0]?.season ?? '';
+  const maxFutureSeason = (
+    futureSeasons[futureSeasons.length - 1]?.season
+    ?? ''
+  );
+  const selectedFutureSeason = futureSeasons.find(
+    (season) => season.season === specificFutureYear,
+  ) ?? futureSeasons[0];
   const marketValues = detail.data?.market_values;
   const customValues = detail.data?.custom_values;
   const deltaValues = detail.data?.delta_values;
@@ -1206,139 +1366,251 @@ export const MyValuesPage = () => {
 
                     <div className="my-values-season-grid">
                       {
-                        editableSeasons.map((season) => (
+                        currentEditableSeason
+                          ? (
+                            <article
+                              className="my-values-season-card"
+                            >
+                              <div className="my-values-season-card-header">
+                                <div>
+                                  <p>{currentEditableSeason.season}</p>
+                                  <h3>Current year</h3>
+                                </div>
+                                {
+                                  currentEditableSeason.default_position_rank != null
+                                    ? (
+                                      <span className="my-values-default-pill">
+                                        UD {selectedPlayer.position}{currentEditableSeason.default_position_rank}
+                                      </span>
+                                    )
+                                    : null
+                                }
+                              </div>
+
+                              <label className="my-values-outcome-field">
+                                <span>Projected finish</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={currentEditableSeason.outcomes[0]?.position_rank ?? currentEditableSeason.default_position_rank ?? 1}
+                                  onChange={(event) => {
+                                    handleCurrentRankChange(
+                                      currentEditableSeason.season,
+                                      Number(event.target.value),
+                                    );
+                                  }}
+                                />
+                              </label>
+                            </article>
+                          )
+                          : null
+                      }
+
+                      {
+                        selectedFutureSeason
+                          ? (
                           <article
-                            key={season.season}
                             className="my-values-season-card"
                           >
                             <div className="my-values-season-card-header">
                               <div>
-                                <p>{season.season}</p>
-                                <h3>
+                                <p>
                                   {
-                                    season.season === currentProjectionSeason
-                                      ? 'Current year'
-                                      : 'Future year'
+                                    futureProjectionMode === 'default'
+                                      ? `${minFutureSeason}-${maxFutureSeason}`
+                                      : selectedFutureSeason.season
                                   }
-                                </h3>
+                                </p>
+                                <h3>Future years</h3>
                               </div>
                               {
-                                season.default_position_rank != null
+                                selectedFutureSeason.default_position_rank != null
                                   ? (
                                     <span className="my-values-default-pill">
-                                      UD {selectedPlayer.position}{season.default_position_rank}
+                                      UD {selectedPlayer.position}{selectedFutureSeason.default_position_rank}
                                     </span>
                                   )
                                   : null
                               }
                             </div>
 
+                            <div className="my-values-future-controls">
+                              <label className="my-values-outcome-field">
+                                <span>Future window</span>
+                                <select
+                                  value={futureProjectionMode}
+                                  onChange={(event) => {
+                                    setFutureProjectionMode(
+                                      event.target.value as FutureProjectionMode,
+                                    );
+                                  }}
+                                >
+                                  <option value="default">Default future years</option>
+                                  <option value="year">Specific year</option>
+                                </select>
+                              </label>
+
                               {
-                              season.season === currentProjectionSeason
-                                ? (
-                                  <label className="my-values-outcome-field">
-                                    <span>Projected finish</span>
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      value={season.outcomes[0]?.position_rank ?? season.default_position_rank ?? 1}
-                                      onChange={(event) => {
-                                        handleCurrentRankChange(
-                                          season.season,
-                                          Number(event.target.value),
-                                        );
-                                      }}
-                                    />
-                                  </label>
-                                )
-                                : (
-                                  <>
-                                    <div className="my-values-season-actions">
-                                      <p>
-                                        Every future season starts with the default rank for the rest of the career. Add more weighted outcomes only where you want a different distribution.
-                                      </p>
+                                futureProjectionMode === 'year'
+                                  ? (
+                                    <label className="my-values-outcome-field">
+                                      <span>Year</span>
+                                      <input
+                                        type="number"
+                                        min={minFutureSeason || undefined}
+                                        max={maxFutureSeason || undefined}
+                                        value={specificFutureYear}
+                                        onChange={(event) => {
+                                          const nextYear = Number(event.target.value);
+                                          setSpecificFutureYear(
+                                            Number.isNaN(nextYear)
+                                              ? ''
+                                              : nextYear,
+                                          );
+                                        }}
+                                        onBlur={() => {
+                                          if (
+                                            specificFutureYear === ''
+                                            || !futureSeasons.some(
+                                              (season) => season.season === specificFutureYear,
+                                            )
+                                          ) {
+                                            setSpecificFutureYear(
+                                              selectedFutureSeason.season,
+                                            );
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  )
+                                  : null
+                              }
+                            </div>
+
+                            <div className="my-values-season-actions">
+                              <p>
+                                {
+                                  futureProjectionMode === 'default'
+                                    ? 'These outcomes apply to future years that have not been customized individually.'
+                                    : `Editing ${selectedFutureSeason.season} only.`
+                                }
+                              </p>
+                              <button
+                                type="button"
+                                className="button-secondary"
+                                onClick={() => {
+                                  if (futureProjectionMode === 'default') {
+                                    handleAddDefaultFutureOutcome();
+                                    return;
+                                  }
+
+                                  handleAddOutcome(
+                                    selectedFutureSeason.season,
+                                  );
+                                }}
+                              >
+                                Add outcome
+                              </button>
+                            </div>
+
+                            <div className="my-values-outcome-list">
+                              {
+                                (
+                                  futureProjectionMode === 'default'
+                                    ? defaultFutureOutcomes
+                                    : selectedFutureSeason.outcomes
+                                ).length === 0
+                                  ? (
+                                    <div className="my-values-empty-season">
+                                      No future outcomes added yet.
+                                    </div>
+                                  )
+                                  : (
+                                    futureProjectionMode === 'default'
+                                      ? defaultFutureOutcomes
+                                      : selectedFutureSeason.outcomes
+                                  ).map((outcome, index) => (
+                                    <div
+                                      key={`${futureProjectionMode}-${selectedFutureSeason.season}-${index}`}
+                                      className="my-values-outcome-row"
+                                    >
+                                      <label className="my-values-outcome-field">
+                                        <span>Rank</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          value={outcome.position_rank}
+                                          onChange={(event) => {
+                                            if (futureProjectionMode === 'default') {
+                                              handleDefaultFutureOutcomeChange(
+                                                index,
+                                                'position_rank',
+                                                Number(event.target.value),
+                                              );
+                                              return;
+                                            }
+
+                                            handleOutcomeChange(
+                                              selectedFutureSeason.season,
+                                              index,
+                                              'position_rank',
+                                              Number(event.target.value),
+                                            );
+                                          }}
+                                        />
+                                      </label>
+
+                                      <label className="my-values-outcome-field">
+                                        <span>Probability %</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          max={100}
+                                          value={outcome.probability}
+                                          onChange={(event) => {
+                                            if (futureProjectionMode === 'default') {
+                                              handleDefaultFutureOutcomeChange(
+                                                index,
+                                                'probability',
+                                                Number(event.target.value),
+                                              );
+                                              return;
+                                            }
+
+                                            handleOutcomeChange(
+                                              selectedFutureSeason.season,
+                                              index,
+                                              'probability',
+                                              Number(event.target.value),
+                                            );
+                                          }}
+                                        />
+                                      </label>
+
                                       <button
                                         type="button"
                                         className="button-secondary"
                                         onClick={() => {
-                                          handleAddOutcome(
-                                            season.season,
+                                          if (futureProjectionMode === 'default') {
+                                            handleRemoveDefaultFutureOutcome(index);
+                                            return;
+                                          }
+
+                                          handleRemoveOutcome(
+                                            selectedFutureSeason.season,
+                                            index,
                                           );
                                         }}
                                       >
-                                        Add outcome
+                                        Remove
                                       </button>
                                     </div>
-
-                                    <div className="my-values-outcome-list">
-                                      {
-                                        season.outcomes.length === 0
-                                          ? (
-                                            <div className="my-values-empty-season">
-                                              No future outcomes added yet.
-                                            </div>
-                                          )
-                                          : season.outcomes.map((outcome, index) => (
-                                            <div
-                                              key={`${season.season}-${index}`}
-                                              className="my-values-outcome-row"
-                                            >
-                                              <label className="my-values-outcome-field">
-                                                <span>Rank</span>
-                                                <input
-                                                  type="number"
-                                                  min={1}
-                                                  value={outcome.position_rank}
-                                                  onChange={(event) => {
-                                                    handleOutcomeChange(
-                                                      season.season,
-                                                      index,
-                                                      'position_rank',
-                                                      Number(event.target.value),
-                                                    );
-                                                  }}
-                                                />
-                                              </label>
-
-                                              <label className="my-values-outcome-field">
-                                                <span>Probability %</span>
-                                                <input
-                                                  type="number"
-                                                  min={1}
-                                                  max={100}
-                                                  value={outcome.probability}
-                                                  onChange={(event) => {
-                                                    handleOutcomeChange(
-                                                      season.season,
-                                                      index,
-                                                      'probability',
-                                                      Number(event.target.value),
-                                                    );
-                                                  }}
-                                                />
-                                              </label>
-
-                                              <button
-                                                type="button"
-                                                className="button-secondary"
-                                                onClick={() => {
-                                                  handleRemoveOutcome(
-                                                    season.season,
-                                                    index,
-                                                  );
-                                                }}
-                                              >
-                                                Remove
-                                              </button>
-                                            </div>
-                                          ))
-                                      }
-                                    </div>
-                                  </>
-                                )
-                            }
+                                  ))
+                              }
+                            </div>
                           </article>
-                        ))
+                          )
+                          : null
                       }
                     </div>
                   </>
