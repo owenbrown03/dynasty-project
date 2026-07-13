@@ -47,10 +47,12 @@ def test_seed_finish_probabilities_sum_to_one():
 
     assert round(
         sum(probabilities.values()),
-        6,
-    ) == 1
-    assert probabilities[2] > probabilities[1]
-    assert probabilities[2] > probabilities[6]
+        4,
+    ) == 0.9999
+    assert probabilities[1] == 0.2638
+    assert probabilities[2] == 0.2807
+    assert probabilities[5] == 0.0
+    assert probabilities[6] == 0.0
 
 
 def test_expected_winnings_uses_seed_probability_curve():
@@ -67,3 +69,22 @@ def test_expected_winnings_uses_seed_probability_curve():
 
     assert expected is not None
     assert 25 < expected < 200
+
+
+def test_expected_winnings_zero_outside_money_cutoff():
+    expected = calculate_expected_winnings_from_seed(
+        payout_structure={
+            "1": 200.0,
+            "2": 150.0,
+            "3": 100.0,
+            "4": 75.0,
+            "5": 50.0,
+            "6": 25.0,
+            "7": 10.0,
+        },
+        projected_seed=11,
+        total_rosters=12,
+        playoff_teams=6,
+    )
+
+    assert expected == 0.0

@@ -47,7 +47,56 @@ from app.services.leagues.details import (
     calculate_projected_starter_points,
 )
 
-SEED_PROBABILITY_SIGNAL_WEIGHT = 0.3
+PLAYOFF_FINISH_PROBABILITY_BY_SEED = {
+    1: {
+        1: 0.3191,
+        2: 0.2480,
+        3: 0.2289,
+        4: 0.2041,
+        5: 0.0,
+        6: 0.0,
+    },
+    2: {
+        1: 0.2638,
+        2: 0.2807,
+        3: 0.2277,
+        4: 0.2277,
+        5: 0.0,
+        6: 0.0,
+    },
+    3: {
+        1: 0.1443,
+        2: 0.1375,
+        3: 0.1635,
+        4: 0.1522,
+        5: 0.2503,
+        6: 0.1522,
+    },
+    4: {
+        1: 0.1105,
+        2: 0.1184,
+        3: 0.1691,
+        4: 0.1409,
+        5: 0.2469,
+        6: 0.2142,
+    },
+    5: {
+        1: 0.0823,
+        2: 0.1218,
+        3: 0.1105,
+        4: 0.1443,
+        5: 0.2627,
+        6: 0.2740,
+    },
+    6: {
+        1: 0.0789,
+        2: 0.0891,
+        3: 0.0981,
+        4: 0.1184,
+        5: 0.2322,
+        6: 0.3529,
+    },
+}
 
 
 def _require_finance_context(
@@ -105,56 +154,15 @@ def build_seed_finish_probabilities(
     total_rosters: int,
     playoff_teams: int,
 ) -> dict[int, float]:
-    if (
-        seed is None
-        or seed <= 0
-        or total_rosters <= 0
-    ):
+    if seed is None or seed <= 0:
         return {}
 
-    candidate_places = set(range(1, total_rosters + 1))
-
-    # Playoff teams can plausibly land anywhere in the money range;
-    # non-playoff seeds are centered around their projected seed.
-    if playoff_teams > 0 and seed <= playoff_teams:
-        candidate_places.update(range(1, playoff_teams + 1))
-
-    weighted: dict[int, float] = {}
-
-    for place in candidate_places:
-        distance = abs(place - seed)
-        weight = 1.0 / ((distance + 1) ** 2)
-
-        if (
-            playoff_teams > 0
-            and seed <= playoff_teams
-            and place <= playoff_teams
-        ):
-            weight *= 1.35
-
-        weighted[place] = weight
-
-    total_weight = sum(weighted.values())
-    if total_weight <= 0:
-        return {}
-
-    seeded_probabilities = {
-        place: weight / total_weight
-        for place, weight in weighted.items()
-    }
-    baseline_probability = 1.0 / total_rosters
-
-    return {
-        place: (
-            baseline_probability
-            * (1.0 - SEED_PROBABILITY_SIGNAL_WEIGHT)
+    return dict(
+        PLAYOFF_FINISH_PROBABILITY_BY_SEED.get(
+            seed,
+            {},
         )
-        + (
-            seeded_probabilities.get(place, 0.0)
-            * SEED_PROBABILITY_SIGNAL_WEIGHT
-        )
-        for place in candidate_places
-    }
+    )
 
 
 def calculate_expected_winnings_from_seed(
@@ -170,6 +178,16 @@ def calculate_expected_winnings_from_seed(
 
     if not normalized_payouts:
         return None
+
+    money_cutoff = max(
+        int(place)
+        for place in normalized_payouts
+    )
+    if (
+        projected_seed is None
+        or projected_seed > money_cutoff
+    ):
+        return 0.0
 
     probabilities = build_seed_finish_probabilities(
         seed=projected_seed,
