@@ -15,12 +15,19 @@ def build_pick_label(
     current_owner_roster_id: int,
     roster_name_by_id: dict[int, str],
     slot: int | None = None,
+    projected_slot: int | None = None,
     is_projected: bool = False,
 ) -> str:
-    if slot is not None:
+    resolved_slot = (
+        slot
+        if slot is not None
+        else projected_slot
+    )
+
+    if resolved_slot is not None:
         suffix = " (proj.)" if is_projected else ""
         return (
-            f"{season} Pick {round_number}.{slot:02d}"
+            f"{season} Pick {round_number}.{resolved_slot:02d}"
             f"{suffix}"
         )
 
@@ -39,6 +46,21 @@ def build_pick_label(
         f"{season} Round {round_number} "
         f"(from {original_owner_name})"
     )
+
+
+def get_first_future_pick_season(
+    league: League,
+) -> str:
+    current_season = int(league.season)
+
+    if league.status in {
+        "in_season",
+        "post_season",
+        "complete",
+    }:
+        return str(current_season + 1)
+
+    return str(current_season)
 
 
 def build_roster_name_by_id(
@@ -133,7 +155,9 @@ def build_owned_pick_assets_by_roster_id(
         or {}
     )
 
-    start_season = int(league.season)
+    start_season = int(
+        get_first_future_pick_season(league)
+    )
     seasons = [
         str(start_season + offset)
         for offset in range(seasons_ahead)
@@ -247,6 +271,7 @@ def build_owned_pick_assets_by_roster_id(
                     current_owner_roster_id=current_owner_roster_id,
                     roster_name_by_id=roster_name_by_id,
                     slot=slot,
+                    projected_slot=projected_slot,
                     is_projected=is_projected,
                 ),
                 selected_value=resolved_values_by_pick_key.get(

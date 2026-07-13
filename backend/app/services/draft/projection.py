@@ -9,11 +9,18 @@ from app.models.db.sleeper.api import League, Roster
 DRAFT_PICK_PROJECTION_METHODS = {
     "reverse_standings",
     "max_pf",
+    "redraft_starter_war",
+    "redraft_roster_war",
+}
+DRAFT_PICK_PROJECTION_PHASE_METHODS = {
+    "none",
+    *DRAFT_PICK_PROJECTION_METHODS,
 }
 DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS = {
     "enabled": True,
-    "start_week": 4,
-    "method": "max_pf",
+    "switch_week": 4,
+    "before_week_method": "none",
+    "from_week_method": "max_pf",
 }
 MIN_DRAFT_PICK_PROJECTION_WEEK = 1
 MAX_DRAFT_PICK_PROJECTION_WEEK = 18
@@ -21,6 +28,15 @@ MAX_DRAFT_PICK_PROJECTION_WEEK = 18
 DraftPickProjectionMethod = Literal[
     "reverse_standings",
     "max_pf",
+    "redraft_starter_war",
+    "redraft_roster_war",
+]
+DraftPickProjectionPhaseMethod = Literal[
+    "none",
+    "reverse_standings",
+    "max_pf",
+    "redraft_starter_war",
+    "redraft_roster_war",
 ]
 
 
@@ -40,34 +56,65 @@ def normalize_draft_pick_projection_settings(
         "enabled",
         DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["enabled"],
     )
-    start_week = raw_settings.get(
-        "start_week",
-        DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["start_week"],
+
+    # Backward compatibility for the earlier single-threshold model.
+    switch_week = raw_settings.get(
+        "switch_week",
+        raw_settings.get(
+            "start_week",
+            DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["switch_week"],
+        ),
     )
-    method = raw_settings.get(
-        "method",
-        DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["method"],
+    before_week_method = raw_settings.get(
+        "before_week_method",
+        "none",
+    )
+    from_week_method = raw_settings.get(
+        "from_week_method",
+        raw_settings.get(
+            "method",
+            DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["from_week_method"],
+        ),
     )
 
     if not isinstance(enabled, bool):
         enabled = DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["enabled"]
 
-    if not isinstance(start_week, int):
-        start_week = DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["start_week"]
+    if not isinstance(switch_week, int):
+        switch_week = DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["switch_week"]
 
-    start_week = max(
+    switch_week = max(
         MIN_DRAFT_PICK_PROJECTION_WEEK,
-        min(MAX_DRAFT_PICK_PROJECTION_WEEK, start_week),
+        min(MAX_DRAFT_PICK_PROJECTION_WEEK, switch_week),
     )
 
-    if method not in DRAFT_PICK_PROJECTION_METHODS:
-        method = DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["method"]
+    if before_week_method not in DRAFT_PICK_PROJECTION_PHASE_METHODS:
+        before_week_method = DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["before_week_method"]
+
+    if from_week_method not in DRAFT_PICK_PROJECTION_METHODS:
+        from_week_method = DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS["from_week_method"]
 
     return {
         "enabled": enabled,
-        "start_week": start_week,
-        "method": method,
+        "switch_week": switch_week,
+        "before_week_method": before_week_method,
+        "from_week_method": from_week_method,
     }
+
+
+def resolve_draft_pick_projection_method(
+    *,
+    current_week: int,
+    settings: dict[str, object] | None,
+) -> DraftPickProjectionPhaseMethod:
+    normalized = normalize_draft_pick_projection_settings(
+        settings,
+    )
+
+    if current_week < int(normalized["switch_week"]):
+        return normalized["before_week_method"]  # type: ignore[return-value]
+
+    return normalized["from_week_method"]  # type: ignore[return-value]
 
 
 def should_project_future_pick_slots(
@@ -79,13 +126,29 @@ def should_project_future_pick_slots(
     normalized = normalize_draft_pick_projection_settings(
         settings,
     )
+    active_method = resolve_draft_pick_projection_method(
+        current_week=current_week,
+        settings=normalized,
+    )
 
     return (
         league.is_dynasty
         and normalized["enabled"] is True
-        and current_week >= int(normalized["start_week"])
+        and active_method != "none"
         and league.status in {"in_season", "post_season"}
     )
+
+
+def _format_method_label(
+    method: DraftPickProjectionMethod,
+) -> str:
+    if method == "max_pf":
+        return "reverse max PF"
+    if method == "redraft_starter_war":
+        return "redraft starter WAR"
+    if method == "redraft_roster_war":
+        return "redraft roster WAR"
+    return "reverse standings proxy"
 
 
 def build_projected_slot_source_label(
@@ -100,7 +163,7 @@ def build_projected_slot_source_label(
     )
     resolved_method = (
         method_used
-        or normalized["method"]
+        or normalized["from_week_method"]
     )
 
     if resolved_method == "max_pf":
@@ -109,6 +172,20 @@ def build_projected_slot_source_label(
             f"Week {current_week}, using cumulative "
             "potential points first, then points for, "
             "then projected points as tiebreakers"
+        )
+    elif resolved_method == "redraft_starter_war":
+        label = (
+            "Projected from reverse redraft starter WAR "
+            f"through Week {current_week}, using lower starter "
+            "WAR first, then points for, then projected points "
+            "as tiebreakers"
+        )
+    elif resolved_method == "redraft_roster_war":
+        label = (
+            "Projected from reverse redraft roster WAR "
+            f"through Week {current_week}, using lower roster "
+            "WAR first, then points for, then projected points "
+            "as tiebreakers"
         )
     else:
         label = (
@@ -123,8 +200,9 @@ def build_projected_slot_source_label(
         and fallback_from_method != resolved_method
     ):
         return (
-            f"{label}. Fell back from {fallback_from_method} "
-            "because max PF data was unavailable."
+            f"{label}. Fell back from "
+            f"{_format_method_label(fallback_from_method)} "
+            "because that data was unavailable."
         )
 
     return label
@@ -132,23 +210,48 @@ def build_projected_slot_source_label(
 
 def build_draft_pick_projection_summary(
     *,
+    current_week: int,
     settings: dict[str, object] | None,
-) -> str:
+    method_used: DraftPickProjectionMethod | None = None,
+    fallback_from_method: DraftPickProjectionMethod | None = None,
+) -> str | None:
     normalized = normalize_draft_pick_projection_settings(
         settings,
     )
 
     if normalized["enabled"] is not True:
-        return "Projected pick slots are disabled."
+        return None
 
-    if normalized["method"] == "max_pf":
-        method_label = "reverse max PF"
-    else:
-        method_label = "reverse standings proxy"
+    active_method = resolve_draft_pick_projection_method(
+        current_week=current_week,
+        settings=normalized,
+    )
+
+    if active_method == "none":
+        return None
+
+    summary = build_projected_slot_source_label(
+        current_week=current_week,
+        settings=normalized,
+        method_used=method_used,
+        fallback_from_method=fallback_from_method,
+    )
+
+    if normalized["before_week_method"] == "none":
+        return (
+            f"Projection starts in Week {normalized['switch_week']}. "
+            f"{summary}"
+        )
+
+    if current_week < int(normalized["switch_week"]):
+        return (
+            f"Using {_format_method_label(active_method)} before Week "
+            f"{normalized['switch_week']}. {summary}"
+        )
 
     return (
-        "Projected future picks turn on in "
-        f"Week {normalized['start_week']} using {method_label}."
+        f"Using {_format_method_label(active_method)} from Week "
+        f"{normalized['switch_week']} onward. {summary}"
     )
 
 
@@ -156,6 +259,15 @@ def _can_use_max_pf(
     rosters: list[Roster],
 ) -> bool:
     return any(roster.ppts > 0 for roster in rosters)
+
+
+def _has_metric_values(
+    values_by_roster_id: dict[int, float] | None,
+) -> bool:
+    if not values_by_roster_id:
+        return False
+
+    return any(abs(value) > 0 for value in values_by_roster_id.values())
 
 
 def _sort_rosters_by_standings_proxy(
@@ -167,7 +279,7 @@ def _sort_rosters_by_standings_proxy(
         rosters,
         key=lambda roster: (
             roster.wins,
-            roster.losses + roster.ties,
+            -(roster.losses + roster.ties),
             roster.fpts,
             projected_points_by_roster_id.get(
                 roster.roster_id,
@@ -197,12 +309,37 @@ def _sort_rosters_by_max_pf(
     )
 
 
+def _sort_rosters_by_metric(
+    *,
+    rosters: list[Roster],
+    projected_points_by_roster_id: dict[int, float],
+    values_by_roster_id: dict[int, float],
+) -> list[Roster]:
+    return sorted(
+        rosters,
+        key=lambda roster: (
+            values_by_roster_id.get(
+                roster.roster_id,
+                0.0,
+            ),
+            roster.fpts,
+            projected_points_by_roster_id.get(
+                roster.roster_id,
+                0.0,
+            ),
+            roster.roster_id,
+        ),
+    )
+
+
 def build_projected_pick_slots_by_roster_id(
     *,
     league: League,
     rosters: list[Roster],
     current_week: int,
     projected_points_by_roster_id: dict[int, float] | None = None,
+    redraft_starter_war_by_roster_id: dict[int, float] | None = None,
+    redraft_roster_war_by_roster_id: dict[int, float] | None = None,
     settings: dict[str, object] | None = None,
 ) -> DraftPickProjectionResult:
     normalized = normalize_draft_pick_projection_settings(
@@ -220,7 +357,10 @@ def build_projected_pick_slots_by_roster_id(
     projected_points_by_roster_id = (
         projected_points_by_roster_id or {}
     )
-    requested_method = normalized["method"]
+    requested_method = resolve_draft_pick_projection_method(
+        current_week=current_week,
+        settings=normalized,
+    )
     method_used: DraftPickProjectionMethod = "reverse_standings"
     fallback_from_method: DraftPickProjectionMethod | None = None
 
@@ -235,9 +375,37 @@ def build_projected_pick_slots_by_roster_id(
             ),
         )
         method_used = "max_pf"
+    elif (
+        requested_method == "redraft_starter_war"
+        and _has_metric_values(redraft_starter_war_by_roster_id)
+    ):
+        ordered_rosters = _sort_rosters_by_metric(
+            rosters=rosters,
+            projected_points_by_roster_id=(
+                projected_points_by_roster_id
+            ),
+            values_by_roster_id=(
+                redraft_starter_war_by_roster_id or {}
+            ),
+        )
+        method_used = "redraft_starter_war"
+    elif (
+        requested_method == "redraft_roster_war"
+        and _has_metric_values(redraft_roster_war_by_roster_id)
+    ):
+        ordered_rosters = _sort_rosters_by_metric(
+            rosters=rosters,
+            projected_points_by_roster_id=(
+                projected_points_by_roster_id
+            ),
+            values_by_roster_id=(
+                redraft_roster_war_by_roster_id or {}
+            ),
+        )
+        method_used = "redraft_roster_war"
     else:
-        if requested_method == "max_pf":
-            fallback_from_method = "max_pf"
+        if requested_method != "reverse_standings":
+            fallback_from_method = requested_method
 
         ordered_rosters = _sort_rosters_by_standings_proxy(
             rosters=rosters,

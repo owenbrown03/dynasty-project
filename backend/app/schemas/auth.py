@@ -6,6 +6,7 @@ from pydantic import EmailStr, Field
 from app.schemas.base import Base
 from app.services.draft.projection import (
     DraftPickProjectionMethod,
+    DraftPickProjectionPhaseMethod,
 )
 from app.services.values.basis import ValueBasis
 
@@ -53,12 +54,13 @@ class ValuePreferenceResponse(Base):
 
 class DraftPickProjectionSettings(Base):
     enabled: bool = True
-    start_week: int = Field(
+    switch_week: int = Field(
         default=4,
         ge=1,
         le=18,
     )
-    method: DraftPickProjectionMethod = "max_pf"
+    before_week_method: DraftPickProjectionPhaseMethod = "none"
+    from_week_method: DraftPickProjectionMethod = "max_pf"
 
 
 class DraftPickProjectionSettingsUpdate(Base):

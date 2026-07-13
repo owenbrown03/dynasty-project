@@ -25,6 +25,7 @@ from app.models.db.fc.models import FantasyCalcValue
 from app.services.draft.picks import (
     build_owned_pick_assets_by_roster_id,
     build_roster_name_by_id,
+    get_first_future_pick_season,
 )
 from app.services.draft.projection import (
     build_draft_pick_projection_summary,
@@ -348,6 +349,30 @@ class LeagueDetails:
             rosters=roster_rows,
             users_by_id=users,
         )
+        redraft_starter_war_by_roster_id = {
+            roster_id: round(
+                sum(
+                    player.redraft_starter_war or 0
+                    for player in roster_players
+                ),
+                2,
+            )
+            for roster_id, roster_players in (
+                roster_players_by_roster_id.items()
+            )
+        }
+        redraft_roster_war_by_roster_id = {
+            roster_id: round(
+                sum(
+                    player.redraft_roster_war or 0
+                    for player in roster_players
+                ),
+                2,
+            )
+            for roster_id, roster_players in (
+                roster_players_by_roster_id.items()
+            )
+        }
 
         drafts_by_league_id = await get_drafts_by_league_ids(
             db,
@@ -365,12 +390,21 @@ class LeagueDetails:
                 projected_points_by_roster_id=(
                     projected_points_by_roster_id
                 ),
+                redraft_starter_war_by_roster_id=(
+                    redraft_starter_war_by_roster_id
+                ),
+                redraft_roster_war_by_roster_id=(
+                    redraft_roster_war_by_roster_id
+                ),
                 settings=draft_pick_projection_settings,
             )
         )
+        projected_pick_season = get_first_future_pick_season(
+            league
+        )
         projected_slots_by_season_and_roster_id = {
             (
-                str(int(league.season) + 1),
+                projected_pick_season,
                 roster_id,
             ): slot
             for roster_id, slot in (
@@ -592,7 +626,14 @@ class LeagueDetails:
             total_rosters=league.total_rosters,
             draft_pick_projection_summary=(
                 build_draft_pick_projection_summary(
+                    current_week=current_week,
                     settings=draft_pick_projection_settings,
+                    method_used=(
+                        projected_pick_slots_by_roster_id.method_used
+                    ),
+                    fallback_from_method=(
+                        projected_pick_slots_by_roster_id.fallback_from_method
+                    ),
                 )
                 if projected_pick_slots_by_roster_id.slots_by_roster_id
                 else None
