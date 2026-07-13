@@ -71,7 +71,7 @@ def test_expected_winnings_uses_seed_probability_curve():
     assert 25 < expected < 200
 
 
-def test_expected_winnings_zero_outside_money_cutoff():
+def test_expected_winnings_zero_outside_seed_chart():
     expected = calculate_expected_winnings_from_seed(
         payout_structure={
             "1": 200.0,
@@ -88,3 +88,18 @@ def test_expected_winnings_zero_outside_money_cutoff():
     )
 
     assert expected == 0.0
+
+
+def test_expected_winnings_allows_low_playoff_seed_to_cash():
+    expected = calculate_expected_winnings_from_seed(
+        payout_structure={
+            "1": 200.0,
+            "2": 75.0,
+            "3": 25.0,
+        },
+        projected_seed=6,
+        total_rosters=12,
+        playoff_teams=6,
+    )
+
+    assert expected == 24.91

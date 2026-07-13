@@ -179,13 +179,9 @@ def calculate_expected_winnings_from_seed(
     if not normalized_payouts:
         return None
 
-    money_cutoff = max(
-        int(place)
-        for place in normalized_payouts
-    )
     if (
         projected_seed is None
-        or projected_seed > money_cutoff
+        or projected_seed not in PLAYOFF_FINISH_PROBABILITY_BY_SEED
     ):
         return 0.0
 
