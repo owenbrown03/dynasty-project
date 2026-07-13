@@ -293,6 +293,26 @@ function financeResultLabel(
   return `${entry.total_rosters} teams`;
 }
 
+function isFinanceSeasonComplete(
+  entry: FinanceLeagueSeasonEntry,
+) {
+  return entry.status === 'complete';
+}
+
+function effectiveFinanceWinnings(
+  entry: FinanceLeagueSeasonEntry,
+) {
+  return isFinanceSeasonComplete(entry)
+    ? entry.winnings_amount
+    : entry.projected_winnings_amount;
+}
+
+function effectiveFinanceNet(
+  entry: FinanceLeagueSeasonEntry,
+) {
+  return effectiveFinanceWinnings(entry) - entry.buy_in_amount;
+}
+
 
 function buildLinePoints(
   values: number[],
@@ -340,9 +360,9 @@ function buildSeasonChartEntries(
       leagueCount: 0,
     };
 
-    current.winningsAmount += entry.winnings_amount;
+    current.winningsAmount += effectiveFinanceWinnings(entry);
     current.projectedWinningsAmount += entry.projected_winnings_amount;
-    current.netAmount += entry.net_amount;
+    current.netAmount += effectiveFinanceNet(entry);
     current.leagueCount += 1;
 
     bySeason.set(entry.season, current);
@@ -376,7 +396,7 @@ function buildCurrentFinanceTimeline(
       week: 1,
       label: 'Week 1',
       actualAmount: entries.reduce(
-        (sum, entry) => sum + entry.winnings_amount,
+        (sum, entry) => sum + effectiveFinanceWinnings(entry),
         0,
       ),
       projectedAmount: entries.reduce(
@@ -603,7 +623,7 @@ function FinanceLeagueBreakdown({
   entries: FinanceLeagueSeasonEntry[];
 }) {
   const sortedEntries = [...entries].sort((left, right) => (
-    right.net_amount - left.net_amount
+    effectiveFinanceNet(right) - effectiveFinanceNet(left)
   ));
 
   return (
@@ -628,15 +648,21 @@ function FinanceLeagueBreakdown({
               </div>
               <div>
                 <span>Net</span>
-                <strong>{formatCurrency(entry.net_amount)}</strong>
+                <strong>{formatCurrency(effectiveFinanceNet(entry))}</strong>
               </div>
               <div>
-                <span>Finish payout</span>
-                <strong>{formatCurrency(entry.winnings_amount)}</strong>
+                <span>
+                  {
+                    isFinanceSeasonComplete(entry)
+                      ? 'Finish payout'
+                      : 'Expected payout'
+                  }
+                </span>
+                <strong>{formatCurrency(effectiveFinanceWinnings(entry))}</strong>
               </div>
               <div>
-                <span>Expected payout</span>
-                <strong>{formatCurrency(entry.projected_winnings_amount)}</strong>
+                <span>Buy-in</span>
+                <strong>{formatCurrency(entry.buy_in_amount)}</strong>
               </div>
             </div>
           ))
@@ -1051,11 +1077,11 @@ export function FinancePage() {
         0,
       ),
       totalWinnings: chartEntries.reduce(
-        (sum, entry) => sum + entry.winnings_amount,
+        (sum, entry) => sum + effectiveFinanceWinnings(entry),
         0,
       ),
       totalNet: chartEntries.reduce(
-        (sum, entry) => sum + entry.net_amount,
+        (sum, entry) => sum + effectiveFinanceNet(entry),
         0,
       ),
       projectedCurrentWinnings: chartEntries.reduce(
