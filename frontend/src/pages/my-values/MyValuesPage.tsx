@@ -790,10 +790,15 @@ export const MyValuesPage = () => {
           if (
             currentSeason != null
             && season.season !== currentSeason
-            && !season.is_customized
-            && !outcomesEqual(
-              season.outcomes,
-              defaultFutureOutcomes,
+            && (
+              season.outcomes.length === 0
+              || (
+                !season.is_customized
+                && !outcomesEqual(
+                  season.outcomes,
+                  defaultFutureOutcomes,
+                )
+              )
             )
           ) {
             return {
