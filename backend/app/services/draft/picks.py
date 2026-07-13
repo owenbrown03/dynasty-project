@@ -4,9 +4,6 @@ from collections import defaultdict
 
 from app.models.db.sleeper.api import Draft, League, Roster, User
 from app.schemas.draft import DraftPickAsset
-from app.services.draft.projection import (
-    build_projected_slot_source_label,
-)
 from app.services.draft.values import ResolvedPickValue
 
 
@@ -73,7 +70,7 @@ def get_league_draft_for_season(
         if str(draft.season) == str(season):
             return draft
 
-    return drafts[0] if drafts else None
+    return None
 
 
 def build_slot_by_roster_id(
@@ -127,7 +124,7 @@ def build_owned_pick_assets_by_roster_id(
         tuple[str, int],
         int,
     ] | None = None,
-    projected_slot_week: int | None = None,
+    projected_slot_source_label: str | None = None,
 ) -> dict[int, list[DraftPickAsset]]:
     output: dict[int, list[DraftPickAsset]] = defaultdict(list)
     resolved_values_by_pick_key = resolved_values_by_pick_key or {}
@@ -148,6 +145,8 @@ def build_owned_pick_assets_by_roster_id(
             4,
         )
     )
+    current_league_season = str(start_season)
+    next_league_season = str(start_season + 1)
 
     owner_by_pick_key: dict[
         tuple[str, int, int],
@@ -198,8 +197,15 @@ def build_owned_pick_assets_by_roster_id(
             {},
         ).get(og_roster_id)
         projected_slot = None
+        should_show_slot = season in {
+            current_league_season,
+            next_league_season,
+        }
 
-        if slot is None:
+        if not should_show_slot:
+            slot = None
+
+        if should_show_slot and slot is None:
             projected_slot = (
                 projected_slots_by_season_and_roster_id.get(
                     (
@@ -229,11 +235,9 @@ def build_owned_pick_assets_by_roster_id(
                 slot=slot,
                 projected_slot=projected_slot,
                 slot_source_label=(
-                    build_projected_slot_source_label(
-                        current_week=projected_slot_week,
-                    )
+                    projected_slot_source_label
                     if is_projected
-                    and projected_slot_week is not None
+                    and should_show_slot
                     else None
                 ),
                 label=build_pick_label(

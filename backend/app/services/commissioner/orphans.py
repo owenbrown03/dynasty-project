@@ -30,6 +30,7 @@ from app.services.draft.picks import (
 )
 from app.services.draft.projection import (
     build_projected_pick_slots_by_roster_id,
+    build_projected_slot_source_label,
 )
 from app.services.draft.values import (
     get_resolved_pick_values_by_key,
@@ -374,9 +375,22 @@ async def get_commissioner_orphans(
                 roster_id,
             ): slot
             for roster_id, slot in (
-                projected_pick_slots_by_roster_id.items()
+                projected_pick_slots_by_roster_id.slots_by_roster_id.items()
             )
         }
+        projected_slot_source_label = (
+            build_projected_slot_source_label(
+                current_week=current_week,
+                method_used=(
+                    projected_pick_slots_by_roster_id.method_used
+                ),
+                fallback_from_method=(
+                    projected_pick_slots_by_roster_id.fallback_from_method
+                ),
+            )
+            if projected_pick_slots_by_roster_id.slots_by_roster_id
+            else None
+        )
 
         unresolved_pick_assets_by_roster_id = (
             build_owned_pick_assets_by_roster_id(
@@ -394,7 +408,9 @@ async def get_commissioner_orphans(
                 projected_slots_by_season_and_roster_id=(
                     projected_slots_by_season_and_roster_id
                 ),
-                projected_slot_week=current_week,
+                projected_slot_source_label=(
+                    projected_slot_source_label
+                ),
             )
         )
 
@@ -445,7 +461,9 @@ async def get_commissioner_orphans(
                 projected_slots_by_season_and_roster_id=(
                     projected_slots_by_season_and_roster_id
                 ),
-                projected_slot_week=current_week,
+                projected_slot_source_label=(
+                    projected_slot_source_label
+                ),
             )
         )
 

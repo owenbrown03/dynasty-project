@@ -13,6 +13,9 @@ from app.models.db.auth import (
 )
 from app.schemas.auth import Login
 from app.crud.auth.session import get_session_by_token
+from app.services.draft.projection import (
+    normalize_draft_pick_projection_settings,
+)
 from app.services.values.basis import (
     DEFAULT_VALUE_BASIS,
     ValueBasis,
@@ -226,6 +229,44 @@ async def set_value_preference(
     return user
 
 
+def get_draft_pick_projection_settings(
+    user: SiteUser | None,
+) -> dict[str, object]:
+    if not user:
+        return normalize_draft_pick_projection_settings(
+            None,
+        )
+
+    return normalize_draft_pick_projection_settings(
+        (user.settings or {}).get(
+            "draft_pick_projection_settings",
+        )
+    )
+
+
+async def set_draft_pick_projection_settings(
+    *,
+    user: SiteUser,
+    draft_pick_projection_settings: dict[str, object],
+    db: AsyncSession,
+) -> SiteUser:
+    settings = dict(
+        user.settings or {}
+    )
+
+    settings["draft_pick_projection_settings"] = (
+        normalize_draft_pick_projection_settings(
+            draft_pick_projection_settings,
+        )
+    )
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 async def reconcile_session_theme_preference(
     *,
     user: SiteUser,
@@ -278,6 +319,40 @@ async def reconcile_session_value_preference(
         user.settings or {}
     )
     settings["value_preference"] = session_preference
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def reconcile_session_draft_pick_projection_settings(
+    *,
+    user: SiteUser,
+    session: UserSession | None,
+    db: AsyncSession,
+) -> SiteUser:
+    if not session:
+        return user
+
+    session_settings = (
+        (session.settings or {}).get(
+            "draft_pick_projection_settings",
+        )
+    )
+
+    if session_settings is None:
+        return user
+
+    settings = dict(
+        user.settings or {}
+    )
+    settings["draft_pick_projection_settings"] = (
+        normalize_draft_pick_projection_settings(
+            session_settings,
+        )
+    )
     user.settings = settings
 
     db.add(user)

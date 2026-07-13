@@ -3,6 +3,8 @@ from fastapi import APIRouter
 from app.api.deps import ContextDep
 from app.schemas.auth import (
     AuthSessionResponse,
+    DraftPickProjectionSettingsResponse,
+    DraftPickProjectionSettingsUpdate,
     EmailVerificationConfirmRequest,
     EmailVerificationRequestResponse,
     EmailVerificationStatusResponse,
@@ -18,6 +20,7 @@ from app.services.auth import (
     request_email_verification,
     register,
     update_theme,
+    update_draft_pick_projection_settings,
     update_value_preference,
     verify_email,
 )
@@ -97,3 +100,17 @@ async def update_value_preference_endpoint(
     ctx: ContextDep,
 ):
     return await update_value_preference(body, ctx)
+
+
+@router.post(
+    "/draft-pick-projection",
+    response_model=DraftPickProjectionSettingsResponse,
+)
+async def update_draft_pick_projection_settings_endpoint(
+    body: DraftPickProjectionSettingsUpdate,
+    ctx: ContextDep,
+):
+    return await update_draft_pick_projection_settings(
+        body,
+        ctx,
+    )

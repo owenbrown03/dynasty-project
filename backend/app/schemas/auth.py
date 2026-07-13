@@ -4,6 +4,9 @@ from typing import Literal
 from pydantic import EmailStr, Field
 
 from app.schemas.base import Base
+from app.services.draft.projection import (
+    DraftPickProjectionMethod,
+)
 from app.services.values.basis import ValueBasis
 
 class Login(Base):
@@ -46,3 +49,21 @@ class ValuePreferenceUpdate(Base):
 
 class ValuePreferenceResponse(Base):
     value_preference: ValueBasis | None
+
+
+class DraftPickProjectionSettings(Base):
+    enabled: bool = True
+    start_week: int = Field(
+        default=4,
+        ge=1,
+        le=18,
+    )
+    method: DraftPickProjectionMethod = "max_pf"
+
+
+class DraftPickProjectionSettingsUpdate(Base):
+    settings: DraftPickProjectionSettings
+
+
+class DraftPickProjectionSettingsResponse(Base):
+    settings: DraftPickProjectionSettings

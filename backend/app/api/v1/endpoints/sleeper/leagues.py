@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Query
 
 from app.api.deps import ContextDep
+from app.crud.auth.session import (
+    get_session_draft_pick_projection_settings,
+)
+from app.crud.auth.user import (
+    get_draft_pick_projection_settings,
+)
 from app.services.dashboard.service import get_user_dashboard
 from app.schemas.league import (
     LeagueOverviewItem,
@@ -48,6 +54,15 @@ async def details_endpoint(
             ctx.site_user.id
             if ctx.site_user is not None
             else None
+        ),
+        draft_pick_projection_settings=(
+            get_draft_pick_projection_settings(
+                ctx.site_user,
+            )
+            if ctx.site_user is not None
+            else get_session_draft_pick_projection_settings(
+                ctx.session,
+            )
         ),
     )
 

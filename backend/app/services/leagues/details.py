@@ -27,7 +27,9 @@ from app.services.draft.picks import (
     build_roster_name_by_id,
 )
 from app.services.draft.projection import (
+    build_draft_pick_projection_summary,
     build_projected_pick_slots_by_roster_id,
+    build_projected_slot_source_label,
 )
 from app.services.draft.values import get_resolved_pick_values_by_key
 from app.services.leagues.models import (
@@ -47,6 +49,11 @@ from app.services.leagues.settings import (
 )
 from app.services.values.basis import ValueBasis
 from app.services.waivers.dynasty import build_dynasty_projection
+
+WAR_PLAYER_DISPLAY_LIMIT = 500
+WAR_POSITION_RANK_DISPLAY_LIMIT = (
+    WAR_PLAYER_DISPLAY_LIMIT // 4
+)
 
 
 def is_slot_eligible(slot: str, position: str | None) -> bool:
@@ -131,6 +138,7 @@ class LeagueDetails:
         redis,
         league_id: str,
         site_user_id: UUID | None = None,
+        draft_pick_projection_settings: dict[str, object] | None = None,
     ):
         leagues = await get_league_with_rosters(
             db,
@@ -357,6 +365,7 @@ class LeagueDetails:
                 projected_points_by_roster_id=(
                     projected_points_by_roster_id
                 ),
+                settings=draft_pick_projection_settings,
             )
         )
         projected_slots_by_season_and_roster_id = {
@@ -365,9 +374,23 @@ class LeagueDetails:
                 roster_id,
             ): slot
             for roster_id, slot in (
-                projected_pick_slots_by_roster_id.items()
+                projected_pick_slots_by_roster_id.slots_by_roster_id.items()
             )
         }
+        projected_slot_source_label = (
+            build_projected_slot_source_label(
+                current_week=current_week,
+                settings=draft_pick_projection_settings,
+                method_used=(
+                    projected_pick_slots_by_roster_id.method_used
+                ),
+                fallback_from_method=(
+                    projected_pick_slots_by_roster_id.fallback_from_method
+                ),
+            )
+            if projected_pick_slots_by_roster_id.slots_by_roster_id
+            else None
+        )
 
         raw_pick_assets_by_roster_id = build_owned_pick_assets_by_roster_id(
             league=league,
@@ -378,7 +401,9 @@ class LeagueDetails:
             projected_slots_by_season_and_roster_id=(
                 projected_slots_by_season_and_roster_id
             ),
-            projected_slot_week=current_week,
+            projected_slot_source_label=(
+                projected_slot_source_label
+            ),
         )
 
         all_pick_assets = [
@@ -565,6 +590,13 @@ class LeagueDetails:
             league_name=league.name,
             season=str(league.season),
             total_rosters=league.total_rosters,
+            draft_pick_projection_summary=(
+                build_draft_pick_projection_summary(
+                    settings=draft_pick_projection_settings,
+                )
+                if projected_pick_slots_by_roster_id.slots_by_roster_id
+                else None
+            ),
             note=(
                 notes_by_league_id[league_id].note
                 if league_id in notes_by_league_id
@@ -647,6 +679,10 @@ class LeagueDetails:
     ) -> list[LeagueWarPlayerSeason]:
         seasons: list[LeagueWarPlayerSeason] = []
         current_season = int(league.season)
+        war_types = [
+            "starter",
+            "roster",
+        ]
 
         for season in range(current_season - 4, current_season):
             stats_rows = await self.war_service.loader.get_season_stats(
@@ -671,29 +707,35 @@ class LeagueDetails:
                 ),
             )
 
-            seasons.append(
-                LeagueWarPlayerSeason(
-                    season=str(season),
-                    source="historical",
-                    players=self.build_position_rank_points(
-                        results,
-                    ),
+            for war_type in war_types:
+                seasons.append(
+                    LeagueWarPlayerSeason(
+                        season=str(season),
+                        source="historical",
+                        war_type=war_type,
+                        players=self.build_position_rank_points(
+                            results,
+                            war_type=war_type,
+                        ),
+                    )
                 )
-            )
 
         current_results = await self.war_service.calculate_with_data(
             league=league,
             shared=current_shared,
         )
-        seasons.append(
-            LeagueWarPlayerSeason(
-                season=str(current_season),
-                source="projection",
-                players=self.build_position_rank_points(
-                    current_results,
-                ),
+        for war_type in war_types:
+            seasons.append(
+                LeagueWarPlayerSeason(
+                    season=str(current_season),
+                    source="projection",
+                    war_type=war_type,
+                    players=self.build_position_rank_points(
+                        current_results,
+                        war_type=war_type,
+                    ),
+                )
             )
-        )
 
         return seasons
 
@@ -726,9 +768,16 @@ class LeagueDetails:
     def build_position_rank_points(
         self,
         war_players,
+        *,
+        war_type: str,
     ) -> list[LeagueWarPlayerPoint]:
         positions = ["QB", "RB", "WR", "TE"]
         points: list[LeagueWarPlayerPoint] = []
+        war_attr = (
+            "starter_war"
+            if war_type == "starter"
+            else "roster_war"
+        )
 
         for position in positions:
             position_players = sorted(
@@ -736,17 +785,19 @@ class LeagueDetails:
                     player
                     for player in war_players
                     if player.position == position
-                    and player.roster_war is not None
+                    and getattr(player, war_attr) is not None
                 ],
                 key=lambda player: (
-                    player.roster_war or 0,
+                    getattr(player, war_attr) or 0,
                     player.name,
                 ),
                 reverse=True,
             )
 
             for rank, player in enumerate(
-                position_players,
+                position_players[
+                    :WAR_POSITION_RANK_DISPLAY_LIMIT
+                ],
                 start=1,
             ):
                 points.append(
@@ -755,7 +806,7 @@ class LeagueDetails:
                         name=player.name,
                         position=position,
                         war=round(
-                            player.roster_war or 0,
+                            getattr(player, war_attr) or 0,
                             2,
                         ),
                         rank=rank,

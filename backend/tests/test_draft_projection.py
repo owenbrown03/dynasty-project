@@ -8,7 +8,7 @@ from app.services.draft.values import (
 )
 
 
-def test_build_projected_pick_slots_orders_by_wins_then_pf():
+def test_build_projected_pick_slots_defaults_to_max_pf():
     league = League(
         league_id="league-1",
         name="Test",
@@ -24,21 +24,21 @@ def test_build_projected_pick_slots_orders_by_wins_then_pf():
         Roster(
             roster_id=1,
             league_id="league-1",
-            settings={"wins": 5, "losses": 1, "fpts": 800},
+            settings={"wins": 5, "losses": 1, "fpts": 800, "ppts": 900},
         ),
         Roster(
             roster_id=2,
             league_id="league-1",
-            settings={"wins": 2, "losses": 4, "fpts": 700},
+            settings={"wins": 2, "losses": 4, "fpts": 700, "ppts": 650},
         ),
         Roster(
             roster_id=3,
             league_id="league-1",
-            settings={"wins": 2, "losses": 4, "fpts": 760},
+            settings={"wins": 2, "losses": 4, "fpts": 760, "ppts": 700},
         ),
     ]
 
-    slots = build_projected_pick_slots_by_roster_id(
+    result = build_projected_pick_slots_by_roster_id(
         league=league,
         rosters=rosters,
         current_week=6,
@@ -49,7 +49,8 @@ def test_build_projected_pick_slots_orders_by_wins_then_pf():
         },
     )
 
-    assert slots == {
+    assert result.method_used == "max_pf"
+    assert result.slots_by_roster_id == {
         2: 1,
         3: 2,
         1: 3,

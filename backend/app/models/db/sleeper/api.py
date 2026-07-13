@@ -180,6 +180,13 @@ class Roster(SQLModel, table=True):
         )
 
     @property
+    def ppts(self) -> float:
+        return (
+            self.settings.get("ppts", 0)
+            + self.settings.get("ppts_decimal", 0) / 100
+        )
+
+    @property
     def waiver_budget_used(self) -> int:
         return self.settings.get("waiver_budget_used", 0)
 

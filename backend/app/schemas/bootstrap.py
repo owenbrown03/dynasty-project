@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Literal, Optional
 
 from app.schemas.base import Base
+from app.schemas.auth import DraftPickProjectionSettings
 from app.services.values.basis import ValueBasis
 
 
@@ -16,6 +17,7 @@ class BootstrapSleeper(Base):
     linked: bool
     sleeper_username: Optional[str] = None
     sleeper_user_id: Optional[str] = None
+    sleeper_avatar: Optional[str] = None
     can_read: bool = False
     can_write: bool = False
 
@@ -26,3 +28,4 @@ class BootstrapResponse(Base):
     sleeper: BootstrapSleeper
     theme_preference: Literal["light", "dark", "system"] | None = None
     value_preference: ValueBasis | None = None
+    draft_pick_projection_settings: DraftPickProjectionSettings

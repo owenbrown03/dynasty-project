@@ -6,6 +6,8 @@ from passlib.context import CryptContext
 
 from app.schemas.auth import (
     AuthSessionResponse,
+    DraftPickProjectionSettingsResponse,
+    DraftPickProjectionSettingsUpdate,
     EmailVerificationConfirmRequest,
     EmailVerificationRequestResponse,
     EmailVerificationStatusResponse,
@@ -19,6 +21,7 @@ from app.core.context import Context
 from app.crud.auth.user import (
     consume_email_verification,
     create_email_verification_token,
+    get_draft_pick_projection_settings,
     get_email_verification_by_token,
     get_theme_preference,
     get_value_preference,
@@ -26,16 +29,20 @@ from app.crud.auth.user import (
     is_email_verified,
     insert_user,
     reconcile_session_theme_preference,
+    reconcile_session_draft_pick_projection_settings,
     reconcile_session_value_preference,
+    set_draft_pick_projection_settings,
     set_theme_preference,
     set_value_preference,
 )
 from app.crud.auth.session import (
     create_session_by_userid,
+    get_session_draft_pick_projection_settings,
     get_session_theme_preference,
     get_session_value_preference,
     insert_session_by_userid,
     delete_session,
+    set_session_draft_pick_projection_settings,
     set_session_theme_preference,
     set_session_value_preference,
 )
@@ -95,6 +102,11 @@ async def login(
         session=session,
         db=ctx.db,
     )
+    await reconcile_session_draft_pick_projection_settings(
+        user=db_user,
+        session=session,
+        db=ctx.db,
+    )
     await reconcile_session_value_preference(
         user=db_user,
         session=session,
@@ -128,6 +140,14 @@ async def logout(
             ctx.site_user,
         )
     )
+    draft_pick_projection_settings = (
+        get_session_draft_pick_projection_settings(
+            ctx.session,
+        )
+        or get_draft_pick_projection_settings(
+            ctx.site_user,
+        )
+    )
 
     await delete_session(ctx.session, ctx.response, ctx.db)
 
@@ -150,6 +170,14 @@ async def logout(
             value_preference=value_preference,
             db=ctx.db,
         )
+
+    await set_session_draft_pick_projection_settings(
+        session=new_session,
+        draft_pick_projection_settings=(
+            draft_pick_projection_settings
+        ),
+        db=ctx.db,
+    )
 
     return build_auth_session_response(
         None,
@@ -209,6 +237,39 @@ async def update_value_preference(
 
     return ValuePreferenceResponse(
         value_preference=get_session_value_preference(
+            session,
+        ),
+    )
+
+
+async def update_draft_pick_projection_settings(
+    body: DraftPickProjectionSettingsUpdate,
+    ctx: Context,
+) -> DraftPickProjectionSettingsResponse:
+    session = await set_session_draft_pick_projection_settings(
+        session=ctx.session,
+        draft_pick_projection_settings=(
+            body.settings.model_dump()
+        ),
+        db=ctx.db,
+    )
+
+    if ctx.site_user:
+        user = await set_draft_pick_projection_settings(
+            user=ctx.site_user,
+            draft_pick_projection_settings=(
+                body.settings.model_dump()
+            ),
+            db=ctx.db,
+        )
+        return DraftPickProjectionSettingsResponse(
+            settings=get_draft_pick_projection_settings(
+                user,
+            ),
+        )
+
+    return DraftPickProjectionSettingsResponse(
+        settings=get_session_draft_pick_projection_settings(
             session,
         ),
     )

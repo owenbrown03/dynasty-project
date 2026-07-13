@@ -78,6 +78,7 @@ class LeagueDetailsResponse(BaseModel):
     season: str
     total_rosters: int
     note: str = ""
+    draft_pick_projection_summary: str | None = None
     settings_badges: list[str]
     settings_details: list[LeagueSettingsDetail]
     war_position_history: list["LeagueWarPositionSeason"] = []
@@ -107,4 +108,5 @@ class LeagueWarPlayerPoint(BaseModel):
 class LeagueWarPlayerSeason(BaseModel):
     season: str
     source: str
+    war_type: str
     players: list[LeagueWarPlayerPoint]
