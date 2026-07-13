@@ -149,6 +149,16 @@
   font-size: 22px;
 }
 
+.finance-summary-card small,
+.finance-chart-note {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .finance-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));

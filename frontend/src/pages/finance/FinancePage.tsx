@@ -46,6 +46,7 @@ type FinanceChartEntry = {
   winningsAmount: number;
   projectedWinningsAmount: number;
   netAmount: number;
+  isProjected: boolean;
 };
 
 type FinanceTimelinePoint = {
@@ -353,6 +354,7 @@ function buildSeasonChartEntries(
       projectedWinningsAmount: number;
       netAmount: number;
       leagueCount: number;
+      projectedCount: number;
     }
   >();
 
@@ -362,12 +364,16 @@ function buildSeasonChartEntries(
       projectedWinningsAmount: 0,
       netAmount: 0,
       leagueCount: 0,
+      projectedCount: 0,
     };
 
     current.winningsAmount += effectiveFinanceWinnings(entry);
     current.projectedWinningsAmount += entry.projected_winnings_amount;
     current.netAmount += effectiveFinanceNet(entry);
     current.leagueCount += 1;
+    if (!isFinanceSeasonComplete(entry)) {
+      current.projectedCount += 1;
+    }
 
     bySeason.set(entry.season, current);
   }
@@ -378,10 +384,11 @@ function buildSeasonChartEntries(
       label: season,
       subLabel: `${totals.leagueCount} ${
         totals.leagueCount === 1 ? 'league' : 'leagues'
-      }`,
+      }${totals.projectedCount > 0 ? ' · projected' : ''}`,
       winningsAmount: totals.winningsAmount,
       projectedWinningsAmount: totals.projectedWinningsAmount,
       netAmount: totals.netAmount,
+      isProjected: totals.projectedCount > 0,
     }))
     .sort((left, right) => (
       Number(left.label) - Number(right.label)
@@ -632,6 +639,9 @@ function FinanceLeagueBreakdown({
   const sortedEntries = [...entries].sort((left, right) => (
     effectiveFinanceNet(right) - effectiveFinanceNet(left)
   ));
+  const hasProjectedEntries = entries.some((entry) => (
+    !isFinanceSeasonComplete(entry)
+  ));
 
   return (
     <article className="finance-chart-card finance-league-breakdown-card">
@@ -639,6 +649,15 @@ function FinanceLeagueBreakdown({
         <div>
           <p className="finance-chart-kicker">League results</p>
           <h2>League net breakdown</h2>
+          {
+            hasProjectedEntries
+              ? (
+                <p className="finance-chart-note">
+                  Active seasons use projected/expected payouts until final results are complete.
+                </p>
+              )
+              : null
+          }
         </div>
       </div>
 
@@ -654,7 +673,13 @@ function FinanceLeagueBreakdown({
                 <span>{financeResultLabel(entry)}</span>
               </div>
               <div>
-                <span>Net</span>
+                <span>
+                  {
+                    isFinanceSeasonComplete(entry)
+                      ? 'Net'
+                      : 'Projected net'
+                  }
+                </span>
                 <strong>{formatCurrency(effectiveFinanceNet(entry))}</strong>
               </div>
               <div>
@@ -1019,6 +1044,11 @@ export function FinancePage() {
 
   const seasonChartEntries = useMemo(
     () => buildSeasonChartEntries(chartEntries),
+    [chartEntries],
+  );
+
+  const overviewHasProjectedEntries = useMemo(
+    () => chartEntries.some((entry) => !isFinanceSeasonComplete(entry)),
     [chartEntries],
   );
 
@@ -1569,16 +1599,31 @@ export function FinancePage() {
                         <article className="finance-summary-card">
                           <span>Total winnings</span>
                           <strong>{formatCurrency(overviewSummary.totalWinnings)}</strong>
+                          {
+                            overviewHasProjectedEntries
+                              ? <small>Includes expected payouts for active seasons.</small>
+                              : null
+                          }
                         </article>
 
                         <article className="finance-summary-card">
                           <span>Total net</span>
                           <strong>{formatCurrency(overviewSummary.totalNet)}</strong>
+                          {
+                            overviewHasProjectedEntries
+                              ? <small>Projected until seasons are complete.</small>
+                              : null
+                          }
                         </article>
 
                         <article className="finance-summary-card">
                           <span>Expected payouts</span>
                           <strong>{formatCurrency(overviewSummary.projectedCurrentWinnings)}</strong>
+                          {
+                            overviewHasProjectedEntries
+                              ? <small>Projected from seed probability.</small>
+                              : null
+                          }
                         </article>
                       </section>
 
