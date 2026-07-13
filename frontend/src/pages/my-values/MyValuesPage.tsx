@@ -349,21 +349,6 @@ function getDefaultFutureOutcomes(
 }
 
 
-function outcomesEqual(
-  left: PersonalProjectionOutcomeItem[],
-  right: PersonalProjectionOutcomeItem[],
-) {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  return left.every((outcome, index) => (
-    outcome.position_rank === right[index].position_rank
-    && Number(outcome.probability) === Number(right[index].probability)
-  ));
-}
-
-
 function getPoolPlayerIds(
   poolItems: PersonalValuePoolItem[],
 ) {
@@ -791,14 +776,8 @@ export const MyValuesPage = () => {
             currentSeason != null
             && season.season !== currentSeason
             && (
-              season.outcomes.length === 0
-              || (
-                !season.is_customized
-                && !outcomesEqual(
-                  season.outcomes,
-                  defaultFutureOutcomes,
-                )
-              )
+              futureProjectionMode === 'default'
+              || season.outcomes.length === 0
             )
           ) {
             return {
