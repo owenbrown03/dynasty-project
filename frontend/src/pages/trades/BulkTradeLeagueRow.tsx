@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 
+import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import type {
   BulkTradeCounterparty,
   BulkTradeLeagueAvailability,
@@ -98,13 +99,23 @@ export const BulkTradeLeagueRow = ({
     return (
       <article className="bulk-trade-league-row unavailable">
         <div className="bulk-trade-league-primary">
-          <strong>
-            {league.league_name}
-          </strong>
+          <div className="bulk-trade-league-identity">
+            <LeagueAvatar
+              avatarId={league.league_avatar}
+              name={league.league_name}
+              size="sm"
+            />
 
-          <span>
-            {league.ineligibility_reason}
-          </span>
+            <div>
+              <strong>
+                {league.league_name}
+              </strong>
+
+              <span>
+                {league.ineligibility_reason}
+              </span>
+            </div>
+          </div>
         </div>
 
         <span className="bulk-trade-unavailable">
@@ -146,17 +157,27 @@ export const BulkTradeLeagueRow = ({
       </label>
 
       <div className="bulk-trade-league-primary">
-        <strong>
-          {league.league_name}
-        </strong>
+        <div className="bulk-trade-league-identity">
+          <LeagueAvatar
+            avatarId={league.league_avatar}
+            name={league.league_name}
+            size="sm"
+          />
 
-        <span>
-          {
-            direction === 'buy'
-              ? `Buy from ${targetManagerLabel}`
-              : `Sell to ${targetManagerLabel}`
-          }
-        </span>
+          <div>
+            <strong>
+              {league.league_name}
+            </strong>
+
+            <span>
+              {
+                direction === 'buy'
+                  ? `Buy from ${targetManagerLabel}`
+                  : `Sell to ${targetManagerLabel}`
+              }
+            </span>
+          </div>
+        </div>
       </div>
 
       {

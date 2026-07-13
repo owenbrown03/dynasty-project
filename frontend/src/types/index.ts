@@ -13,6 +13,7 @@ export interface UserMovements {
 export interface Transaction {
   transaction_id: string;
   league_name: string;
+  league_avatar: string | null;
   league_settings: string[];
   time_ms: number;
   users: UserMovements[];
@@ -154,6 +155,7 @@ export interface DraftPickProjectionSettings {
 export interface LeagueOverview {
   league_id: string;
   league_name: string;
+  avatar: string | null;
   season: string | null;
   total_rosters: number | null;
   is_hidden: boolean;
@@ -279,6 +281,7 @@ export interface LeagueRoster {
 export interface LeagueDetails {
   league_id: string;
   league_name: string;
+  avatar: string | null;
   season: string;
   total_rosters: number;
   note: string;
@@ -305,6 +308,7 @@ export interface DashboardSummary {
 export interface DashboardLeague {
   league_id: string;
   league_name: string;
+  avatar: string | null;
   league_size: number;
 
   ktc_value: number;

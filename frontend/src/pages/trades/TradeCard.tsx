@@ -1,4 +1,5 @@
 import './TradeCard.css';
+import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import type { Transaction } from '../../types';
 import { UserCard } from './UserCard';
 
@@ -11,8 +12,19 @@ export function TradeCard({ tx }: Props) {
     <div className="trade-card">
       <header className="trade-header">
         <div className="trade-header-main">
-          <span className="trade-header-kicker">League</span>
-          <span className="league-name">{tx.league_name}</span>
+          <div className="trade-league-identity">
+            <LeagueAvatar
+              avatarId={tx.league_avatar}
+              name={tx.league_name}
+              size="md"
+            />
+
+            <div>
+              <span className="trade-header-kicker">League</span>
+              <span className="league-name">{tx.league_name}</span>
+            </div>
+          </div>
+
           {tx.league_settings.length > 0 ? (
             <div className="trade-league-settings" aria-label="League settings">
               {tx.league_settings.map((setting) => (

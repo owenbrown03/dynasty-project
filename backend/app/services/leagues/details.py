@@ -633,6 +633,7 @@ class LeagueDetails:
         return LeagueDetailsResponse(
             league_id=league.league_id,
             league_name=league.name,
+            avatar=league.avatar,
             season=str(league.season),
             total_rosters=league.total_rosters,
             draft_pick_projection_summary=(

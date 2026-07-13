@@ -2,6 +2,7 @@ import './LeagueCard.css';
 
 import { useEffect, useState } from 'react';
 
+import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { useSaveCommissionerNote } from '@/hooks/sleeper/useUsers';
 import type { LeagueDetails } from '@/types';
 import { notify } from '@/utils/notify';
@@ -38,12 +39,20 @@ export function LeagueCard({
   return (
     <div className="league-card">
       <header className="league-header">
-        <div>
-          <p className="league-header-kicker">League</p>
-          <h2 className="league-title">{league.league_name}</h2>
-          <p className="league-subtitle">
-            {league.season} · {league.total_rosters} teams
-          </p>
+        <div className="league-header-identity">
+          <LeagueAvatar
+            avatarId={league.avatar}
+            name={league.league_name}
+            size="lg"
+          />
+
+          <div>
+            <p className="league-header-kicker">League</p>
+            <h2 className="league-title">{league.league_name}</h2>
+            <p className="league-subtitle">
+              {league.season} · {league.total_rosters} teams
+            </p>
+          </div>
         </div>
 
         <div className="league-summary-stat">

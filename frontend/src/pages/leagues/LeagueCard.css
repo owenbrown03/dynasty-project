@@ -15,6 +15,13 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.league-header-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .league-header-kicker,
 .league-settings-header p,
 .league-detail-header p {

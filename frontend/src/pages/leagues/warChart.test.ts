@@ -7,6 +7,7 @@ import { buildLeaguePositionWarSeries } from './warChart';
 const league: LeagueDetails = {
   league_id: 'league-1',
   league_name: 'WAR Test League',
+  avatar: null,
   season: '2026',
   total_rosters: 12,
   note: '',

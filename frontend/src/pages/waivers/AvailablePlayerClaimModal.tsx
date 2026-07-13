@@ -10,12 +10,12 @@ import {
 } from 'react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
+import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import {
   useRosterWaiverPlayers,
   useSubmitWaiverClaim,
 } from '@/hooks/sleeper/useWaivers';
-
-import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import type {
   ValueBasis,
   WaiverAvailablePlayer,
@@ -121,14 +121,22 @@ export const AvailablePlayerClaimModal = ({
         }}
       >
         <div className="waiver-claim-modal-header">
-          <div>
-            <p>
-              {league.league_name}
-            </p>
+          <div className="waiver-claim-league-identity">
+            <LeagueAvatar
+              avatarId={league.league_avatar}
+              name={league.league_name}
+              size="md"
+            />
 
-            <h2 id="available-claim-title">
-              Build Waiver Claim
-            </h2>
+            <div>
+              <p>
+                {league.league_name}
+              </p>
+
+              <h2 id="available-claim-title">
+                Build Waiver Claim
+              </h2>
+            </div>
           </div>
 
           <button

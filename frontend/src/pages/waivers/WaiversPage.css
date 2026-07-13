@@ -114,6 +114,13 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.waiver-league-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .waiver-league-header h2 {
   margin: 0;
   font-size: 16px;
@@ -763,6 +770,13 @@
   gap: 14px;
 }
 
+.waiver-claim-league-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .waiver-claim-modal-header p {
   margin: 0 0 4px;
 
@@ -1155,6 +1169,13 @@
   width: 16px;
   height: 16px;
   margin: 0;
+}
+
+.bulk-league-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .bulk-league-main strong {

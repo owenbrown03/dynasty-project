@@ -4,6 +4,7 @@ import {
   Users,
 } from 'lucide-react';
 
+import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import type { WaiverLeagueOverview } from '@/types';
 
 import { formatSelectedValue } from './waiver.formatters';
@@ -42,14 +43,22 @@ export const WaiverLeagueCard = ({
   return (
     <article className="waiver-league-card">
       <div className="waiver-league-header">
-        <div>
-          <h2>
-            {league.league_name}
-          </h2>
+        <div className="waiver-league-identity">
+          <LeagueAvatar
+            avatarId={league.league_avatar}
+            name={league.league_name}
+            size="md"
+          />
 
-          <p>
-            {league.value_label}
-          </p>
+          <div>
+            <h2>
+              {league.league_name}
+            </h2>
+
+            <p>
+              {league.value_label}
+            </p>
+          </div>
         </div>
 
         <div className="waiver-gain">

@@ -182,9 +182,17 @@
 }
 
 .portfolio-league-primary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  min-width: 0;
+}
+
+.portfolio-league-primary > div {
   display: grid;
   gap: 6px;
-  padding: 14px;
+  min-width: 0;
 }
 
 .portfolio-league-title {
