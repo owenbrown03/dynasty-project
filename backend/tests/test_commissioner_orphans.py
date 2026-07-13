@@ -1,4 +1,6 @@
+import asyncio
 from types import SimpleNamespace
+from uuid import uuid4
 
 from app.schemas.commissioner import CommissionerPlayerAsset
 from app.services.commissioner.orphans import (
@@ -7,6 +9,8 @@ from app.services.commissioner.orphans import (
     get_average_age,
     is_slot_eligible,
 )
+from app.services.commissioner import workspace as workspace_service
+from app.services.leagues.selection import OwnedLeagueRow
 
 
 def test_build_settings_badges_includes_expected_league_summary():
@@ -135,3 +139,117 @@ def test_get_average_age_rounds_to_one_decimal():
 
     assert get_average_age(players) == 24.6
     assert get_average_age([]) is None
+
+
+def test_commissioner_workspace_uses_visible_current_leagues(monkeypatch):
+    site_user_id = uuid4()
+    league = SimpleNamespace(
+        league_id="current-visible",
+        name="Current Visible",
+        season="2026",
+    )
+    roster = SimpleNamespace(
+        roster_id=1,
+        owner_id="sleeper-1",
+        league_id="current-visible",
+        roster_metadata={},
+    )
+    selector_calls = []
+
+    async def fake_get_visible_owned_league_rows_by_sleeper_user_id(
+        *,
+        db,
+        sleeper_user_id,
+        site_user_id,
+        include_hidden=False,
+    ):
+        selector_calls.append(
+            {
+                "sleeper_user_id": sleeper_user_id,
+                "site_user_id": site_user_id,
+                "include_hidden": include_hidden,
+            }
+        )
+        return [
+            OwnedLeagueRow(
+                league=league,
+                roster=roster,
+            )
+        ]
+
+    async def fake_notes_by_league_id(**kwargs):
+        return {}
+
+    async def fake_finance_entries_by_key(**kwargs):
+        return {}
+
+    async def fake_dues_by_key(**kwargs):
+        return {}
+
+    async def fake_rosters_by_league(**kwargs):
+        return {
+            "current-visible": [roster],
+        }
+
+    async def fake_traded_picks_by_league_ids(*args, **kwargs):
+        return {}
+
+    async def fake_get_users(*args, **kwargs):
+        return {}
+
+    monkeypatch.setattr(
+        workspace_service,
+        "get_visible_owned_league_rows_by_sleeper_user_id",
+        fake_get_visible_owned_league_rows_by_sleeper_user_id,
+    )
+    monkeypatch.setattr(
+        workspace_service,
+        "get_commissioner_notes_by_league_id",
+        fake_notes_by_league_id,
+    )
+    monkeypatch.setattr(
+        workspace_service,
+        "get_finance_entries_by_key",
+        fake_finance_entries_by_key,
+    )
+    monkeypatch.setattr(
+        workspace_service,
+        "get_commissioner_dues_by_key",
+        fake_dues_by_key,
+    )
+    monkeypatch.setattr(
+        workspace_service,
+        "get_all_rosters_by_league",
+        fake_rosters_by_league,
+    )
+    monkeypatch.setattr(
+        workspace_service,
+        "get_traded_picks_by_league_ids",
+        fake_traded_picks_by_league_ids,
+    )
+    monkeypatch.setattr(
+        workspace_service,
+        "get_users",
+        fake_get_users,
+    )
+
+    ctx = SimpleNamespace(
+        db=object(),
+        site_user=SimpleNamespace(id=site_user_id),
+        connection=SimpleNamespace(sleeper_user_id="sleeper-1"),
+    )
+
+    result = asyncio.run(
+        workspace_service.get_commissioner_workspace(ctx)
+    )
+
+    assert selector_calls == [
+        {
+            "sleeper_user_id": "sleeper-1",
+            "site_user_id": site_user_id,
+            "include_hidden": False,
+        }
+    ]
+    assert [league.league_id for league in result.leagues] == [
+        "current-visible",
+    ]
