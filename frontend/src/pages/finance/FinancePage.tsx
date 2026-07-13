@@ -964,46 +964,75 @@ export function FinancePage() {
         finance.data
           ? (
             <>
-              <div className="finance-tabs" role="tablist" aria-label="Finance tabs">
-                <button
-                  type="button"
-                  className={
-                    activeTab === 'charts'
-                      ? 'finance-tab active'
-                      : 'finance-tab'
-                  }
-                  onClick={() => {
-                    setActiveTab('charts');
-                  }}
-                >
-                  Overview
-                </button>
-                <button
-                  type="button"
-                  className={
-                    activeTab === 'settings'
-                      ? 'finance-tab active'
-                      : 'finance-tab'
-                  }
-                  onClick={() => {
-                    setActiveTab('settings');
-                  }}
-                >
-                  Settings
-                </button>
-                <button
-                  type="button"
-                  className={
-                    activeTab === 'overrides'
-                      ? 'finance-tab active'
-                      : 'finance-tab'
-                  }
-                  onClick={() => {
-                    setActiveTab('overrides');
-                  }}
-                >
-                  Overrides
-                </button>
+              <div className="finance-tabs-row">
+                <div className="finance-tabs" role="tablist" aria-label="Finance tabs">
+                  <button
+                    type="button"
+                    className={
+                      activeTab === 'charts'
+                        ? 'finance-tab active'
+                        : 'finance-tab'
+                    }
+                    onClick={() => {
+                      setActiveTab('charts');
+                    }}
+                  >
+                    Overview
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      activeTab === 'settings'
+                        ? 'finance-tab active'
+                        : 'finance-tab'
+                    }
+                    onClick={() => {
+                      setActiveTab('settings');
+                    }}
+                  >
+                    Settings
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      activeTab === 'overrides'
+                        ? 'finance-tab active'
+                        : 'finance-tab'
+                    }
+                    onClick={() => {
+                      setActiveTab('overrides');
+                    }}
+                  >
+                    Overrides
+                  </button>
+                </div>
+
+                {
+                  activeTab === 'charts'
+                    ? (
+                      <div className="finance-overview-controls">
+                        <label>
+                          <span>Year</span>
+                          <select
+                            value={chartSeason}
+                            onChange={(event) => {
+                              setChartSeason(event.target.value);
+                            }}
+                          >
+                            <option value="all">All years</option>
+                            {
+                              availableSeasons.map((season) => (
+                                <option key={season} value={season}>
+                                  {season}
+                                </option>
+                              ))
+                            }
+                          </select>
+                        </label>
+                      </div>
+                    )
+                    : null
+                }
               </div>
 
               {
@@ -1276,49 +1305,26 @@ export function FinancePage() {
                     )
                   : (
                     <>
-                      <section className="finance-overview-summary-row">
-                        <div className="finance-summary-grid">
-                          <article className="finance-summary-card">
-                            <span>Total buy-ins</span>
-                            <strong>{formatCurrency(overviewSummary.totalBuyIns)}</strong>
-                          </article>
+                      <section className="finance-summary-grid">
+                        <article className="finance-summary-card">
+                          <span>Total buy-ins</span>
+                          <strong>{formatCurrency(overviewSummary.totalBuyIns)}</strong>
+                        </article>
 
-                          <article className="finance-summary-card">
-                            <span>Total winnings</span>
-                            <strong>{formatCurrency(overviewSummary.totalWinnings)}</strong>
-                          </article>
+                        <article className="finance-summary-card">
+                          <span>Total winnings</span>
+                          <strong>{formatCurrency(overviewSummary.totalWinnings)}</strong>
+                        </article>
 
-                          <article className="finance-summary-card">
-                            <span>Total net</span>
-                            <strong>{formatCurrency(overviewSummary.totalNet)}</strong>
-                          </article>
+                        <article className="finance-summary-card">
+                          <span>Total net</span>
+                          <strong>{formatCurrency(overviewSummary.totalNet)}</strong>
+                        </article>
 
-                          <article className="finance-summary-card">
-                            <span>Projected current payouts</span>
-                            <strong>{formatCurrency(overviewSummary.projectedCurrentWinnings)}</strong>
-                          </article>
-                        </div>
-
-                        <div className="finance-overview-controls">
-                          <label>
-                            <span>Year</span>
-                            <select
-                              value={chartSeason}
-                              onChange={(event) => {
-                                setChartSeason(event.target.value);
-                              }}
-                            >
-                              <option value="all">All years</option>
-                              {
-                                availableSeasons.map((season) => (
-                                  <option key={season} value={season}>
-                                    {season}
-                                  </option>
-                                ))
-                              }
-                            </select>
-                          </label>
-                        </div>
+                        <article className="finance-summary-card">
+                          <span>Projected current payouts</span>
+                          <strong>{formatCurrency(overviewSummary.projectedCurrentWinnings)}</strong>
+                        </article>
                       </section>
 
                       <section className="finance-chart-grid">
