@@ -756,8 +756,8 @@ def _build_historical_payouts_by_family_and_rank(
                 ),
             )
             if league.status == "complete"
-            else rank
-        ) or rank
+            else None
+        )
 
         if finish_place is None:
             continue
@@ -950,8 +950,8 @@ async def get_finance_summary(
                 ),
             )
             if league.status == "complete"
-            else rank
-        ) or rank
+            else None
+        )
         projected_finish_place = (
             projected_seed_by_league_roster.get(
                 (
@@ -964,13 +964,17 @@ async def get_finance_summary(
         )
         if (
             projected_finish_place is None
-            and league.status not in {"in_season", "post_season"}
+            and league.status == "complete"
         ):
             projected_finish_place = rank
 
-        configured_winnings_amount = payout_for_rank(
-            resolved["payout_structure"],
-            finish_place,
+        configured_winnings_amount = (
+            payout_for_rank(
+                resolved["payout_structure"],
+                finish_place,
+            )
+            if finish_place is not None
+            else None
         )
         winnings_amount = round(
             (

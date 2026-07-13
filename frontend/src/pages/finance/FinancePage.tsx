@@ -279,6 +279,20 @@ function projectionSourceLabel(
   }
 }
 
+function financeResultLabel(
+  entry: FinanceLeagueSeasonEntry,
+) {
+  if (entry.finish_place !== null) {
+    return `Finish ${ordinal(entry.finish_place)} of ${entry.total_rosters}`;
+  }
+
+  if (entry.rank !== null) {
+    return `Current rank ${ordinal(entry.rank)} of ${entry.total_rosters}`;
+  }
+
+  return `${entry.total_rosters} teams`;
+}
+
 
 function buildLinePoints(
   values: number[],
@@ -610,13 +624,7 @@ function FinanceLeagueBreakdown({
             >
               <div>
                 <strong>{entry.league_name}</strong>
-                <span>
-                  {
-                    entry.finish_place !== null
-                      ? `Finish ${ordinal(entry.finish_place)} of ${entry.total_rosters}`
-                      : `${entry.total_rosters} teams`
-                  }
-                </span>
+                <span>{financeResultLabel(entry)}</span>
               </div>
               <div>
                 <span>Net</span>
@@ -763,11 +771,7 @@ function FinanceSeasonCard({
             {entry.league_name}
           </h2>
           <p className="finance-card-subtitle">
-            {
-              entry.finish_place !== null
-                ? `Finish ${ordinal(entry.finish_place)} of ${entry.total_rosters}`
-                : `${entry.total_rosters} teams`
-            }
+            {financeResultLabel(entry)}
             {
               entry.points_for !== null
                 ? ` · PF ${formatNumber(entry.points_for)}`
