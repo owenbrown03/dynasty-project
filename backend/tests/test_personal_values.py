@@ -8,6 +8,7 @@ from app.services.personal_values import (
 def test_merge_saved_projection_seasons_returns_new_frozen_items():
     merged = _merge_saved_projection_seasons(
         base_season=2026,
+        end_season=2029,
         default_position_rank=48,
         saved_projections=[
             SimpleNamespace(

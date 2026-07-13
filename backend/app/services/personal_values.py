@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from dataclasses import dataclass
-from math import isclose
+from math import ceil, isclose
 from types import SimpleNamespace
 
 from fastapi import HTTPException, status
@@ -56,7 +56,6 @@ DYNASTY_POSITIONS = {
 CURVE_VERSION = "league_context_v1"
 CURVE_BAND_RADIUS = 5
 HISTORICAL_LOOKBACK_SEASONS = 5
-FUTURE_PROJECTION_YEARS = 3
 POOL_POSITIONS = [
     "QB",
     "RB",
@@ -318,15 +317,16 @@ def _weighted_redraft_values(
 def _build_default_projection_seasons(
     *,
     base_season: int,
+    end_season: int,
     default_position_rank: int | None,
 ) -> list[PersonalProjectionSeasonItem]:
     seasons: list[PersonalProjectionSeasonItem] = []
 
     for season in range(
         base_season,
-        base_season + FUTURE_PROJECTION_YEARS + 1,
+        end_season + 1,
     ):
-        if season == base_season and default_position_rank is not None:
+        if default_position_rank is not None:
             outcomes = [
                 {
                     "position_rank": default_position_rank,
@@ -346,6 +346,27 @@ def _build_default_projection_seasons(
         )
 
     return seasons
+
+
+def _get_projection_end_season(
+    *,
+    base_season: int,
+    age: float | None,
+    position: str,
+) -> int:
+    if age is None or position not in DYNASTY_POSITIONS:
+        return base_season + 4
+
+    dynasty_service = build_dynasty_war_service()
+    expected = dynasty_service.projector.expected_games_service.calculate(
+        age=age,
+        position=position,
+    )
+    years_remaining = max(
+        ceil(expected.years_remaining),
+        1,
+    )
+    return base_season + years_remaining - 1
 
 
 def _compute_custom_metrics(
@@ -423,13 +444,14 @@ def _compute_custom_metrics(
 def _validate_projection_update(
     *,
     base_season: int,
+    end_season: int,
     payload: PersonalValueUpdateRequest,
 ) -> None:
     expected_seasons = {
         season
         for season in range(
             base_season,
-            base_season + FUTURE_PROJECTION_YEARS + 1,
+            end_season + 1,
         )
     }
 
@@ -439,13 +461,13 @@ def _validate_projection_update(
         if item.season not in expected_seasons:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Unsupported projection season.",
+                detail=f"{item.season} is not a supported projection season.",
             )
 
         if item.season in seen:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Duplicate season submitted.",
+                detail=f"{item.season} was submitted more than once.",
             )
 
         seen.add(item.season)
@@ -454,7 +476,7 @@ def _validate_projection_update(
             if len(item.outcomes) != 1:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Current season must have exactly one outcome.",
+                    detail=f"{item.season} must have exactly one current-year outcome.",
                 )
 
             if not isclose(
@@ -464,15 +486,8 @@ def _validate_projection_update(
             ):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Current season outcome must be 100%.",
+                    detail=f"{item.season} current-year probability must be 100%.",
                 )
-        else:
-            if len(item.outcomes) > 3:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Future seasons support up to three outcomes.",
-                )
-
         if item.outcomes:
             total_probability = sum(
                 float(outcome.probability)
@@ -486,20 +501,20 @@ def _validate_projection_update(
             ):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Season probabilities must total 100.",
+                    detail=f"{item.season} probabilities must total 100%.",
                 )
 
         for outcome in item.outcomes:
             if outcome.position_rank <= 0:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Position rank must be greater than zero.",
+                    detail=f"{item.season} position rank must be greater than zero.",
                 )
 
             if outcome.probability <= 0:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Probability must be greater than zero.",
+                    detail=f"{item.season} probability must be greater than zero.",
                 )
 
 
@@ -822,12 +837,14 @@ def _build_delta_values(
 def _merge_saved_projection_seasons(
     *,
     base_season: int,
+    end_season: int,
     default_position_rank: int | None,
     saved_projections,
     outcomes_by_projection_id: dict[int, list],
 ) -> list[PersonalProjectionSeasonItem]:
     base_seasons = _build_default_projection_seasons(
         base_season=base_season,
+        end_season=end_season,
         default_position_rank=default_position_rank,
     )
     saved_payload_by_season: dict[int, tuple[list[dict[str, float]], bool]] = {}
@@ -876,6 +893,7 @@ def _build_projection_context(
     *,
     player: Player,
     base_season: int,
+    end_season: int,
     default_position_rank: int | None,
     saved_projections,
     outcomes_by_projection_id: dict[int, list],
@@ -883,6 +901,7 @@ def _build_projection_context(
 ) -> _ProjectionContext:
     seasons = _merge_saved_projection_seasons(
         base_season=base_season,
+        end_season=end_season,
         default_position_rank=default_position_rank,
         saved_projections=saved_projections,
         outcomes_by_projection_id=outcomes_by_projection_id,
@@ -980,6 +999,11 @@ async def get_personal_value_detail(
         underdog_position_rank,
     )
     current_season = int(league.season)
+    end_season = _get_projection_end_season(
+        base_season=current_season,
+        age=calculate_age(player.birth_date),
+        position=player.position,
+    )
 
     saved = await get_personal_projections_for_player(
         db=ctx.db,
@@ -1001,6 +1025,7 @@ async def get_personal_value_detail(
     projection_context = _build_projection_context(
         player=player,
         base_season=current_season,
+        end_season=end_season,
         default_position_rank=default_position_rank,
         saved_projections=saved,
         outcomes_by_projection_id=outcomes_by_projection_id,
@@ -1123,7 +1148,7 @@ async def get_personal_value_pool(
             season
             for season in range(
                 current_season,
-                current_season + FUTURE_PROJECTION_YEARS + 1,
+                current_season + 16,
             )
         ],
     )
@@ -1179,6 +1204,11 @@ async def get_personal_value_pool(
         projection_context = _build_projection_context(
             player=player,
             base_season=current_season,
+            end_season=_get_projection_end_season(
+                base_season=current_season,
+                age=calculate_age(player.birth_date),
+                position=player.position,
+            ),
             default_position_rank=default_position_rank,
             saved_projections=saved_for_player,
             outcomes_by_projection_id=outcomes_by_projection_id,
@@ -1269,9 +1299,15 @@ async def save_personal_value_detail(
         underdog_position_rank,
     )
     base_season = int(league.season)
+    end_season = _get_projection_end_season(
+        base_season=base_season,
+        age=calculate_age(player.birth_date),
+        position=player.position,
+    )
 
     _validate_projection_update(
         base_season=base_season,
+        end_season=end_season,
         payload=payload,
     )
 
@@ -1282,7 +1318,7 @@ async def save_personal_value_detail(
 
     for season in range(
         base_season,
-        base_season + FUTURE_PROJECTION_YEARS + 1,
+        end_season + 1,
     ):
         season_update = submitted_by_season.get(
             season,
@@ -1293,8 +1329,7 @@ async def save_personal_value_detail(
 
         current_default_outcomes = (
             [(default_position_rank, 100.0)]
-            if season == base_season
-            and default_position_rank is not None
+            if default_position_rank is not None
             else []
         )
         submitted_outcomes = [
@@ -1306,8 +1341,6 @@ async def save_personal_value_detail(
         ]
         is_customized = (
             submitted_outcomes != current_default_outcomes
-            if season == base_season
-            else bool(submitted_outcomes)
         )
 
         await upsert_personal_projection(
