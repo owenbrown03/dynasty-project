@@ -3,8 +3,12 @@ from __future__ import annotations
 from statistics import mean
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 
 from app.core.context import Context
+from app.crud.auth.user import (
+    get_draft_pick_projection_settings,
+)
 from app.crud.sleeper.personal import (
     delete_finance_entry,
     get_commissioner_dues_by_key,
@@ -17,8 +21,10 @@ from app.crud.sleeper.personal import (
 )
 from app.crud.sleeper.league import (
     get_playoff_matchups_by_league_ids,
+    get_sync_states,
 )
-from app.crud.sleeper.roster import get_owned_roster_rows
+from app.crud.value import get_player_values
+from app.analytics.war.redraft.singleton import war_service
 from app.schemas.finance import (
     FinanceDefaultSettings,
     FinanceLeagueDefaultEntry,
@@ -29,6 +35,17 @@ from app.schemas.finance import (
     FinanceSeasonReset,
     FinanceSummaryResponse,
     FinanceDefaultsUpdate,
+)
+from app.models.db.sleeper.api import League, Roster
+from app.services.draft.projection import (
+    build_projected_pick_slots_by_roster_id,
+)
+from app.services.leagues.models import LeaguePlayer
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_sleeper_user_id,
+)
+from app.services.leagues.details import (
+    calculate_projected_starter_points,
 )
 
 
@@ -81,19 +98,95 @@ def calculate_projected_winnings(
     )
 
 
+def build_seed_finish_probabilities(
+    *,
+    seed: int | None,
+    total_rosters: int,
+    playoff_teams: int,
+) -> dict[int, float]:
+    if (
+        seed is None
+        or seed <= 0
+        or total_rosters <= 0
+    ):
+        return {}
+
+    candidate_places = set(range(1, total_rosters + 1))
+
+    # Playoff teams can plausibly land anywhere in the money range;
+    # non-playoff seeds are centered around their projected seed.
+    if playoff_teams > 0 and seed <= playoff_teams:
+        candidate_places.update(range(1, playoff_teams + 1))
+
+    weighted: dict[int, float] = {}
+
+    for place in candidate_places:
+        distance = abs(place - seed)
+        weight = 1.0 / ((distance + 1) ** 2)
+
+        if (
+            playoff_teams > 0
+            and seed <= playoff_teams
+            and place <= playoff_teams
+        ):
+            weight *= 1.35
+
+        weighted[place] = weight
+
+    total_weight = sum(weighted.values())
+    if total_weight <= 0:
+        return {}
+
+    return {
+        place: weight / total_weight
+        for place, weight in weighted.items()
+    }
+
+
+def calculate_expected_winnings_from_seed(
+    *,
+    payout_structure: dict[str, float] | None,
+    projected_seed: int | None,
+    total_rosters: int,
+    playoff_teams: int,
+) -> float | None:
+    normalized_payouts = normalize_payout_structure(
+        payout_structure,
+    )
+
+    if not normalized_payouts:
+        return None
+
+    probabilities = build_seed_finish_probabilities(
+        seed=projected_seed,
+        total_rosters=total_rosters,
+        playoff_teams=playoff_teams,
+    )
+
+    if not probabilities:
+        return None
+
+    expected = 0.0
+
+    for place_key, payout in normalized_payouts.items():
+        expected += payout * probabilities.get(
+            int(place_key),
+            0.0,
+        )
+
+    return round(
+        expected,
+        2,
+    )
+
+
 def calculate_rank(
     *,
-    owned_rows,
-    league_id: str,
+    rosters: list[Roster],
     roster_id: int,
 ) -> int | None:
-    other_rosters = [
-        other_roster
-        for other_roster, other_league in owned_rows
-        if other_league.league_id == league_id
-    ]
     ordered = sorted(
-        other_rosters,
+        rosters,
         key=lambda other: (
             other.wins,
             -other.losses,
@@ -113,6 +206,176 @@ def calculate_rank(
         ),
         None,
     )
+
+
+async def get_rosters_by_league_id(
+    *,
+    ctx: Context,
+    league_ids: list[str],
+) -> dict[str, list[Roster]]:
+    if not league_ids:
+        return {}
+
+    result = await ctx.db.execute(
+        select(Roster).where(
+            Roster.league_id.in_(league_ids),
+        )
+    )
+    rosters_by_league_id: dict[str, list[Roster]] = {}
+
+    for roster in result.scalars().all():
+        rosters_by_league_id.setdefault(
+            roster.league_id,
+            [],
+        ).append(roster)
+
+    return rosters_by_league_id
+
+
+async def build_finance_projected_seed_by_league_roster(
+    *,
+    ctx: Context,
+    leagues_by_id: dict[str, League],
+    rosters_by_league_id: dict[str, list[Roster]],
+) -> dict[tuple[str, int], int]:
+    sync_states = await get_sync_states(
+        ctx.db,
+        list(leagues_by_id.keys()),
+    )
+    settings = get_draft_pick_projection_settings(
+        ctx.site_user,
+    )
+
+    projected_seed_by_key: dict[
+        tuple[str, int],
+        int,
+    ] = {}
+
+    for league_id, league in leagues_by_id.items():
+        rosters = rosters_by_league_id.get(
+            league_id,
+            [],
+        )
+        if not rosters:
+            continue
+
+        current_week = (
+            sync_states[league_id].last_synced_week
+            if league_id in sync_states
+            else 0
+        )
+
+        redraft_war_players = await war_service.calculate(
+            db=ctx.db,
+            redis=ctx.redis,
+            league_id=league_id,
+        )
+        war_lookup = {
+            player.player_id: player
+            for player in redraft_war_players
+        }
+        player_ids = [
+            player_id
+            for roster in rosters
+            for player_id in (roster.players or [])
+        ]
+        player_values = await get_player_values(
+            ctx.db,
+            player_ids,
+            redraft_war_players,
+        )
+        player_value_by_id = {
+            player.player_id: player
+            for player in player_values
+        }
+
+        projected_points_by_roster_id: dict[int, float] = {}
+        redraft_starter_war_by_roster_id: dict[int, float] = {}
+        redraft_roster_war_by_roster_id: dict[int, float] = {}
+
+        for roster in rosters:
+            roster_players: list[LeaguePlayer] = []
+
+            for player_id in roster.players or []:
+                player_value = player_value_by_id.get(
+                    player_id,
+                )
+                if player_value is None:
+                    continue
+
+                roster_players.append(
+                    LeaguePlayer(
+                        player_id=player_value.player_id,
+                        name=player_value.name,
+                        position=player_value.position,
+                        team=player_value.team,
+                        projected_points=(
+                            round(
+                                war_lookup[player_id].projection,
+                                2,
+                            )
+                            if player_id in war_lookup
+                            else None
+                        ),
+                        redraft_starter_war=(
+                            player_value.redraft_starter_war
+                        ),
+                        redraft_roster_war=(
+                            player_value.redraft_roster_war
+                        ),
+                    )
+                )
+
+            projected_points_by_roster_id[
+                roster.roster_id
+            ] = calculate_projected_starter_points(
+                roster_positions=league.roster_positions or [],
+                players=roster_players,
+            )
+            redraft_starter_war_by_roster_id[
+                roster.roster_id
+            ] = round(
+                sum(
+                    player.redraft_starter_war or 0.0
+                    for player in roster_players
+                ),
+                2,
+            )
+            redraft_roster_war_by_roster_id[
+                roster.roster_id
+            ] = round(
+                sum(
+                    player.redraft_roster_war or 0.0
+                    for player in roster_players
+                ),
+                2,
+            )
+
+        projection = build_projected_pick_slots_by_roster_id(
+            league=league,
+            rosters=rosters,
+            current_week=current_week,
+            projected_points_by_roster_id=(
+                projected_points_by_roster_id
+            ),
+            redraft_starter_war_by_roster_id=(
+                redraft_starter_war_by_roster_id
+            ),
+            redraft_roster_war_by_roster_id=(
+                redraft_roster_war_by_roster_id
+            ),
+            settings=settings,
+        )
+
+        for roster_id, seed in projection.slots_by_roster_id.items():
+            projected_seed_by_key[
+                (
+                    league_id,
+                    roster_id,
+                )
+            ] = seed
+
+    return projected_seed_by_key
 
 
 def calculate_final_place_from_brackets(
@@ -440,6 +703,7 @@ def _resolve_entry_settings(
 def _build_historical_payouts_by_family_and_rank(
     *,
     owned_rows,
+    rosters_by_league_id,
     resolved_settings_by_key,
     family_key_by_league_id,
     playoff_matchups_by_league_id,
@@ -460,8 +724,10 @@ def _build_historical_payouts_by_family_and_rank(
             continue
 
         rank = calculate_rank(
-            owned_rows=owned_rows,
-            league_id=league.league_id,
+            rosters=rosters_by_league_id.get(
+                league.league_id,
+                [],
+            ),
             roster_id=roster.roster_id,
         )
         finish_place = (
@@ -517,15 +783,41 @@ async def get_finance_summary(
         ctx,
     )
 
-    owned_rows = await get_owned_roster_rows(
+    if not ctx.connection.sleeper_user_id:
+        return FinanceSummaryResponse()
+
+    visible_owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
         db=ctx.db,
-        connection=ctx.connection,
+        sleeper_user_id=ctx.connection.sleeper_user_id,
+        site_user_id=ctx.site_user.id,
     )
+    owned_rows = [
+        (
+            row.roster,
+            row.league,
+        )
+        for row in visible_owned_rows
+    ]
 
     league_ids = [
         league.league_id
         for _, league in owned_rows
     ]
+    rosters_by_league_id = await get_rosters_by_league_id(
+        ctx=ctx,
+        league_ids=league_ids,
+    )
+    leagues_by_id = {
+        league.league_id: league
+        for _, league in owned_rows
+    }
+    projected_seed_by_league_roster = (
+        await build_finance_projected_seed_by_league_roster(
+            ctx=ctx,
+            leagues_by_id=leagues_by_id,
+            rosters_by_league_id=rosters_by_league_id,
+        )
+    )
     family_key_by_league_id = _build_league_family_key_by_league_id(
         owned_rows,
     )
@@ -602,6 +894,7 @@ async def get_finance_summary(
     historical_payouts_by_family_and_rank = (
         _build_historical_payouts_by_family_and_rank(
             owned_rows=owned_rows,
+            rosters_by_league_id=rosters_by_league_id,
             resolved_settings_by_key=resolved_settings_by_key,
             family_key_by_league_id=family_key_by_league_id,
             playoff_matchups_by_league_id=(
@@ -624,8 +917,10 @@ async def get_finance_summary(
         )
         rank = (
             calculate_rank(
-                owned_rows=owned_rows,
-                league_id=league.league_id,
+                rosters=rosters_by_league_id.get(
+                    league.league_id,
+                    [],
+                ),
                 roster_id=roster.roster_id,
             )
             if league.total_rosters > 0
@@ -641,6 +936,16 @@ async def get_finance_summary(
             )
             if league.status == "complete"
             else rank
+        ) or rank
+        projected_finish_place = (
+            projected_seed_by_league_roster.get(
+                (
+                    league.league_id,
+                    roster.roster_id,
+                )
+            )
+            if league.status in {"in_season", "post_season"}
+            else finish_place
         ) or rank
 
         configured_winnings_amount = payout_for_rank(
@@ -661,15 +966,29 @@ async def get_finance_summary(
             historical_payouts_by_family_and_rank.get(
                 (
                     family_key,
-                    finish_place,
+                    projected_finish_place,
                 ),
                 [],
             )
-            if finish_place is not None
+            if projected_finish_place is not None
             else []
         )
 
-        if configured_winnings_amount is not None:
+        expected_winnings_amount = (
+            calculate_expected_winnings_from_seed(
+                payout_structure=resolved["payout_structure"],
+                projected_seed=projected_finish_place,
+                total_rosters=league.total_rosters,
+                playoff_teams=league.playoff_teams,
+            )
+            if league.status in {"in_season", "post_season"}
+            else None
+        )
+
+        if expected_winnings_amount is not None:
+            projected_winnings_amount = expected_winnings_amount
+            projected_winnings_source = "seed_probability"
+        elif configured_winnings_amount is not None:
             projected_winnings_amount = round(
                 configured_winnings_amount,
                 2,
@@ -686,7 +1005,7 @@ async def get_finance_summary(
                 buy_in_amount=resolved["buy_in_amount"],
                 total_rosters=league.total_rosters,
                 playoff_teams=league.playoff_teams,
-                rank=rank,
+                rank=projected_finish_place,
             )
 
         entries.append(
@@ -699,7 +1018,7 @@ async def get_finance_summary(
                 total_rosters=league.total_rosters,
                 rank=rank,
                 finish_place=finish_place,
-                projected_finish_place=rank,
+                projected_finish_place=projected_finish_place,
                 wins=roster.wins,
                 losses=roster.losses,
                 points_for=round(roster.fpts, 2),

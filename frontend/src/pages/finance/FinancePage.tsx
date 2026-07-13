@@ -246,6 +246,21 @@ function sourceLabel(
   }
 }
 
+function projectionSourceLabel(
+  source: FinanceLeagueSeasonEntry['projected_winnings_source'],
+) {
+  switch (source) {
+    case 'seed_probability':
+      return 'Seed probability';
+    case 'historical_rank':
+      return 'Historical finish';
+    case 'configured_place':
+      return 'Configured place';
+    default:
+      return 'Heuristic';
+  }
+}
+
 
 function buildLinePoints(
   values: number[],
@@ -570,7 +585,7 @@ function FinanceSeasonCard({
             }
           </span>
           <strong>{formatCurrency(entry.projected_winnings_amount)}</strong>
-          <small>{entry.projected_winnings_source}</small>
+          <small>{projectionSourceLabel(entry.projected_winnings_source)}</small>
         </div>
       </div>
 
