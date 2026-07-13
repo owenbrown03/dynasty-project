@@ -47,6 +47,8 @@ from app.services.leagues.details import (
     calculate_projected_starter_points,
 )
 
+SEED_PROBABILITY_SIGNAL_WEIGHT = 0.3
+
 
 def _require_finance_context(
     ctx: Context,
@@ -136,9 +138,22 @@ def build_seed_finish_probabilities(
     if total_weight <= 0:
         return {}
 
-    return {
+    seeded_probabilities = {
         place: weight / total_weight
         for place, weight in weighted.items()
+    }
+    baseline_probability = 1.0 / total_rosters
+
+    return {
+        place: (
+            baseline_probability
+            * (1.0 - SEED_PROBABILITY_SIGNAL_WEIGHT)
+        )
+        + (
+            seeded_probabilities.get(place, 0.0)
+            * SEED_PROBABILITY_SIGNAL_WEIGHT
+        )
+        for place in candidate_places
     }
 
 
@@ -366,13 +381,16 @@ async def build_finance_projected_seed_by_league_roster(
             settings=settings,
         )
 
-        for roster_id, seed in projection.slots_by_roster_id.items():
+        for roster_id, draft_slot in projection.slots_by_roster_id.items():
             projected_seed_by_key[
                 (
                     league_id,
                     roster_id,
                 )
-            ] = seed
+            ] = max(
+                1,
+                league.total_rosters - draft_slot + 1,
+            )
 
     return projected_seed_by_key
 
@@ -943,7 +961,12 @@ async def get_finance_summary(
             )
             if league.status in {"in_season", "post_season"}
             else finish_place
-        ) or rank
+        )
+        if (
+            projected_finish_place is None
+            and league.status not in {"in_season", "post_season"}
+        ):
+            projected_finish_place = rank
 
         configured_winnings_amount = payout_for_rank(
             resolved["payout_structure"],
@@ -985,6 +1008,12 @@ async def get_finance_summary(
         if expected_winnings_amount is not None:
             projected_winnings_amount = expected_winnings_amount
             projected_winnings_source = "seed_probability"
+        elif (
+            league.status in {"in_season", "post_season"}
+            and projected_finish_place is None
+        ):
+            projected_winnings_amount = 0.0
+            projected_winnings_source = "no_projection"
         elif configured_winnings_amount is not None:
             projected_winnings_amount = round(
                 configured_winnings_amount,

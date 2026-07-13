@@ -39,6 +39,15 @@ type FinanceSeasonDraft = FinanceSettingsDraft & {
   isExcluded: boolean;
 };
 
+type FinanceChartEntry = {
+  key: string;
+  label: string;
+  subLabel: string;
+  winningsAmount: number;
+  projectedWinningsAmount: number;
+  netAmount: number;
+};
+
 const TRACKER_VISIBLE_STATUSES = new Set([
   'pre_draft',
   'drafting',
@@ -256,6 +265,8 @@ function projectionSourceLabel(
       return 'Historical finish';
     case 'configured_place':
       return 'Configured place';
+    case 'no_projection':
+      return 'No projection';
     default:
       return 'Heuristic';
   }
@@ -287,24 +298,64 @@ function buildLinePoints(
   }).join(' ');
 }
 
+function buildSeasonChartEntries(
+  entries: FinanceLeagueSeasonEntry[],
+): FinanceChartEntry[] {
+  const bySeason = new Map<
+    string,
+    {
+      winningsAmount: number;
+      projectedWinningsAmount: number;
+      netAmount: number;
+      leagueCount: number;
+    }
+  >();
+
+  for (const entry of entries) {
+    const current = bySeason.get(entry.season) ?? {
+      winningsAmount: 0,
+      projectedWinningsAmount: 0,
+      netAmount: 0,
+      leagueCount: 0,
+    };
+
+    current.winningsAmount += entry.winnings_amount;
+    current.projectedWinningsAmount += entry.projected_winnings_amount;
+    current.netAmount += entry.net_amount;
+    current.leagueCount += 1;
+
+    bySeason.set(entry.season, current);
+  }
+
+  return Array.from(bySeason.entries())
+    .map(([season, totals]) => ({
+      key: season,
+      label: season,
+      subLabel: `${totals.leagueCount} ${
+        totals.leagueCount === 1 ? 'league' : 'leagues'
+      }`,
+      winningsAmount: totals.winningsAmount,
+      projectedWinningsAmount: totals.projectedWinningsAmount,
+      netAmount: totals.netAmount,
+    }))
+    .sort((left, right) => (
+      Number(left.label) - Number(right.label)
+    ));
+}
+
 
 function FinanceTrendChart({
   entries,
 }: {
-  entries: FinanceLeagueSeasonEntry[];
+  entries: FinanceChartEntry[];
 }) {
-  const chartEntries = [...entries].sort(
-    (left, right) => (
-      Number(left.season) - Number(right.season)
-    ),
-  );
   const actualPoints = buildLinePoints(
-    chartEntries.map((entry) => entry.winnings_amount),
+    entries.map((entry) => entry.winningsAmount),
     320,
     140,
   );
   const projectedPoints = buildLinePoints(
-    chartEntries.map((entry) => entry.projected_winnings_amount),
+    entries.map((entry) => entry.projectedWinningsAmount),
     320,
     140,
   );
@@ -348,9 +399,9 @@ function FinanceTrendChart({
 
         <div className="finance-chart-label-row">
           {
-            chartEntries.map((entry) => (
-              <span key={getDraftKey(entry)}>
-                {entry.season}
+            entries.map((entry) => (
+              <span key={entry.key}>
+                {entry.label}
               </span>
             ))
           }
@@ -364,15 +415,10 @@ function FinanceTrendChart({
 function FinanceNetChart({
   entries,
 }: {
-  entries: FinanceLeagueSeasonEntry[];
+  entries: FinanceChartEntry[];
 }) {
-  const chartEntries = [...entries].sort(
-    (left, right) => (
-      Number(left.season) - Number(right.season)
-    ),
-  );
   const maxMagnitude = Math.max(
-    ...chartEntries.map((entry) => Math.abs(entry.net_amount)),
+    ...entries.map((entry) => Math.abs(entry.netAmount)),
     1,
   );
 
@@ -387,31 +433,31 @@ function FinanceNetChart({
 
       <div className="finance-bar-chart">
         {
-          chartEntries.map((entry) => (
+          entries.map((entry) => (
             <div
-              key={getDraftKey(entry)}
+              key={entry.key}
               className="finance-bar-row"
             >
               <div className="finance-bar-copy">
-                <strong>{entry.season}</strong>
-                <span>{entry.league_name}</span>
+                <strong>{entry.label}</strong>
+                <span>{entry.subLabel}</span>
               </div>
 
               <div className="finance-bar-track">
                 <div
                   className={
-                    entry.net_amount >= 0
+                    entry.netAmount >= 0
                       ? 'finance-bar finance-bar-positive'
                       : 'finance-bar finance-bar-negative'
                   }
                   style={{
-                    width: `${(Math.abs(entry.net_amount) / maxMagnitude) * 100}%`,
+                    width: `${(Math.abs(entry.netAmount) / maxMagnitude) * 100}%`,
                   }}
                 />
               </div>
 
               <strong className="finance-bar-value">
-                {formatCurrency(entry.net_amount)}
+                {formatCurrency(entry.netAmount)}
               </strong>
             </div>
           ))
@@ -577,15 +623,16 @@ function FinanceSeasonCard({
           <small>{sourceLabel(entry.payout_source)}</small>
         </div>
         <div>
-          <span>
+          <span>Expected payout</span>
+          <strong>{formatCurrency(entry.projected_winnings_amount)}</strong>
+          <small>
             {
               entry.projected_finish_place !== null
-                ? `Projected ${ordinal(entry.projected_finish_place)} payout`
-                : 'Projected payout'
+                ? `Projected seed ${ordinal(entry.projected_finish_place)} · `
+                : ''
             }
-          </span>
-          <strong>{formatCurrency(entry.projected_winnings_amount)}</strong>
-          <small>{projectionSourceLabel(entry.projected_winnings_source)}</small>
+            {projectionSourceLabel(entry.projected_winnings_source)}
+          </small>
         </div>
       </div>
 
@@ -765,6 +812,11 @@ export function FinancePage() {
       )) ?? []
     ),
     [chartSeason, finance.data],
+  );
+
+  const seasonChartEntries = useMemo(
+    () => buildSeasonChartEntries(chartEntries),
+    [chartEntries],
   );
 
   const globalDraftDirty = useMemo(() => (
@@ -1322,17 +1374,17 @@ export function FinancePage() {
                         </article>
 
                         <article className="finance-summary-card">
-                          <span>Projected current payouts</span>
+                          <span>Expected payouts</span>
                           <strong>{formatCurrency(overviewSummary.projectedCurrentWinnings)}</strong>
                         </article>
                       </section>
 
                       <section className="finance-chart-grid">
                         <FinanceTrendChart
-                          entries={chartEntries}
+                          entries={seasonChartEntries}
                         />
                         <FinanceNetChart
-                          entries={chartEntries}
+                          entries={seasonChartEntries}
                         />
                       </section>
                     </>
