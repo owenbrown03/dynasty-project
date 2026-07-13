@@ -1,5 +1,6 @@
 import './MyValuesPage.css';
 
+import { AxiosError } from 'axios';
 import {
   useDeferredValue,
   useEffect,
@@ -26,16 +27,59 @@ import type {
 import { notify } from '@/utils/notify';
 import { getPositionColor } from '@/utils/positions';
 
-
-type SearchSortKey =
+type SortColumn =
+  | 'player'
+  | 'team'
+  | 'position'
+  | 'underdog_rank'
   | 'ktc'
   | 'fantasycalc'
-  | 'war';
+  | 'market_war'
+  | 'my_war'
+  | 'delta';
+
+type SortDirection =
+  | 'asc'
+  | 'desc';
+
+type FilterColumn = SortColumn;
+
+type FilterOperator =
+  | 'contains'
+  | 'equals'
+  | 'gt'
+  | 'lt';
+
+interface TableFilter {
+  id: number;
+  column: FilterColumn;
+  operator: FilterOperator;
+  value: string;
+}
+
+const POSITION_ORDER: Record<string, number> = {
+  QB: 0,
+  RB: 1,
+  WR: 2,
+  TE: 3,
+};
+
+const SORT_LABELS: Record<SortColumn, string> = {
+  player: 'Player',
+  team: 'Team',
+  position: 'Position',
+  underdog_rank: 'Underdog rank',
+  ktc: 'KTC',
+  fantasycalc: 'FantasyCalc',
+  market_war: 'Market dynasty roster WAR',
+  my_war: 'My dynasty roster WAR',
+  delta: 'Delta',
+};
 
 
-function getDefaultSearchSort(
+function getDefaultSortColumn(
   preference: ValueBasis,
-): SearchSortKey {
+): SortColumn {
   if (preference === 'fantasycalc') {
     return 'fantasycalc';
   }
@@ -44,7 +88,7 @@ function getDefaultSearchSort(
     return 'ktc';
   }
 
-  return 'war';
+  return 'my_war';
 }
 
 
@@ -70,20 +114,155 @@ function formatMarketNumber(
 }
 
 
-function getSortMetricFromPoolItem(
-  item: PersonalValuePoolItem,
-  sortKey: SearchSortKey,
+function parseUnderdogRank(
+  value: string | null | undefined,
 ) {
-  if (sortKey === 'fantasycalc') {
-    return item.player.fc_value ?? Number.NEGATIVE_INFINITY;
+  if (!value) {
+    return Number.POSITIVE_INFINITY;
   }
 
-  if (sortKey === 'war') {
-    return item.custom_values.dynasty_roster_war
-      ?? Number.NEGATIVE_INFINITY;
+  const match = value.match(/\d+/);
+  return match
+    ? Number(match[0])
+    : Number.POSITIVE_INFINITY;
+}
+
+
+function getItemValueByColumn(
+  item: PersonalValuePoolItem,
+  column: SortColumn,
+) {
+  switch (column) {
+    case 'player':
+      return item.player.name;
+    case 'team':
+      return item.player.team ?? '';
+    case 'position':
+      return item.player.position;
+    case 'underdog_rank':
+      return parseUnderdogRank(
+        item.player.underdog_position_rank,
+      );
+    case 'ktc':
+      return item.player.ktc_value ?? Number.NEGATIVE_INFINITY;
+    case 'fantasycalc':
+      return item.player.fc_value ?? Number.NEGATIVE_INFINITY;
+    case 'market_war':
+      return item.market_values.dynasty_roster_war ?? Number.NEGATIVE_INFINITY;
+    case 'my_war':
+      return item.custom_values.dynasty_roster_war ?? Number.NEGATIVE_INFINITY;
+    case 'delta':
+      return item.delta_values.dynasty_roster_war ?? Number.NEGATIVE_INFINITY;
+  }
+}
+
+
+function comparePoolItems(
+  left: PersonalValuePoolItem,
+  right: PersonalValuePoolItem,
+  column: SortColumn,
+  direction: SortDirection,
+) {
+  const positionDiff = (
+    (POSITION_ORDER[left.player.position] ?? 99)
+    - (POSITION_ORDER[right.player.position] ?? 99)
+  );
+
+  if (positionDiff !== 0) {
+    return positionDiff;
   }
 
-  return item.player.ktc_value ?? Number.NEGATIVE_INFINITY;
+  const leftValue = getItemValueByColumn(
+    left,
+    column,
+  );
+  const rightValue = getItemValueByColumn(
+    right,
+    column,
+  );
+
+  if (
+    typeof leftValue === 'string'
+    && typeof rightValue === 'string'
+  ) {
+    const comparison = leftValue.localeCompare(
+      rightValue,
+    );
+    return direction === 'asc'
+      ? comparison
+      : comparison * -1;
+  }
+
+  const numericComparison = (
+    Number(leftValue)
+    - Number(rightValue)
+  );
+
+  if (numericComparison === 0) {
+    return left.player.name.localeCompare(
+      right.player.name,
+    );
+  }
+
+  return direction === 'asc'
+    ? numericComparison
+    : numericComparison * -1;
+}
+
+
+function itemMatchesFilter(
+  item: PersonalValuePoolItem,
+  filter: TableFilter,
+) {
+  const rawValue = getItemValueByColumn(
+    item,
+    filter.column,
+  );
+
+  if (
+    filter.operator === 'contains'
+    || filter.operator === 'equals'
+  ) {
+    const left = String(rawValue).toLowerCase();
+    const right = filter.value.trim().toLowerCase();
+
+    if (!right) {
+      return true;
+    }
+
+    return filter.operator === 'contains'
+      ? left.includes(right)
+      : left === right;
+  }
+
+  const target = Number(filter.value);
+
+  if (Number.isNaN(target)) {
+    return true;
+  }
+
+  const numericValue = Number(rawValue);
+
+  if (filter.operator === 'gt') {
+    return numericValue > target;
+  }
+
+  return numericValue < target;
+}
+
+
+function getErrorMessage(
+  error: unknown,
+) {
+  if (error instanceof AxiosError) {
+    const detail = error.response?.data?.detail;
+
+    if (typeof detail === 'string') {
+      return detail;
+    }
+  }
+
+  return 'Unable to save personal projections.';
 }
 
 
@@ -172,10 +351,18 @@ export const MyValuesPage = () => {
   const [leagueId, setLeagueId] = useState('');
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [poolFilter, setPoolFilter] = useState('');
-  const [searchSort, setSearchSort] = useState<SearchSortKey>(
-    getDefaultSearchSort(valuePreference.preference),
+  const [searchSort, setSearchSort] = useState<SortColumn>(
+    getDefaultSortColumn(valuePreference.preference),
   );
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [tableFilters, setTableFilters] = useState<TableFilter[]>([
+    {
+      id: 1,
+      column: 'player',
+      operator: 'contains',
+      value: '',
+    },
+  ]);
   const deferredSearchTerm = useDeferredValue(
     searchTerm,
   );
@@ -212,7 +399,7 @@ export const MyValuesPage = () => {
 
   useEffect(() => {
     setSearchSort(
-      getDefaultSearchSort(
+      getDefaultSortColumn(
         valuePreference.preference,
       ),
     );
@@ -258,14 +445,16 @@ export const MyValuesPage = () => {
       const leftMetric = (
         searchSort === 'fantasycalc'
           ? left.fc_value
-          : searchSort === 'war'
+          : searchSort === 'my_war'
+            || searchSort === 'market_war'
             ? left.dynasty_roster_war
             : left.ktc_value
       ) ?? Number.NEGATIVE_INFINITY;
       const rightMetric = (
         searchSort === 'fantasycalc'
           ? right.fc_value
-          : searchSort === 'war'
+          : searchSort === 'my_war'
+            || searchSort === 'market_war'
             ? right.dynasty_roster_war
             : right.ktc_value
       ) ?? Number.NEGATIVE_INFINITY;
@@ -285,55 +474,34 @@ export const MyValuesPage = () => {
     searchSort,
   ]);
 
-  const filteredPoolGroups = useMemo(() => {
-    const normalizedFilter = poolFilter
-      .trim()
-      .toLowerCase();
-    const groups = pool.data?.groups ?? [];
+  const filteredPoolItems = useMemo(() => {
+    const activeFilters = tableFilters.filter(
+      (filter) => filter.value.trim().length > 0,
+    );
+    const items = [...poolItems].filter((item) =>
+      activeFilters.every((filter) =>
+        itemMatchesFilter(
+          item,
+          filter,
+        ),
+      ),
+    );
 
-    return groups
-      .map((group) => {
-        const players = [...group.players]
-          .filter((item) => {
-            if (!normalizedFilter) {
-              return true;
-            }
+    items.sort((left, right) =>
+      comparePoolItems(
+        left,
+        right,
+        searchSort,
+        sortDirection,
+      ),
+    );
 
-            const haystack = [
-              item.player.name,
-              item.player.team ?? '',
-              item.player.position,
-              item.player.underdog_position_rank ?? '',
-            ]
-              .join(' ')
-              .toLowerCase();
-
-            return haystack.includes(
-              normalizedFilter,
-            );
-          });
-
-        players.sort((left, right) => left.player.name.localeCompare(right.player.name));
-        players.sort((left, right) => (
-          getSortMetricFromPoolItem(
-            right,
-            searchSort,
-          ) - getSortMetricFromPoolItem(
-            left,
-            searchSort,
-          )
-        ));
-
-        return {
-          ...group,
-          players,
-        };
-      })
-      .filter((group) => group.players.length > 0);
+    return items;
   }, [
-    pool.data,
-    poolFilter,
+    poolItems,
+    tableFilters,
     searchSort,
+    sortDirection,
   ]);
 
   const handleOutcomeChange = (
@@ -393,10 +561,6 @@ export const MyValuesPage = () => {
     setEditableSeasons((current) =>
       current.map((seasonItem) => {
         if (seasonItem.season !== season) {
-          return seasonItem;
-        }
-
-        if (seasonItem.outcomes.length >= 3) {
           return seasonItem;
         }
 
@@ -469,11 +633,78 @@ export const MyValuesPage = () => {
         },
       });
       notify.success('Personal projections saved.');
-    } catch {
+    } catch (error) {
       notify.error(
-        'Unable to save personal projections.',
+        getErrorMessage(error),
       );
     }
+  };
+
+  const addTableFilter = () => {
+    setTableFilters((current) => [
+      ...current,
+      {
+        id: Date.now(),
+        column: 'player',
+        operator: 'contains',
+        value: '',
+      },
+    ]);
+  };
+
+  const updateTableFilter = (
+    id: number,
+    updates: Partial<TableFilter>,
+  ) => {
+    setTableFilters((current) =>
+      current.map((filter) =>
+        filter.id === id
+          ? {
+            ...filter,
+            ...updates,
+          }
+          : filter,
+      ),
+    );
+  };
+
+  const removeTableFilter = (
+    id: number,
+  ) => {
+    setTableFilters((current) =>
+      current.length === 1
+        ? [
+          {
+            id: 1,
+            column: 'player',
+            operator: 'contains',
+            value: '',
+          },
+        ]
+        : current.filter((filter) => filter.id !== id),
+    );
+  };
+
+  const handleHeaderSort = (
+    column: SortColumn,
+  ) => {
+    if (searchSort === column) {
+      setSortDirection((current) =>
+        current === 'asc'
+          ? 'desc'
+          : 'asc',
+      );
+      return;
+    }
+
+    setSearchSort(column);
+    setSortDirection(
+      column === 'player'
+        || column === 'team'
+        || column === 'position'
+          ? 'asc'
+          : 'desc',
+    );
   };
 
   const selectedLeagueName = (
@@ -498,14 +729,13 @@ export const MyValuesPage = () => {
   const pageSummaryMetric = (
     searchSort === 'fantasycalc'
       ? 'FantasyCalc'
-      : searchSort === 'war'
+      : searchSort === 'my_war'
         ? 'My dynasty roster WAR'
-        : 'KTC'
+        : searchSort === 'market_war'
+          ? 'Market dynasty roster WAR'
+          : SORT_LABELS[searchSort]
   );
-  const filteredPoolCount = filteredPoolGroups.reduce(
-    (total, group) => total + group.players.length,
-    0,
-  );
+  const filteredPoolCount = filteredPoolItems.length;
 
   return (
     <div className="my-values-page">
@@ -576,38 +806,132 @@ export const MyValuesPage = () => {
           </div>
 
           <div className="my-values-pool-toolbar">
-            <label className="my-values-control my-values-control-grow">
-              <span>Filter table</span>
-              <input
-                value={poolFilter}
-                placeholder="Search player, team, rank"
-                onChange={(event) => {
-                  setPoolFilter(
-                    event.target.value,
-                  );
-                }}
-              />
-            </label>
-
             <label className="my-values-control">
               <span>Sort table by</span>
               <select
                 value={searchSort}
                 onChange={(event) => {
                   setSearchSort(
-                    event.target.value as SearchSortKey,
+                    event.target.value as SortColumn,
                   );
                 }}
               >
-                <option value="ktc">KTC</option>
-                <option value="fantasycalc">FantasyCalc</option>
-                <option value="war">My dynasty roster WAR</option>
+                {
+                  Object.entries(SORT_LABELS).map(([value, label]) => (
+                    <option
+                      key={value}
+                      value={value}
+                    >
+                      {label}
+                    </option>
+                  ))
+                }
+              </select>
+            </label>
+
+            <label className="my-values-control">
+              <span>Direction</span>
+              <select
+                value={sortDirection}
+                onChange={(event) => {
+                  setSortDirection(
+                    event.target.value as SortDirection,
+                  );
+                }}
+              >
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
               </select>
             </label>
           </div>
 
+          <div className="my-values-filter-stack">
+            <div className="my-values-filter-header">
+              <span>Table filters</span>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={addTableFilter}
+              >
+                Add filter
+              </button>
+            </div>
+
+            {
+              tableFilters.map((filter) => (
+                <div
+                  key={filter.id}
+                  className="my-values-filter-row"
+                >
+                  <select
+                    value={filter.column}
+                    onChange={(event) => {
+                      updateTableFilter(
+                        filter.id,
+                        {
+                          column: event.target.value as FilterColumn,
+                        },
+                      );
+                    }}
+                  >
+                    {
+                      Object.entries(SORT_LABELS).map(([value, label]) => (
+                        <option
+                          key={value}
+                          value={value}
+                        >
+                          {label}
+                        </option>
+                      ))
+                    }
+                  </select>
+
+                  <select
+                    value={filter.operator}
+                    onChange={(event) => {
+                      updateTableFilter(
+                        filter.id,
+                        {
+                          operator: event.target.value as FilterOperator,
+                        },
+                      );
+                    }}
+                  >
+                    <option value="contains">contains</option>
+                    <option value="equals">equals</option>
+                    <option value="gt">greater than</option>
+                    <option value="lt">less than</option>
+                  </select>
+
+                  <input
+                    value={filter.value}
+                    placeholder="Filter value"
+                    onChange={(event) => {
+                      updateTableFilter(
+                        filter.id,
+                        {
+                          value: event.target.value,
+                        },
+                      );
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={() => {
+                      removeTableFilter(filter.id);
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))
+            }
+          </div>
+
           <div className="my-values-pool-summary">
-            Showing {filteredPoolCount} players, grouped by position and sorted by {pageSummaryMetric}.
+            Showing {filteredPoolCount} players, position-grouped in one sheet and sorted by {pageSummaryMetric}.
           </div>
 
           {
@@ -619,41 +943,26 @@ export const MyValuesPage = () => {
           }
 
           {
-            !pool.loading && filteredPoolGroups.map((group) => (
-              <section
-                key={group.position}
-                className="my-values-position-group"
-              >
-                <div className="my-values-position-group-header">
-                  <span
-                    className="my-values-position-dot"
-                    style={{
-                      background: getPositionColor(
-                        group.position,
-                      ),
-                    }}
-                  />
-                  <h3>{group.position}</h3>
-                  <p>{group.players.length} players</p>
-                </div>
-
+            !pool.loading
+              ? (
                 <div className="my-values-table-wrap">
                   <table className="my-values-table">
                     <thead>
                       <tr>
-                        <th>Player</th>
-                        <th>Team</th>
-                        <th>UD Rank</th>
-                        <th>KTC</th>
-                        <th>FC</th>
-                        <th>Market D Ro</th>
-                        <th>My D Ro</th>
-                        <th>Delta</th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('player'); }}>Player</button></th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('position'); }}>Pos</button></th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('team'); }}>Team</button></th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('underdog_rank'); }}>UD Rank</button></th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('ktc'); }}>KTC</button></th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('fantasycalc'); }}>FC</button></th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('market_war'); }}>Market D Ro</button></th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('my_war'); }}>My D Ro</button></th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('delta'); }}>Delta</button></th>
                       </tr>
                     </thead>
                     <tbody>
                       {
-                        group.players.map((item) => (
+                        filteredPoolItems.map((item) => (
                           <tr
                             key={item.player.player_id}
                             className={
@@ -684,6 +993,18 @@ export const MyValuesPage = () => {
                                 </div>
                               </div>
                             </td>
+                            <td>
+                              <span
+                                style={{
+                                  color: getPositionColor(
+                                    item.player.position,
+                                  ),
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {item.player.position}
+                              </span>
+                            </td>
                             <td>{item.player.team ?? '--'}</td>
                             <td>{item.player.underdog_position_rank ?? '--'}</td>
                             <td>{formatMarketNumber(item.player.ktc_value)}</td>
@@ -703,8 +1024,8 @@ export const MyValuesPage = () => {
                     </tbody>
                   </table>
                 </div>
-              </section>
-            ))
+              )
+              : null
           }
         </aside>
 
@@ -934,7 +1255,7 @@ export const MyValuesPage = () => {
                                   <>
                                     <div className="my-values-season-actions">
                                       <p>
-                                        Add up to three weighted rank outcomes.
+                                        Every future season starts with the default rank for the rest of the career. Add more weighted outcomes only where you want a different distribution.
                                       </p>
                                       <button
                                         type="button"
@@ -944,7 +1265,6 @@ export const MyValuesPage = () => {
                                             season.season,
                                           );
                                         }}
-                                        disabled={season.outcomes.length >= 3}
                                       >
                                         Add outcome
                                       </button>
