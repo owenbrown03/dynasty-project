@@ -68,9 +68,16 @@
   gap: 6px;
 }
 
+.settings-field select,
+.settings-field input[type='number'] {
+  min-height: 48px;
+  font-size: 16px;
+}
+
 .settings-toggle-field input {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
+  accent-color: var(--color-link);
 }
 
 .settings-note {
@@ -92,6 +99,14 @@
   padding: 10px 12px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
+}
+
+.settings-method-swatch {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--color-link);
 }
 
 .settings-method-option strong {

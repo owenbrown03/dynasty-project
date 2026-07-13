@@ -10,6 +10,7 @@ import { useBootstrap } from '@/hooks/useBootstrap';
 import type {
   Bootstrap,
   DraftPickProjectionMethod,
+  DraftPickProjectionPhaseMethod,
   DraftPickProjectionSettings,
   ValueBasis,
 } from '@/types';
@@ -31,6 +32,30 @@ const DRAFT_PICK_PROJECTION_METHOD_OPTIONS: Array<{
     label: 'Reverse standings proxy',
     description: 'Uses record first, then points for and projected points as tiebreakers.',
   },
+  {
+    value: 'redraft_starter_war',
+    label: 'Reverse redraft starter WAR',
+    description: 'Projects earlier picks to rosters with lower total redraft starter WAR.',
+  },
+  {
+    value: 'redraft_roster_war',
+    label: 'Reverse redraft roster WAR',
+    description: 'Projects earlier picks to rosters with lower total redraft roster WAR.',
+  },
+];
+
+const DRAFT_PICK_PRE_SWITCH_OPTIONS: Array<{
+  value: DraftPickProjectionPhaseMethod;
+  label: string;
+}> = [
+  {
+    value: 'none',
+    label: 'No projection',
+  },
+  ...DRAFT_PICK_PROJECTION_METHOD_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.label,
+  })),
 ];
 
 export const SettingsPage = () => {
@@ -153,7 +178,7 @@ export const SettingsPage = () => {
         </div>
 
         <div className="settings-note">
-          These rules determine when next-year pick slots are projected and what method is used in league draft capital sections.
+          These rules determine whether next-year pick slots are projected, what method is used before a threshold week, and what method is used after that threshold.
         </div>
 
         <div className="settings-grid">
@@ -166,12 +191,16 @@ export const SettingsPage = () => {
               onChange={(event) => {
                 void saveDraftPickProjectionSettings({
                   enabled: event.target.checked,
-                  start_week: (
-                    draftPickProjectionSettings?.start_week
+                  switch_week: (
+                    draftPickProjectionSettings?.switch_week
                     ?? 4
                   ),
-                  method: (
-                    draftPickProjectionSettings?.method
+                  before_week_method: (
+                    draftPickProjectionSettings?.before_week_method
+                    ?? 'none'
+                  ),
+                  from_week_method: (
+                    draftPickProjectionSettings?.from_week_method
                     ?? 'max_pf'
                   ),
                 });
@@ -180,12 +209,12 @@ export const SettingsPage = () => {
           </label>
 
           <label className="settings-field">
-            <span>Start projecting in week</span>
+            <span>Switch methods in week</span>
             <input
               type="number"
               min={1}
               max={18}
-              value={draftPickProjectionSettings?.start_week ?? 4}
+              value={draftPickProjectionSettings?.switch_week ?? 4}
               disabled={updateDraftPickProjectionSettings.isPending}
               onChange={(event) => {
                 void saveDraftPickProjectionSettings({
@@ -193,9 +222,13 @@ export const SettingsPage = () => {
                     draftPickProjectionSettings?.enabled
                     ?? true
                   ),
-                  start_week: Number(event.target.value),
-                  method: (
-                    draftPickProjectionSettings?.method
+                  switch_week: Number(event.target.value),
+                  before_week_method: (
+                    draftPickProjectionSettings?.before_week_method
+                    ?? 'none'
+                  ),
+                  from_week_method: (
+                    draftPickProjectionSettings?.from_week_method
                     ?? 'max_pf'
                   ),
                 });
@@ -204,41 +237,101 @@ export const SettingsPage = () => {
           </label>
         </div>
 
+        <div className="settings-grid">
+          <label className="settings-field">
+            <span>Before week {draftPickProjectionSettings?.switch_week ?? 4}</span>
+            <select
+              value={draftPickProjectionSettings?.before_week_method ?? 'none'}
+              disabled={updateDraftPickProjectionSettings.isPending}
+              onChange={(event) => {
+                void saveDraftPickProjectionSettings({
+                  enabled: (
+                    draftPickProjectionSettings?.enabled
+                    ?? true
+                  ),
+                  switch_week: (
+                    draftPickProjectionSettings?.switch_week
+                    ?? 4
+                  ),
+                  before_week_method: (
+                    event.target.value as DraftPickProjectionPhaseMethod
+                  ),
+                  from_week_method: (
+                    draftPickProjectionSettings?.from_week_method
+                    ?? 'max_pf'
+                  ),
+                });
+              }}
+            >
+              {
+                DRAFT_PICK_PRE_SWITCH_OPTIONS.map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </option>
+                ))
+              }
+            </select>
+          </label>
+
+          <label className="settings-field">
+            <span>Week {draftPickProjectionSettings?.switch_week ?? 4} and later</span>
+            <select
+              value={draftPickProjectionSettings?.from_week_method ?? 'max_pf'}
+              disabled={updateDraftPickProjectionSettings.isPending}
+              onChange={(event) => {
+                void saveDraftPickProjectionSettings({
+                  enabled: (
+                    draftPickProjectionSettings?.enabled
+                    ?? true
+                  ),
+                  switch_week: (
+                    draftPickProjectionSettings?.switch_week
+                    ?? 4
+                  ),
+                  before_week_method: (
+                    draftPickProjectionSettings?.before_week_method
+                    ?? 'none'
+                  ),
+                  from_week_method: (
+                    event.target.value as DraftPickProjectionMethod
+                  ),
+                });
+              }}
+            >
+              {
+                DRAFT_PICK_PROJECTION_METHOD_OPTIONS.map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </option>
+                ))
+              }
+            </select>
+          </label>
+        </div>
+
         <div className="settings-method-list">
           {
             DRAFT_PICK_PROJECTION_METHOD_OPTIONS.map((option) => (
-              <label
+              <div
                 key={option.value}
                 className="settings-method-option"
               >
-                <input
-                  type="radio"
-                  name="draft-pick-projection-method"
-                  checked={(
-                    draftPickProjectionSettings?.method
-                    ?? 'max_pf'
-                  ) === option.value}
-                  disabled={updateDraftPickProjectionSettings.isPending}
-                  onChange={() => {
-                    void saveDraftPickProjectionSettings({
-                      enabled: (
-                        draftPickProjectionSettings?.enabled
-                        ?? true
-                      ),
-                      start_week: (
-                        draftPickProjectionSettings?.start_week
-                        ?? 4
-                      ),
-                      method: option.value,
-                    });
-                  }}
+                <span
+                  className="settings-method-swatch"
+                  aria-hidden="true"
                 />
 
                 <div>
                   <strong>{option.label}</strong>
                   <span>{option.description}</span>
                 </div>
-              </label>
+              </div>
             ))
           }
         </div>

@@ -117,12 +117,19 @@ export type ThemePreference =
 
 export type DraftPickProjectionMethod =
   | 'reverse_standings'
-  | 'max_pf';
+  | 'max_pf'
+  | 'redraft_starter_war'
+  | 'redraft_roster_war';
+
+export type DraftPickProjectionPhaseMethod =
+  | 'none'
+  | DraftPickProjectionMethod;
 
 export interface DraftPickProjectionSettings {
   enabled: boolean;
-  start_week: number;
-  method: DraftPickProjectionMethod;
+  switch_week: number;
+  before_week_method: DraftPickProjectionPhaseMethod;
+  from_week_method: DraftPickProjectionMethod;
 }
 
 export interface LeagueOverview {

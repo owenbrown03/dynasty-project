@@ -18,21 +18,6 @@ interface Props {
   draftPickProjectionSummary?: string | null;
 }
 
-function formatProjectedPickLabel(
-  pick: LeaguePick,
-) {
-  if (pick.projected_slot === null) {
-    return null;
-  }
-
-  return (
-    `${pick.season} Pick ${pick.round}.${String(
-      pick.projected_slot,
-    ).padStart(2, '0')}`
-  );
-}
-
-
 function PickList({
   picks,
   draftPickProjectionSummary,
@@ -71,19 +56,6 @@ function PickList({
           >
             <div className="league-pick-copy">
               <strong>{pick.label}</strong>
-              {
-                pick.projected_slot !== null
-                  ? (
-                    <span className="league-pick-meta">
-                      {
-                        `Projection currently assumes ${formatProjectedPickLabel(
-                          pick,
-                        )}. ${pick.slot_source_label ?? ''}`.trim()
-                      }
-                    </span>
-                  )
-                  : null
-              }
             </div>
 
             <div className="league-pick-values">
