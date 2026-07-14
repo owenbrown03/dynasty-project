@@ -376,6 +376,13 @@
   color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.commissioner-due-controls button {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .commissioner-due-controls .button-secondary {

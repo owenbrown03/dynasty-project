@@ -158,13 +158,9 @@ textarea {
   transform: translateY(1px);
 }
 
-.button-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
+.button-primary:disabled,
 .button-secondary:disabled {
-  border-color: var(--color-border);
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
