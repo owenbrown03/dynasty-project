@@ -30,6 +30,7 @@ import {
 } from './BulkTradeLeagueRow';
 import { BulkTradePlayerSearch } from './BulkTradePlayerSearch';
 import { BulkTradeReviewModal } from './BulkTradeReviewModal';
+import type { TradeCalculatorBulkOfferSeed } from './TradeCalculatorTab';
 
 
 const DEFAULT_PICK_SEASON = '2027';
@@ -140,7 +141,11 @@ function getSelectedPick(
 }
 
 
-export const BulkOffersTab = () => {
+export const BulkOffersTab = ({
+  seed,
+}: {
+  seed?: TradeCalculatorBulkOfferSeed | null;
+}) => {
   const {
     canWrite,
   } = useSleeperConnection();
@@ -230,6 +235,31 @@ export const BulkOffersTab = () => {
   }, [
     availability.data,
     direction,
+  ]);
+
+  useEffect(() => {
+    if (!seed) {
+      return;
+    }
+
+    setDirection(
+      seed.direction,
+    );
+    setPickSeason(
+      seed.pickSeason,
+    );
+    setPickRound(
+      seed.pickRound,
+    );
+    setSelectedPlayer(
+      seed.player,
+    );
+    setSelectionsByLeagueId({});
+    setIsReviewOpen(false);
+    reset();
+  }, [
+    reset,
+    seed,
   ]);
 
   const offers = useMemo(() => {

@@ -649,6 +649,22 @@
   margin-top: 4px;
 }
 
+.trade-calculator-bulk-send {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.trade-calculator-bulk-send p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
 @media (max-width: 900px) {
   .bulk-trade-league-row {
     grid-template-columns: auto minmax(150px, 1fr) auto;
@@ -683,6 +699,7 @@
   .bulk-trade-list-header,
   .bulk-trade-selected-player,
   .bulk-trade-price-controls,
+  .trade-calculator-bulk-send,
   .trade-calculator-search-row,
   .trade-calculator-asset-row,
   .trade-calculator-search-actions,
