@@ -46,6 +46,53 @@
   gap: 12px;
 }
 
+.trade-research-filters {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.trade-research-settings {
+  display: grid;
+  gap: 10px;
+}
+
+.trade-research-settings-label {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.trade-research-setting-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trade-research-setting-chip {
+  border: 1px solid var(--color-border-strong);
+  padding: 7px 10px;
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trade-research-setting-chip.active {
+  background: var(--color-surface-accent);
+  color: var(--color-text-strong);
+}
+
+.trade-research-summary {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
 .trades-section-header {
   display: flex;
   align-items: end;
