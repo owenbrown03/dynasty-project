@@ -97,7 +97,7 @@ class SleeperRead:
         data = await self.transport.get(
             f"league/{league_id}/winners_bracket"
         )
-        return [Matchup.model_validate(x) for x in data]
+        return [Matchup.model_validate(x) for x in (data or [])]
 
     async def get_losers_bracket(
         self,
@@ -106,7 +106,7 @@ class SleeperRead:
         data = await self.transport.get(
             f"league/{league_id}/losers_bracket"
         )
-        return [Matchup.model_validate(x) for x in data]
+        return [Matchup.model_validate(x) for x in (data or [])]
 
     async def get_transactions(
         self,

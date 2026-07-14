@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 
 import './UsernameInput.css';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
+import { UserAvatar } from '@/components/users/UserAvatar';
 
 export function UsernameInput() {
   const connection = useSleeperConnection();
@@ -32,15 +33,12 @@ export function UsernameInput() {
 
   return (
     <section className="username-panel">
-      <div className="username-panel-copy">
-        <span className="username-panel-label">
-          Sleeper account
-        </span>
-
-        <strong className="username-panel-title">
-          {connection.username ?? 'Connect a profile'}
-        </strong>
-      </div>
+      <UserAvatar
+        avatarId={connection.avatar}
+        name={connection.username ?? ''}
+        size="md"
+        className="username-panel-avatar"
+      />
 
       <div className="input-container">
         <input

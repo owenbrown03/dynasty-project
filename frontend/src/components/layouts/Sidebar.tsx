@@ -34,7 +34,7 @@ export const Sidebar = () => {
   const sections: SidebarSection[] = [
     {
       items: [
-        { to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+        { to: '/', label: 'Home', icon: <LayoutDashboard size={20} /> },
         { to: '/leagues', label: 'Leagues', icon: <Trophy size={20} /> },
       ],
     },
@@ -70,6 +70,7 @@ export const Sidebar = () => {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  end={item.to === '/'}
                   className={({ isActive }) =>
                     `sidebar-link ${isActive ? 'active' : ''}`
                   }

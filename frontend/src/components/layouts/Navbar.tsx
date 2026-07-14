@@ -11,7 +11,6 @@ import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
 import { useSettingsContext } from '@/context/useSettingsContext';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { UserAvatar } from '@/components/users/UserAvatar';
-import brandLogo from '@/assets/logo.png';
 
 export const Navbar = () => {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -48,7 +47,8 @@ export const Navbar = () => {
     <nav className="navbar">
       <Link to="/" className="navbar-left navbar-brand-link">
         <div className="navbar-brand-mark">
-          <img src={brandLogo} alt="Dynasty Base logo" />
+          <span className="navbar-brand-d">D</span>
+          <span className="navbar-brand-b">B</span>
         </div>
 
         <div className="navbar-brand-copy">
