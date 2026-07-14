@@ -130,7 +130,7 @@
 
 .portfolio-league-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1.8fr) minmax(0, 7fr);
+  grid-template-columns: minmax(260px, 1.8fr) repeat(7, minmax(90px, 1fr));
   align-items: center;
   gap: 0;
   width: 100%;
@@ -180,10 +180,11 @@
 }
 
 .portfolio-league-metrics {
+  grid-column: 2 / -1;
   display: grid;
-  grid-template-columns: repeat(7, minmax(90px, 1fr));
+  grid-template-columns: subgrid;
   gap: 0;
-  padding: 0 6px 0 0;
+  padding: 0;
 }
 
 .portfolio-league-metric {
@@ -269,12 +270,9 @@
 }
 
 @media (max-width: 1200px) {
-  .portfolio-league-table-head {
+  .portfolio-league-table-head,
+  .portfolio-league-row {
     grid-template-columns: minmax(200px, 1.6fr) repeat(4, minmax(80px, 1fr));
-  }
-
-  .portfolio-league-metrics {
-    grid-template-columns: repeat(4, minmax(80px, 1fr));
   }
 
   .portfolio-league-metric:nth-child(n+5) {
@@ -296,6 +294,7 @@
   }
 
   .portfolio-league-metrics {
+    grid-column: 1;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     padding: 0 14px 14px;
   }
