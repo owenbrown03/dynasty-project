@@ -186,6 +186,7 @@ def tx_to_db(
     picks_data = [
         {
             "transaction_id": schema.transaction_id,
+            "league_id": league_id,
             "season": p.season,
             "round": p.round,
             "new_roster_id": p.owner_id,

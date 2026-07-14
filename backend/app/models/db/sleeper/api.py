@@ -330,14 +330,23 @@ class WaiverBudget(SQLModel, table=True):
 
 class TradedPick(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    transaction_id: str = Field(foreign_key="transaction.transaction_id", index=True)
+    transaction_id: Optional[str] = Field(
+        default=None,
+        foreign_key="transaction.transaction_id",
+        index=True,
+        nullable=True,
+    )
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
     season: str = Field(index=True)
     round: int = Field(index=True)
     new_roster_id: int = Field(index=True)
     old_roster_id: int = Field(index=True)
     og_roster_id: int = Field(index=True)
 
-    transaction: "Transaction" = Relationship(back_populates="draft_pick")
+    transaction: Optional["Transaction"] = Relationship(back_populates="draft_pick")
 
 
 class PlayoffMatchup(SQLModel, table=True):

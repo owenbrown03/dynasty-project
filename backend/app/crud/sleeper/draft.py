@@ -41,20 +41,19 @@ async def get_traded_picks_by_league_ids(
 
     result = await db.execute(
         select(
-            Transaction.league_id,
             TradedPick,
             Transaction.time_ms,
         )
-        .join(
-            TradedPick,
-            TradedPick.transaction_id == Transaction.transaction_id,
+        .outerjoin(
+            Transaction,
+            Transaction.transaction_id == TradedPick.transaction_id,
         )
         .where(
-            Transaction.league_id.in_(league_ids),
+            TradedPick.league_id.in_(league_ids),
         )
         .order_by(
-            Transaction.league_id,
-            Transaction.time_ms.asc(),
+            TradedPick.league_id,
+            Transaction.time_ms.asc().nullsfirst(),
             TradedPick.id.asc(),
         )
     )
@@ -64,11 +63,11 @@ async def get_traded_picks_by_league_ids(
         list[tuple[TradedPick, int]],
     ] = defaultdict(list)
 
-    for league_id, traded_pick, time_ms in result.all():
-        traded_picks_by_league_id[league_id].append(
+    for traded_pick, time_ms in result.all():
+        traded_picks_by_league_id[traded_pick.league_id].append(
             (
                 traded_pick,
-                time_ms,
+                time_ms or 0,
             )
         )
 

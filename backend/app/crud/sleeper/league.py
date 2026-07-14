@@ -439,7 +439,7 @@ async def fetch_league_bundle(
             == "transactions_only"
             and not full_refresh_due
         ):
-            tx_lists, winners_bracket, losers_bracket = await asyncio.gather(
+            tx_lists, winners_bracket, losers_bracket, traded_picks = await asyncio.gather(
                 asyncio.gather(
                     *[
                         sleeper.read.get_transactions(
@@ -466,6 +466,9 @@ async def fetch_league_bundle(
                     0,
                     result=[],
                 ),
+                sleeper.read.get_traded_picks(
+                    league_id,
+                ),
             )
 
             transactions = [
@@ -478,6 +481,7 @@ async def fetch_league_bundle(
             bundle = {
                 "league_id": league_id,
                 "transactions": transactions,
+                "traded_picks": traded_picks if isinstance(traded_picks, list) else [],
                 "transactions_only": True,
                 "synced_week": max(
                     last_synced_week,
@@ -499,6 +503,7 @@ async def fetch_league_bundle(
             tx_lists,
             winners_bracket,
             losers_bracket,
+            traded_picks,
         ) = await asyncio.gather(
             sleeper.read.get_league(
                 league_id,
@@ -538,6 +543,9 @@ async def fetch_league_bundle(
                 0,
                 result=[],
             ),
+            sleeper.read.get_traded_picks(
+                league_id,
+            ),
         )
 
         transactions = [
@@ -557,6 +565,7 @@ async def fetch_league_bundle(
             "drafts": drafts,
 
             "transactions": transactions,
+            "traded_picks": traded_picks if isinstance(traded_picks, list) else [],
             "winners_bracket": winners_bracket,
             "losers_bracket": losers_bracket,
 
@@ -670,6 +679,11 @@ async def save_league_bundle_to_db(
         if bundle.get("transactions_only"):
             # Known league — only save new transactions
             await _save_transactions(db, bundle.get("transactions", []), league_id)
+            await _backfill_traded_picks(
+                db,
+                league_id,
+                bundle.get("traded_picks", []),
+            )
             await _save_playoff_matchups(
                 db,
                 bundle.get("winners_bracket", []),
@@ -754,6 +768,11 @@ async def save_league_bundle_to_db(
             )
 
         await _save_transactions(db, bundle.get("transactions", []), league_id)
+        await _backfill_traded_picks(
+            db,
+            league_id,
+            bundle.get("traded_picks", []),
+        )
         await _save_playoff_matchups(
             db,
             bundle.get("winners_bracket", []),
@@ -886,6 +905,48 @@ async def _save_transactions(
             ).values(
                 pick_dicts,
             )
+        )
+
+
+async def _backfill_traded_picks(
+    db: AsyncSession,
+    league_id: str,
+    traded_picks: list,
+) -> None:
+    if not traded_picks:
+        return
+
+    existing = await db.execute(
+        select(
+            model.TradedPick.season,
+            model.TradedPick.round,
+            model.TradedPick.og_roster_id,
+            model.TradedPick.new_roster_id,
+        ).where(
+            model.TradedPick.league_id == league_id,
+        )
+    )
+    existing_keys = {
+        (season, round_num, og_id, new_id)
+        for season, round_num, og_id, new_id in existing.all()
+    }
+
+    new_dicts = []
+    for p in traded_picks:
+        key = (p.season, p.round, p.roster_id, p.owner_id)
+        if key not in existing_keys:
+            new_dicts.append({
+                "league_id": league_id,
+                "season": p.season,
+                "round": p.round,
+                "new_roster_id": p.owner_id,
+                "old_roster_id": p.previous_owner_id,
+                "og_roster_id": p.roster_id,
+            })
+
+    if new_dicts:
+        await db.execute(
+            insert(model.TradedPick).values(new_dicts)
         )
 
 
