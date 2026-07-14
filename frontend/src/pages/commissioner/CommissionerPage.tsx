@@ -382,6 +382,7 @@ function CommissionerWorkspaceCard({
   onSaveSettings,
   savingNote,
   savingDues,
+  savingDuesMap,
   savingSettings,
 }: {
   league: CommissionerWorkspaceLeague;
@@ -400,6 +401,7 @@ function CommissionerWorkspaceCard({
   ) => Promise<void>;
   savingNote: boolean;
   savingDues: boolean;
+  savingDuesMap?: Record<string, boolean>;
   savingSettings: boolean;
 }) {
   const [note, setNote] = useState(league.note);
@@ -616,7 +618,7 @@ function CommissionerWorkspaceCard({
                         <button
                           type="button"
                           className="button-secondary"
-                          disabled={savingDues}
+                          disabled={!!(savingDuesMap && savingDuesMap[key]) || savingDues}
                           onClick={() => {
                             const parsedAmount = draft.amount.trim()
                               ? Number(draft.amount)
@@ -632,7 +634,7 @@ function CommissionerWorkspaceCard({
                           }}
                         >
                           {
-                            savingDues
+                            (savingDuesMap && savingDuesMap[key]) || savingDues
                               ? 'Saving...'
                               : 'Save'
                           }
@@ -701,6 +703,7 @@ export const CommissionerPage = () => {
 
   const [savingNoteByLeague, setSavingNoteByLeague] = useState<Record<string, boolean>>({});
   const [savingDuesByLeague, setSavingDuesByLeague] = useState<Record<string, boolean>>({});
+  const [savingDuesByEntry, setSavingDuesByEntry] = useState<Record<string, boolean>>({});
   const [savingSettingsByLeague, setSavingSettingsByLeague] = useState<Record<string, boolean>>({});
 
   const shareUrl = useMemo(() => {
@@ -765,7 +768,8 @@ export const CommissionerPage = () => {
     isPaid: boolean,
   ) => {
     const leagueId = entry.league_id;
-    setSavingDuesByLeague((s) => ({ ...s, [leagueId]: true }));
+    const entryKey = `${entry.roster_id}-${entry.season}`;
+    setSavingDuesByEntry((s) => ({ ...s, [entryKey]: true }));
     try {
       await saveDuesMutation.mutateAsync({
         league_id: entry.league_id,
@@ -778,6 +782,8 @@ export const CommissionerPage = () => {
     } catch {
       notify.error('Unable to save league dues.');
     } finally {
+      setSavingDuesByEntry((s) => ({ ...s, [entryKey]: false }));
+      // keep per-league flag for disabling entire league if needed
       setSavingDuesByLeague((s) => ({ ...s, [leagueId]: false }));
     }
   };
@@ -1020,6 +1026,7 @@ export const CommissionerPage = () => {
                     onSaveSettings={handleSaveSettings}
                     savingNote={!!savingNoteByLeague[league.league_id]}
                     savingDues={!!savingDuesByLeague[league.league_id]}
+                    savingDuesMap={savingDuesByEntry}
                     savingSettings={!!savingSettingsByLeague[league.league_id]}
                   />
                 ))
