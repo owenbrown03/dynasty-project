@@ -356,11 +356,11 @@
 }
 
 .my-values-metric-meta .positive {
-  color: #5fd28b;
+  color: var(--color-success);
 }
 
 .my-values-metric-meta .negative {
-  color: #ff7b87;
+  color: var(--color-danger);
 }
 
 .my-values-metric-meta .neutral {

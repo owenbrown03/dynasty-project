@@ -25,6 +25,11 @@
   font-weight: 700;
 }
 
+.trades-tab-button:hover,
+.trades-tabs button:hover {
+  color: var(--color-text-strong);
+}
+
 .trades-tab-button.active,
 .trades-tabs button.active {
   border-color: var(--color-border-strong);
@@ -145,13 +150,7 @@
 }
 
 .trade-spinner {
-  animation: trade-spin 0.9s linear infinite;
-}
-
-@keyframes trade-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  animation: site-spin 0.9s linear infinite;
 }
 
 .bulk-trade-search-results {
@@ -421,7 +420,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--color-backdrop);
 }
 
 .bulk-trade-review-modal {

@@ -13,7 +13,7 @@ export const SleeperAuthModal = () => {
   if (!authContext.isOpen) return null;
   
   return (
-    <div className="auth-modal">
+    <div className="auth-modal sleeper-auth-modal">
       <div className="modal-content">
         <button
           className="button-secondary close-btn"

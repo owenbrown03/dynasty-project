@@ -13,15 +13,6 @@
   margin: 0 auto;
 }
 
-.loading-text,
-.no-results-text {
-  border: 1px dashed var(--color-border-strong);
-  background: var(--color-surface);
-  font-size: 13px;
-  text-align: center;
-  padding: 40px 18px;
-}
-
 .dashboard-hero {
   position: relative;
 }
@@ -146,8 +137,8 @@
   padding: 0;
   border: 0;
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface) !important;
-  color: var(--color-text) !important;
+  background: var(--color-surface);
+  color: var(--color-text);
   text-align: left;
   cursor: pointer;
   appearance: none;
@@ -160,7 +151,7 @@
 
 .portfolio-league-row:hover {
   border-color: var(--color-border-strong);
-  background: var(--color-surface-raised) !important;
+  background: var(--color-surface-raised);
 }
 
 .portfolio-league-primary {
@@ -180,11 +171,11 @@
 .portfolio-league-title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--color-text-strong) !important;
+  color: var(--color-text-strong);
 }
 
 .portfolio-league-subtitle {
-  color: var(--color-text-muted) !important;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 
@@ -206,7 +197,7 @@
 
 .portfolio-league-metric span {
   display: none;
-  color: var(--color-text-muted) !important;
+  color: var(--color-text-muted);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -214,13 +205,13 @@
 }
 
 .portfolio-league-metric strong {
-  color: var(--color-text-strong) !important;
+  color: var(--color-text-strong);
   font-size: 14px;
   font-weight: 700;
 }
 
 .portfolio-league-metric small {
-  color: var(--color-text-faint) !important;
+  color: var(--color-text-faint);
   font-size: 11px;
 }
 

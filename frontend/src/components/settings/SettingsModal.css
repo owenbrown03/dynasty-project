@@ -5,7 +5,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(18, 22, 30, 0.32);
+  background: var(--color-backdrop);
   z-index: 9999;
   overflow-y: auto;
 }

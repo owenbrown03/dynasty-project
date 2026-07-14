@@ -11,6 +11,13 @@
   margin: 0 auto;
 }
 
+:root[data-theme='dark'] .finance-page {
+  --finance-actual-color: #5eead4;
+  --finance-projected-color: #fb923c;
+  --finance-positive-color: #4ade80;
+  --finance-negative-color: #f87171;
+}
+
 .finance-empty-state {
   padding: 42px 24px;
   border: 1px dashed var(--color-border-strong);
@@ -52,6 +59,10 @@
   background: transparent;
   color: var(--color-text-muted);
   font-weight: 700;
+}
+
+.finance-tab:hover {
+  color: var(--color-text-strong);
 }
 
 .finance-tab + .finance-tab {

@@ -4,6 +4,7 @@
   --radius-sm: 3px;
   --radius-md: 6px;
   --radius-lg: 10px;
+  --radius-full: 999px;
   --page-max-width: 1680px;
   --page-copy-max-width: 860px;
 
@@ -33,6 +34,7 @@
   --color-text-faint: #8a8274;
   --color-link: #0f4fc0;
   --color-focus: #1f6feb;
+  --color-backdrop: rgba(18, 22, 30, 0.32);
 
   --position-qb-color: #e05353;
   --position-rb-color: #30a46c;
@@ -66,6 +68,7 @@
   --color-text-faint: #81796f;
   --color-link: #9bbdff;
   --color-focus: #79a7ff;
+  --color-backdrop: rgba(10, 12, 16, 0.68);
 
   --position-qb-color: #ff7272;
   --position-rb-color: #49c784;
@@ -243,7 +246,7 @@ textarea {
   border: 1px solid var(--color-accent-strong);
   border-radius: var(--radius-md);
   background: var(--color-accent);
-  color: #ffffff;
+  color: #fff;
   font-weight: 600;
   transition: background 0.12s ease, border-color 0.12s ease;
 }
@@ -387,7 +390,7 @@ th {
   text-transform: uppercase;
 }
 
-tbody tr:hover {
+.table-hover tbody tr:hover {
   background: var(--color-surface-raised);
 }
 
@@ -547,6 +550,14 @@ tbody tr:hover {
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+.empty-state {
+  padding: 42px 24px;
+  border: 1px dashed var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  text-align: center;
 }
 
 .site-spinner {

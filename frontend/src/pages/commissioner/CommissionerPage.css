@@ -54,6 +54,10 @@
   font-weight: 700;
 }
 
+.commissioner-tab-button:hover {
+  color: var(--color-text-strong);
+}
+
 .commissioner-tab-button + .commissioner-tab-button {
   border-left: 1px solid var(--color-border);
 }
