@@ -162,7 +162,9 @@ async def get_commissioner_workspace(
 
     leagues: list[CommissionerWorkspaceLeague] = []
 
-    for league_id, league in leagues_by_id.items():
+    for row in owned_rows:
+        league_id = row.league.league_id
+        league = row.league
         rosters = rosters_by_league_id.get(
             league_id,
             [],
@@ -346,13 +348,6 @@ async def get_commissioner_workspace(
                 dues=dues_entries,
             )
         )
-
-    leagues.sort(
-        key=lambda league: (
-            league.league_name.lower(),
-            league.league_id,
-        )
-    )
 
     return CommissionerWorkspaceResponse(
         leagues=leagues,

@@ -38,6 +38,7 @@ from app.services.waivers.dynasty import (
 from app.utils.age import calculate_age
 from app.crud.sleeper.roster import get_all_rosters_by_league, get_owned_roster_rows, get_target_owner_roster
 from app.crud.sleeper.user import get_user_names_by_id
+from app.crud.sleeper.personal import get_league_sort_orders
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +240,18 @@ async def get_bulk_trade_availability(
         db=db,
         connection=connection,
     )
+
+    if connection.sleeper_user_id:
+        sort_order = await get_league_sort_orders(
+            db=db,
+            user_id=connection.sleeper_user_id,
+        )
+        owned_roster_rows.sort(
+            key=lambda row: sort_order.get(
+                row[1].league_id,
+                9999,
+            ),
+        )
 
     league_ids = [
         league.league_id

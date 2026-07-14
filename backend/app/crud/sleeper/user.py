@@ -95,6 +95,7 @@ async def sync_user_data(db: AsyncSession, sleeper: SleeperClient, username: str
                 if is_current_season
                 else "transactions_only"
             ),
+            user_id=user_id if is_current_season else None,
         )
 
         season_summaries.append(

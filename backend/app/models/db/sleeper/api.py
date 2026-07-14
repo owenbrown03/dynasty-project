@@ -246,6 +246,28 @@ class User(SQLModel, table=True):
     roster: List["Roster"] = Relationship(back_populates="user")
 
 
+class LeagueSortOrder(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(
+        foreign_key="user.user_id",
+        index=True,
+    )
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
+    display_order: int = Field(default=0)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "league_id",
+            name="uq_leaguesortorder_user_league",
+        ),
+    )
+
+
 class Transaction(SQLModel, table=True):
     transaction_id: str = Field(primary_key=True)
     type: str = Field(index=True)
