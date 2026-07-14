@@ -636,6 +636,9 @@ class LeagueDetails:
             avatar=league.avatar,
             season=str(league.season),
             total_rosters=league.total_rosters,
+            roster_positions=list(
+                league.roster_positions or [],
+            ),
             draft_pick_projection_summary=(
                 build_draft_pick_projection_summary(
                     current_week=current_week,

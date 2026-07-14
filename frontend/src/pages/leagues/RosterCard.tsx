@@ -15,6 +15,7 @@ import {
 
 interface Props {
   roster: LeagueRoster;
+  rosterPositions: string[];
   draftPickProjectionSummary?: string | null;
 }
 
@@ -70,11 +71,13 @@ function PickList({
 }
 export function RosterCard({
   roster,
+  rosterPositions,
   draftPickProjectionSummary,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const constructionRows = buildRosterConstructionRows(
     roster,
+    rosterPositions,
   );
 
   return (

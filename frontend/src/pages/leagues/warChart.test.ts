@@ -10,6 +10,7 @@ const league: LeagueDetails = {
   avatar: null,
   season: '2026',
   total_rosters: 12,
+  roster_positions: ['QB', 'RB', 'WR', 'TE', 'FLEX', 'BN'],
   note: '',
   draft_pick_projection_summary: null,
   war_position_history: [],

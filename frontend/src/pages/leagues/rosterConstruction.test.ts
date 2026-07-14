@@ -107,38 +107,39 @@ const roster: LeagueRoster = {
 };
 
 describe('buildRosterConstructionRows', () => {
-  it('builds WAR-weighted position targets from a roster', () => {
+  it('anchors targets to lineup demand before blending in WAR', () => {
     expect(
       buildRosterConstructionRows(
         roster,
+        ['QB', 'RB', 'WR', 'REC_FLEX'],
       ),
     ).toEqual([
       {
         position: 'QB',
         playerCount: 2,
-        targetCount: 2.8,
-        delta: -0.8,
+        targetCount: 1.6,
+        delta: 0.4,
         warShare: 70,
       },
       {
         position: 'RB',
         playerCount: 1,
-        targetCount: 0.8,
-        delta: 0.2,
+        targetCount: 1.4,
+        delta: -0.4,
         warShare: 20,
       },
       {
         position: 'WR',
         playerCount: 1,
-        targetCount: 0.4,
-        delta: 0.6,
+        targetCount: 1.5,
+        delta: -0.4,
         warShare: 10,
       },
       {
         position: 'TE',
         playerCount: 0,
-        targetCount: 0,
-        delta: 0,
+        targetCount: 0.2,
+        delta: -0.2,
         warShare: 0,
       },
     ]);

@@ -294,6 +294,7 @@ export interface LeagueDetails {
   avatar: string | null;
   season: string;
   total_rosters: number;
+  roster_positions: string[];
   note: string;
   draft_pick_projection_summary: string | null;
   settings_badges: string[];

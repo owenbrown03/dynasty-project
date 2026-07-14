@@ -130,6 +130,7 @@ export function LeagueCard({
           <RosterCard
             key={roster.roster_id}
             roster={roster}
+            rosterPositions={league.roster_positions}
             draftPickProjectionSummary={league.draft_pick_projection_summary}
           />
         ))}

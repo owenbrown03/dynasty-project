@@ -82,6 +82,7 @@ class LeagueDetailsResponse(BaseModel):
     avatar: str | None = None
     season: str
     total_rosters: int
+    roster_positions: list[str]
     note: str = ""
     draft_pick_projection_summary: str | None = None
     settings_badges: list[str]
