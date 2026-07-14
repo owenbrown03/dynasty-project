@@ -12,8 +12,23 @@ import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { useTheme } from '@/context/useTheme';
 import { useValuePreference } from '@/context/useValuePreference';
 import { getValueBasisOptions } from '@/pages/waivers/waiver.constants';
-import type { ValueBasis } from '@/types';
+import type { AccentColor, ValueBasis } from '@/types';
 import brandLogo from '@/assets/logo.png';
+
+const ACCENT_OPTIONS: Array<{
+  value: AccentColor;
+  label: string;
+  light: string;
+  dark: string;
+}> = [
+  { value: 'blue', label: 'Blue', light: '#1f6feb', dark: '#79a7ff' },
+  { value: 'green', label: 'Green', light: '#1f7a3f', dark: '#5ec27a' },
+  { value: 'purple', label: 'Purple', light: '#7c3aed', dark: '#a78bfa' },
+  { value: 'red', label: 'Red', light: '#b33a2b', dark: '#f18a7d' },
+  { value: 'orange', label: 'Orange', light: '#c2410c', dark: '#fb923c' },
+  { value: 'teal', label: 'Teal', light: '#0d9488', dark: '#5eead4' },
+  { value: 'pink', label: 'Pink', light: '#db2777', dark: '#f472b6' },
+];
 
 export const Navbar = () => {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -157,7 +172,7 @@ export const Navbar = () => {
                       onChange={(e) => {
                         void theme.setPreference(
                           e.target.value as
-                            'light'
+                            | 'light'
                             | 'dark'
                             | 'system',
                         );
@@ -177,6 +192,32 @@ export const Navbar = () => {
                       </option>
                     </select>
                   </label>
+
+                  <div className="navbar-theme-control">
+                    <span>
+                      Accent
+                    </span>
+
+                    <div className="navbar-accent-row">
+                      {ACCENT_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={`navbar-accent-dot ${theme.accentColor === option.value ? 'navbar-accent-dot--active' : ''}`}
+                          style={{
+                            background: theme.resolvedTheme === 'dark'
+                              ? option.dark
+                              : option.light,
+                          }}
+                          disabled={theme.isSavingAccent}
+                          title={option.label}
+                          onClick={() => {
+                            void theme.setAccentColor(option.value);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
 
                   <label className="navbar-theme-control">
                     <span>

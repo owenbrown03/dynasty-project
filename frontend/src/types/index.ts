@@ -107,6 +107,7 @@ export interface Bootstrap {
   site_user: BootstrapUser | null;
   sleeper: BootstrapSleeper;
   theme_preference: ThemePreference | null;
+  accent_color: AccentColor | null;
   value_preference: ValueBasis | null;
   war_value_settings: WarValueSettings;
   draft_pick_projection_settings: DraftPickProjectionSettings;
@@ -116,6 +117,15 @@ export type ThemePreference =
   | 'light'
   | 'dark'
   | 'system';
+
+export type AccentColor =
+  | 'blue'
+  | 'green'
+  | 'purple'
+  | 'red'
+  | 'orange'
+  | 'teal'
+  | 'pink';
 
 export type WarValueTimeframe =
   | 'redraft'

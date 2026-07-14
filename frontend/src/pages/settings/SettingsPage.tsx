@@ -8,6 +8,7 @@ import { useTheme } from '@/context/useTheme';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useBootstrap } from '@/hooks/useBootstrap';
 import type {
+  AccentColor,
   Bootstrap,
   DraftPickProjectionMethod,
   DraftPickProjectionPhaseMethod,
@@ -99,6 +100,21 @@ const WAR_SCOPE_OPTIONS: Array<{
     value: 'starter',
     label: 'Starter',
   },
+];
+
+const ACCENT_COLOR_OPTIONS: Array<{
+  value: AccentColor;
+  label: string;
+  lightSwatch: string;
+  darkSwatch: string;
+}> = [
+  { value: 'blue', label: 'Blue', lightSwatch: '#1f6feb', darkSwatch: '#79a7ff' },
+  { value: 'green', label: 'Green', lightSwatch: '#1f7a3f', darkSwatch: '#5ec27a' },
+  { value: 'purple', label: 'Purple', lightSwatch: '#7c3aed', darkSwatch: '#a78bfa' },
+  { value: 'red', label: 'Red', lightSwatch: '#b33a2b', darkSwatch: '#f18a7d' },
+  { value: 'orange', label: 'Orange', lightSwatch: '#c2410c', darkSwatch: '#fb923c' },
+  { value: 'teal', label: 'Teal', lightSwatch: '#0d9488', darkSwatch: '#5eead4' },
+  { value: 'pink', label: 'Pink', lightSwatch: '#db2777', darkSwatch: '#f472b6' },
 ];
 
 function updateWarConfig(
@@ -369,6 +385,29 @@ export const SettingsPage = () => {
               <option value="system">System</option>
             </select>
           </label>
+
+          <div className="settings-field">
+            <span>Accent color</span>
+            <div className="settings-accent-grid">
+              {ACCENT_COLOR_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`settings-accent-swatch ${theme.accentColor === option.value ? 'settings-accent-swatch--active' : ''}`}
+                  style={{
+                    background: theme.resolvedTheme === 'dark'
+                      ? option.darkSwatch
+                      : option.lightSwatch,
+                  }}
+                  disabled={theme.isSavingAccent}
+                  title={option.label}
+                  onClick={() => {
+                    void theme.setAccentColor(option.value);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
 
           <label className="settings-field">
             <span>Default value basis</span>

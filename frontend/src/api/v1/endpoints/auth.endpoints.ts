@@ -1,6 +1,7 @@
 import { type AxiosInstance } from 'axios';
 
 import type {
+  AccentColor,
   DraftPickProjectionSettings,
   EmailVerificationConfirmRequest,
   EmailVerificationRequestResponse,
@@ -25,6 +26,12 @@ export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
   ) => client.post(
     `${prefix}/theme`,
     { theme_preference },
+  ),
+  updateAccentColor: (
+    accent_color: AccentColor,
+  ) => client.post(
+    `${prefix}/accent-color`,
+    { accent_color },
   ),
   updateValuePreference: (
     value_preference: ValueBasis,

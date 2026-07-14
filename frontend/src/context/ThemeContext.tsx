@@ -8,7 +8,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BOOTSTRAP_QUERY_KEY } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import {
+  ACCENT_STORAGE_KEY,
+  applyAccentColor,
   applyResolvedTheme,
+  getStoredAccentColor,
   getStoredThemePreference,
   resolveThemePreference,
   THEME_STORAGE_KEY,
@@ -16,7 +19,7 @@ import {
 import type { ThemeContextType } from '@/context/theme-context';
 import { ThemeContext } from '@/context/theme-context';
 import { useBootstrap } from '@/hooks/useBootstrap';
-import type { Bootstrap, ThemePreference } from '@/types';
+import type { AccentColor, Bootstrap, ThemePreference } from '@/types';
 
 export function ThemeProvider({
   children,
@@ -31,6 +34,11 @@ export function ThemeProvider({
     ?? null
   );
 
+  const bootstrapAccent = (
+    bootstrap.data?.accent_color
+    ?? null
+  );
+
   const [preference, setPreferenceState] =
     useState<ThemePreference>(
       getStoredThemePreference,
@@ -41,6 +49,11 @@ export function ThemeProvider({
       resolveThemePreference(
         getStoredThemePreference(),
       )
+    );
+
+  const [accentColor, setAccentColorState] =
+    useState<AccentColor>(
+      getStoredAccentColor,
     );
 
   const updatePreference = useMutation({
@@ -57,6 +70,30 @@ export function ThemeProvider({
           return {
             ...current,
             theme_preference: nextPreference,
+          };
+        },
+      );
+
+      await queryClient.invalidateQueries({
+        queryKey: BOOTSTRAP_QUERY_KEY,
+      });
+    },
+  });
+
+  const updateAccent = useMutation({
+    mutationFn: api.auth.updateAccentColor,
+
+    onSuccess: async (_, nextAccent) => {
+      queryClient.setQueryData(
+        BOOTSTRAP_QUERY_KEY,
+        (current: Bootstrap | undefined | null) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+            accent_color: nextAccent,
           };
         },
       );
@@ -90,6 +127,22 @@ export function ThemeProvider({
   }, [bootstrapPreference]);
 
   useEffect(() => {
+    const nextAccent = (
+      bootstrapAccent
+      ?? getStoredAccentColor()
+    );
+
+    setAccentColorState(nextAccent);
+
+    window.localStorage.setItem(
+      ACCENT_STORAGE_KEY,
+      nextAccent,
+    );
+
+    applyAccentColor(nextAccent);
+  }, [bootstrapAccent]);
+
+  useEffect(() => {
     if (preference !== 'system') {
       return undefined;
     }
@@ -117,7 +170,9 @@ export function ThemeProvider({
     () => ({
       preference,
       resolvedTheme,
+      accentColor,
       isSaving: updatePreference.isPending,
+      isSavingAccent: updateAccent.isPending,
       setPreference: async (
         nextPreference: ThemePreference,
       ) => {
@@ -140,11 +195,29 @@ export function ThemeProvider({
           nextPreference,
         );
       },
+      setAccentColor: async (
+        nextAccent: AccentColor,
+      ) => {
+        setAccentColorState(nextAccent);
+
+        window.localStorage.setItem(
+          ACCENT_STORAGE_KEY,
+          nextAccent,
+        );
+
+        applyAccentColor(nextAccent);
+
+        await updateAccent.mutateAsync(
+          nextAccent,
+        );
+      },
     }),
     [
       preference,
       resolvedTheme,
+      accentColor,
       updatePreference,
+      updateAccent,
     ],
   );
 

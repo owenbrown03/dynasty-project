@@ -24,12 +24,10 @@ def test_normalize_bulk_mappings_rectangularizes_rows():
     assert normalized == [
         {
             "display_name": "One",
-            "is_owner": True,
             "user_id": "1",
         },
         {
             "display_name": "Two",
-            "is_owner": None,
             "user_id": "2",
         },
     ]

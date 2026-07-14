@@ -86,6 +86,35 @@
   accent-color: var(--color-link);
 }
 
+.settings-accent-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-accent-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+
+.settings-accent-swatch:hover {
+  transform: scale(1.15);
+}
+
+.settings-accent-swatch--active {
+  border-color: var(--color-text-strong);
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+.settings-accent-swatch:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .settings-note {
   color: var(--color-text-muted);
   font-size: 13px;

@@ -26,6 +26,9 @@ from app.services.values.war_settings import (
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 VALID_THEME_PREFERENCES = {"light", "dark", "system"}
+VALID_ACCENT_COLORS = {
+    "blue", "green", "purple", "red", "orange", "teal", "pink",
+}
 VALID_VALUE_PREFERENCES = {
     basis.value
     for basis in ValueBasis
@@ -205,6 +208,41 @@ async def set_theme_preference(
     )
 
     settings["theme_preference"] = theme_preference
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+def get_accent_color(
+    user: SiteUser | None,
+) -> str | None:
+    if not user:
+        return None
+
+    value = (
+        (user.settings or {}).get("accent_color")
+    )
+
+    if value in VALID_ACCENT_COLORS:
+        return value
+
+    return "blue"
+
+
+async def set_accent_color(
+    *,
+    user: SiteUser,
+    accent_color: str,
+    db: AsyncSession,
+) -> SiteUser:
+    settings = dict(
+        user.settings or {}
+    )
+
+    settings["accent_color"] = accent_color
     user.settings = settings
 
     db.add(user)
@@ -448,6 +486,36 @@ async def reconcile_session_war_value_settings(
             session_settings,
         )
     )
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def reconcile_session_accent_color(
+    *,
+    user: SiteUser,
+    session: UserSession | None,
+    db: AsyncSession,
+) -> SiteUser:
+    if not session:
+        return user
+
+    session_color = (
+        (session.settings or {}).get(
+            "accent_color",
+        )
+    )
+
+    if session_color not in VALID_ACCENT_COLORS:
+        return user
+
+    settings = dict(
+        user.settings or {}
+    )
+    settings["accent_color"] = session_color
     user.settings = settings
 
     db.add(user)

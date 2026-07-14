@@ -2,6 +2,8 @@ from fastapi import APIRouter
 
 from app.api.deps import ContextDep
 from app.schemas.auth import (
+    AccentColorResponse,
+    AccentColorUpdate,
     AuthSessionResponse,
     DraftPickProjectionSettingsResponse,
     DraftPickProjectionSettingsUpdate,
@@ -21,6 +23,7 @@ from app.services.auth import (
     logout,
     request_email_verification,
     register,
+    update_accent_color,
     update_theme,
     update_draft_pick_projection_settings,
     update_value_preference,
@@ -92,6 +95,17 @@ async def update_theme_endpoint(
     ctx: ContextDep,
 ):
     return await update_theme(body, ctx)
+
+
+@router.post(
+    "/accent-color",
+    response_model=AccentColorResponse,
+)
+async def update_accent_color_endpoint(
+    body: AccentColorUpdate,
+    ctx: ContextDep,
+):
+    return await update_accent_color(body, ctx)
 
 
 @router.post(
