@@ -6,6 +6,8 @@ import type {
   Dashboard,
   LeagueVisibilityItem,
   LeagueVisibilityUpdate,
+  UserLeagueNoteUpdate,
+  UserLeagueNoteResponse,
 } from '@/types';
 
 export const leaguesEndpoints = (
@@ -50,5 +52,11 @@ export const leaguesEndpoints = (
       `${prefix}/visibility/${leagueId}`,
       payload,
     ),
-
+  saveNote: (
+    payload: UserLeagueNoteUpdate,
+  ) =>
+    client.post<UserLeagueNoteResponse>(
+      `${prefix}/note`,
+      payload,
+    ),
 });

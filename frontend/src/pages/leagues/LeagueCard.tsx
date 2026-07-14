@@ -3,7 +3,7 @@ import './LeagueCard.css';
 import { useEffect, useState } from 'react';
 
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
-import { useSaveCommissionerNote } from '@/hooks/sleeper/useUsers';
+import { useSaveUserNote } from '@/hooks/sleeper/useLeagues';
 import type { LeagueDetails } from '@/types';
 import { notify } from '@/utils/notify';
 import { RosterCard } from './RosterCard';
@@ -17,7 +17,7 @@ interface Props {
 export function LeagueCard({
   league,
 }: Props) {
-  const saveNoteMutation = useSaveCommissionerNote();
+  const { saveNote, saving: savingNote } = useSaveUserNote();
   const [note, setNote] = useState(league.note);
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function LeagueCard({
 
   const handleSaveNote = async () => {
     try {
-      await saveNoteMutation.mutateAsync({
+      await saveNote({
         league_id: league.league_id,
         note,
       });
@@ -111,13 +111,13 @@ export function LeagueCard({
           <button
             type="button"
             className="button-secondary"
-            disabled={saveNoteMutation.isPending}
+            disabled={savingNote}
             onClick={() => {
               void handleSaveNote();
             }}
           >
             {
-              saveNoteMutation.isPending
+              savingNote
                 ? 'Saving...'
                 : 'Save notes'
             }

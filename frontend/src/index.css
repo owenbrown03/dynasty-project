@@ -162,6 +162,7 @@ textarea {
 .button-secondary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  color: var(--color-text-strong);
 }
 
 .button-secondary {
@@ -296,7 +297,9 @@ tbody tr:hover {
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--color-canvas);
 }
 

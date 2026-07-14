@@ -558,6 +558,17 @@ export interface CommissionerLeagueNoteUpdate {
   note: string;
 }
 
+export interface UserLeagueNoteUpdate {
+  league_id: string;
+  note: string;
+}
+
+export interface UserLeagueNoteResponse {
+  league_id: string;
+  note: string;
+}
+
+
 export interface CommissionerLeagueDuesUpdate {
   league_id: string;
   roster_id: number;

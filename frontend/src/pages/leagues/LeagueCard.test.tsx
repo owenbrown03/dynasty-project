@@ -5,10 +5,10 @@ import { vi } from 'vitest';
 import { LeagueCard } from './LeagueCard';
 import type { LeagueDetails } from '@/types';
 
-vi.mock('@/hooks/sleeper/useUsers', () => ({
-  useSaveCommissionerNote: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
+vi.mock('@/hooks/sleeper/useLeagues', () => ({
+  useSaveUserNote: () => ({
+    saveNote: vi.fn(),
+    saving: false,
   }),
 }));
 

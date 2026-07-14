@@ -43,3 +43,14 @@ class LeagueManifest(Base):
     league_id: str
     league_name: str
     rosters: list[RosterManifest]
+
+
+class UserLeagueNoteUpdate(Base):
+    league_id: str
+    note: str = ""
+
+
+class UserLeagueNoteResponse(Base):
+    league_id: str
+    note: str
+

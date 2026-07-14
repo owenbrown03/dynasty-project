@@ -12,6 +12,8 @@ import type {
   Dashboard,
   LeagueVisibilityItem,
   LeagueVisibilityUpdate,
+  UserLeagueNoteUpdate,
+  UserLeagueNoteResponse,
 } from '@/types';
 
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -150,3 +152,31 @@ export function useLeagueDashboard() {
     fetching: query.isFetching,
   };
 }
+
+
+export function useSaveUserNote() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<
+    UserLeagueNoteResponse,
+    Error,
+    UserLeagueNoteUpdate
+  >({
+    mutationFn: async (payload) => {
+      return api.leagues
+        .saveNote(payload)
+        .then((res) => res.data);
+    },
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.leagues.details(data.league_id),
+      });
+    },
+  });
+
+  return {
+    saveNote: mutation.mutateAsync,
+    saving: mutation.isPending,
+  };
+}
+
