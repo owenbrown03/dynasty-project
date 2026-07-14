@@ -1,3 +1,54 @@
+.settings-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(18, 22, 30, 0.32);
+  z-index: 9999;
+  overflow-y: auto;
+}
+
+.settings-modal-content {
+  position: relative;
+  width: min(100%, 680px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  padding: 20px;
+  box-shadow: var(--shadow-overlay);
+}
+
+.settings-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  z-index: 1;
+}
+
+.settings-modal-header {
+  margin-bottom: 18px;
+}
+
+.settings-modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.settings-modal-description {
+  max-width: var(--page-copy-max-width);
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .settings-page {
   display: grid;
   gap: 18px;

@@ -8,6 +8,7 @@ import { Link } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthContext } from '@/context/useAuthContext'
 import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
+import { useSettingsContext } from '@/context/useSettingsContext';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { useTheme } from '@/context/useTheme';
 import { useValuePreference } from '@/context/useValuePreference';
@@ -36,6 +37,7 @@ export const Navbar = () => {
   const auth = useAuth();
   const authContext = useAuthContext();
   const sleeperContext = useSleeperAuthContext();
+  const settingsContext = useSettingsContext();
   const connection = useSleeperConnection();
   const theme = useTheme();
   const valuePreference = useValuePreference();
@@ -253,15 +255,16 @@ export const Navbar = () => {
                     </select>
                   </label>
 
-                  <Link
-                    to="/settings"
+                  <button
+                    type="button"
                     className="button-secondary navbar-settings-link"
                     onClick={() => {
                       setAccountMenuOpen(false);
+                      settingsContext.open();
                     }}
                   >
                     Open settings
-                  </Link>
+                  </button>
 
                   {auth.isLoggedIn ? (
                     <button
