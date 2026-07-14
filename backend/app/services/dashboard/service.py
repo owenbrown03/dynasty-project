@@ -438,7 +438,6 @@ async def get_user_dashboard(
     )
     league_cards.sort(
         key=lambda league: (
-            league["dynasty_roster_war_rank"],
             sort_order.get(league["league_id"], 9999),
             league["league_name"].lower(),
         ),
