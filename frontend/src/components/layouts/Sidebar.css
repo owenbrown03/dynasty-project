@@ -109,11 +109,14 @@
 }
 
 .sidebar-link-label {
+  width: 0;
+  overflow: hidden;
   opacity: 0;
-  transition: opacity 0.18s ease;
+  transition: opacity 0.18s ease, width 0.18s ease;
   white-space: nowrap;
 }
 
 .sidebar:hover .sidebar-link-label {
+  width: auto;
   opacity: 1;
 }
