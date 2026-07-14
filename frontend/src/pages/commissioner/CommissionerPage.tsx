@@ -482,7 +482,7 @@ function CommissionerWorkspaceCard({
           <button
             type="button"
             className="button-secondary"
-            disabled={savingSettings}
+            disabled={false}
             onClick={() => {
               void onSaveSettings(
                 league.league_id,
@@ -519,7 +519,7 @@ function CommissionerWorkspaceCard({
           <button
             type="button"
             className="button-secondary"
-            disabled={savingNote}
+            disabled={false}
             onClick={() => {
               void onSaveNote(
                 league.league_id,
@@ -618,7 +618,7 @@ function CommissionerWorkspaceCard({
                         <button
                           type="button"
                           className="button-secondary"
-                          disabled={!!(savingDuesMap && savingDuesMap[key]) || savingDues}
+                          disabled={false}
                           onClick={() => {
                             const parsedAmount = draft.amount.trim()
                               ? Number(draft.amount)
