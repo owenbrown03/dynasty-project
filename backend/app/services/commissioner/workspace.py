@@ -169,13 +169,6 @@ async def get_commissioner_workspace(
             list[str],
         ] = defaultdict(list)
 
-        # Find the current user's roster in this league
-        user_roster_id = None
-        for roster in rosters:
-            if roster.owner_id == ctx.connection.sleeper_user_id:
-                user_roster_id = roster.roster_id
-                break
-
         for traded_pick, _ in traded_picks_by_league_id.get(
             league_id,
             [],
@@ -192,20 +185,15 @@ async def get_commissioner_workspace(
             ):
                 continue
 
-            # Only include picks that originated from the user's roster
-            og_roster_id = int(traded_pick.og_roster_id)
-            if user_roster_id is not None and og_roster_id != user_roster_id:
-                continue
-
             dues_counter[
                 (
-                    og_roster_id,
+                    int(traded_pick.og_roster_id),
                     season,
                 )
             ] += 1
             traded_pick_labels_by_key[
                 (
-                    og_roster_id,
+                    int(traded_pick.og_roster_id),
                     season,
                 )
             ].append(
@@ -320,6 +308,21 @@ async def get_commissioner_workspace(
                 ),
             )
         ]
+
+        # Filter dues to only show picks from the user's roster
+        user_sleeper_id = ctx.connection.sleeper_user_id or ""
+        user_roster_id = None
+        for roster in rosters:
+            if str(roster.owner_id) == str(user_sleeper_id):
+                user_roster_id = roster.roster_id
+                break
+        
+        if user_roster_id is not None:
+            dues_entries = [
+                entry
+                for entry in dues_entries
+                if entry.roster_id == user_roster_id
+            ]
 
         leagues.append(
             CommissionerWorkspaceLeague(
