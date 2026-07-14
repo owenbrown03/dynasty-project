@@ -699,6 +699,10 @@ export const CommissionerPage = () => {
   const saveDuesMutation = useSaveCommissionerDues();
   const saveSettingsMutation = useSaveCommissionerSettings();
 
+  const [savingNoteByLeague, setSavingNoteByLeague] = useState<Record<string, boolean>>({});
+  const [savingDuesByLeague, setSavingDuesByLeague] = useState<Record<string, boolean>>({});
+  const [savingSettingsByLeague, setSavingSettingsByLeague] = useState<Record<string, boolean>>({});
+
   const shareUrl = useMemo(() => {
     if (!activeUsername) {
       return '';
@@ -741,6 +745,7 @@ export const CommissionerPage = () => {
     leagueId: string,
     note: string,
   ) => {
+    setSavingNoteByLeague((s) => ({ ...s, [leagueId]: true }));
     try {
       await saveNoteMutation.mutateAsync({
         league_id: leagueId,
@@ -749,6 +754,8 @@ export const CommissionerPage = () => {
       notify.success('League notes saved.');
     } catch {
       notify.error('Unable to save league notes.');
+    } finally {
+      setSavingNoteByLeague((s) => ({ ...s, [leagueId]: false }));
     }
   };
 
@@ -757,6 +764,8 @@ export const CommissionerPage = () => {
     buyInAmount: number | null,
     isPaid: boolean,
   ) => {
+    const leagueId = entry.league_id;
+    setSavingDuesByLeague((s) => ({ ...s, [leagueId]: true }));
     try {
       await saveDuesMutation.mutateAsync({
         league_id: entry.league_id,
@@ -768,6 +777,8 @@ export const CommissionerPage = () => {
       notify.success('League dues updated.');
     } catch {
       notify.error('Unable to save league dues.');
+    } finally {
+      setSavingDuesByLeague((s) => ({ ...s, [leagueId]: false }));
     }
   };
 
@@ -775,6 +786,7 @@ export const CommissionerPage = () => {
     leagueId: string,
     paidYearsAhead: number,
   ) => {
+    setSavingSettingsByLeague((s) => ({ ...s, [leagueId]: true }));
     try {
       await saveSettingsMutation.mutateAsync({
         league_id: leagueId,
@@ -783,6 +795,8 @@ export const CommissionerPage = () => {
       notify.success('Dues settings updated.');
     } catch {
       notify.error('Unable to save dues settings.');
+    } finally {
+      setSavingSettingsByLeague((s) => ({ ...s, [leagueId]: false }));
     }
   };
 
@@ -1004,9 +1018,9 @@ export const CommissionerPage = () => {
                     onSaveNote={handleSaveNote}
                     onSaveDues={handleSaveDues}
                     onSaveSettings={handleSaveSettings}
-                    savingNote={saveNoteMutation.isPending}
-                    savingDues={saveDuesMutation.isPending}
-                    savingSettings={saveSettingsMutation.isPending}
+                    savingNote={!!savingNoteByLeague[league.league_id]}
+                    savingDues={!!savingDuesByLeague[league.league_id]}
+                    savingSettings={!!savingSettingsByLeague[league.league_id]}
                   />
                 ))
               }
