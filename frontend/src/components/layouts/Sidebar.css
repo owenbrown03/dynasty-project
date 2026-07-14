@@ -29,6 +29,11 @@
   gap: 6px;
 }
 
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+}
+
 .sidebar-section-label {
   padding: 2px 12px 6px;
   color: var(--color-text-faint);
@@ -36,6 +41,12 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.sidebar-divider {
+  height: 1px;
+  margin: 6px 12px;
+  background: var(--color-border);
 }
 
 .sidebar-link {

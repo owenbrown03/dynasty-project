@@ -1,3 +1,4 @@
+import { UserX } from 'lucide-react';
 import './OrphansPage.css';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { OrphanCards } from './OrphanCards';
@@ -20,7 +21,7 @@ export const OrphansPage = () => {
       </section>
 
       {orphans.loading && (
-        <div className="orphans-empty-state">
+        <div className="empty-state">
           <LoadingState label="Fetching orphan rosters..." />
         </div>
       )}
@@ -30,8 +31,12 @@ export const OrphansPage = () => {
       )}
 
       {!orphans.loading && orphans.username && Array.isArray(orphans.data) && orphans.data.length === 0 && (
-        <div className="orphans-empty-state">
-          <p>No orphans found for "{orphans.username}".</p>
+        <div className="empty-state">
+          <UserX size={32} className="empty-state-icon" />
+          <p className="empty-state-title">No orphans found</p>
+          <p className="empty-state-message">
+            No orphan rosters were found for "{orphans.username}".
+          </p>
         </div>
       )}
     </div>

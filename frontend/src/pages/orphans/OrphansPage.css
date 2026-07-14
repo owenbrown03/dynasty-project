@@ -6,11 +6,3 @@
   max-width: var(--page-max-width);
   margin: 0 auto;
 }
-
-.orphans-empty-state {
-  border: 1px dashed var(--color-border-strong);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  text-align: center;
-  padding: 40px 18px;
-}

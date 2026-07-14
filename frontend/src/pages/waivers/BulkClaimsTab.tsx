@@ -3,6 +3,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -230,10 +231,10 @@ export const BulkClaimsTab = ({
       {
         availability.error
           ? (
-            <div className="waivers-empty-state">
-              <h2>Unable to check league availability.</h2>
-
-              <p>
+            <div className="empty-state">
+              <AlertTriangle size={32} className="empty-state-icon" />
+              <p className="empty-state-title">Unable to check availability</p>
+              <p className="empty-state-message">
                 Try selecting the player again.
               </p>
             </div>

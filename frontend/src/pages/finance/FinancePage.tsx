@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Wallet } from 'lucide-react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -1217,8 +1218,12 @@ export function FinancePage() {
       {
         !connection.linked
           ? (
-            <div className="finance-empty-state">
-              Link a Sleeper account to use the finance tracker.
+            <div className="empty-state">
+              <Wallet size={32} className="empty-state-icon" />
+              <p className="empty-state-title">Link your account</p>
+              <p className="empty-state-message">
+                Link a Sleeper account to use the finance tracker.
+              </p>
             </div>
           )
           : null
@@ -1229,7 +1234,7 @@ export function FinancePage() {
           ? (
             <LoadingState
               label="Loading finance tracker..."
-              className="finance-empty-state"
+              className="empty-state"
             />
           )
           : null
@@ -1238,8 +1243,12 @@ export function FinancePage() {
       {
         connection.linked && !finance.loading && finance.error
           ? (
-            <div className="finance-empty-state">
-              Unable to load finance data.
+            <div className="empty-state">
+              <AlertTriangle size={32} className="empty-state-icon" />
+              <p className="empty-state-title">Unable to load finance data</p>
+              <p className="empty-state-message">
+                Please try again later.
+              </p>
             </div>
           )
           : null

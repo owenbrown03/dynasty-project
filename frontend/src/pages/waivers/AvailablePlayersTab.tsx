@@ -3,6 +3,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { AlertTriangle, HandCoins, Search } from 'lucide-react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import {
@@ -104,10 +105,10 @@ export const AvailablePlayersTab = ({
 
   if (leagues.error) {
     return (
-      <div className="waivers-empty-state">
-        <h2>Unable to load waiver leagues.</h2>
-
-        <p>
+      <div className="empty-state">
+        <AlertTriangle size={32} className="empty-state-icon" />
+        <p className="empty-state-title">Unable to load leagues</p>
+        <p className="empty-state-message">
           Check your Sleeper connection and try again.
         </p>
       </div>
@@ -116,10 +117,10 @@ export const AvailablePlayersTab = ({
 
   if (leagues.data.length === 0) {
     return (
-      <div className="waivers-empty-state">
-        <h2>No waiver leagues found.</h2>
-
-        <p>
+      <div className="empty-state">
+        <HandCoins size={32} className="empty-state-icon" />
+        <p className="empty-state-title">No waiver leagues</p>
+        <p className="empty-state-message">
           Sync your Sleeper leagues and try again.
         </p>
       </div>
@@ -175,10 +176,10 @@ export const AvailablePlayersTab = ({
       {
         availablePlayers.error
           ? (
-            <div className="waivers-empty-state">
-              <h2>Unable to load available players.</h2>
-
-              <p>
+            <div className="empty-state">
+              <Search size={32} className="empty-state-icon" />
+              <p className="empty-state-title">Unable to load players</p>
+              <p className="empty-state-message">
                 Try selecting the league again.
               </p>
             </div>

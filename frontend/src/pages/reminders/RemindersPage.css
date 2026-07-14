@@ -7,14 +7,6 @@
   margin: 0 auto;
 }
 
-.reminders-empty-state {
-  padding: 42px 24px;
-  border: 1px dashed var(--color-border-strong);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  text-align: center;
-}
-
 .reminder-create-card,
 .reminder-card {
   display: grid;

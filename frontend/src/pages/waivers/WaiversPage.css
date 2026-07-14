@@ -29,25 +29,12 @@
   text-align: right;
 }
 
-.waivers-loading-state,
-.waivers-empty-state {
+.waivers-loading-state {
   border: 1px dashed var(--color-border-strong);
   background: var(--color-surface);
   color: var(--color-text-muted);
   text-align: center;
   padding: 48px 24px;
-}
-
-.waivers-empty-state h1,
-.waivers-empty-state h2 {
-  margin: 0 0 8px;
-  color: var(--color-text-strong);
-  font-size: 18px;
-}
-
-.waivers-empty-state p {
-  margin: 0;
-  font-size: 14px;
 }
 
 .waiver-league-list {
@@ -499,21 +486,17 @@
 
 .waivers-tabs {
   display: flex;
-  gap: 8px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--color-border);
+  width: fit-content;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
 }
 
 .waivers-tab {
+  padding: 10px 16px;
+  border: 0;
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-
   color: var(--color-text-muted);
   cursor: pointer;
-
-  padding: 9px 12px;
-
   font-size: 13px;
   font-weight: 700;
 }
@@ -522,9 +505,12 @@
   color: var(--color-text-strong);
 }
 
+.waivers-tab + .waivers-tab {
+  border-left: 1px solid var(--color-border);
+}
+
 .waivers-tab.active {
-  background: var(--color-surface);
-  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
   color: var(--color-text-strong);
 }
 
