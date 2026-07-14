@@ -378,6 +378,10 @@
   font-weight: 600;
 }
 
+.commissioner-due-controls .button-secondary {
+  min-width: 60px;
+}
+
 @media (max-width: 1040px) {
   .commissioner-page-header {
     flex-direction: column;
