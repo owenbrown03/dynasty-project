@@ -193,6 +193,14 @@ async def get_commissioner_workspace(
             ):
                 continue
 
+            # Only count picks where the current seller (old_roster_id) is the
+            # same as the recorded original owner (og_roster_id). This excludes
+            # picks the seller had previously acquired from another roster.
+            old_roster = getattr(traded_pick, 'old_roster_id', None)
+            og_roster = getattr(traded_pick, 'og_roster_id', None)
+            if old_roster is not None and og_roster is not None and str(old_roster) != str(og_roster):
+                continue
+
             dues_counter[
                 (
                     int(traded_pick.og_roster_id),
@@ -317,25 +325,6 @@ async def get_commissioner_workspace(
             )
         ]
 
-
-        # If the current user has a roster in this league, only include dues for picks
-        # that originated from that roster. If we can't determine the user's roster id,
-        # show all dues as before.
-        user_sleeper_id = getattr(getattr(ctx, "connection", None), "sleeper_user_id", None)
-        user_roster_id = None
-        if user_sleeper_id is not None:
-            for roster in rosters:
-                # roster.owner_id may be str or int depending on source; compare as str
-                if str(getattr(roster, "owner_id", "")) == str(user_sleeper_id):
-                    user_roster_id = getattr(roster, "roster_id", None)
-                    break
-
-        if user_roster_id is not None:
-            dues_entries = [
-                entry
-                for entry in dues_entries
-                if entry.roster_id == user_roster_id
-            ]
 
         leagues.append(
             CommissionerWorkspaceLeague(
