@@ -24,28 +24,25 @@ def build_pick_label(
         else projected_slot
     )
 
+    suffix = " (proj.)" if is_projected else ""
+
     if resolved_slot is not None:
-        suffix = " (proj.)" if is_projected else ""
-        return (
+        base = (
             f"{season} Pick {round_number}.{resolved_slot:02d}"
             f"{suffix}"
         )
+    else:
+        base = f"{season} Round {round_number}"
+
+    if og_roster_id == current_owner_roster_id:
+        return base
 
     original_owner_name = roster_name_by_id.get(
         og_roster_id,
         f"Roster {og_roster_id}",
     )
 
-    if og_roster_id == current_owner_roster_id:
-        return (
-            f"{season} Round {round_number} "
-            f"({original_owner_name}'s original)"
-        )
-
-    return (
-        f"{season} Round {round_number} "
-        f"(from {original_owner_name})"
-    )
+    return f"{base} (from {original_owner_name})"
 
 
 def get_first_future_pick_season(
