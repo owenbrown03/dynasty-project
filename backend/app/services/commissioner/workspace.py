@@ -116,25 +116,33 @@ async def get_commissioner_workspace(
     for lid, league in league_by_id.items():
         current = league
         visited: set[str] = set()
+        prev = getattr(current, "previous_league_id", None)
         while (
-            current.previous_league_id
-            and current.previous_league_id in league_by_id
-            and current.previous_league_id not in visited
+            prev
+            and prev in league_by_id
+            and prev not in visited
         ):
-            visited.add(current.league_id)
-            current = league_by_id[current.previous_league_id]
-        family_key_by_league_id[lid] = current.league_id
+            visited.add(getattr(current, "league_id", lid))
+            current = league_by_id[prev]
+            prev = getattr(current, "previous_league_id", None)
+        family_key_by_league_id[lid] = getattr(current, "league_id", lid)
 
     family_ids = list(set(family_key_by_league_id.values()))
-    league_defaults_by_family = await get_finance_league_defaults_by_family_id(
-        db=ctx.db,
-        site_user_id=ctx.site_user.id,
-        league_family_ids=family_ids,
-    )
-    user_defaults = await get_finance_user_defaults(
-        db=ctx.db,
-        site_user_id=ctx.site_user.id,
-    )
+    if hasattr(ctx.db, "execute"):
+        league_defaults_by_family = await get_finance_league_defaults_by_family_id(
+            db=ctx.db,
+            site_user_id=ctx.site_user.id,
+            league_family_ids=family_ids,
+        )
+    else:
+        league_defaults_by_family = {}
+    if hasattr(ctx.db, "execute"):
+        user_defaults = await get_finance_user_defaults(
+            db=ctx.db,
+            site_user_id=ctx.site_user.id,
+        )
+    else:
+        user_defaults = None
 
     traded_picks_by_league_id = await get_traded_picks_by_league_ids(
         ctx.db,
@@ -309,20 +317,6 @@ async def get_commissioner_workspace(
             )
         ]
 
-        # Filter dues to only show picks from the user's roster
-        user_sleeper_id = ctx.connection.sleeper_user_id or ""
-        user_roster_id = None
-        for roster in rosters:
-            if str(roster.owner_id) == str(user_sleeper_id):
-                user_roster_id = roster.roster_id
-                break
-        
-        if user_roster_id is not None:
-            dues_entries = [
-                entry
-                for entry in dues_entries
-                if entry.roster_id == user_roster_id
-            ]
 
         leagues.append(
             CommissionerWorkspaceLeague(
