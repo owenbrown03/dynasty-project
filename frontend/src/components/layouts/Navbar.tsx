@@ -10,6 +10,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
 import { useSettingsContext } from '@/context/useSettingsContext';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
+import { UserAvatar } from '@/components/users/UserAvatar';
 import brandLogo from '@/assets/logo.png';
 
 export const Navbar = () => {
@@ -42,8 +43,6 @@ export const Navbar = () => {
   const accountLabel = auth.siteUser?.email
     ?? connection.username
     ?? 'Guest';
-
-  const accountInitial = accountLabel.charAt(0).toUpperCase();
 
   return (
     <nav className="navbar">
@@ -132,9 +131,12 @@ export const Navbar = () => {
             aria-haspopup="menu"
             title={accountLabel}
           >
-            <span className="navbar-account-initial">
-              {accountInitial}
-            </span>
+            <UserAvatar
+              avatarId={connection.avatar}
+              name={accountLabel}
+              size="sm"
+              className="navbar-account-avatar"
+            />
           </button>
 
           {

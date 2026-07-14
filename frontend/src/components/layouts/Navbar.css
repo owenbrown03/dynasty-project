@@ -61,6 +61,8 @@
 .navbar-middle {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .navbar-status {
@@ -125,11 +127,11 @@
   background: var(--color-surface-strong);
 }
 
-.navbar-account-initial {
-  display: block;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
+.navbar-account-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
 }
 
 .navbar-account-menu {
