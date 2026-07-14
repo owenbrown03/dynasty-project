@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
@@ -44,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_TRADE_EXPIRY_SECONDS = 7 * 24 * 60 * 60
+BULK_WRITE_DELAY_SECONDS = 1.0
 
 
 def build_bulk_trade_result(
@@ -962,7 +964,11 @@ async def submit_bulk_trade_offers(
     # --------------------------------------------------
     results = []
 
-    for offer, variables in validated_offers:
+    total_offers = len(validated_offers)
+
+    for index, (offer, variables) in enumerate(
+        validated_offers,
+    ):
         try:
             response = await sleeper.write.propose_trade(
                 **variables,
@@ -1011,6 +1017,11 @@ async def submit_bulk_trade_offers(
                         "this trade."
                     ),
                 )
+            )
+
+        if index < total_offers - 1:
+            await asyncio.sleep(
+                BULK_WRITE_DELAY_SECONDS,
             )
 
     return BulkTradeProposalResponse(

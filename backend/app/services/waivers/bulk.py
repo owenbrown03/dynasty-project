@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections import defaultdict
 
@@ -59,6 +60,8 @@ from app.services.leagues.selection import (
 
 
 logger = logging.getLogger(__name__)
+
+BULK_WRITE_DELAY_SECONDS = 1.0
 
 
 DYNASTY_VALUE_BASES = {
@@ -632,8 +635,9 @@ async def submit_bulk_claims(
     results: list[
         BulkWaiverClaimResult
     ] = []
+    total_claims = len(request.claims)
 
-    for claim in request.claims:
+    for index, claim in enumerate(request.claims):
         try:
             response = await submit_claim(
                 db=db,
@@ -696,6 +700,11 @@ async def submit_bulk_claims(
                         "this Sleeper waiver claim."
                     ),
                 )
+            )
+
+        if index < total_claims - 1:
+            await asyncio.sleep(
+                BULK_WRITE_DELAY_SECONDS,
             )
 
     return BulkWaiverClaimResponse(
