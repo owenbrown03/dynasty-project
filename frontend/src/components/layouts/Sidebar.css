@@ -69,20 +69,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 0;
   min-height: 42px;
+  margin: 1px 6px;
   padding: 0;
-  border: 1px solid transparent;
+  border: none;
+  border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  transition: padding 0.18s ease;
+  transition: padding 0.18s ease, gap 0.18s ease;
 }
 
 .sidebar:hover .sidebar-link {
   justify-content: flex-start;
+  gap: 12px;
   padding: 0 12px;
 }
 
@@ -94,12 +97,10 @@
 }
 
 .sidebar-link:hover {
-  border-color: var(--color-border);
   background: var(--color-surface-raised);
 }
 
 .sidebar-link.active {
-  border-color: var(--color-border-strong);
   background: var(--color-accent-soft);
   color: var(--color-text-strong);
 }
