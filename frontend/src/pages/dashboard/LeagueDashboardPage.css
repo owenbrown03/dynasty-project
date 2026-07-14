@@ -280,6 +280,10 @@
     grid-template-columns: minmax(200px, 1.6fr) repeat(4, minmax(80px, 1fr));
   }
 
+  .portfolio-league-table-head span:nth-child(n+6) {
+    display: none;
+  }
+
   .portfolio-league-metric:nth-child(n+5) {
     display: none;
   }
