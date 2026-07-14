@@ -96,31 +96,41 @@
 
 .navbar-right {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: flex-end;
   gap: 0;
-  min-width: 260px;
 }
 
 .navbar-account-cluster {
   position: relative;
   display: flex;
-  align-items: end;
-  gap: 12px;
-  padding: 8px 0 8px 14px;
-  border-left: 1px solid var(--color-border);
+  align-items: center;
 }
 
 .navbar-account-trigger {
-  min-width: 164px;
-  justify-content: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
 
-.navbar-account-trigger-copy {
-  display: grid;
-  justify-items: start;
-  gap: 2px;
-  text-align: left;
+.navbar-account-trigger:hover {
+  color: var(--color-text-strong);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-strong);
+}
+
+.navbar-account-icon {
+  display: block;
+  flex-shrink: 0;
 }
 
 .navbar-account-menu {
@@ -211,9 +221,7 @@
 
   .navbar-account-cluster {
     width: 100%;
-    padding: 0;
-    border-left: 0;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .navbar-account-menu {
@@ -223,14 +231,6 @@
 }
 
 @media (max-width: 640px) {
-  .navbar-account-cluster {
-    flex-wrap: wrap;
-  }
-
-  .navbar-account-trigger {
-    width: 100%;
-  }
-
   .navbar-theme-control {
     min-width: 140px;
   }
