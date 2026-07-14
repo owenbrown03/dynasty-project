@@ -100,6 +100,11 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.commissioner-card-header > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
 .commissioner-card-kicker,
 .commissioner-section-header p {
   color: var(--color-text-muted);
@@ -113,6 +118,7 @@
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
 }
 
 .commissioner-card-subtitle {

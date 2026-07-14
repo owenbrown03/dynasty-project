@@ -868,7 +868,7 @@ export const CommissionerPage = () => {
           </label>
 
           {
-            shareUrl
+            shareUrl && activeTab === 'orphans'
               ? (
                 <button
                   className="button-secondary"
