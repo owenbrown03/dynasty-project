@@ -302,6 +302,48 @@ class Draft(SQLModel, table=True):
     slot_to_roster_id: Optional[Dict[str, int]] = Field(default_factory=dict, sa_type=JSON, nullable=True)
 
     league: "League" = Relationship(back_populates="draft")
+    selections: List["DraftSelection"] = Relationship(
+        back_populates="draft",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+
+class DraftSelection(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    draft_id: str = Field(
+        foreign_key="draft.draft_id",
+        index=True,
+    )
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
+    season: str = Field(index=True)
+    round: int = Field(index=True)
+    pick_no: int = Field(index=True)
+    round_slot: int = Field(index=True)
+    roster_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    player_id: Optional[str] = Field(
+        default=None,
+        foreign_key="player.player_id",
+        nullable=True,
+        index=True,
+    )
+    is_keeper: bool = Field(default=False, nullable=False)
+
+    draft: "Draft" = Relationship(back_populates="selections")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "draft_id",
+            "pick_no",
+            name="uq_draftselection_draft_pick_no",
+        ),
+    )
 
 
 class Movement(SQLModel, table=True):

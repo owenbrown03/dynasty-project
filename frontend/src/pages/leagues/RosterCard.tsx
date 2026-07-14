@@ -62,6 +62,7 @@ function PickList({
             <div className="league-pick-values">
               <span>KTC {formatNumber(pick.ktc_value)}</span>
               <span>FC {formatNumber(pick.fc_value)}</span>
+              <span>Rookie WAR {formatNumber(pick.rookie_war_value)}</span>
             </div>
           </div>
         ))
@@ -131,6 +132,10 @@ export function RosterCard({
         <div className="roster-summary-stat">
           <span>Pick FC</span>
           <strong>{formatNumber(roster.total_pick_fc_value)}</strong>
+        </div>
+        <div className="roster-summary-stat">
+          <span>Pick WAR</span>
+          <strong>{formatNumber(roster.total_pick_rookie_war_value)}</strong>
         </div>
         <div className="roster-summary-stat">
           <span>R St WAR</span>

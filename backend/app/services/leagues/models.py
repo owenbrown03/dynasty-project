@@ -23,6 +23,7 @@ class LeaguePick(BaseModel):
     slot_source_label: str | None = None
     fc_value: float | None = None
     ktc_value: float | None = None
+    rookie_war_value: float | None = None
 
 
 class LeaguePlayer(BaseModel):
@@ -70,6 +71,7 @@ class LeagueRoster(BaseModel):
     total_dynasty_roster_war: float
     total_pick_ktc_value: float
     total_pick_fc_value: float
+    total_pick_rookie_war_value: float
     total_asset_ktc_value: float
     total_asset_fc_value: float
     players: list[LeaguePlayer]

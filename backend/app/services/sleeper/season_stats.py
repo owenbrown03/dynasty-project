@@ -48,7 +48,7 @@ async def sync_recent_regular_season_stats(
     db: AsyncSession,
     sleeper,
     current_season: int,
-    years: int = 4,
+    years: int = 16,
     force_update: bool = False,
 ) -> None:
     start_season = max(

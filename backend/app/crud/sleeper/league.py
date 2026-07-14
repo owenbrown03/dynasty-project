@@ -548,12 +548,39 @@ async def fetch_league_bundle(
             ),
         )
 
+        draft_pick_lists = (
+            await asyncio.gather(
+                *[
+                    sleeper.read.get_draft_picks(
+                        draft.draft_id,
+                    )
+                    for draft in drafts
+                ],
+                return_exceptions=True,
+            )
+            if drafts
+            else []
+        )
+
         transactions = [
             transaction
             for batch in tx_lists
             if isinstance(batch, list)
             for transaction in batch
         ]
+
+        draft_picks_by_draft_id = {
+            draft.draft_id: (
+                draft_pick_list
+                if isinstance(draft_pick_list, list)
+                else []
+            )
+            for draft, draft_pick_list in zip(
+                drafts,
+                draft_pick_lists,
+                strict=False,
+            )
+        }
 
         return {
             "league_id": league_id,
@@ -563,6 +590,7 @@ async def fetch_league_bundle(
             "users": users,
             "rosters": rosters,
             "drafts": drafts,
+            "draft_picks_by_draft_id": draft_picks_by_draft_id,
 
             "transactions": transactions,
             "traded_picks": traded_picks if isinstance(traded_picks, list) else [],
@@ -767,6 +795,15 @@ async def save_league_bundle_to_db(
                 "draft_id",
             )
 
+        await _save_draft_selections(
+            db,
+            drafts=bundle.get("drafts", []),
+            draft_picks_by_draft_id=(
+                bundle.get("draft_picks_by_draft_id", {})
+            ),
+            league_dict=league_dict,
+        )
+
         await _save_transactions(db, bundle.get("transactions", []), league_id)
         await _backfill_traded_picks(
             db,
@@ -904,6 +941,72 @@ async def _save_transactions(
                 model.TradedPick,
             ).values(
                 pick_dicts,
+            )
+        )
+
+
+async def _save_draft_selections(
+    db: AsyncSession,
+    *,
+    drafts: list,
+    draft_picks_by_draft_id: dict[str, list],
+    league_dict: dict,
+) -> None:
+    if not drafts:
+        return
+
+    selection_dicts: list[dict] = []
+    draft_ids: list[str] = []
+
+    for draft in drafts:
+        raw_picks = draft_picks_by_draft_id.get(
+            draft.draft_id,
+            [],
+        )
+
+        if not raw_picks:
+            continue
+
+        draft_ids.append(
+            draft.draft_id,
+        )
+
+        for fallback_pick_no, raw_pick in enumerate(
+            raw_picks,
+            start=1,
+        ):
+            if not isinstance(raw_pick, dict):
+                continue
+
+            selection_dicts.append(
+                transformers.draft_selection_to_db(
+                    raw_pick=raw_pick,
+                    draft_id=draft.draft_id,
+                    league_id=league_dict["league_id"],
+                    season=str(draft.season),
+                    total_rosters=int(
+                        league_dict["total_rosters"],
+                    ),
+                    fallback_pick_no=fallback_pick_no,
+                    return_dict=True,
+                )
+            )
+
+    if draft_ids:
+        await db.execute(
+            model.DraftSelection.__table__.delete().where(
+                model.DraftSelection.draft_id.in_(
+                    draft_ids,
+                )
+            )
+        )
+
+    if selection_dicts:
+        await db.execute(
+            insert(
+                model.DraftSelection,
+            ).values(
+                selection_dicts,
             )
         )
 

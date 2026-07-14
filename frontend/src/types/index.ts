@@ -228,6 +228,7 @@ export interface LeaguePick {
   slot_source_label: string | null;
   fc_value: number | null;
   ktc_value: number | null;
+  rookie_war_value: number | null;
 }
 
 export interface LeaguePlayer {
@@ -280,6 +281,7 @@ export interface LeagueRoster {
   total_dynasty_roster_war: number;
   total_pick_ktc_value: number;
   total_pick_fc_value: number;
+  total_pick_rookie_war_value: number;
   total_asset_ktc_value: number;
   total_asset_fc_value: number;
 
@@ -1035,4 +1037,5 @@ export interface TradeCalculatorPickValueResponse {
   ppr: number;
   ktc_value: number | null;
   fc_value: number | null;
+  rookie_war_value: number | null;
 }

@@ -167,3 +167,4 @@ class TradeCalculatorPickValueResponse(Base):
     ppr: int
     ktc_value: float | None = None
     fc_value: float | None = None
+    rookie_war_value: float | None = None

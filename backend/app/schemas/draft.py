@@ -14,3 +14,4 @@ class DraftPickAsset(Base):
     label: str
     selected_value: float | None = None
     value_source_label: str | None = None
+    rookie_war_value: float | None = None

@@ -49,6 +49,22 @@ async def get_trade_calculator_pick_value(
         league_total_rosters=total_rosters,
         league_ppr=ppr,
     )
+    rookie_war_values = await get_resolved_pick_values_by_key(
+        db,
+        picks=[pick],
+        value_basis=ValueBasis.ROOKIE_PICK_WAR,
+        league_num_qbs=num_qbs,
+        league_total_rosters=total_rosters,
+        league_ppr=ppr,
+        league_scoring_settings={
+            "rec": float(ppr),
+        },
+        league_roster_positions=(
+            ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "SUPER_FLEX"]
+            if num_qbs == 2
+            else ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX"]
+        ),
+    )
     key = (
         pick.season,
         pick.round,
@@ -70,6 +86,11 @@ async def get_trade_calculator_pick_value(
         fc_value=(
             fc_values.get(key).value
             if key in fc_values
+            else None
+        ),
+        rookie_war_value=(
+            rookie_war_values.get(key).value
+            if key in rookie_war_values
             else None
         ),
     )

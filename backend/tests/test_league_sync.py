@@ -248,6 +248,12 @@ def test_fetch_league_bundle_uses_transactions_only_for_existing_league():
             )
             return []
 
+        async def get_traded_picks(self, league_id):
+            self.calls.append(
+                ("get_traded_picks", league_id, None)
+            )
+            return []
+
     sleeper = SimpleNamespace(
         read=FakeRead(),
     )
@@ -286,10 +292,12 @@ def test_fetch_league_bundle_uses_transactions_only_for_existing_league():
         ],
         "transactions_only": True,
         "synced_week": 3,
+        "traded_picks": [],
     }
     assert sleeper.read.calls == [
         ("get_transactions", "league-1", 2),
         ("get_transactions", "league-1", 3),
+        ("get_traded_picks", "league-1", None),
     ]
 
 
@@ -328,6 +336,12 @@ def test_fetch_league_bundle_uses_full_refresh_for_incomplete_existing_league():
             )
             return []
 
+        async def get_traded_picks(self, league_id):
+            self.calls.append(
+                ("get_traded_picks", league_id, None)
+            )
+            return []
+
     sleeper = SimpleNamespace(
         read=FakeRead(),
     )
@@ -358,3 +372,4 @@ def test_fetch_league_bundle_uses_full_refresh_for_incomplete_existing_league():
     assert ("get_users", "league-1", None) in sleeper.read.calls
     assert ("get_rosters", "league-1", None) in sleeper.read.calls
     assert ("get_drafts_league", "league-1", None) in sleeper.read.calls
+    assert ("get_traded_picks", "league-1", None) in sleeper.read.calls

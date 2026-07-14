@@ -1,10 +1,16 @@
+import asyncio
+
 from app.schemas.draft import DraftPickAsset
 from app.services.draft.values import (
+    ResolvedPickValue,
     get_pick_bucket,
+    get_resolved_pick_values_by_key,
     parse_fantasycalc_pick,
     parse_ktc_pick_name,
     resolve_ktc_pick_value,
 )
+from app.services.draft.rookie_war import RookiePickWarAggregate
+from app.services.values.basis import ValueBasis
 from app.models.db.ktc.models import KTCPickValue
 
 
@@ -77,3 +83,63 @@ def test_resolve_ktc_pick_value_defaults_to_mid_without_slot():
 
     assert resolved.value == 4607.0
     assert resolved.source_label == "2026 Mid 1st"
+
+
+def test_get_resolved_pick_values_supports_rookie_pick_war(
+    monkeypatch,
+):
+    pick = DraftPickAsset(
+        season="2027",
+        round=1,
+        og_roster_id=1,
+        current_owner_roster_id=1,
+        label="2027 Pick 1.04",
+        slot=4,
+    )
+
+    async def fake_get_rookie_pick_war_values_by_key(
+        db,
+        *,
+        picks,
+        league_total_rosters,
+        league_scoring_settings,
+        league_roster_positions,
+    ):
+        del db, league_total_rosters, league_scoring_settings, league_roster_positions
+        return {
+            (
+                picks[0].season,
+                picks[0].round,
+                picks[0].og_roster_id,
+            ): RookiePickWarAggregate(
+                starter_war=5.1,
+                roster_war=8.4,
+                sample_size=12,
+                source_label="Historical rookie WAR from 12 past 1.04 outcomes",
+            )
+        }
+
+    monkeypatch.setattr(
+        "app.services.draft.values.get_rookie_pick_war_values_by_key",
+        fake_get_rookie_pick_war_values_by_key,
+    )
+
+    resolved = asyncio.run(
+        get_resolved_pick_values_by_key(
+            db=None,
+            picks=[pick],
+            value_basis=ValueBasis.ROOKIE_PICK_WAR,
+            league_num_qbs=2,
+            league_total_rosters=12,
+            league_ppr=1,
+            league_scoring_settings={"rec": 1.0},
+            league_roster_positions=["QB", "RB", "WR", "TE", "FLEX"],
+        )
+    )
+
+    assert resolved == {
+        ("2027", 1, 1): ResolvedPickValue(
+            value=8.4,
+            source_label="Historical rookie WAR from 12 past 1.04 outcomes",
+        )
+    }

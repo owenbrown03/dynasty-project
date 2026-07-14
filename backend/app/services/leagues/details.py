@@ -474,6 +474,20 @@ class LeagueDetails:
             league_total_rosters=league.total_rosters,
             league_ppr=ppr,
         )
+        rookie_war_pick_values_by_key = await get_resolved_pick_values_by_key(
+            db,
+            picks=all_pick_assets,
+            value_basis=ValueBasis.ROOKIE_PICK_WAR,
+            league_num_qbs=num_qbs,
+            league_total_rosters=league.total_rosters,
+            league_ppr=ppr,
+            league_scoring_settings=dict(
+                league.scoring_settings or {},
+            ),
+            league_roster_positions=list(
+                league.roster_positions or [],
+            ),
+        )
 
         rosters: list[LeagueRoster] = []
 
@@ -486,6 +500,7 @@ class LeagueDetails:
             picks = []
             total_pick_fc_value = 0.0
             total_pick_ktc_value = 0.0
+            total_pick_rookie_war_value = 0.0
 
             for pick in raw_pick_assets_by_roster_id.get(
                 roster.roster_id,
@@ -499,6 +514,11 @@ class LeagueDetails:
 
                 fc_pick_value = fc_pick_values_by_key.get(key)
                 ktc_pick_value = ktc_pick_values_by_key.get(key)
+                rookie_war_pick_value = (
+                    rookie_war_pick_values_by_key.get(
+                        key,
+                    )
+                )
 
                 fc_value = (
                     fc_pick_value.value
@@ -510,9 +530,17 @@ class LeagueDetails:
                     if ktc_pick_value is not None
                     else None
                 )
+                rookie_war_value = (
+                    rookie_war_pick_value.value
+                    if rookie_war_pick_value is not None
+                    else None
+                )
 
                 total_pick_fc_value += fc_value or 0.0
                 total_pick_ktc_value += ktc_value or 0.0
+                total_pick_rookie_war_value += (
+                    rookie_war_value or 0.0
+                )
 
                 picks.append(
                     LeaguePick(
@@ -526,6 +554,7 @@ class LeagueDetails:
                         slot_source_label=pick.slot_source_label,
                         fc_value=fc_value,
                         ktc_value=ktc_value,
+                        rookie_war_value=rookie_war_value,
                     )
                 )
 
@@ -595,6 +624,10 @@ class LeagueDetails:
                     total_dynasty_roster_war=total_dynasty_roster_war,
                     total_pick_ktc_value=round(total_pick_ktc_value, 2),
                     total_pick_fc_value=round(total_pick_fc_value, 2),
+                    total_pick_rookie_war_value=round(
+                        total_pick_rookie_war_value,
+                        2,
+                    ),
                     total_asset_ktc_value=round(total_ktc_value + total_pick_ktc_value, 2),
                     total_asset_fc_value=round(total_fc_value + total_pick_fc_value, 2),
                     players=roster_players,

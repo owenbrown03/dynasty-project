@@ -70,3 +70,27 @@ def test_tx_to_db_falls_back_to_legacy_time_field():
     )
 
     assert transaction.time_ms == 456
+
+
+def test_draft_selection_to_db_derives_pick_numbers_and_slots():
+    selection = transformers.draft_selection_to_db(
+        raw_pick={
+            "round": 2,
+            "roster_id": 7,
+            "player_id": "player-1",
+        },
+        draft_id="draft-1",
+        league_id="league-1",
+        season="2025",
+        total_rosters=12,
+        fallback_pick_no=16,
+    )
+
+    assert selection.draft_id == "draft-1"
+    assert selection.league_id == "league-1"
+    assert selection.season == "2025"
+    assert selection.round == 2
+    assert selection.pick_no == 16
+    assert selection.round_slot == 4
+    assert selection.roster_id == 7
+    assert selection.player_id == "player-1"

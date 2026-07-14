@@ -125,6 +125,64 @@ def draft_to_db(
 
     return model.Draft(**data_map)
 
+
+def draft_selection_to_db(
+    *,
+    raw_pick: dict[str, Any],
+    draft_id: str,
+    league_id: str,
+    season: str,
+    total_rosters: int,
+    fallback_pick_no: int,
+    return_dict: bool = False,
+) -> model.DraftSelection | dict[str, Any]:
+    pick_no = int(
+        raw_pick.get("pick_no")
+        or fallback_pick_no
+    )
+    round_number = int(
+        raw_pick.get("round")
+        or 1
+    )
+    round_slot = int(
+        raw_pick.get("round_slot")
+        or (
+            ((pick_no - 1) % max(total_rosters, 1))
+            + 1
+        )
+    )
+
+    roster_id = raw_pick.get("roster_id")
+    player_id = raw_pick.get("player_id")
+
+    data_map = {
+        "draft_id": draft_id,
+        "league_id": league_id,
+        "season": str(season),
+        "round": round_number,
+        "pick_no": pick_no,
+        "round_slot": round_slot,
+        "roster_id": (
+            int(roster_id)
+            if roster_id is not None
+            else None
+        ),
+        "player_id": (
+            str(player_id)
+            if player_id is not None
+            else None
+        ),
+        "is_keeper": bool(
+            raw_pick.get("is_keeper")
+            or False
+        ),
+    }
+
+    if return_dict:
+        return data_map
+
+    return model.DraftSelection(**data_map)
+
 def tx_to_db(
     schema: schema.Transaction, 
     league_id: str,

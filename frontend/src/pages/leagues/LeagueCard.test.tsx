@@ -63,6 +63,7 @@ const league: LeagueDetails = {
       total_dynasty_roster_war: 9,
       total_pick_ktc_value: 200,
       total_pick_fc_value: 150,
+      total_pick_rookie_war_value: 12.5,
       total_asset_ktc_value: 1200,
       total_asset_fc_value: 1050,
       rank: 1,

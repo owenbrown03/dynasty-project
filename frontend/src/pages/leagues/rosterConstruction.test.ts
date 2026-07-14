@@ -31,6 +31,7 @@ const roster: LeagueRoster = {
   total_dynasty_roster_war: 0,
   total_pick_ktc_value: 0,
   total_pick_fc_value: 0,
+  total_pick_rookie_war_value: 0,
   total_asset_ktc_value: 0,
   total_asset_fc_value: 0,
   picks: [],

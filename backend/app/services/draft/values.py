@@ -10,6 +10,9 @@ from app.crud.ktc.picks import get_ktc_pick_values
 from app.models.db.fc.models import FantasyCalcPickValue
 from app.models.db.ktc.models import KTCPickValue
 from app.schemas.draft import DraftPickAsset
+from app.services.draft.rookie_war import (
+    get_rookie_pick_war_values_by_key,
+)
 from app.services.values.basis import ValueBasis
 
 
@@ -213,15 +216,43 @@ async def get_resolved_pick_values_by_key(
     league_num_qbs: int,
     league_total_rosters: int,
     league_ppr: int,
+    league_scoring_settings: dict[str, float] | None = None,
+    league_roster_positions: list[str] | None = None,
 ) -> dict[tuple[str, int, int], ResolvedPickValue]:
     if value_basis not in {
         ValueBasis.KTC,
         ValueBasis.FANTASYCALC,
+        ValueBasis.ROOKIE_PICK_WAR,
     }:
         return {}
 
     seasons = sorted({pick.season for pick in picks})
     rounds = sorted({pick.round for pick in picks})
+
+    if value_basis == ValueBasis.ROOKIE_PICK_WAR:
+        if (
+            league_scoring_settings is None
+            or league_roster_positions is None
+        ):
+            return {}
+
+        rookie_war_values_by_key = (
+            await get_rookie_pick_war_values_by_key(
+                db,
+                picks=picks,
+                league_total_rosters=league_total_rosters,
+                league_scoring_settings=league_scoring_settings,
+                league_roster_positions=league_roster_positions,
+            )
+        )
+
+        return {
+            key: ResolvedPickValue(
+                value=aggregate.roster_war,
+                source_label=aggregate.source_label,
+            )
+            for key, aggregate in rookie_war_values_by_key.items()
+        }
 
     if value_basis == ValueBasis.FANTASYCALC:
         rows_by_shape = await get_fantasycalc_pick_values(
