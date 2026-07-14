@@ -32,33 +32,38 @@
 }
 
 .sidebar-section + .sidebar-section {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid var(--color-border);
-  position: relative;
+  margin-top: 8px;
 }
 
 .sidebar-section-label {
-  position: relative;
-  display: block;
-  padding: 0 10px;
-  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 4px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
   color: var(--color-text-faint);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  overflow: hidden;
-  max-height: 0;
-  opacity: 0;
   transition: opacity 0.18s ease, max-height 0.18s ease, margin 0.18s ease;
+}
+
+.sidebar-section-label::before,
+.sidebar-section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
 }
 
 .sidebar:hover .sidebar-section-label {
   max-height: 20px;
   opacity: 1;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .sidebar-link {
