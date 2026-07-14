@@ -63,6 +63,9 @@ export const Sidebar = () => {
         <div className="sidebar-menu">
           {sections.map((section, si) => (
             <div key={si} className="sidebar-section">
+              {section.label && (
+                <span className="sidebar-section-label">{section.label}</span>
+              )}
               {section.items.map((item) => (
                 <NavLink
                   key={item.to}
