@@ -23,7 +23,6 @@ from .cards import (
 )
 from .crud import (
     get_all_league_rosters,
-    get_user_by_name,
 )
 from .summary import (
     build_summary,
@@ -32,11 +31,10 @@ from .top_assets import (
     build_top_assets,
 )
 from app.services.leagues.selection import (
-    get_visible_owned_league_rows_by_username,
+    get_visible_owned_league_rows_by_sleeper_user_id,
 )
 from app.crud.sleeper.personal import get_league_sort_orders
-from app.models.db.sleeper.api import User
-from sqlmodel import select
+from app.crud.sleeper.user import get_userid_by_username
 
 
 logger = logging.getLogger(__name__)
@@ -329,6 +327,7 @@ def flatten_player_maps(
 async def get_user_dashboard(
     db,
     redis,
+    sleeper,
     username: str,
     *,
     site_user_id=None,
@@ -343,24 +342,20 @@ async def get_user_dashboard(
 
     del redis
 
-    user = await get_user_by_name(
+    user_id = await get_userid_by_username(
         db,
+        sleeper,
         username,
     )
 
-    if user is None:
-        raise ValueError(
-            f"User {username} not found"
-        )
-
     sort_order = await get_league_sort_orders(
         db=db,
-        user_id=user.user_id,
+        user_id=user_id,
     )
 
-    visible_rows = await get_visible_owned_league_rows_by_username(
+    visible_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
         db=db,
-        username=username,
+        sleeper_user_id=user_id,
         site_user_id=site_user_id,
     )
     current_rows = [
@@ -434,7 +429,7 @@ async def get_user_dashboard(
         player_maps_by_league_id=(
             player_maps_by_league_id
         ),
-        user_id=user.user_id,
+        user_id=user_id,
     )
     league_cards.sort(
         key=lambda league: (

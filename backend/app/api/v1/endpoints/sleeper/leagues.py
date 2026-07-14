@@ -77,6 +77,7 @@ async def dashboard_endpoint(
     return await get_user_dashboard(
         ctx.db,
         ctx.redis,
+        ctx.sleeper,
         username,
         site_user_id=(
             ctx.site_user.id
@@ -115,4 +116,3 @@ async def save_user_note_endpoint(
         league_id=body.league_id,
         note=body.note,
     )
-
