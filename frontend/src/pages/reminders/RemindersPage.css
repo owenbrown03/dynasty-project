@@ -7,25 +7,6 @@
   margin: 0 auto;
 }
 
-.reminders-page-header {
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.reminders-page-title {
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.reminders-page-description {
-  max-width: var(--page-copy-max-width);
-  margin-top: 8px;
-  color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 .reminders-empty-state {
   padding: 42px 24px;
   border: 1px dashed var(--color-border-strong);

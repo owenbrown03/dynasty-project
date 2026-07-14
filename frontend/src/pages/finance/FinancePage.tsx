@@ -1201,13 +1201,13 @@ export function FinancePage() {
 
   return (
     <main className="finance-page">
-      <section className="finance-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Finance</p>
-          <h1 className="finance-page-title">
+          <h1 className="page-title">
             League finance tracker
           </h1>
-          <p className="finance-page-description">
+          <p className="page-description">
             Set global defaults once, bulk-apply league-specific settings where
             needed, and only use season overrides when a year was different.
           </p>

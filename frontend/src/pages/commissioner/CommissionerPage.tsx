@@ -808,13 +808,13 @@ export const CommissionerPage = () => {
 
   return (
     <main className="commissioner-page">
-      <section className="commissioner-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Commissioner</p>
-          <h1 className="commissioner-page-title">
+          <h1 className="page-title">
             Commissioner board
           </h1>
-          <p className="commissioner-page-description">
+          <p className="page-description">
             Review public orphan rosters, league settings, starting lineup
             strength, and draft capital from a shareable Sleeper username URL.
           </p>

@@ -6,31 +6,6 @@
   margin: 0 auto;
 }
 
-.my-values-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
-  gap: 18px;
-  padding: 18px;
-  border: 1px solid var(--color-border-strong);
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--position-pick-color) 16%, transparent), transparent 38%),
-    linear-gradient(180deg, var(--color-surface-raised), var(--color-surface));
-}
-
-.my-values-title {
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-}
-
-.my-values-description {
-  max-width: 760px;
-  margin-top: 8px;
-  color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
 .my-values-header-controls {
   display: grid;
   gap: 12px;
@@ -63,27 +38,6 @@
 .my-values-outcome-field input {
   min-height: 46px;
   font-size: 15px;
-}
-
-.my-values-header-chip {
-  display: grid;
-  gap: 4px;
-  padding: 14px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-
-.my-values-header-chip span {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.my-values-header-chip strong {
-  font-size: 18px;
-  font-weight: 700;
 }
 
 .my-values-workspace {

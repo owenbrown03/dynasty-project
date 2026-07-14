@@ -216,11 +216,11 @@ export const SettingsPage = () => {
 
   return (
     <div className="settings-page">
-      <section className="settings-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Settings</p>
-          <h1 className="settings-page-title">Preferences</h1>
-          <p className="settings-page-description">
+          <h1 className="page-title">Preferences</h1>
+          <p className="page-description">
             Control account defaults and how the app projects future rookie picks in draft capital views.
           </p>
         </div>

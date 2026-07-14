@@ -20,17 +20,17 @@ export const WaiversPage = () => {
 
   return (
     <div className="waivers-page">
-      <section className="waivers-page-header">
+      <section className="page-header">
         <div>
-          <p className="waivers-eyebrow">
+          <p className="page-eyebrow">
             WAIVER ASSISTANT
           </p>
 
-          <h1>
+          <h1 className="page-title">
             Find the strongest waiver moves
           </h1>
 
-          <p className="waivers-page-description">
+          <p className="page-description">
             Compare available players and submit
             waiver claims across your leagues.
           </p>

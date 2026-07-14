@@ -8,11 +8,11 @@ export const OrphansPage = () => {
 
   return (
     <div className="orphans-container">
-      <section className="orphans-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Orphans</p>
-          <h1 className="orphans-page-title">Available orphan rosters</h1>
-          <p className="orphans-page-description">
+          <h1 className="page-title">Available orphan rosters</h1>
+          <p className="page-description">
             Review league orphan teams and scan player cores before deciding
             where to dig deeper.
           </p>

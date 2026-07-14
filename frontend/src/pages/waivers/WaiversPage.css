@@ -7,43 +7,6 @@
   margin: 0 auto;
 }
 
-.waivers-page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 20px;
-
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.waivers-eyebrow {
-  margin: 0 0 6px;
-
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.waivers-page-header h1 {
-  margin: 0;
-
-  color: var(--color-text-strong);
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.waivers-page-description {
-  margin: 8px 0 0;
-
-  color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 .waivers-value-selector {
   min-width: 210px;
 
@@ -358,11 +321,6 @@
 @media (max-width: 760px) {
   .waivers-page {
     padding: 16px;
-  }
-
-  .waivers-page-header {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .waivers-value-selector {

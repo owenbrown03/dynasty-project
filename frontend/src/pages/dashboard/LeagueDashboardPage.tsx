@@ -50,17 +50,17 @@ export const LeagueDashboardPage = () => {
       <UsernameInput />
 
       <div className="dashboard-container">
-        <section className="dashboard-hero">
+        <section className="page-header dashboard-hero">
           <div>
             <p className="page-eyebrow">
               Portfolio dashboard
             </p>
 
-            <h1 className="dashboard-title">
+            <h1 className="page-title">
               Cross-league roster view
             </h1>
 
-            <p className="dashboard-description">
+            <p className="page-description">
               Review your leagues, asset base,
               and WAR profile from one screen.
             </p>

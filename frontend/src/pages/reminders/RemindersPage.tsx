@@ -336,13 +336,13 @@ export function RemindersPage() {
 
   return (
     <main className="reminders-page">
-      <section className="reminders-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Reminders</p>
-          <h1 className="reminders-page-title">
+          <h1 className="page-title">
             Personal reminders
           </h1>
-          <p className="reminders-page-description">
+          <p className="page-description">
             Track in-app reminders now, with optional email delivery when SMTP
             is configured.
           </p>
