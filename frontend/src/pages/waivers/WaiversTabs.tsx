@@ -1,6 +1,7 @@
 interface WaiversTabsProps {
   activeTab: (
     'overview'
+    | 'recent-drops'
     | 'available'
     | 'bulk'
   );
@@ -8,6 +9,7 @@ interface WaiversTabsProps {
   onChange: (
     tab: (
       'overview'
+      | 'recent-drops'
       | 'available'
       | 'bulk'
     ),
@@ -38,6 +40,21 @@ export const WaiversTabs = ({
         }}
       >
         Overview
+      </button>
+
+      <button
+        className={
+          `waivers-tab ${
+            activeTab === 'recent-drops'
+              ? 'active'
+              : ''
+          }`
+        }
+        onClick={() => {
+          onChange('recent-drops');
+        }}
+      >
+        Recent Drops
       </button>
 
       <button

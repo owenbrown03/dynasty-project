@@ -4,6 +4,7 @@ import './WaiversPage.css';
 
 import { useValuePreference } from '@/context/useValuePreference';
 import { AvailablePlayersTab } from './AvailablePlayersTab';
+import { RecentlyDroppedTab } from './RecentlyDroppedTab';
 import { WaiversOverviewTab } from './WaiversOverviewTab';
 import { WaiversTabs } from './WaiversTabs';
 import { BulkClaimsTab } from './BulkClaimsTab';
@@ -13,6 +14,7 @@ export const WaiversPage = () => {
   const valuePreference = useValuePreference();
   const [activeTab, setActiveTab] = useState<
     'overview'
+    | 'recent-drops'
     | 'available'
     | 'bulk'
   >('overview');
@@ -50,7 +52,13 @@ export const WaiversPage = () => {
               valueBasis={valueBasis}
             />
           )
-          : activeTab === 'available'
+          : activeTab === 'recent-drops'
+            ? (
+              <RecentlyDroppedTab
+                valueBasis={valueBasis}
+              />
+            )
+            : activeTab === 'available'
             ? (
               <AvailablePlayersTab
                 valueBasis={valueBasis}

@@ -114,6 +114,41 @@ class WaiverRosterPlayersResponse(Base):
     )
 
 
+class WaiverRecentlyDroppedPlayer(PlayerValue):
+    transaction_id: str
+    dropped_at_ms: int
+
+    league_id: str
+    league_name: str
+    league_avatar: str | None = None
+
+    roster_id: int
+
+    roster_spots_available: int
+    faab_remaining: int
+    faab_percent_remaining: float
+
+    can_submit_claim: bool
+    claim_blocked_reason: str | None = None
+
+    selected_value: float | None = None
+
+
+class WaiverRecentlyDroppedResponse(Base):
+    sleeper_username: str | None = None
+
+    value_basis: ValueBasis
+    value_label: str
+
+    sync_requested: bool = False
+
+    total_players: int
+
+    players: list[WaiverRecentlyDroppedPlayer] = Field(
+        default_factory=list,
+    )
+
+
 class BulkWaiverPlayerSearchResult(Base):
     player_id: str
 

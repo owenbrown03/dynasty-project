@@ -770,6 +770,39 @@ export interface WaiverOverviewResponse {
   leagues: WaiverLeagueOverview[];
 }
 
+export interface WaiverRecentlyDroppedPlayer extends PlayerValue {
+  transaction_id: string;
+  dropped_at_ms: number;
+
+  league_id: string;
+  league_name: string;
+  league_avatar: string | null;
+
+  roster_id: number;
+
+  roster_spots_available: number;
+  faab_remaining: number;
+  faab_percent_remaining: number;
+
+  can_submit_claim: boolean;
+  claim_blocked_reason: string | null;
+
+  selected_value: number | null;
+}
+
+export interface WaiverRecentlyDroppedResponse {
+  sleeper_username: string | null;
+
+  value_basis: ValueBasis;
+  value_label: string;
+
+  sync_requested: boolean;
+
+  total_players: number;
+
+  players: WaiverRecentlyDroppedPlayer[];
+}
+
 export interface WaiverClaimRequest {
   league_id: string;
   roster_id: number;

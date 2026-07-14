@@ -12,6 +12,7 @@ import type {
   BulkWaiverClaimRequest,
   BulkWaiverClaimResponse,
   BulkWaiverPlayerSearchResult,
+  WaiverRecentlyDroppedResponse,
 } from '@/types';
 
 
@@ -24,6 +25,19 @@ export const waiversEndpoints = (
   ) => {
     return client.get<WaiverOverviewResponse>(
       `${basePath}/overview`,
+      {
+        params: {
+          value_basis: valueBasis,
+        },
+      },
+    );
+  },
+
+  getRecentDrops: (
+    valueBasis: ValueBasis,
+  ) => {
+    return client.get<WaiverRecentlyDroppedResponse>(
+      `${basePath}/recent-drops`,
       {
         params: {
           value_basis: valueBasis,

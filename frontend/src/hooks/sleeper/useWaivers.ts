@@ -18,6 +18,7 @@ import type {
   WaiverClaimRequest,
   WaiverClaimResponse,
   WaiverOverviewResponse,
+  WaiverRecentlyDroppedResponse,
   WaiverRosterPlayersResponse,
 } from '@/types';
 
@@ -80,6 +81,9 @@ export function useSubmitWaiverClaim() {
           queryKey: queryKeys.waivers.availablePlayersRoot,
         }),
         queryClient.invalidateQueries({
+          queryKey: queryKeys.waivers.recentDropsRoot,
+        }),
+        queryClient.invalidateQueries({
           queryKey: queryKeys.waivers.rosterPlayersRoot,
         }),
       ]);
@@ -96,6 +100,38 @@ export function useSubmitWaiverClaim() {
     error: mutation.error,
 
     reset: mutation.reset,
+  };
+}
+
+export function useRecentlyDroppedPlayers(
+  valueBasis: ValueBasis,
+) {
+  const {
+    username,
+    canRead,
+  } = useSleeperConnection();
+
+  const query = useQuery<WaiverRecentlyDroppedResponse>({
+    queryKey: queryKeys.waivers.recentDrops(
+      username,
+      valueBasis,
+    ),
+
+    queryFn: async () => {
+      return api.waivers
+        .getRecentDrops(valueBasis)
+        .then((res) => res.data);
+    },
+
+    enabled: canRead,
+  });
+
+  return {
+    data: query.data,
+    username,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
   };
 }
 

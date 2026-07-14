@@ -17,6 +17,7 @@ from app.schemas.waivers import (
     WaiverClaimRequest,
     WaiverClaimResponse,
     WaiverOverviewResponse,
+    WaiverRecentlyDroppedResponse,
 )
 from app.schemas.waivers import (
     WaiverAvailablePlayersResponse,
@@ -39,6 +40,11 @@ from app.services.values.basis import (
 )
 from app.services.waivers.overview import get_waiver_overview
 from app.services.waivers.claims import submit_claim
+from app.services.waivers.recent_drops import (
+    get_recent_drops_sync_required,
+    get_recently_dropped_players,
+)
+from app.tasks.user import sync_user_data_task
 
 router = APIRouter()
 
@@ -178,6 +184,49 @@ async def roster_waiver_players(
         league_id=league_id,
         value_basis=value_basis,
         war_service=war_service,
+    )
+
+
+@router.get(
+    "/recent-drops",
+    response_model=WaiverRecentlyDroppedResponse,
+)
+async def recent_waiver_drops(
+    ctx: ContextDep,
+    value_basis: ValueBasis = Query(
+        default=DEFAULT_VALUE_BASIS,
+    ),
+) -> WaiverRecentlyDroppedResponse:
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before viewing recently dropped players."
+        ),
+    )
+
+    sync_requested = await get_recent_drops_sync_required(
+        db=ctx.db,
+        connection=ctx.connection,
+    )
+
+    if (
+        sync_requested
+        and ctx.connection
+        and ctx.connection.sleeper_username
+    ):
+        await sync_user_data_task.kiq(
+            ctx.connection.sleeper_username,
+        )
+
+    war_service = WARService()
+
+    return await get_recently_dropped_players(
+        db=ctx.db,
+        redis=ctx.redis,
+        connection=ctx.connection,
+        value_basis=value_basis,
+        war_service=war_service,
+        sync_requested=sync_requested,
     )
 
 

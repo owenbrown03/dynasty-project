@@ -670,6 +670,67 @@
   opacity: 0.55;
 }
 
+.recent-drops-list {
+  display: grid;
+  gap: 12px;
+}
+
+.recent-drop-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  padding: 14px;
+}
+
+.recent-drop-card-header,
+.recent-drop-meta-row,
+.recent-drop-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.recent-drop-card-header .player-with-avatar,
+.recent-drop-league {
+  flex: 1;
+  min-width: 0;
+}
+
+.recent-drop-value,
+.recent-drop-time {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+}
+
+.recent-drop-value span,
+.recent-drop-time span,
+.recent-drop-league span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.recent-drop-value strong,
+.recent-drop-league strong {
+  color: var(--color-text-strong);
+  font-size: 14px;
+}
+
+.recent-drop-league {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.recent-drop-time {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 @media (max-width: 760px) {
   .available-players-toolbar {
     align-items: stretch;
@@ -683,6 +744,18 @@
   .available-players-summary {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .recent-drop-card-header,
+  .recent-drop-meta-row,
+  .recent-drop-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recent-drop-value,
+  .recent-drop-time {
+    justify-items: start;
   }
 }
 

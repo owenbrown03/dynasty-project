@@ -84,6 +84,16 @@ export const queryKeys = {
         valueBasis,
       ] as const,
     overviewRoot: ['waiver-overview'] as const,
+    recentDrops: (
+      username: string | null | undefined,
+      valueBasis: ValueBasis,
+    ) =>
+      [
+        'waiver-recent-drops',
+        username ?? null,
+        valueBasis,
+      ] as const,
+    recentDropsRoot: ['waiver-recent-drops'] as const,
     leagues: (
       username: string | null | undefined,
     ) => ['waiver-leagues', username ?? null] as const,
