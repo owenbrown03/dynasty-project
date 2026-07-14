@@ -16,6 +16,7 @@ from app.crud.sleeper.personal import (
     get_finance_league_defaults_by_family_id,
     get_finance_user_defaults,
     get_hidden_league_ids,
+    get_league_sort_orders,
     upsert_finance_entry,
     upsert_finance_league_default,
     upsert_finance_user_defaults,
@@ -828,6 +829,22 @@ async def get_finance_summary(
         if league.league_id not in hidden_league_ids
     ]
 
+    sort_order = None
+
+    if ctx.connection and ctx.connection.sleeper_user_id:
+        sort_order = await get_league_sort_orders(
+            db=ctx.db,
+            user_id=ctx.connection.sleeper_user_id,
+        )
+
+    if sort_order:
+        owned_rows.sort(
+            key=lambda row: sort_order.get(
+                row[1].league_id,
+                9999,
+            ),
+        )
+
     league_ids = [
         league.league_id
         for _, league in owned_rows
@@ -1120,10 +1137,11 @@ async def get_finance_summary(
         )
         for family_key, default in sorted(
             league_defaults_by_family.items(),
-            key=lambda item: family_name_by_key.get(
-                item[0],
-                item[0],
-            ).lower(),
+            key=lambda item: (
+                sort_order.get(item[0], 9999)
+                if sort_order
+                else 9999
+            ),
         )
     ]
 
