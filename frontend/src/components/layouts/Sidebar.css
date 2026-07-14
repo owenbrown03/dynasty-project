@@ -38,12 +38,24 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.sidebar:hover .sidebar-section-label {
+  opacity: 1;
 }
 
 .sidebar-divider {
   height: 1px;
   margin: 6px 12px;
   background: var(--color-border);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.sidebar:hover .sidebar-divider {
+  opacity: 1;
 }
 
 .sidebar-link {
@@ -83,5 +95,11 @@
 }
 
 .sidebar-link-label {
+  opacity: 0;
+  transition: opacity 0.18s ease;
   white-space: nowrap;
+}
+
+.sidebar:hover .sidebar-link-label {
+  opacity: 1;
 }
