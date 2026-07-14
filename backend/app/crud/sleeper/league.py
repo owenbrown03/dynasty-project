@@ -677,6 +677,26 @@ async def save_league_bundle_to_db(
             for r in bundle.get("rosters", [])
         ]
 
+        # Map per-user is_owner flags from the raw users payload onto
+        # the corresponding roster dicts. Sleeper returns is_owner on the
+        # user objects, but that flag is actually roster-specific. When
+        # present in the user payload, propagate it into the roster rows
+        # so we persist commissioner status per-roster (and per-league).
+        user_is_owner_map = {}
+        for u in bundle.get("users", []) or []:
+            try:
+                # support both pydantic model and plain dict
+                uid = str(u.user_id) if hasattr(u, "user_id") else str(u.get("user_id"))
+                is_owner_val = getattr(u, "is_owner", None) if hasattr(u, "is_owner") else u.get("is_owner")
+                user_is_owner_map[uid] = bool(is_owner_val) if is_owner_val is not None else None
+            except Exception:
+                continue
+
+        for r in roster_dicts:
+            owner = r.get("owner_id")
+            if owner:
+                r["is_owner"] = user_is_owner_map.get(str(owner), None)
+
         draft_dicts = [
             transformers.draft_to_db(d, True)
             for d in bundle.get("drafts", [])
