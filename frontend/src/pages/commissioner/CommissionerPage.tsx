@@ -63,6 +63,7 @@ function formatValue(
   if (
     valueBasis === 'ktc'
     || valueBasis === 'fantasycalc'
+    || valueBasis === 'adp'
   ) {
     return Math.round(value).toLocaleString();
   }

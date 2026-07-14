@@ -243,6 +243,7 @@ export interface LeaguePlayer {
 
   ktc_value: number | null;
   fc_value: number | null;
+  adp_value?: number | null;
   fc_trend_30_day: number | null;
 
   redraft_starter_war: number | null;
@@ -366,6 +367,7 @@ export interface Dashboard {
 export type ValueBasis =
   | 'ktc'
   | 'fantasycalc'
+  | 'adp'
   | 'sleeper_war'
   | 'my_war'
   | 'redraft_starter_war'
@@ -412,6 +414,7 @@ export interface PersonalValueSearchResult {
   underdog_position_rank: string | null;
   ktc_value: number | null;
   fc_value: number | null;
+  adp_value?: number | null;
   dynasty_roster_war: number | null;
 }
 
@@ -443,6 +446,7 @@ export interface PersonalValuePlayer {
   underdog_position_rank: string | null;
   ktc_value: number | null;
   fc_value: number | null;
+  adp_value?: number | null;
 }
 
 export interface PersonalValueLeagueContext {

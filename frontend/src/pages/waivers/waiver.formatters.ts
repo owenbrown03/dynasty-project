@@ -12,6 +12,7 @@ export function formatSelectedValue(
   const isMarketValue = (
     basis === 'ktc'
     || basis === 'fantasycalc'
+    || basis === 'adp'
   );
 
   if (isMarketValue) {

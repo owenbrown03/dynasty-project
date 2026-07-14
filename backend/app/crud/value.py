@@ -1,4 +1,5 @@
 from typing import Iterable
+import math
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -11,6 +12,34 @@ from app.models.db.sleeper.api import Player
 from app.models.db.underdog.models import UnderdogADP
 from app.schemas.player import PlayerValue
 from app.utils.age import calculate_age
+
+
+ADP_VALUE_MAX_PICK = 400.0
+ADP_VALUE_SCALE = 10000.0
+
+
+def _calculate_adp_value(
+    adp: float | None,
+) -> float | None:
+    if adp is None or adp <= 0:
+        return None
+
+    clamped_adp = min(
+        max(adp, 1.0),
+        ADP_VALUE_MAX_PICK,
+    )
+    max_log = math.log(
+        ADP_VALUE_MAX_PICK + 1.0,
+    )
+    value = (
+        (max_log - math.log(clamped_adp))
+        / max_log
+    ) * ADP_VALUE_SCALE
+
+    return round(
+        value,
+        2,
+    )
 
 
 async def get_player_values(
@@ -144,6 +173,12 @@ async def get_player_values(
                 fc_value=(
                     fc.value
                     if fc is not None
+                    else None
+                ),
+
+                adp_value=_calculate_adp_value(
+                    underdog.adp
+                    if underdog is not None
                     else None
                 ),
 

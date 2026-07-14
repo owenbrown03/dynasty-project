@@ -13,6 +13,7 @@ from app.services.values.war_settings import (
 class ValueBasis(StrEnum):
     KTC = "ktc"
     FANTASYCALC = "fantasycalc"
+    ADP = "adp"
     SLEEPER_WAR = "sleeper_war"
     MY_WAR = "my_war"
 
@@ -92,6 +93,13 @@ def get_player_value(
                 else None
             )
 
+        case ValueBasis.ADP:
+            return (
+                float(player.adp_value)
+                if player.adp_value is not None
+                else None
+            )
+
         case ValueBasis.SLEEPER_WAR:
             return _get_configured_war_value(
                 player=player,
@@ -137,6 +145,9 @@ def get_value_label(
 
         case ValueBasis.FANTASYCALC:
             return "FantasyCalc Value"
+
+        case ValueBasis.ADP:
+            return "ADP Value"
 
         case ValueBasis.SLEEPER_WAR:
             config = normalized_war_settings[

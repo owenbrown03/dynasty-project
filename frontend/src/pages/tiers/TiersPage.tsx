@@ -25,6 +25,7 @@ function formatSelectedValue(
   if (
     valueBasis === 'ktc'
     || valueBasis === 'fantasycalc'
+    || valueBasis === 'adp'
   ) {
     return Math.round(
       player.selected_value,

@@ -11,6 +11,7 @@ class PlayerValue(Base):
 
     ktc_value: int | None = None
     fc_value: int | None = None
+    adp_value: float | None = None
     underdog_position_rank: str | None = None
 
     redraft_starter_war: float | None = None

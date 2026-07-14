@@ -84,6 +84,7 @@ class _MarketSnapshot:
     metrics: PersonalValueMetrics
     ktc_value: float | None
     fc_value: float | None
+    adp_value: float | None
 
 
 def _require_personal_values_context(
@@ -812,6 +813,11 @@ async def _load_market_values_by_player_id(
                 if value.fc_value is not None
                 else None
             ),
+            adp_value=(
+                float(value.adp_value)
+                if value.adp_value is not None
+                else None
+            ),
         )
         for value in values
     }
@@ -1067,6 +1073,7 @@ async def search_personal_value_players(
             underdog_position_rank=item.underdog_position_rank,
             ktc_value=item.ktc_value,
             fc_value=item.fc_value,
+            adp_value=item.adp_value,
             dynasty_roster_war=(
                 market_snapshots_by_player_id[
                     item.player_id
@@ -1146,6 +1153,7 @@ async def get_personal_value_detail(
             metrics=PersonalValueMetrics(),
             ktc_value=None,
             fc_value=None,
+            adp_value=None,
         ),
     )
     market_values = market_snapshot.metrics
@@ -1170,6 +1178,7 @@ async def get_personal_value_detail(
             underdog_position_rank=underdog_position_rank,
             ktc_value=market_snapshot.ktc_value,
             fc_value=market_snapshot.fc_value,
+            adp_value=market_snapshot.adp_value,
         ),
         market_values=market_values,
         custom_values=projection_context.custom_values,
@@ -1328,6 +1337,7 @@ async def get_personal_value_pool(
             underdog_position_rank=underdog_position_rank,
             ktc_value=market_snapshot.ktc_value,
             fc_value=market_snapshot.fc_value,
+            adp_value=market_snapshot.adp_value,
         )
 
         groups[player.position].append(
