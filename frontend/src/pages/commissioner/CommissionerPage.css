@@ -387,6 +387,14 @@
   white-space: nowrap;
 }
 
+.commissioner-due-toggle input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-accent, #7aa2ff);
+  cursor: pointer;
+}
+
 .commissioner-due-controls button {
   flex-shrink: 0;
   margin-left: auto;
