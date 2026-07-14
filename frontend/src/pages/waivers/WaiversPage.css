@@ -7,43 +7,6 @@
   margin: 0 auto;
 }
 
-.waivers-page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 20px;
-
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.waivers-eyebrow {
-  margin: 0 0 6px;
-
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.waivers-page-header h1 {
-  margin: 0;
-
-  color: var(--color-text-strong);
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.waivers-page-description {
-  margin: 8px 0 0;
-
-  color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 .waivers-value-selector {
   min-width: 210px;
 
@@ -66,25 +29,12 @@
   text-align: right;
 }
 
-.waivers-loading-state,
-.waivers-empty-state {
+.waivers-loading-state {
   border: 1px dashed var(--color-border-strong);
   background: var(--color-surface);
   color: var(--color-text-muted);
   text-align: center;
   padding: 48px 24px;
-}
-
-.waivers-empty-state h1,
-.waivers-empty-state h2 {
-  margin: 0 0 8px;
-  color: var(--color-text-strong);
-  font-size: 18px;
-}
-
-.waivers-empty-state p {
-  margin: 0;
-  font-size: 14px;
 }
 
 .waiver-league-list {
@@ -112,6 +62,13 @@
   gap: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--color-border);
+}
+
+.waiver-league-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .waiver-league-header h2 {
@@ -353,11 +310,6 @@
     padding: 16px;
   }
 
-  .waivers-page-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .waivers-value-selector {
     width: 100%;
   }
@@ -389,6 +341,39 @@
   .waiver-read-only {
     text-align: left;
   }
+
+  .waiver-claim-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .waiver-bid-input {
+    width: 100%;
+  }
+
+  .waiver-claim-actions {
+    width: 100%;
+  }
+
+  .waiver-claim-actions button {
+    flex: 1;
+  }
+
+  .waiver-claim-modal {
+    padding: 14px;
+  }
+
+  .waiver-modal-player-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .waiver-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .waiver-modal-actions button {
+    width: 100%;
+  }
 }
 
 .waiver-claim-button,
@@ -403,9 +388,9 @@
 .waiver-claim-form {
   width: 100%;
 
-  background: #111827;
-  border: 1px solid #374151;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
 
   padding: 10px;
 
@@ -423,12 +408,12 @@
   flex-direction: column;
   gap: 4px;
 
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 
 .waiver-claim-summary strong {
-  color: #f9fafb;
+  color: var(--color-text-strong);
   font-weight: 600;
 }
 
@@ -441,7 +426,7 @@
 }
 
 .waiver-bid-input span {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 10px;
   font-weight: 600;
 }
@@ -449,10 +434,10 @@
 .waiver-bid-input input {
   width: 100%;
 
-  background: #0b1220;
-  border: 1px solid #374151;
-  border-radius: 6px;
-  color: #f9fafb;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-strong);
 
   padding: 7px 8px;
   font-size: 12px;
@@ -460,7 +445,7 @@
 
 .waiver-bid-input input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--color-focus);
 }
 
 .waiver-claim-actions {
@@ -469,11 +454,12 @@
 }
 
 .waiver-submit-claim-button {
-  border-color: #166534;
+  border-color: var(--color-success);
 }
 
 .waiver-submit-claim-button:hover:not(:disabled) {
-  border-color: #22c55e;
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
 }
 
 .waiver-claim-success {
@@ -481,7 +467,7 @@
   align-items: center;
   gap: 6px;
 
-  color: #4ade80;
+  color: var(--color-success);
   font-size: 12px;
   font-weight: 600;
 }
@@ -490,56 +476,27 @@
   width: 100%;
   margin: 0;
 
-  color: #f87171;
+  color: var(--color-danger);
   font-size: 11px;
 }
 
 .waiver-spinner {
-  animation: waiver-spin 0.9s linear infinite;
-}
-
-@keyframes waiver-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (max-width: 520px) {
-  .waiver-claim-form {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .waiver-bid-input {
-    width: 100%;
-  }
-
-  .waiver-claim-actions {
-    width: 100%;
-  }
-
-  .waiver-claim-actions button {
-    flex: 1;
-  }
+  animation: site-spin 0.9s linear infinite;
 }
 
 .waivers-tabs {
   display: flex;
-  gap: 8px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--color-border);
+  width: fit-content;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
 }
 
 .waivers-tab {
+  padding: 10px 16px;
+  border: 0;
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-
   color: var(--color-text-muted);
   cursor: pointer;
-
-  padding: 9px 12px;
-
   font-size: 13px;
   font-weight: 700;
 }
@@ -548,9 +505,12 @@
   color: var(--color-text-strong);
 }
 
+.waivers-tab + .waivers-tab {
+  border-left: 1px solid var(--color-border);
+}
+
 .waivers-tab.active {
-  background: var(--color-surface);
-  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
   color: var(--color-text-strong);
 }
 
@@ -698,6 +658,9 @@
 }
 
 .available-claim-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11px;
   padding: 6px 9px;
 }
@@ -723,12 +686,6 @@
   }
 }
 
-.available-claim-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
 .waiver-claim-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -738,7 +695,7 @@
   align-items: center;
   justify-content: center;
 
-  background: rgba(0, 0, 0, 0.68);
+  background: var(--color-backdrop);
   padding: 20px;
 }
 
@@ -761,6 +718,13 @@
   display: flex;
   justify-content: space-between;
   gap: 14px;
+}
+
+.waiver-claim-league-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .waiver-claim-modal-header p {
@@ -904,24 +868,6 @@
 .waiver-modal-success span {
   color: var(--color-text-muted);
   font-size: 12px;
-}
-
-@media (max-width: 520px) {
-  .waiver-claim-modal {
-    padding: 14px;
-  }
-
-  .waiver-modal-player-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .waiver-modal-actions {
-    flex-direction: column-reverse;
-  }
-
-  .waiver-modal-actions button {
-    width: 100%;
-  }
 }
 
 .bulk-claims-section {
@@ -1157,6 +1103,13 @@
   margin: 0;
 }
 
+.bulk-league-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .bulk-league-main strong {
   display: block;
 
@@ -1291,7 +1244,7 @@
   align-items: center;
   justify-content: center;
 
-  background: rgba(0, 0, 0, 0.68);
+  background: var(--color-backdrop);
   padding: 20px;
 }
 

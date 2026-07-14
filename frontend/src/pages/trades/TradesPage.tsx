@@ -22,11 +22,11 @@ export const TradesPage = () => {
 
   return (
     <main className="trades-page">
-      <section className="trades-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Trades</p>
-          <h1 className="trades-page-title">Trade tools</h1>
-          <p className="trades-page-description">
+          <h1 className="page-title">Trade tools</h1>
+          <p className="page-description">
             Research completed deals and build repeatable cross-league offers
             without leaving the dashboard.
           </p>

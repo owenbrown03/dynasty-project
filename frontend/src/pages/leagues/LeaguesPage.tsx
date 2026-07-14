@@ -106,11 +106,11 @@ export const LeaguesPage = () => {
 
   return (
     <div className="leagues-container">
-      <section className="leagues-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Leagues</p>
-          <h1 className="leagues-page-title">League details</h1>
-          <p className="leagues-page-description">
+          <h1 className="page-title">League details</h1>
+          <p className="page-description">
             Review roster strength, WAR distribution, and player composition for
             each synced league.
           </p>

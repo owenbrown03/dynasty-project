@@ -16,7 +16,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 220px;
+  min-width: 180px;
 }
 
 .navbar-brand-link {
@@ -26,22 +26,27 @@
 .navbar-brand-mark {
   width: 40px;
   height: 40px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--color-border-strong);
-  background: linear-gradient(
-    180deg,
-    var(--color-surface-raised) 0%,
-    var(--color-surface) 100%
-  );
-  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-family: 'Outfit', sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 
-.navbar-brand-mark img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.navbar-brand-d {
+  color: var(--color-text-strong);
+}
+
+.navbar-brand-b {
+  color: var(--color-accent);
+  filter: drop-shadow(0 0 6px var(--color-accent));
 }
 
 .navbar-brand-copy {
@@ -52,15 +57,17 @@
 
 .navbar-kicker {
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .navbar-middle {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .navbar-status {
@@ -70,8 +77,6 @@
   gap: 8px 12px;
   min-height: 44px;
   padding: 8px 12px 8px 14px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-raised);
 }
 
 .status-label {
@@ -96,31 +101,42 @@
 
 .navbar-right {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: flex-end;
   gap: 0;
-  min-width: 260px;
 }
 
 .navbar-account-cluster {
   position: relative;
   display: flex;
-  align-items: end;
-  gap: 12px;
-  padding: 8px 0 8px 14px;
-  border-left: 1px solid var(--color-border);
+  align-items: center;
 }
 
 .navbar-account-trigger {
-  min-width: 164px;
-  justify-content: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
-.navbar-account-trigger-copy {
-  display: grid;
-  justify-items: start;
-  gap: 2px;
-  text-align: left;
+.navbar-account-trigger:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-strong);
+}
+
+.navbar-account-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
 }
 
 .navbar-account-menu {
@@ -129,35 +145,24 @@
   right: 0;
   z-index: 40;
   display: grid;
-  gap: 12px;
-  min-width: 240px;
+  gap: 10px;
+  min-width: 200px;
   padding: 14px;
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   box-shadow: var(--shadow-overlay);
 }
 
-.navbar-theme-control {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.navbar-account-info {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
 }
 
-.navbar-theme-control span {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.navbar-theme-control select {
-  min-width: 112px;
-}
-
-.navbar-settings-link {
-  justify-content: center;
-  text-decoration: none;
+.navbar-account-name {
+  color: var(--color-text-strong);
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-all;
 }
 
 @media (max-width: 980px) {
@@ -182,9 +187,7 @@
 
   .navbar-account-cluster {
     width: 100%;
-    padding: 0;
-    border-left: 0;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .navbar-account-menu {
@@ -194,18 +197,6 @@
 }
 
 @media (max-width: 640px) {
-  .navbar-account-cluster {
-    flex-wrap: wrap;
-  }
-
-  .navbar-account-trigger {
-    width: 100%;
-  }
-
-  .navbar-theme-control {
-    min-width: 140px;
-  }
-
   .navbar-account-menu {
     width: 100%;
     min-width: 0;

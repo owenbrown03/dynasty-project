@@ -1,5 +1,7 @@
+import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import type { DashboardLeague } from '@/types';
 import { useNavigate } from 'react-router';
+
 interface Props {
   leagues: DashboardLeague[];
 }
@@ -50,6 +52,12 @@ export function DashboardLeagues({
             }
           >
             <div className="portfolio-league-primary">
+              <LeagueAvatar
+                avatarId={league.avatar}
+                name={league.league_name}
+                size="md"
+              />
+
               <div>
                 <h3 className="portfolio-league-title">
                   {league.league_name}

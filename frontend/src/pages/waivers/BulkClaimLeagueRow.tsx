@@ -7,8 +7,9 @@ import {
   useState,
 } from 'react';
 
-import { useRosterWaiverPlayers } from '@/hooks/sleeper/useWaivers';
+import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { useRosterWaiverPlayers } from '@/hooks/sleeper/useWaivers';
 
 import type {
   BulkWaiverLeagueAvailability,
@@ -105,13 +106,23 @@ export const BulkClaimLeagueRow = ({
     return (
       <article className="bulk-claim-league-row unavailable">
         <div className="bulk-league-main">
-          <strong>
-            {league.league_name}
-          </strong>
+          <div className="bulk-league-identity">
+            <LeagueAvatar
+              avatarId={league.league_avatar}
+              name={league.league_name}
+              size="sm"
+            />
 
-          <span>
-            {league.unavailable_reason ?? 'Unavailable'}
-          </span>
+            <div>
+              <strong>
+                {league.league_name}
+              </strong>
+
+              <span>
+                {league.unavailable_reason ?? 'Unavailable'}
+              </span>
+            </div>
+          </div>
         </div>
 
         <span className="bulk-unavailable-status">
@@ -125,13 +136,23 @@ export const BulkClaimLeagueRow = ({
     return (
       <article className="bulk-claim-league-row blocked">
         <div className="bulk-league-main">
-          <strong>
-            {league.league_name}
-          </strong>
+          <div className="bulk-league-identity">
+            <LeagueAvatar
+              avatarId={league.league_avatar}
+              name={league.league_name}
+              size="sm"
+            />
 
-          <span>
-            {league.claim_blocked_reason}
-          </span>
+            <div>
+              <strong>
+                {league.league_name}
+              </strong>
+
+              <span>
+                {league.claim_blocked_reason}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="bulk-blocked-status">
@@ -165,19 +186,29 @@ export const BulkClaimLeagueRow = ({
         />
 
         <div className="bulk-league-main">
-          <strong>
-            {league.league_name}
-          </strong>
+          <div className="bulk-league-identity">
+            <LeagueAvatar
+              avatarId={league.league_avatar}
+              name={league.league_name}
+              size="sm"
+            />
 
-          <span>
-            ${league.faab_remaining} FAAB
-            {' · '}
-            {
-              league.roster_spots_available > 0
-                ? `${league.roster_spots_available} open spots`
-                : 'Drop required'
-            }
-          </span>
+            <div>
+              <strong>
+                {league.league_name}
+              </strong>
+
+              <span>
+                ${league.faab_remaining} FAAB
+                {' · '}
+                {
+                  league.roster_spots_available > 0
+                    ? `${league.roster_spots_available} open spots`
+                    : 'Drop required'
+                }
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

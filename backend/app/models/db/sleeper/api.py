@@ -160,6 +160,8 @@ class Roster(SQLModel, table=True):
         sa_type=JSON,
     )
     
+    is_owner: Optional[bool] = Field(default=None, nullable=True)
+    
     @property
     def wins(self) -> int:
         return self.settings.get("wins", 0)
@@ -239,7 +241,6 @@ class User(SQLModel, table=True):
     user_id: str = Field(primary_key=True)
     display_name: str
     avatar: Optional[str] = Field(default=None, nullable=True)
-    is_owner: Optional[bool] = Field(default=None, nullable=True)
     is_placeholder: bool = Field(default=False, nullable=False)
 
     roster: List["Roster"] = Relationship(back_populates="user")

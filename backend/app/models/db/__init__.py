@@ -25,6 +25,7 @@ from .sleeper.personal import(
     PersonalProjection,
     PersonalProjectionOutcome,
     PersonalRankCurve,
+    UserLeagueNote,
 )
 from .ktc.models import(
     KTCPlayerMap,

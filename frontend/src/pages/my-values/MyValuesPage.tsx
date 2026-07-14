@@ -937,13 +937,13 @@ export const MyValuesPage = () => {
 
   return (
     <div className="my-values-page">
-      <section className="my-values-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Projections</p>
-          <h1 className="my-values-title">
+          <h1 className="page-title">
             Personal values
           </h1>
-          <p className="my-values-description">
+          <p className="page-description">
             Start from Underdog rank defaults, layer in your own weighted finish outcomes, and compare market WAR against your custom dynasty view inside a real league context.
           </p>
         </div>
@@ -972,11 +972,6 @@ export const MyValuesPage = () => {
               }
             </select>
           </label>
-
-          <div className="my-values-header-chip">
-            <span>Default table sort</span>
-            <strong>{pageSummaryMetric}</strong>
-          </div>
         </div>
       </section>
 

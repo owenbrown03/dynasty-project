@@ -58,6 +58,7 @@ async def get_trade_league_meta_map(
     return {
         league.league_id: {
             "name": league.name,
+            "avatar": league.avatar,
             "settings": build_settings_badges(
                 league,
             ),
@@ -288,6 +289,14 @@ async def get_trade_signals(db: AsyncSession, sleeper: SleeperClient, username: 
                     transaction_id=tx_id,
                     time_ms=trade_obj.time_ms or 0,
                     league_name=league_map.get(league_id, "Unknown League"),
+                    league_avatar=(
+                        league_meta.get(
+                            league_id,
+                            {},
+                        ).get(
+                            "avatar",
+                        )
+                    ),
                     league_settings=(
                         league_meta.get(
                             league_id,

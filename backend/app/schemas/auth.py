@@ -48,6 +48,19 @@ class ThemePreferenceResponse(Base):
     theme_preference: Literal["light", "dark", "system"] | None
 
 
+AccentColor = Literal[
+    "blue", "green", "purple", "red", "orange", "teal", "pink",
+]
+
+
+class AccentColorUpdate(Base):
+    accent_color: AccentColor
+
+
+class AccentColorResponse(Base):
+    accent_color: AccentColor | None
+
+
 class ValuePreferenceUpdate(Base):
     value_preference: ValueBasis
 

@@ -12,12 +12,15 @@ from app.schemas.league import (
     LeagueOverviewItem,
     LeagueVisibilityItem,
     LeagueVisibilityUpdate,
+    UserLeagueNoteUpdate,
+    UserLeagueNoteResponse,
 )
 from app.services.leagues.details import LeagueDetails
 from app.services.leagues.overview import get_league_overview
 from app.services.leagues.visibility import (
     set_league_visibility,
 )
+from app.services.leagues.notes import save_user_note
 
 router = APIRouter()
 
@@ -97,3 +100,19 @@ async def visibility_endpoint(
         league_id=league_id,
         hidden=body.hidden,
     )
+
+
+@router.post(
+    "/note",
+    response_model=UserLeagueNoteResponse,
+)
+async def save_user_note_endpoint(
+    body: UserLeagueNoteUpdate,
+    ctx: ContextDep,
+):
+    return await save_user_note(
+        ctx=ctx,
+        league_id=body.league_id,
+        note=body.note,
+    )
+

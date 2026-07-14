@@ -2,7 +2,8 @@ import './LeagueCard.css';
 
 import { useEffect, useState } from 'react';
 
-import { useSaveCommissionerNote } from '@/hooks/sleeper/useUsers';
+import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
+import { useSaveUserNote } from '@/hooks/sleeper/useLeagues';
 import type { LeagueDetails } from '@/types';
 import { notify } from '@/utils/notify';
 import { RosterCard } from './RosterCard';
@@ -16,7 +17,7 @@ interface Props {
 export function LeagueCard({
   league,
 }: Props) {
-  const saveNoteMutation = useSaveCommissionerNote();
+  const { saveNote, saving: savingNote } = useSaveUserNote();
   const [note, setNote] = useState(league.note);
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export function LeagueCard({
 
   const handleSaveNote = async () => {
     try {
-      await saveNoteMutation.mutateAsync({
+      await saveNote({
         league_id: league.league_id,
         note,
       });
@@ -38,12 +39,20 @@ export function LeagueCard({
   return (
     <div className="league-card">
       <header className="league-header">
-        <div>
-          <p className="league-header-kicker">League</p>
-          <h2 className="league-title">{league.league_name}</h2>
-          <p className="league-subtitle">
-            {league.season} · {league.total_rosters} teams
-          </p>
+        <div className="league-header-identity">
+          <LeagueAvatar
+            avatarId={league.avatar}
+            name={league.league_name}
+            size="lg"
+          />
+
+          <div>
+            <p className="league-header-kicker">League</p>
+            <h2 className="league-title">{league.league_name}</h2>
+            <p className="league-subtitle">
+              {league.season} · {league.total_rosters} teams
+            </p>
+          </div>
         </div>
 
         <div className="league-summary-stat">
@@ -102,13 +111,13 @@ export function LeagueCard({
           <button
             type="button"
             className="button-secondary"
-            disabled={saveNoteMutation.isPending}
+            disabled={savingNote}
             onClick={() => {
               void handleSaveNote();
             }}
           >
             {
-              saveNoteMutation.isPending
+              savingNote
                 ? 'Saving...'
                 : 'Save notes'
             }

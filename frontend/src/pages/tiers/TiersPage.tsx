@@ -94,11 +94,11 @@ export const TiersPage = () => {
 
   return (
     <div className="tiers-page">
-      <section className="tiers-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Rankings</p>
-          <h1 className="tiers-page-title">Player tier board</h1>
-          <p className="tiers-page-description">
+          <h1 className="page-title">Player tier board</h1>
+          <p className="page-description">
             Visual player tiers across your current value systems, with
             canonical global WAR and optional league-context WAR.
           </p>

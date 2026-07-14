@@ -7,6 +7,7 @@ from app.schemas.player import PlayerValue
 class LeagueOverviewItem(Base):
     league_id: str
     league_name: str
+    avatar: str | None = None
     season: str | None = None
     total_rosters: int | None = None
     is_hidden: bool = False
@@ -42,3 +43,14 @@ class LeagueManifest(Base):
     league_id: str
     league_name: str
     rosters: list[RosterManifest]
+
+
+class UserLeagueNoteUpdate(Base):
+    league_id: str
+    note: str = ""
+
+
+class UserLeagueNoteResponse(Base):
+    league_id: str
+    note: str
+

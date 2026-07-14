@@ -79,6 +79,7 @@ class LeagueRoster(BaseModel):
 class LeagueDetailsResponse(BaseModel):
     league_id: str
     league_name: str
+    avatar: str | None = None
     season: str
     total_rosters: int
     note: str = ""

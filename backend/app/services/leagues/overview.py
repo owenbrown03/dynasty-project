@@ -40,6 +40,7 @@ async def get_league_overview(
             LeagueOverviewItem(
                 league_id=league.league_id,
                 league_name=league.name,
+                avatar=league.avatar,
                 season=league.season,
                 total_rosters=league.total_rosters,
                 is_hidden=league.league_id in hidden_league_ids,

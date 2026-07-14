@@ -8,12 +8,9 @@ import { Link } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthContext } from '@/context/useAuthContext'
 import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
+import { useSettingsContext } from '@/context/useSettingsContext';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
-import { useTheme } from '@/context/useTheme';
-import { useValuePreference } from '@/context/useValuePreference';
-import { getValueBasisOptions } from '@/pages/waivers/waiver.constants';
-import type { ValueBasis } from '@/types';
-import brandLogo from '@/assets/logo.png';
+import { UserAvatar } from '@/components/users/UserAvatar';
 
 export const Navbar = () => {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -21,9 +18,8 @@ export const Navbar = () => {
   const auth = useAuth();
   const authContext = useAuthContext();
   const sleeperContext = useSleeperAuthContext();
+  const settingsContext = useSettingsContext();
   const connection = useSleeperConnection();
-  const theme = useTheme();
-  const valuePreference = useValuePreference();
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -51,7 +47,8 @@ export const Navbar = () => {
     <nav className="navbar">
       <Link to="/" className="navbar-left navbar-brand-link">
         <div className="navbar-brand-mark">
-          <img src={brandLogo} alt="Dynasty Base logo" />
+          <span className="navbar-brand-d">D</span>
+          <span className="navbar-brand-b">B</span>
         </div>
 
         <div className="navbar-brand-copy">
@@ -126,94 +123,40 @@ export const Navbar = () => {
         >
           <button
             type="button"
-            className="button-secondary navbar-account-trigger"
+            className="navbar-account-trigger"
             onClick={() => {
               setAccountMenuOpen((current) => !current);
             }}
             aria-expanded={accountMenuOpen}
             aria-haspopup="menu"
+            title={accountLabel}
           >
-            <span className="navbar-account-trigger-copy">
-              <span className="status-label">
-                Account
-              </span>
-              <strong className="status-value">
-                {accountLabel}
-              </strong>
-            </span>
+            <UserAvatar
+              avatarId={connection.avatar}
+              name={accountLabel}
+              size="sm"
+              className="navbar-account-avatar"
+            />
           </button>
 
           {
             accountMenuOpen
               ? (
                 <div className="navbar-account-menu">
-                  <label className="navbar-theme-control">
-                    <span>
-                      Theme
-                    </span>
+                  <div className="navbar-account-info">
+                    <span className="navbar-account-name">{accountLabel}</span>
+                  </div>
 
-                    <select
-                      value={theme.preference}
-                      onChange={(e) => {
-                        void theme.setPreference(
-                          e.target.value as
-                            'light'
-                            | 'dark'
-                            | 'system',
-                        );
-                      }}
-                      disabled={theme.isSaving}
-                    >
-                      <option value="light">
-                        Light
-                      </option>
-
-                      <option value="dark">
-                        Dark
-                      </option>
-
-                      <option value="system">
-                        System
-                      </option>
-                    </select>
-                  </label>
-
-                  <label className="navbar-theme-control">
-                    <span>
-                      Default value
-                    </span>
-
-                    <select
-                      value={valuePreference.preference}
-                      onChange={(e) => {
-                        void valuePreference.setPreference(
-                          e.target.value as ValueBasis,
-                        );
-                      }}
-                      disabled={valuePreference.isSaving}
-                    >
-                      {
-                        getValueBasisOptions(auth.isLoggedIn).map((option) => (
-                          <option
-                            key={option.value}
-                            value={option.value}
-                          >
-                            {option.label}
-                          </option>
-                        ))
-                      }
-                    </select>
-                  </label>
-
-                  <Link
-                    to="/settings"
-                    className="button-secondary navbar-settings-link"
+                  <button
+                    type="button"
+                    className="button-secondary"
                     onClick={() => {
                       setAccountMenuOpen(false);
+                      settingsContext.open();
                     }}
                   >
-                    Open settings
-                  </Link>
+                    Settings
+                  </button>
 
                   {auth.isLoggedIn ? (
                     <button

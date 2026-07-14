@@ -13,6 +13,9 @@ from app.services.values.war_settings import (
 )
 
 VALID_THEME_PREFERENCES = {"light", "dark", "system"}
+VALID_ACCENT_COLORS = {
+    "blue", "green", "purple", "red", "orange", "teal", "pink",
+}
 VALID_VALUE_PREFERENCES = {
     basis.value
     for basis in ValueBasis
@@ -100,6 +103,43 @@ async def set_session_theme_preference(
     )
 
     settings["theme_preference"] = theme_preference
+    session.settings = settings
+
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+def get_session_accent_color(
+    session: UserSession | None,
+) -> str | None:
+    if not session:
+        return None
+
+    value = (
+        (session.settings or {}).get(
+            "accent_color",
+        )
+    )
+
+    if value in VALID_ACCENT_COLORS:
+        return value
+
+    return None
+
+
+async def set_session_accent_color(
+    *,
+    session: UserSession,
+    accent_color: str,
+    db: AsyncSession,
+) -> UserSession:
+    settings = dict(
+        session.settings or {}
+    )
+
+    settings["accent_color"] = accent_color
     session.settings = settings
 
     db.add(session)

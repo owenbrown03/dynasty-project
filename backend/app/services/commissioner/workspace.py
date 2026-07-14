@@ -12,6 +12,8 @@ from app.crud.sleeper.personal import (
     get_commissioner_dues_by_key,
     get_commissioner_notes_by_league_id,
     get_finance_entries_by_key,
+    get_finance_league_defaults_by_family_id,
+    get_finance_user_defaults,
     upsert_finance_entry,
     upsert_commissioner_dues,
     upsert_commissioner_note,
@@ -107,6 +109,41 @@ async def get_commissioner_workspace(
         db=ctx.db,
         league_ids=league_ids,
     )
+
+    # Build league family keys so we can look up per-family defaults.
+    league_by_id = leagues_by_id
+    family_key_by_league_id: dict[str, str] = {}
+    for lid, league in league_by_id.items():
+        current = league
+        visited: set[str] = set()
+        prev = getattr(current, "previous_league_id", None)
+        while (
+            prev
+            and prev in league_by_id
+            and prev not in visited
+        ):
+            visited.add(getattr(current, "league_id", lid))
+            current = league_by_id[prev]
+            prev = getattr(current, "previous_league_id", None)
+        family_key_by_league_id[lid] = getattr(current, "league_id", lid)
+
+    family_ids = list(set(family_key_by_league_id.values()))
+    if hasattr(ctx.db, "execute"):
+        league_defaults_by_family = await get_finance_league_defaults_by_family_id(
+            db=ctx.db,
+            site_user_id=ctx.site_user.id,
+            league_family_ids=family_ids,
+        )
+    else:
+        league_defaults_by_family = {}
+    if hasattr(ctx.db, "execute"):
+        user_defaults = await get_finance_user_defaults(
+            db=ctx.db,
+            site_user_id=ctx.site_user.id,
+        )
+    else:
+        user_defaults = None
+
     traded_picks_by_league_id = await get_traded_picks_by_league_ids(
         ctx.db,
         league_ids,
@@ -154,6 +191,14 @@ async def get_commissioner_workspace(
             if int(season) <= (
                 int(league.season) + paid_years_ahead
             ):
+                continue
+
+            # Only count picks where the current seller (old_roster_id) is the
+            # same as the recorded original owner (og_roster_id). This excludes
+            # picks the seller had previously acquired from another roster.
+            old_roster = getattr(traded_pick, 'old_roster_id', None)
+            og_roster = getattr(traded_pick, 'og_roster_id', None)
+            if old_roster is not None and og_roster is not None and str(old_roster) != str(og_roster):
                 continue
 
             dues_counter[
@@ -219,7 +264,25 @@ async def get_commissioner_workspace(
                             league_id,
                             season,
                         ) in finance_entries_by_key
-                        else None
+                        else (
+                            league_defaults_by_family.get(
+                                family_key_by_league_id.get(
+                                    league_id,
+                                    league_id,
+                                )
+                            ).buy_in_amount
+                            if league_defaults_by_family.get(
+                                family_key_by_league_id.get(
+                                    league_id,
+                                    league_id,
+                                )
+                            ) is not None
+                            else (
+                                user_defaults.buy_in_amount
+                                if user_defaults is not None
+                                else None
+                            )
+                        )
                     )
                 ),
                 is_paid=(
@@ -261,6 +324,7 @@ async def get_commissioner_workspace(
                 ),
             )
         ]
+
 
         leagues.append(
             CommissionerWorkspaceLeague(
@@ -414,6 +478,11 @@ async def save_commissioner_dues(
                 finance_entry.payout_structure
                 if finance_entry is not None
                 else {}
+            ),
+            is_excluded=(
+                finance_entry.is_excluded
+                if finance_entry is not None
+                else False
             ),
         )
 

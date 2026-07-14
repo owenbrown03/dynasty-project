@@ -13,7 +13,6 @@ def user_to_db(
 
     data_map.update({
         "is_placeholder": False,
-        "is_owner": data_map.get("is_owner", False),
     })
 
     if return_dict:
@@ -97,6 +96,7 @@ def roster_to_db(
         "taxi": full_data.get("taxi") or [],
         "roster_metadata": full_data.get("metadata") or {},
         "settings": full_data.get("settings") or {},
+        "is_owner": full_data.get("is_owner", None),
     }
 
     if return_dict:

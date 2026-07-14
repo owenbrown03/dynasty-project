@@ -7,29 +7,6 @@
   margin: 0 auto;
 }
 
-.tiers-page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 20px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.tiers-page-title {
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.tiers-page-description {
-  margin-top: 8px;
-  max-width: var(--page-copy-max-width);
-  color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 .tiers-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -179,11 +156,6 @@
 }
 
 @media (max-width: 960px) {
-  .tiers-page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .tiers-toolbar {
     width: 100%;
     justify-content: flex-start;

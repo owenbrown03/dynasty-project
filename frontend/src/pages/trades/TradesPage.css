@@ -7,36 +7,17 @@
   margin: 0 auto;
 }
 
-.trades-page-header {
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.trades-page-title {
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.trades-page-description {
-  max-width: var(--page-copy-max-width);
-  margin-top: 8px;
-  color: var(--color-text-muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 .trades-tabs {
   display: flex;
-  gap: 8px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--color-border);
+  width: fit-content;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
 }
 
 .trades-tab-button,
 .trades-tabs button {
-  border: 1px solid transparent;
-  padding: 9px 12px;
+  padding: 10px 16px;
+  border: 0;
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -44,10 +25,19 @@
   font-weight: 700;
 }
 
+.trades-tab-button:hover,
+.trades-tabs button:hover {
+  color: var(--color-text-strong);
+}
+
+.trades-tab-button + .trades-tab-button,
+.trades-tabs button + .trades-tabs button {
+  border-left: 1px solid var(--color-border);
+}
+
 .trades-tab-button.active,
 .trades-tabs button.active {
-  border-color: var(--color-border-strong);
-  background: var(--color-surface);
+  background: var(--color-surface-raised);
   color: var(--color-text-strong);
 }
 
@@ -164,13 +154,7 @@
 }
 
 .trade-spinner {
-  animation: trade-spin 0.9s linear infinite;
-}
-
-@keyframes trade-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  animation: site-spin 0.9s linear infinite;
 }
 
 .bulk-trade-search-results {
@@ -369,6 +353,20 @@
   gap: 4px;
 }
 
+.bulk-trade-league-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bulk-trade-league-identity > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .bulk-trade-league-primary span {
   color: var(--color-text-muted);
   font-size: 12px;
@@ -426,7 +424,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--color-backdrop);
 }
 
 .bulk-trade-review-modal {

@@ -17,6 +17,7 @@ from app.models.db.sleeper.personal import (
     PersonalProjectionOutcome,
     PersonalRankCurve,
     Reminder,
+    UserLeagueNote,
 )
 
 
@@ -60,6 +61,60 @@ async def upsert_commissioner_note(
 
     if record is None:
         record = CommissionerLeagueNote(
+            site_user_id=site_user_id,
+            league_id=league_id,
+            note=note,
+        )
+    else:
+        record.note = note
+        record.updated_at = datetime.utcnow()
+
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def get_user_notes_by_league_id(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_ids: list[str],
+) -> dict[str, UserLeagueNote]:
+    if not league_ids:
+        return {}
+
+    results = await db.execute(
+        select(UserLeagueNote).where(
+            UserLeagueNote.site_user_id == site_user_id,
+            UserLeagueNote.league_id.in_(league_ids),
+        )
+    )
+
+    notes = results.scalars().all()
+    return {
+        note.league_id: note
+        for note in notes
+    }
+
+
+async def upsert_user_note(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str,
+    note: str,
+) -> UserLeagueNote:
+    results = await db.execute(
+        select(UserLeagueNote).where(
+            UserLeagueNote.site_user_id == site_user_id,
+            UserLeagueNote.league_id == league_id,
+        )
+    )
+    record = results.scalar_one_or_none()
+
+    if record is None:
+        record = UserLeagueNote(
             site_user_id=site_user_id,
             league_id=league_id,
             note=note,

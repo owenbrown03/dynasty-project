@@ -167,6 +167,7 @@ def build_league_cards(
             {
                 "league_id": league_id,
                 "league_name": league.name,
+                "avatar": league.avatar,
 
                 "league_size": len(teams),
 

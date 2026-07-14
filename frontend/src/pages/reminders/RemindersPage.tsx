@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Bell } from 'lucide-react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -336,13 +337,13 @@ export function RemindersPage() {
 
   return (
     <main className="reminders-page">
-      <section className="reminders-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Reminders</p>
-          <h1 className="reminders-page-title">
+          <h1 className="page-title">
             Personal reminders
           </h1>
-          <p className="reminders-page-description">
+          <p className="page-description">
             Track in-app reminders now, with optional email delivery when SMTP
             is configured.
           </p>
@@ -352,8 +353,12 @@ export function RemindersPage() {
       {
         !connection.linked
           ? (
-            <div className="reminders-empty-state">
-              Link a Sleeper account and log in to manage reminders.
+            <div className="empty-state">
+              <Bell size={32} className="empty-state-icon" />
+              <p className="empty-state-title">Link your account</p>
+              <p className="empty-state-message">
+                Link a Sleeper account and log in to manage reminders.
+              </p>
             </div>
           )
           : null
@@ -364,7 +369,7 @@ export function RemindersPage() {
           ? (
             <LoadingState
               label="Loading reminders..."
-              className="reminders-empty-state"
+              className="empty-state"
             />
           )
           : null
@@ -373,8 +378,12 @@ export function RemindersPage() {
       {
         connection.linked && !reminders.loading && reminders.error
           ? (
-            <div className="reminders-empty-state">
-              Unable to load reminders.
+            <div className="empty-state">
+              <Bell size={32} className="empty-state-icon" />
+              <p className="empty-state-title">Unable to load</p>
+              <p className="empty-state-message">
+                Unable to load reminders. Please try again.
+              </p>
             </div>
           )
           : null
@@ -501,9 +510,13 @@ export function RemindersPage() {
                       />
                     ))
                     : (
-                      <div className="reminders-empty-state">
-                        No reminders yet. Create one for a trade target,
-                        injury return, or lineup checkpoint.
+                      <div className="empty-state">
+                        <Bell size={32} className="empty-state-icon" />
+                        <p className="empty-state-title">No reminders yet</p>
+                        <p className="empty-state-message">
+                          Create one for a trade target, injury return,
+                          or lineup checkpoint.
+                        </p>
                       </div>
                     )
                 }

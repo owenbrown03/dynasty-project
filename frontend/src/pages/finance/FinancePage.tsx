@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Wallet } from 'lucide-react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -1201,13 +1202,13 @@ export function FinancePage() {
 
   return (
     <main className="finance-page">
-      <section className="finance-page-header">
+      <section className="page-header">
         <div>
           <p className="page-eyebrow">Finance</p>
-          <h1 className="finance-page-title">
+          <h1 className="page-title">
             League finance tracker
           </h1>
-          <p className="finance-page-description">
+          <p className="page-description">
             Set global defaults once, bulk-apply league-specific settings where
             needed, and only use season overrides when a year was different.
           </p>
@@ -1217,8 +1218,12 @@ export function FinancePage() {
       {
         !connection.linked
           ? (
-            <div className="finance-empty-state">
-              Link a Sleeper account to use the finance tracker.
+            <div className="empty-state">
+              <Wallet size={32} className="empty-state-icon" />
+              <p className="empty-state-title">Link your account</p>
+              <p className="empty-state-message">
+                Link a Sleeper account to use the finance tracker.
+              </p>
             </div>
           )
           : null
@@ -1229,7 +1234,7 @@ export function FinancePage() {
           ? (
             <LoadingState
               label="Loading finance tracker..."
-              className="finance-empty-state"
+              className="empty-state"
             />
           )
           : null
@@ -1238,8 +1243,12 @@ export function FinancePage() {
       {
         connection.linked && !finance.loading && finance.error
           ? (
-            <div className="finance-empty-state">
-              Unable to load finance data.
+            <div className="empty-state">
+              <AlertTriangle size={32} className="empty-state-icon" />
+              <p className="empty-state-title">Unable to load finance data</p>
+              <p className="empty-state-message">
+                Please try again later.
+              </p>
             </div>
           )
           : null

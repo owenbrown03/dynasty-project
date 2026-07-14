@@ -13,6 +13,7 @@ export interface UserMovements {
 export interface Transaction {
   transaction_id: string;
   league_name: string;
+  league_avatar: string | null;
   league_settings: string[];
   time_ms: number;
   users: UserMovements[];
@@ -106,6 +107,7 @@ export interface Bootstrap {
   site_user: BootstrapUser | null;
   sleeper: BootstrapSleeper;
   theme_preference: ThemePreference | null;
+  accent_color: AccentColor | null;
   value_preference: ValueBasis | null;
   war_value_settings: WarValueSettings;
   draft_pick_projection_settings: DraftPickProjectionSettings;
@@ -115,6 +117,15 @@ export type ThemePreference =
   | 'light'
   | 'dark'
   | 'system';
+
+export type AccentColor =
+  | 'blue'
+  | 'green'
+  | 'purple'
+  | 'red'
+  | 'orange'
+  | 'teal'
+  | 'pink';
 
 export type WarValueTimeframe =
   | 'redraft'
@@ -154,6 +165,7 @@ export interface DraftPickProjectionSettings {
 export interface LeagueOverview {
   league_id: string;
   league_name: string;
+  avatar: string | null;
   season: string | null;
   total_rosters: number | null;
   is_hidden: boolean;
@@ -279,6 +291,7 @@ export interface LeagueRoster {
 export interface LeagueDetails {
   league_id: string;
   league_name: string;
+  avatar: string | null;
   season: string;
   total_rosters: number;
   note: string;
@@ -305,6 +318,7 @@ export interface DashboardSummary {
 export interface DashboardLeague {
   league_id: string;
   league_name: string;
+  avatar: string | null;
   league_size: number;
 
   ktc_value: number;
@@ -553,6 +567,17 @@ export interface CommissionerLeagueNoteUpdate {
   league_id: string;
   note: string;
 }
+
+export interface UserLeagueNoteUpdate {
+  league_id: string;
+  note: string;
+}
+
+export interface UserLeagueNoteResponse {
+  league_id: string;
+  note: string;
+}
+
 
 export interface CommissionerLeagueDuesUpdate {
   league_id: string;

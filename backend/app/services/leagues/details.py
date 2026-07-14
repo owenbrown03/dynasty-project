@@ -17,7 +17,7 @@ from app.crud.sleeper.league import (
     get_sync_states,
 )
 from app.crud.sleeper.personal import (
-    get_commissioner_notes_by_league_id,
+    get_user_notes_by_league_id,
 )
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
@@ -153,7 +153,7 @@ class LeagueDetails:
         league = leagues[0][0]
         roster_rows = [roster for _, roster in leagues]
         notes_by_league_id = (
-            await get_commissioner_notes_by_league_id(
+            await get_user_notes_by_league_id(
                 db=db,
                 site_user_id=site_user_id,
                 league_ids=[league_id],
@@ -633,6 +633,7 @@ class LeagueDetails:
         return LeagueDetailsResponse(
             league_id=league.league_id,
             league_name=league.name,
+            avatar=league.avatar,
             season=str(league.season),
             total_rosters=league.total_rosters,
             draft_pick_projection_summary=(

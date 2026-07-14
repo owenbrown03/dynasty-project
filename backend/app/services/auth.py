@@ -5,6 +5,8 @@ from fastapi import HTTPException, status
 from passlib.context import CryptContext
 
 from app.schemas.auth import (
+    AccentColorResponse,
+    AccentColorUpdate,
     AuthSessionResponse,
     DraftPickProjectionSettingsResponse,
     DraftPickProjectionSettingsUpdate,
@@ -23,6 +25,7 @@ from app.core.context import Context
 from app.crud.auth.user import (
     consume_email_verification,
     create_email_verification_token,
+    get_accent_color,
     get_draft_pick_projection_settings,
     get_email_verification_by_token,
     get_theme_preference,
@@ -31,10 +34,12 @@ from app.crud.auth.user import (
     get_user_by_credentials,
     is_email_verified,
     insert_user,
+    reconcile_session_accent_color,
     reconcile_session_theme_preference,
     reconcile_session_draft_pick_projection_settings,
     reconcile_session_value_preference,
     reconcile_session_war_value_settings,
+    set_accent_color,
     set_draft_pick_projection_settings,
     set_theme_preference,
     set_value_preference,
@@ -42,12 +47,14 @@ from app.crud.auth.user import (
 )
 from app.crud.auth.session import (
     create_session_by_userid,
+    get_session_accent_color,
     get_session_draft_pick_projection_settings,
     get_session_theme_preference,
     get_session_value_preference,
     get_session_war_value_settings,
     insert_session_by_userid,
     delete_session,
+    set_session_accent_color,
     set_session_draft_pick_projection_settings,
     set_session_theme_preference,
     set_session_value_preference,
@@ -124,6 +131,11 @@ async def login(
         session=session,
         db=ctx.db,
     )
+    await reconcile_session_accent_color(
+        user=db_user,
+        session=session,
+        db=ctx.db,
+    )
 
     return build_auth_session_response(
         str(db_user.id),
@@ -168,6 +180,14 @@ async def logout(
             ctx.site_user,
         )
     )
+    accent_color = (
+        get_session_accent_color(
+            ctx.session,
+        )
+        or get_accent_color(
+            ctx.site_user,
+        )
+    )
 
     await delete_session(ctx.session, ctx.response, ctx.db)
 
@@ -204,6 +224,13 @@ async def logout(
         db=ctx.db,
     )
 
+    if accent_color is not None:
+        await set_session_accent_color(
+            session=new_session,
+            accent_color=accent_color,
+            db=ctx.db,
+        )
+
     return build_auth_session_response(
         None,
     )
@@ -235,6 +262,31 @@ async def update_theme(
         theme_preference=(
             session.settings.get("theme_preference")
         ),
+    )
+
+
+async def update_accent_color(
+    body: AccentColorUpdate,
+    ctx: Context,
+) -> AccentColorResponse:
+    session = await set_session_accent_color(
+        session=ctx.session,
+        accent_color=body.accent_color,
+        db=ctx.db,
+    )
+
+    if ctx.site_user:
+        user = await set_accent_color(
+            user=ctx.site_user,
+            accent_color=body.accent_color,
+            db=ctx.db,
+        )
+        return AccentColorResponse(
+            accent_color=get_accent_color(user),
+        )
+
+    return AccentColorResponse(
+        accent_color=get_session_accent_color(session),
     )
 
 

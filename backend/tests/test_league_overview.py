@@ -12,12 +12,14 @@ def test_get_league_overview_deduplicates_leagues(monkeypatch):
     league_one = SimpleNamespace(
         league_id="league-1",
         name="League One",
+        avatar=None,
         season="2026",
         total_rosters=12,
     )
     league_two = SimpleNamespace(
         league_id="league-2",
         name="League Two",
+        avatar=None,
         season="2026",
         total_rosters=10,
     )
@@ -65,6 +67,7 @@ def test_get_league_overview_deduplicates_leagues(monkeypatch):
         {
             "league_id": "league-1",
             "league_name": "League One",
+            "avatar": None,
             "season": "2026",
             "total_rosters": 12,
             "is_hidden": False,
@@ -72,6 +75,7 @@ def test_get_league_overview_deduplicates_leagues(monkeypatch):
         {
             "league_id": "league-2",
             "league_name": "League Two",
+            "avatar": None,
             "season": "2026",
             "total_rosters": 10,
             "is_hidden": False,

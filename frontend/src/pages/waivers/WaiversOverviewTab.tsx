@@ -1,3 +1,4 @@
+import { AlertTriangle, HandCoins, WifiOff } from 'lucide-react';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useWaiverOverview } from '@/hooks/sleeper/useWaivers';
 
@@ -27,10 +28,10 @@ export const WaiversOverviewTab = ({
 
   if (waivers.error) {
     return (
-      <div className="waivers-empty-state">
-        <h2>Unable to load waiver recommendations.</h2>
-
-        <p>
+      <div className="empty-state">
+        <AlertTriangle size={32} className="empty-state-icon" />
+        <p className="empty-state-title">Unable to load recommendations</p>
+        <p className="empty-state-message">
           Check your Sleeper connection and try again.
         </p>
       </div>
@@ -39,10 +40,10 @@ export const WaiversOverviewTab = ({
 
   if (!waivers.data) {
     return (
-      <div className="waivers-empty-state">
-        <h2>Connect your Sleeper account.</h2>
-
-        <p>
+      <div className="empty-state">
+        <WifiOff size={32} className="empty-state-icon" />
+        <p className="empty-state-title">Connect your Sleeper account</p>
+        <p className="empty-state-message">
           Waiver recommendations appear after your
           Sleeper account is connected.
         </p>
@@ -52,10 +53,10 @@ export const WaiversOverviewTab = ({
 
   if (waivers.data.leagues.length === 0) {
     return (
-      <div className="waivers-empty-state">
-        <h2>No waiver leagues found.</h2>
-
-        <p>
+      <div className="empty-state">
+        <HandCoins size={32} className="empty-state-icon" />
+        <p className="empty-state-title">No waiver leagues</p>
+        <p className="empty-state-message">
           Sync your Sleeper leagues and try again.
         </p>
       </div>
