@@ -33,6 +33,7 @@
 
 .sidebar-section + .sidebar-section {
   margin-top: 8px;
+  padding-top: 8px;
   position: relative;
 }
 
