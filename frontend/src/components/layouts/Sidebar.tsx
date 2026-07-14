@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { NavLink } from 'react-router';
 import {
   LayoutDashboard,
@@ -10,8 +9,6 @@ import {
   Bell,
   Radar,
   Layers3,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 
 import './Sidebar.css';
@@ -30,7 +27,6 @@ interface SidebarSection {
 
 export const Sidebar = () => {
   const connection = useSleeperConnection();
-  const [isOpen, setIsOpen] = useState(false);
   const commissionerPath = connection.username
     ? `/commissioner/${encodeURIComponent(connection.username)}`
     : '/commissioner';
@@ -62,41 +58,34 @@ export const Sidebar = () => {
   ];
 
   return (
-    <nav className={`sidebar ${isOpen ? 'expanded' : 'collapsed'}`}>
-      <button
-        className="button-secondary sidebar-toggle"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-      >
-        {isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-      </button>
-
-      <div id="sidebar-menu">
-        {sections.map((section, si) => (
-          <div key={si} className="sidebar-section">
-            {isOpen && section.label && (
-              <span className="sidebar-section-label">{section.label}</span>
-            )}
-            {section.items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `sidebar-link ${isActive ? 'active' : ''}`
-                }
-              >
-                <div className="tooltip-container sidebar-icon-slot">
-                  {item.icon}
-                  {!isOpen && <span className="tooltip">{item.label}</span>}
-                </div>
-                {isOpen && <span className="link-text">{item.label}</span>}
-              </NavLink>
-            ))}
-            {isOpen && si < sections.length - 1 && (
-              <div className="sidebar-divider" />
-            )}
-          </div>
-        ))}
+    <nav className="sidebar">
+      <div className="sidebar-panel">
+        <div className="sidebar-menu">
+          {sections.map((section, si) => (
+            <div key={si} className="sidebar-section">
+              {section.label && (
+                <span className="sidebar-section-label">{section.label}</span>
+              )}
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? 'active' : ''}`
+                  }
+                >
+                  <div className="sidebar-icon-slot">
+                    {item.icon}
+                  </div>
+                  <span className="sidebar-link-label">{item.label}</span>
+                </NavLink>
+              ))}
+              {si < sections.length - 1 && (
+                <div className="sidebar-divider" />
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </nav>
   );

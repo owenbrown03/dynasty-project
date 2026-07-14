@@ -1,29 +1,25 @@
 .sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   width: 76px;
+  flex-shrink: 0;
+  overflow: visible;
+  z-index: 20;
+}
+
+.sidebar-panel {
+  width: 76px;
+  height: 100%;
   padding: 12px 10px;
   border-right: 1px solid var(--color-border-strong);
   background: var(--color-surface);
-  transition: width 0.18s ease;
   overflow: hidden;
-  overflow-y: auto;
-  flex-shrink: 0;
-  min-height: 0;
+  transition: width 0.18s ease;
 }
 
-.sidebar.collapsed { width: 76px; }
-.sidebar.expanded { width: 220px; }
-
-.sidebar-toggle {
-  align-self: flex-start;
-  width: 40px;
-  height: 40px;
-  padding: 0;
+.sidebar:hover .sidebar-panel {
+  width: 220px;
 }
 
-#sidebar-menu {
+.sidebar-menu {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -41,6 +37,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .sidebar-divider {
@@ -60,16 +57,13 @@
   color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
-}
-
-.collapsed .sidebar-link {
-  justify-content: center;
-  padding: 0;
+  white-space: nowrap;
 }
 
 .sidebar-icon-slot {
   width: 22px;
   height: 22px;
+  flex-shrink: 0;
   color: var(--color-text-muted);
 }
 
@@ -88,11 +82,6 @@
   color: var(--color-link);
 }
 
-.sidebar-link .tooltip-container {
-  width: 20px;
-  height: 20px;
-}
-
-.link-text {
+.sidebar-link-label {
   white-space: nowrap;
 }
