@@ -523,3 +523,67 @@ Examples:
 - `frontend/README.md` contains frontend-specific run, test, and API-base-URL notes.
 
 Treat the codebase and this file as the primary implementation guide unless the project documentation is updated.
+
+
+## Development environment and container safety
+
+The AI agent is running inside the project’s development container.
+
+The development container has access to Docker and Docker Compose for inspecting and interacting with the application stack. You may run non-disruptive Docker commands without asking for approval, including:
+
+```sh
+docker compose ps
+docker compose logs
+docker compose logs --tail=200 api
+docker compose logs --tail=200 worker
+docker compose exec api ...
+docker compose exec worker ...
+docker compose exec db ...
+```
+
+Use these commands when helpful to:
+
+- inspect API, worker, database, or frontend logs
+- check container health and status
+- run tests, migrations, shell commands, or database queries inside existing containers
+- verify backend endpoints and worker execution
+- investigate runtime errors
+
+### Restart restrictions
+
+Do not restart, stop, recreate, rebuild, or bring down the development container or the full Docker Compose stack without explicit user approval.
+
+The user’s active AI-agent session is running from the development container. Restarting or recreating that container may disconnect the user and terminate the current agent session.
+
+Commands that must not be run without explicit approval include:
+
+```sh
+docker compose down
+docker compose stop
+docker compose restart
+docker compose up --build
+docker compose up --force-recreate
+docker restart ...
+docker stop ...
+make up
+```
+
+Do not restart the `api`, `frontend`, `db`, `redis`, or development-container services unless the user explicitly approves the disconnection risk.
+
+### Worker restart exception
+
+You have permission to restart only the TaskIQ worker when worker-related code changes require it:
+
+```sh
+docker compose restart worker
+```
+
+A worker restart does not restart the development container and should be performed after changes to worker tasks, broker configuration, worker lifecycle code, or code imported by task execution paths.
+
+Before running any other restart or rebuild command:
+
+1. Explain why it is required.
+2. Warn the user that it may disconnect the current agent session.
+3. Wait for explicit approval.
+
+When possible, prefer non-disruptive alternatives such as inspecting logs, relying on API hot reload, running commands with `docker compose exec`, or restarting only the worker.

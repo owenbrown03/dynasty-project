@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from app.models.db.sleeper.api import LeagueSortOrder
 from app.models.db.sleeper.personal import (
     CommissionerLeagueDues,
     CommissionerLeagueNote,
@@ -781,3 +782,52 @@ async def delete_reminder(
 ) -> None:
     await db.delete(reminder)
     await db.commit()
+
+
+async def upsert_league_sort_orders(
+    *,
+    db: AsyncSession,
+    user_id: str,
+    league_ids_in_order: list[str],
+) -> None:
+    result = await db.execute(
+        select(LeagueSortOrder).where(
+            LeagueSortOrder.user_id == user_id,
+        )
+    )
+    existing = {row.league_id: row for row in result.scalars().all()}
+
+    seen = set()
+    for idx, league_id in enumerate(league_ids_in_order):
+        if league_id in seen:
+            continue
+        seen.add(league_id)
+
+        record = existing.get(league_id)
+        if record:
+            record.display_order = idx
+            record.updated_at = datetime.utcnow()
+        else:
+            db.add(LeagueSortOrder(
+                user_id=user_id,
+                league_id=league_id,
+                display_order=idx,
+            ))
+
+    await db.commit()
+
+
+async def get_league_sort_orders(
+    *,
+    db: AsyncSession,
+    user_id: str,
+) -> dict[str, int]:
+    result = await db.execute(
+        select(LeagueSortOrder).where(
+            LeagueSortOrder.user_id == user_id,
+        )
+    )
+    return {
+        row.league_id: row.display_order
+        for row in result.scalars().all()
+    }

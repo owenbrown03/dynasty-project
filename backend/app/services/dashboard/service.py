@@ -34,6 +34,9 @@ from .top_assets import (
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_username,
 )
+from app.crud.sleeper.personal import get_league_sort_orders
+from app.models.db.sleeper.api import User
+from sqlmodel import select
 
 
 logger = logging.getLogger(__name__)
@@ -350,6 +353,11 @@ async def get_user_dashboard(
             f"User {username} not found"
         )
 
+    sort_order = await get_league_sort_orders(
+        db=db,
+        user_id=user.user_id,
+    )
+
     visible_rows = await get_visible_owned_league_rows_by_username(
         db=db,
         username=username,
@@ -431,6 +439,7 @@ async def get_user_dashboard(
     league_cards.sort(
         key=lambda league: (
             league["dynasty_roster_war_rank"],
+            sort_order.get(league["league_id"], 9999),
             league["league_name"].lower(),
         ),
     )

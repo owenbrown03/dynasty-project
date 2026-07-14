@@ -4,13 +4,14 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.crud.sleeper.league import (
     get_owned_leagues_by_sleeper_user_id,
     get_user_leagues,
 )
-from app.crud.sleeper.personal import get_hidden_league_ids
-from app.models.db.sleeper.api import League, Roster
+from app.crud.sleeper.personal import get_hidden_league_ids, get_league_sort_orders
+from app.models.db.sleeper.api import League, Roster, User
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,7 @@ def select_latest_owned_league_rows(
     *,
     hidden_league_ids: set[str] | None = None,
     include_hidden: bool = False,
+    sort_order: dict[str, int] | None = None,
 ) -> list[OwnedLeagueRow]:
     if not owned_rows:
         return []
@@ -125,6 +127,15 @@ def select_latest_owned_league_rows(
             row,
         )
 
+    if sort_order:
+        return sorted(
+            filtered_rows,
+            key=lambda row: sort_order.get(
+                row.league.league_id,
+                9999,
+            ),
+        )
+
     return sorted(
         filtered_rows,
         key=lambda row: (
@@ -147,11 +158,23 @@ async def get_visible_owned_league_rows_by_username(
         username,
     )
     hidden_league_ids = set()
+    sort_order = None
 
     if site_user_id is not None:
         hidden_league_ids = await get_hidden_league_ids(
             db=db,
             site_user_id=site_user_id,
+        )
+
+    user_result = await db.execute(
+        select(User.user_id).where(User.display_name == username.strip())
+    )
+    sleeper_user_id = user_result.scalar_one_or_none()
+
+    if sleeper_user_id:
+        sort_order = await get_league_sort_orders(
+            db=db,
+            user_id=sleeper_user_id,
         )
 
     return select_latest_owned_league_rows(
@@ -164,6 +187,7 @@ async def get_visible_owned_league_rows_by_username(
         ],
         hidden_league_ids=hidden_league_ids,
         include_hidden=include_hidden,
+        sort_order=sort_order,
     )
 
 
@@ -179,12 +203,18 @@ async def get_visible_owned_league_rows_by_sleeper_user_id(
         sleeper_user_id,
     )
     hidden_league_ids = set()
+    sort_order = None
 
     if site_user_id is not None:
         hidden_league_ids = await get_hidden_league_ids(
             db=db,
             site_user_id=site_user_id,
         )
+
+    sort_order = await get_league_sort_orders(
+        db=db,
+        user_id=sleeper_user_id,
+    )
 
     return select_latest_owned_league_rows(
         [
@@ -196,4 +226,5 @@ async def get_visible_owned_league_rows_by_sleeper_user_id(
         ],
         hidden_league_ids=hidden_league_ids,
         include_hidden=include_hidden,
+        sort_order=sort_order,
     )

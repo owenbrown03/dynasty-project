@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.models.db.sleeper import api as model
 from app.services.sleeper import transformers
 from app.crud.base import _bulk_upsert
+from app.crud.sleeper.personal import upsert_league_sort_orders
 from app.core.concurrency import bounded_gather
 
 logger = logging.getLogger(__name__)
@@ -211,8 +212,15 @@ async def sync_leagues(
         "full",
         "transactions_only",
     ] = "full",
+    user_id: str | None = None,
 ):
     curr_week = max(curr_week, 1)
+
+    sleeper_order = [
+        l.league_id
+        for l in raw_leagues
+        if l and l.league_id
+    ]
 
     leagues = list(
         {l.league_id: l for l in raw_leagues if l and l.league_id}.values()
@@ -333,6 +341,13 @@ async def sync_leagues(
             "synced_count": 0,
             "reason": "no_new_data",
         }
+
+    if user_id and sleeper_order:
+        await upsert_league_sort_orders(
+            db=db,
+            user_id=user_id,
+            league_ids_in_order=sleeper_order,
+        )
 
     return {
         "status": "completed",
