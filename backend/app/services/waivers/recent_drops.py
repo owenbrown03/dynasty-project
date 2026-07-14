@@ -179,11 +179,7 @@ async def get_recently_dropped_players(
         if (
             not player_id
             or player is None
-            or player.fantasy_positions is None
-            or not any(
-                position in SUPPORTED_POSITIONS
-                for position in (player.fantasy_positions or [])
-            )
+            or player.position not in SUPPORTED_POSITIONS
         ):
             continue
 

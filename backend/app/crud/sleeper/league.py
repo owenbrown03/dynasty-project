@@ -839,22 +839,27 @@ async def _save_transactions(
     league_id: str,
 ) -> None:
     """
-    Upserts transaction metadata for every trade so fields such as status
-    remain current, while only inserting movement/pick/waiver children once.
+    Upserts transaction metadata for every transaction so fields such as
+    status remain current, while only inserting movement/pick/waiver
+    children once.
     """
 
-    trades = [
+    persisted_transactions = [
         transaction
         for transaction in transactions
-        if transaction.type == "trade"
+        if getattr(
+            transaction,
+            "transaction_id",
+            None,
+        )
     ]
 
-    if not trades:
+    if not persisted_transactions:
         return
 
     incoming_ids = [
         transaction.transaction_id
-        for transaction in trades
+        for transaction in persisted_transactions
     ]
 
     result = await db.execute(
@@ -876,7 +881,7 @@ async def _save_transactions(
     waiver_dicts = []
     pick_dicts = []
 
-    for transaction in trades:
+    for transaction in persisted_transactions:
         transaction_dict, movements, waivers, picks = (
             transformers.tx_to_db(
                 transaction,
