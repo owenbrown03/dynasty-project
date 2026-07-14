@@ -1,7 +1,4 @@
-import type {
-  TradeDirection,
-  ValueBasis,
-} from '@/types';
+import type { ValueBasis } from '@/types';
 
 export const queryKeys = {
   bootstrap: ['bootstrap'] as const,
@@ -55,18 +52,12 @@ export const queryKeys = {
       ['bulk-trade-player-search', query] as const,
     bulkAvailability: (
       username: string | null | undefined,
-      playerId: string | undefined,
-      direction: TradeDirection,
-      pickSeason: string,
-      pickRound: number,
+      packageKey: string,
     ) =>
       [
         'bulk-trade-availability',
         username ?? null,
-        playerId ?? null,
-        direction,
-        pickSeason,
-        pickRound,
+        packageKey,
       ] as const,
     bulkAvailabilityRoot: [
       'bulk-trade-availability',

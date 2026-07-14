@@ -49,7 +49,7 @@ class BulkTradeCounterparty(Base):
     user_id: str | None = None
     name: str
 
-    matching_picks: list[TradeDraftPickAsset] = Field(
+    pick_choices: list["BulkTradePickChoice"] = Field(
         default_factory=list,
     )
 
@@ -78,7 +78,7 @@ class BulkTradeLeagueAvailability(Base):
         Empty, because the receiving manager's matching picks live under
         `counterparty_options`.
     """
-    matching_picks: list[TradeDraftPickAsset] = Field(
+    pick_choices: list["BulkTradePickChoice"] = Field(
         default_factory=list,
     )
 
@@ -96,14 +96,29 @@ class BulkTradeLeagueAvailability(Base):
 
 
 class BulkTradeAvailabilityResponse(Base):
-    player: BulkTradePlayerSearchResult
-
     direction: TradeDirection
-
-    pick_season: str
-    pick_round: int
+    players: list[BulkTradePlayerSearchResult] = Field(
+        default_factory=list,
+    )
+    picks: list["BulkTradePickRequest"] = Field(
+        default_factory=list,
+    )
 
     leagues: list[BulkTradeLeagueAvailability] = Field(
+        default_factory=list,
+    )
+
+
+class BulkTradePickRequest(Base):
+    season: str
+    round: int
+
+
+class BulkTradePickChoice(Base):
+    request_index: int
+    season: str
+    round: int
+    matching_picks: list[TradeDraftPickAsset] = Field(
         default_factory=list,
     )
 
@@ -121,17 +136,35 @@ class BulkTradePickReference(Base):
     og_roster_id: int
 
 
+class BulkTradeAvailabilityRequest(Base):
+    direction: TradeDirection
+    player_ids: list[str] = Field(
+        min_length=1,
+        max_length=8,
+    )
+    picks: list[BulkTradePickRequest] = Field(
+        min_length=1,
+        max_length=8,
+    )
+
+
 class BulkTradeOfferRequest(Base):
     league_id: str
 
     your_roster_id: int
     counterparty_roster_id: int
 
-    target_player_id: str
+    player_ids: list[str] = Field(
+        min_length=1,
+        max_length=8,
+    )
 
     direction: TradeDirection
 
-    pick: BulkTradePickReference
+    picks: list[BulkTradePickReference] = Field(
+        min_length=1,
+        max_length=8,
+    )
 
     expires_at: int | None = None
 

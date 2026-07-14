@@ -11,6 +11,7 @@ from app.api.deps import (
 )
 from app.crud.sleeper.trade import get_trade_signals
 from app.schemas.trades import (
+    BulkTradeAvailabilityRequest,
     BulkTradeAvailabilityResponse,
     BulkTradePlayerSearchResult,
     BulkTradeProposalRequest,
@@ -69,37 +70,13 @@ async def bulk_trade_player_search_endpoint(
     )
 
 
-@router.get(
+@router.post(
     "/bulk/availability",
     response_model=BulkTradeAvailabilityResponse,
 )
 async def bulk_trade_availability_endpoint(
     ctx: ContextDep,
-    player_id: str = Query(
-        ...,
-        description=(
-            "Sleeper player ID selected from database search."
-        ),
-    ),
-    direction: TradeDirection = Query(
-        ...,
-    ),
-    pick_season: str = Query(
-        ...,
-        min_length=4,
-        max_length=4,
-        description=(
-            "Draft-pick year, such as 2026."
-        ),
-    ),
-    pick_round: int = Query(
-        ...,
-        ge=1,
-        le=10,
-        description=(
-            "Draft-pick round, such as 2."
-        ),
-    ),
+    body: BulkTradeAvailabilityRequest,
 ) -> BulkTradeAvailabilityResponse:
     require_sleeper_connection(
         ctx,
@@ -113,10 +90,9 @@ async def bulk_trade_availability_endpoint(
         db=ctx.db,
         connection=ctx.connection,
         sleeper=ctx.sleeper,
-        player_id=player_id,
-        direction=direction,
-        pick_season=pick_season,
-        pick_round=pick_round,
+        player_ids=body.player_ids,
+        direction=body.direction,
+        picks=body.picks,
     )
 
 

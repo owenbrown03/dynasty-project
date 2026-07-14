@@ -966,7 +966,7 @@ export interface BulkTradeCounterparty {
   roster_id: number;
   user_id: string | null;
   name: string;
-  matching_picks: TradeDraftPickAsset[];
+  pick_choices: BulkTradePickChoice[];
 }
 
 export interface BulkTradeLeagueAvailability {
@@ -985,16 +985,27 @@ export interface BulkTradeLeagueAvailability {
   is_eligible: boolean;
   ineligibility_reason: string | null;
 
-  matching_picks: TradeDraftPickAsset[];
+  pick_choices: BulkTradePickChoice[];
   counterparty_options: BulkTradeCounterparty[];
 }
 
 export interface BulkTradeAvailabilityResponse {
-  player: BulkTradePlayerSearchResult;
   direction: TradeDirection;
-  pick_season: string;
-  pick_round: number;
+  players: BulkTradePlayerSearchResult[];
+  picks: BulkTradePickRequest[];
   leagues: BulkTradeLeagueAvailability[];
+}
+
+export interface BulkTradePickRequest {
+  season: string;
+  round: number;
+}
+
+export interface BulkTradePickChoice {
+  request_index: number;
+  season: string;
+  round: number;
+  matching_picks: TradeDraftPickAsset[];
 }
 
 export interface BulkTradePickReference {
@@ -1003,13 +1014,19 @@ export interface BulkTradePickReference {
   og_roster_id: number;
 }
 
+export interface BulkTradeAvailabilityRequest {
+  direction: TradeDirection;
+  player_ids: string[];
+  picks: BulkTradePickRequest[];
+}
+
 export interface BulkTradeOfferRequest {
   league_id: string;
   your_roster_id: number;
   counterparty_roster_id: number;
-  target_player_id: string;
+  player_ids: string[];
   direction: TradeDirection;
-  pick: BulkTradePickReference;
+  picks: BulkTradePickReference[];
   expires_at?: number | null;
 }
 

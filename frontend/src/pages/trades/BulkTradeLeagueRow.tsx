@@ -19,7 +19,7 @@ import type {
 export interface BulkTradeLeagueSelection {
   selected: boolean;
   counterpartyRosterId: number | null;
-  pickOgRosterId: number | null;
+  pickOgRosterIdsByRequestIndex: Record<number, number | null>;
 }
 
 
@@ -86,13 +86,8 @@ export const BulkTradeLeagueRow = ({
 
   const availablePicks = (
     direction === 'buy'
-      ? league.matching_picks
-      : selectedCounterparty?.matching_picks ?? []
-  );
-
-  const selectedPick = getPickByOriginalRosterId(
-    availablePicks,
-    selection.pickOgRosterId,
+      ? league.pick_choices
+      : selectedCounterparty?.pick_choices ?? []
   );
 
   if (!league.is_eligible) {
@@ -195,9 +190,9 @@ export const BulkTradeLeagueRow = ({
                 }
                 disabled={!selection.selected}
                 onChange={event => {
-                  const rosterId = Number(
-                    event.target.value,
-                  );
+                  const rosterId = event.target.value
+                    ? Number(event.target.value)
+                    : null;
 
                   const nextCounterparty = (
                     getCounterpartyByRosterId(
@@ -209,10 +204,13 @@ export const BulkTradeLeagueRow = ({
                   onChange({
                     ...selection,
                     counterpartyRosterId: rosterId,
-                    pickOgRosterId: (
-                      nextCounterparty?.matching_picks[0]
-                        ?.og_roster_id
-                      ?? null
+                    pickOgRosterIdsByRequestIndex: Object.fromEntries(
+                      (nextCounterparty?.pick_choices ?? []).map(
+                        pickChoice => [
+                          pickChoice.request_index,
+                          pickChoice.matching_picks[0]?.og_roster_id ?? null,
+                        ],
+                      ),
                     ),
                   });
                 }}
@@ -235,42 +233,62 @@ export const BulkTradeLeagueRow = ({
           : null
       }
 
-      <label className="bulk-trade-row-select">
-        <span>
-          {
-            direction === 'buy'
-              ? 'You send'
-              : 'You receive'
-          }
-        </span>
-
-        <select
-          value={selection.pickOgRosterId ?? ''}
-          disabled={
-            !selection.selected
-            || availablePicks.length === 0
-          }
-          onChange={event => {
-            onChange({
-              ...selection,
-              pickOgRosterId: Number(
-                event.target.value,
-              ),
-            });
-          }}
-        >
-          {
-            availablePicks.map(pick => (
-              <option
-                key={pick.og_roster_id}
-                value={pick.og_roster_id}
+      <div className="bulk-trade-row-select-group">
+        {
+          availablePicks.map(
+            pickChoice => (
+              <label
+                key={`${league.league_id}-${pickChoice.request_index}`}
+                className="bulk-trade-row-select"
               >
-                {pick.label}
-              </option>
-            ))
-          }
-        </select>
-      </label>
+                <span>
+                  {
+                    direction === 'buy'
+                      ? `You send ${pickChoice.season} R${pickChoice.round}`
+                      : `You receive ${pickChoice.season} R${pickChoice.round}`
+                  }
+                </span>
+
+                <select
+                  value={
+                    selection.pickOgRosterIdsByRequestIndex[
+                      pickChoice.request_index
+                    ] ?? ''
+                  }
+                  disabled={
+                    !selection.selected
+                    || pickChoice.matching_picks.length === 0
+                  }
+                  onChange={event => {
+                    const nextOriginalRosterId = event.target.value
+                      ? Number(event.target.value)
+                      : null;
+
+                    onChange({
+                      ...selection,
+                      pickOgRosterIdsByRequestIndex: {
+                        ...selection.pickOgRosterIdsByRequestIndex,
+                        [pickChoice.request_index]: nextOriginalRosterId,
+                      },
+                    });
+                  }}
+                >
+                  {
+                    pickChoice.matching_picks.map(pick => (
+                      <option
+                        key={`${pickChoice.request_index}-${pick.og_roster_id}`}
+                        value={pick.og_roster_id}
+                      >
+                        {pick.label}
+                      </option>
+                    ))
+                  }
+                </select>
+              </label>
+            ),
+          )
+        }
+      </div>
 
       <button
         className="bulk-trade-details-button"
@@ -305,9 +323,17 @@ export const BulkTradeLeagueRow = ({
               </span>
 
               <span>
-                Pick: {
-                  selectedPick?.label
-                  ?? 'No pick selected'
+                Picks: {
+                  availablePicks.map(pickChoice => {
+                    const selectedPick = getPickByOriginalRosterId(
+                      pickChoice.matching_picks,
+                      selection.pickOgRosterIdsByRequestIndex[
+                        pickChoice.request_index
+                      ] ?? null,
+                    );
+
+                    return selectedPick?.label ?? `${pickChoice.season} Round ${pickChoice.round}`;
+                  }).join(', ')
                 }
               </span>
             </div>

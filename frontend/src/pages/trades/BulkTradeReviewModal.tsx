@@ -18,13 +18,13 @@ interface ReviewOffer {
   offer: BulkTradeOfferRequest;
   leagueName: string;
   counterpartyName: string;
-  pickLabel: string;
+  pickLabels: string[];
 }
 
 
 interface BulkTradeReviewModalProps {
   direction: TradeDirection;
-  player: BulkTradePlayerSearchResult;
+  players: BulkTradePlayerSearchResult[];
   offers: ReviewOffer[];
 
   submitting: boolean;
@@ -50,7 +50,7 @@ function getErrorMessage(
 
 export const BulkTradeReviewModal = ({
   direction,
-  player,
+  players,
   offers,
   submitting,
   results,
@@ -75,16 +75,16 @@ export const BulkTradeReviewModal = ({
 
             <div className="bulk-trade-player-heading">
               <PlayerAvatar
-                playerId={player.player_id}
-                name={player.name}
+                playerId={players[0]?.player_id ?? 'unknown'}
+                name={players[0]?.name ?? 'Players'}
                 size="md"
               />
 
               <h2>
                 {
                   direction === 'buy'
-                    ? `Buy ${player.name}`
-                    : `Sell ${player.name}`
+                    ? `Buy ${players.map(player => player.name).join(', ')}`
+                    : `Sell ${players.map(player => player.name).join(', ')}`
                 }
               </h2>
             </div>
@@ -166,24 +166,16 @@ export const BulkTradeReviewModal = ({
                                 </span>
 
                                 <strong>
-                                  {item.pickLabel}
+                                  {item.pickLabels.join(', ')}
                                 </strong>
 
                                 <span>
                                   You receive:
                                 </span>
 
-                                <span className="player-with-avatar">
-                                  <PlayerAvatar
-                                    playerId={player.player_id}
-                                    name={player.name}
-                                    size="sm"
-                                  />
-
-                                  <strong>
-                                    {player.name}
-                                  </strong>
-                                </span>
+                                <strong>
+                                  {players.map(player => player.name).join(', ')}
+                                </strong>
                               </>
                             )
                             : (
@@ -192,24 +184,16 @@ export const BulkTradeReviewModal = ({
                                   You send:
                                 </span>
 
-                                <span className="player-with-avatar">
-                                  <PlayerAvatar
-                                    playerId={player.player_id}
-                                    name={player.name}
-                                    size="sm"
-                                  />
-
-                                  <strong>
-                                    {player.name}
-                                  </strong>
-                                </span>
+                                <strong>
+                                  {players.map(player => player.name).join(', ')}
+                                </strong>
 
                                 <span>
                                   You receive:
                                 </span>
 
                                 <strong>
-                                  {item.pickLabel}
+                                  {item.pickLabels.join(', ')}
                                 </strong>
                               </>
                             )

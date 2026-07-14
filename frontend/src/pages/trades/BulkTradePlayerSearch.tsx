@@ -16,9 +16,12 @@ import type {
 
 
 interface BulkTradePlayerSearchProps {
-  selectedPlayer: BulkTradePlayerSearchResult | null;
-  onSelectPlayer: (
-    player: BulkTradePlayerSearchResult | null,
+  selectedPlayers: BulkTradePlayerSearchResult[];
+  onAddPlayer: (
+    player: BulkTradePlayerSearchResult,
+  ) => void;
+  onRemovePlayer: (
+    playerId: string,
   ) => void;
 }
 
@@ -35,8 +38,9 @@ function formatMarketValue(
 
 
 export const BulkTradePlayerSearch = ({
-  selectedPlayer,
-  onSelectPlayer,
+  selectedPlayers,
+  onAddPlayer,
+  onRemovePlayer,
 }: BulkTradePlayerSearchProps) => {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,14 +74,13 @@ export const BulkTradePlayerSearch = ({
 
   const showResults = (
     searchInput.trim().length >= 2
-    && !selectedPlayer
   );
 
   return (
     <section className="bulk-trade-player-search">
       <label className="bulk-trade-search-label">
         <span>
-          Player
+          Players
         </span>
 
         <div className="bulk-trade-search-input-wrap">
@@ -107,64 +110,71 @@ export const BulkTradePlayerSearch = ({
       </label>
 
       {
-        selectedPlayer
+        selectedPlayers.length > 0
           ? (
-            <div className="bulk-trade-selected-player">
-              <div className="player-with-avatar">
-                <PlayerAvatar
-                  playerId={selectedPlayer.player_id}
-                  name={selectedPlayer.name}
-                  size="md"
-                />
+            <div className="bulk-trade-search-results">
+              {
+                selectedPlayers.map(player => (
+                  <div
+                    key={player.player_id}
+                    className="bulk-trade-selected-player"
+                  >
+                    <div className="player-with-avatar">
+                      <PlayerAvatar
+                        playerId={player.player_id}
+                        name={player.name}
+                        size="md"
+                      />
 
-                <div className="player-with-avatar-copy">
-                  <strong>
-                    {selectedPlayer.name}
-                  </strong>
+                      <div className="player-with-avatar-copy">
+                        <strong>
+                          {player.name}
+                        </strong>
 
-                  <span>
-                    {
-                      [
-                        selectedPlayer.position,
-                        selectedPlayer.team,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')
-                    }
-                  </span>
-                </div>
-              </div>
+                        <span>
+                          {
+                            [
+                              player.position,
+                              player.team,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')
+                          }
+                        </span>
+                      </div>
+                    </div>
 
-              <div className="bulk-trade-selected-values">
-                <span>
-                  KTC {
-                    formatMarketValue(
-                      selectedPlayer.ktc_value,
-                    )
-                  }
-                </span>
+                    <div className="bulk-trade-selected-values">
+                      <span>
+                        KTC {
+                          formatMarketValue(
+                            player.ktc_value,
+                          )
+                        }
+                      </span>
 
-                <span>
-                  FC {
-                    formatMarketValue(
-                      selectedPlayer.fc_value,
-                    )
-                  }
-                </span>
-              </div>
+                      <span>
+                        FC {
+                          formatMarketValue(
+                            player.fc_value,
+                          )
+                        }
+                      </span>
+                    </div>
 
-              <button
-                className="button-secondary"
-                onClick={() => {
-                  setSearchInput('');
-                  setSearchQuery('');
-                  onSelectPlayer(
-                    null as unknown as BulkTradePlayerSearchResult,
-                  );
-                }}
-              >
-                Change
-              </button>
+                    <button
+                      className="button-secondary"
+                      onClick={() => {
+                        onRemovePlayer(
+                          player.player_id,
+                        );
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))
+              }
             </div>
           )
           : null
@@ -192,14 +202,17 @@ export const BulkTradePlayerSearch = ({
                     key={player.player_id}
                     className="bulk-trade-search-result"
                     onClick={() => {
-                      onSelectPlayer(
+                      onAddPlayer(
                         player,
                       );
-
-                      setSearchInput(
-                        player.name,
-                      );
+                      setSearchInput('');
+                      setSearchQuery('');
                     }}
+                    disabled={selectedPlayers.some(
+                      selectedPlayer => (
+                        selectedPlayer.player_id === player.player_id
+                      ),
+                    )}
                   >
                     <div className="player-with-avatar">
                       <PlayerAvatar

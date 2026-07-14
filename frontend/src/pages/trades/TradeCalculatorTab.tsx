@@ -7,6 +7,7 @@ import {
 } from '@/hooks/sleeper/useBulkTrades';
 import type {
   BulkTradePlayerSearchResult,
+  BulkTradePickRequest,
   TradeDirection,
 } from '@/types';
 import { notify } from '@/utils/notify';
@@ -34,9 +35,8 @@ type CalculatorAsset = {
 
 export interface TradeCalculatorBulkOfferSeed {
   direction: TradeDirection;
-  player: BulkTradePlayerSearchResult;
-  pickSeason: string;
-  pickRound: number;
+  players: BulkTradePlayerSearchResult[];
+  picks: BulkTradePickRequest[];
 }
 
 
@@ -89,8 +89,8 @@ function buildBulkOfferSeed({
   teamBReceives: CalculatorAsset[];
 }): TradeCalculatorBulkOfferSeed | null {
   if (
-    teamAReceives.length !== 1
-    || teamBReceives.length !== 1
+    teamAReceives.length === 0
+    || teamBReceives.length === 0
   ) {
     return null;
   }
@@ -101,36 +101,56 @@ function buildBulkOfferSeed({
   const counterpartyAssets = mySide === 'team-a'
     ? teamBReceives
     : teamAReceives;
-  const myAsset = myAssets[0];
-  const counterpartyAsset = counterpartyAssets[0];
+  const myPlayers = myAssets.filter(
+    asset => asset.type === 'player' && asset.player,
+  );
+  const myPicks = myAssets.filter(
+    asset => asset.type === 'pick'
+      && asset.pickSeason
+      && asset.pickRound,
+  );
+  const counterpartyPlayers = counterpartyAssets.filter(
+    asset => asset.type === 'player' && asset.player,
+  );
+  const counterpartyPicks = counterpartyAssets.filter(
+    asset => asset.type === 'pick'
+      && asset.pickSeason
+      && asset.pickRound,
+  );
 
   if (
-    myAsset.type === 'player'
-    && counterpartyAsset.type === 'pick'
-    && myAsset.player
-    && counterpartyAsset.pickSeason
-    && counterpartyAsset.pickRound
+    myPlayers.length === myAssets.length
+    && counterpartyPicks.length === counterpartyAssets.length
   ) {
     return {
       direction: 'buy',
-      player: myAsset.player,
-      pickSeason: counterpartyAsset.pickSeason,
-      pickRound: counterpartyAsset.pickRound,
+      players: myPlayers.map(
+        asset => asset.player!,
+      ),
+      picks: counterpartyPicks.map(
+        asset => ({
+          season: asset.pickSeason!,
+          round: asset.pickRound!,
+        }),
+      ),
     };
   }
 
   if (
-    myAsset.type === 'pick'
-    && counterpartyAsset.type === 'player'
-    && counterpartyAsset.player
-    && myAsset.pickSeason
-    && myAsset.pickRound
+    myPicks.length === myAssets.length
+    && counterpartyPlayers.length === counterpartyAssets.length
   ) {
     return {
       direction: 'sell',
-      player: counterpartyAsset.player,
-      pickSeason: myAsset.pickSeason,
-      pickRound: myAsset.pickRound,
+      players: counterpartyPlayers.map(
+        asset => asset.player!,
+      ),
+      picks: myPicks.map(
+        asset => ({
+          season: asset.pickSeason!,
+          round: asset.pickRound!,
+        }),
+      ),
     };
   }
 
@@ -616,7 +636,7 @@ export function TradeCalculatorTab({
           <div>
             <span className="page-eyebrow">Bulk send</span>
             <p>
-              Seed the Bulk Offers tab when this deal is one player for one pick.
+              Seed the Bulk Offers tab when one side is all players and the other side is all picks.
             </p>
           </div>
 

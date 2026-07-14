@@ -1,13 +1,13 @@
 import { type AxiosInstance } from 'axios';
 
 import type {
+  BulkTradeAvailabilityRequest,
   Transaction,
   BulkTradeAvailabilityResponse,
   BulkTradePlayerSearchResult,
   BulkTradeProposalRequest,
   BulkTradeProposalResponse,
   TradeCalculatorPickValueResponse,
-  TradeDirection,
 } from '@/types';
 
 export const tradeEndpoints = (
@@ -32,20 +32,10 @@ export const tradeEndpoints = (
   ),
 
   getBulkAvailability: (
-    playerId: string,
-    direction: TradeDirection,
-    pickSeason: string,
-    pickRound: number,
-  ) => client.get<BulkTradeAvailabilityResponse>(
+    payload: BulkTradeAvailabilityRequest,
+  ) => client.post<BulkTradeAvailabilityResponse>(
     `${prefix}/bulk/availability`,
-    {
-      params: {
-        player_id: playerId,
-        direction,
-        pick_season: pickSeason,
-        pick_round: pickRound,
-      },
-    },
+    payload,
   ),
 
   submitBulkOffers: (
