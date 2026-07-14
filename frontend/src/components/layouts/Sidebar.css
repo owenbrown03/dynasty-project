@@ -8,7 +8,7 @@
 .sidebar-panel {
   width: 76px;
   height: 100%;
-  padding: 12px 10px;
+  padding: 12px 0;
   border-right: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   overflow: hidden;
@@ -17,12 +17,12 @@
 
 .sidebar:hover .sidebar-panel {
   width: 220px;
+  padding: 12px 10px;
 }
 
 .sidebar-menu {
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
 .sidebar-section {
@@ -31,7 +31,9 @@
 }
 
 .sidebar-section-label {
-  padding: 2px 12px 6px;
+  height: 0;
+  padding: 0;
+  overflow: hidden;
   color: var(--color-text-faint);
   font-size: 10px;
   font-weight: 700;
@@ -39,37 +41,49 @@
   text-transform: uppercase;
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 0.18s ease;
+  transition: opacity 0.18s ease, height 0.18s ease, padding 0.18s ease;
 }
 
 .sidebar:hover .sidebar-section-label {
+  height: auto;
+  padding: 2px 12px 6px;
   opacity: 1;
 }
 
 .sidebar-divider {
-  height: 1px;
-  margin: 6px 12px;
+  height: 0;
+  margin: 0;
+  overflow: hidden;
   background: var(--color-border);
   opacity: 0;
-  transition: opacity 0.18s ease;
+  transition: opacity 0.18s ease, height 0.18s ease, margin 0.18s ease;
 }
 
 .sidebar:hover .sidebar-divider {
+  height: 1px;
+  margin: 6px 12px;
   opacity: 1;
 }
 
 .sidebar-link {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   min-height: 42px;
-  padding: 0 12px;
+  padding: 0;
   border: 1px solid transparent;
   text-decoration: none;
   color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
+  transition: padding 0.18s ease;
+}
+
+.sidebar:hover .sidebar-link {
+  justify-content: flex-start;
+  padding: 0 12px;
 }
 
 .sidebar-icon-slot {
