@@ -23,6 +23,7 @@
 .sidebar-menu {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 .sidebar-section {
@@ -30,32 +31,10 @@
   flex-direction: column;
 }
 
-.sidebar-section-label {
-  padding: 2px 12px 6px;
-  color: var(--color-text-faint);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-
-.sidebar:hover .sidebar-section-label {
-  opacity: 1;
-}
-
-.sidebar-divider {
-  height: 1px;
-  margin: 6px 12px;
-  background: var(--color-border);
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-
-.sidebar:hover .sidebar-divider {
-  opacity: 1;
+.sidebar-section + .sidebar-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
 }
 
 .sidebar-link {

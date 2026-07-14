@@ -63,9 +63,6 @@ export const Sidebar = () => {
         <div className="sidebar-menu">
           {sections.map((section, si) => (
             <div key={si} className="sidebar-section">
-              {section.label && (
-                <span className="sidebar-section-label">{section.label}</span>
-              )}
               {section.items.map((item) => (
                 <NavLink
                   key={item.to}
@@ -80,9 +77,6 @@ export const Sidebar = () => {
                   <span className="sidebar-link-label">{item.label}</span>
                 </NavLink>
               ))}
-              {si < sections.length - 1 && (
-                <div className="sidebar-divider" />
-              )}
             </div>
           ))}
         </div>
