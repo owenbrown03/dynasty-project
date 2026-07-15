@@ -41,6 +41,11 @@ SUPPORTED_POSITIONS = {
     "WR",
     "TE",
 }
+RECENT_DROP_TRANSACTION_TYPES = {
+    "waiver",
+    "free_agent",
+    "commissioner",
+}
 
 
 def needs_recent_drops_sync(
@@ -167,6 +172,7 @@ async def get_recently_dropped_players(
             Transaction.league_id.in_(league_ids),
             Movement.action == "DROP",
             Transaction.status == "complete",
+            Transaction.type.in_(RECENT_DROP_TRANSACTION_TYPES),
             Movement.player_id.is_not(None),
         )
         .order_by(
