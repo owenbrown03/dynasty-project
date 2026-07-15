@@ -2,13 +2,16 @@ import asyncio
 from types import SimpleNamespace
 from uuid import uuid4
 
+from app.schemas.commissioner import CommissionerOrphansResponse
 from app.schemas.commissioner import CommissionerPlayerAsset
 from app.services.commissioner.orphans import (
     build_mock_lineup,
     build_settings_badges,
+    get_commissioner_orphans,
     get_average_age,
     is_slot_eligible,
 )
+from app.services.commissioner import orphans as orphan_service
 from app.services.commissioner import workspace as workspace_service
 from app.services.leagues.selection import OwnedLeagueRow
 
@@ -253,3 +256,129 @@ def test_commissioner_workspace_uses_visible_current_leagues(monkeypatch):
     assert [league.league_id for league in result.leagues] == [
         "current-visible",
     ]
+
+
+def test_commissioner_orphans_uses_visible_current_leagues(monkeypatch):
+    site_user_id = uuid4()
+    visible_league = SimpleNamespace(
+        league_id="current-visible",
+        name="Current Visible",
+        season="2026",
+        is_dynasty=True,
+        status="in_season",
+        roster_positions=[],
+        settings={},
+        scoring_settings={},
+        total_rosters=12,
+    )
+    roster = SimpleNamespace(
+        roster_id=4,
+        owner_id=None,
+        league_id="current-visible",
+        players=[],
+    )
+    selector_calls = []
+
+    async def fake_get_visible_owned_league_rows_by_username(
+        *,
+        db,
+        username,
+        site_user_id,
+        include_hidden=False,
+    ):
+        selector_calls.append(
+            {
+                "username": username,
+                "site_user_id": site_user_id,
+                "include_hidden": include_hidden,
+            }
+        )
+        return [
+            OwnedLeagueRow(league=visible_league, roster=object()),
+        ]
+
+    async def fake_get_all_rosters_by_league(*, db, league_ids):
+        assert league_ids == ["current-visible"]
+        return {
+            "current-visible": [roster],
+        }
+
+    async def fake_get_drafts_by_league_ids(*args, **kwargs):
+        return {}
+
+    async def fake_get_sync_states(*args, **kwargs):
+        return {}
+
+    async def fake_get_traded_picks_by_league_ids(*args, **kwargs):
+        return {}
+
+    async def fake_get_users(*args, **kwargs):
+        return {}
+
+    async def fake_get_war_value_settings_by_user_id(*args, **kwargs):
+        return None
+
+    async def fake_get_resolved_pick_values_by_key(*args, **kwargs):
+        return {}
+
+    monkeypatch.setattr(
+        orphan_service,
+        "get_visible_owned_league_rows_by_username",
+        fake_get_visible_owned_league_rows_by_username,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "get_all_rosters_by_league",
+        fake_get_all_rosters_by_league,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "get_drafts_by_league_ids",
+        fake_get_drafts_by_league_ids,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "get_sync_states",
+        fake_get_sync_states,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "get_traded_picks_by_league_ids",
+        fake_get_traded_picks_by_league_ids,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "get_users",
+        fake_get_users,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "get_war_value_settings_by_user_id",
+        fake_get_war_value_settings_by_user_id,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "get_resolved_pick_values_by_key",
+        fake_get_resolved_pick_values_by_key,
+    )
+
+    result = asyncio.run(
+        get_commissioner_orphans(
+            db=object(),
+            username="browntown333",
+            value_basis="ktc",
+            site_user_id=site_user_id,
+        )
+    )
+
+    assert isinstance(result, CommissionerOrphansResponse)
+    assert selector_calls == [
+        {
+            "username": "browntown333",
+            "site_user_id": site_user_id,
+            "include_hidden": False,
+        }
+    ]
+    assert len(result.orphans) == 1
+    assert result.orphans[0].league_id == "current-visible"
+    assert result.orphans[0].league_name == "Current Visible"

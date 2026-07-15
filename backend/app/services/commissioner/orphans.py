@@ -13,7 +13,6 @@ from app.crud.sleeper.draft import (
 )
 from app.crud.sleeper.league import (
     get_sync_states,
-    get_user_leagues,
 )
 from app.crud.sleeper.roster import get_all_rosters_by_league
 from app.crud.sleeper.user import get_users
@@ -35,6 +34,9 @@ from app.services.draft.projection import (
 )
 from app.services.draft.values import (
     get_resolved_pick_values_by_key,
+)
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_username,
 )
 from app.services.values.basis import (
     ValueBasis,
@@ -274,12 +276,13 @@ async def get_commissioner_orphans(
     value_basis: ValueBasis,
     site_user_id=None,
 ) -> CommissionerOrphansResponse:
-    user_leagues = await get_user_leagues(
-        db,
-        username,
+    visible_rows = await get_visible_owned_league_rows_by_username(
+        db=db,
+        username=username,
+        site_user_id=site_user_id,
     )
 
-    if not user_leagues:
+    if not visible_rows:
         return CommissionerOrphansResponse(
             username=username,
             value_basis=value_basis,
@@ -288,8 +291,8 @@ async def get_commissioner_orphans(
         )
 
     leagues_by_id = {
-        league.league_id: league
-        for league, _ in user_leagues
+        row.league.league_id: row.league
+        for row in visible_rows
     }
 
     rosters_by_league_id = await get_all_rosters_by_league(
