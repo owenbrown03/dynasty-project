@@ -93,12 +93,16 @@ export const queryKeys = {
       username: string | null | undefined,
       leagueId: string | undefined,
       valueBasis: ValueBasis,
+      page: number,
+      pageSize: number,
     ) =>
       [
         'waiver-available-players',
         username ?? null,
         leagueId ?? 'all',
         valueBasis,
+        page,
+        pageSize,
       ] as const,
     availablePlayersRoot: [
       'waiver-available-players',

@@ -168,6 +168,8 @@ export function useWaiverLeagueOptions() {
 export function useAvailableWaiverPlayers(
   leagueId: string | undefined,
   valueBasis: ValueBasis,
+  page: number,
+  pageSize: number,
 ) {
   const {
     canRead,
@@ -179,6 +181,8 @@ export function useAvailableWaiverPlayers(
       username,
       leagueId,
       valueBasis,
+      page,
+      pageSize,
     ),
 
     queryFn: async () => {
@@ -186,6 +190,8 @@ export function useAvailableWaiverPlayers(
         .getAvailablePlayers(
           leagueId,
           valueBasis,
+          page,
+          pageSize,
         )
         .then((res) => res.data);
     },

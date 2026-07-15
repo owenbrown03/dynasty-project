@@ -132,6 +132,21 @@ async def available_waiver_players(
             "The player value system used to sort the returned players."
         ),
     ),
+    page: int = Query(
+        default=1,
+        ge=1,
+        description=(
+            "1-indexed result page."
+        ),
+    ),
+    page_size: int = Query(
+        default=50,
+        ge=1,
+        le=150,
+        description=(
+            "Number of players to return per page."
+        ),
+    ),
 ) -> WaiverAvailablePlayersResponse:
     require_sleeper_connection(
         ctx,
@@ -150,6 +165,8 @@ async def available_waiver_players(
         league_id=league_id,
         value_basis=value_basis,
         war_service=war_service,
+        page=page,
+        page_size=page_size,
     )
 
 

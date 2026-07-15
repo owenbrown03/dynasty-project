@@ -583,6 +583,44 @@
   font-size: 12px;
 }
 
+.available-pagination-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  padding: 12px 14px;
+}
+
+.available-page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.available-page-size-selector span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.available-page-size-selector select {
+  min-width: 92px;
+}
+
+.available-pagination-status {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.available-pagination-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .available-players-table-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -827,6 +865,20 @@
   .available-players-summary {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .available-pagination-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .available-page-size-selector,
+  .available-pagination-actions {
+    width: 100%;
+  }
+
+  .available-pagination-actions button {
+    flex: 1;
   }
 
   .recent-drop-card {

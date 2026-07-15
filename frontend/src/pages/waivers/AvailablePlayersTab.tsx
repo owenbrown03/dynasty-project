@@ -37,6 +37,14 @@ export const AvailablePlayersTab = ({
   onSelectedLeagueIdChange,
 }: AvailablePlayersTabProps) => {
   const [
+    page,
+    setPage,
+  ] = useState(1);
+  const [
+    pageSize,
+    setPageSize,
+  ] = useState(50);
+  const [
     claimPlayer,
     setClaimPlayer,
   ] = useState<WaiverAvailablePlayer | null>(
@@ -86,7 +94,17 @@ export const AvailablePlayersTab = ({
   const availablePlayers = useAvailableWaiverPlayers(
     selectedLeagueId,
     valueBasis,
+    page,
+    pageSize,
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    selectedLeagueId,
+    valueBasis,
+    pageSize,
+  ]);
 
   if (leagues.loading) {
     return (
@@ -143,6 +161,7 @@ export const AvailablePlayersTab = ({
             onSelectedLeagueIdChange(
               leagueId,
             );
+            setPage(1);
             setClaimPlayer(null);
           }}
         />
@@ -188,10 +207,15 @@ export const AvailablePlayersTab = ({
         availablePlayers.data
           ? (
             <>
+              {(() => {
+                const data = availablePlayers.data;
+
+                return (
+                  <>
               <div className="available-players-summary">
                 <span>
                   {
-                    availablePlayers.data
+                    data
                       .is_all_leagues
                       ? 'All visible leagues'
                       : selectedLeague?.league_name
@@ -200,22 +224,85 @@ export const AvailablePlayersTab = ({
 
                 <span>
                   {
-                    availablePlayers.data.total_players
+                    data.total_players
                       .toLocaleString()
                   }
                   {' '}available players
                 </span>
 
                 <span>
-                  Ranked by {availablePlayers.data.value_label}
+                  Ranked by {data.value_label}
                 </span>
               </div>
 
+              <div className="available-pagination-toolbar">
+                <label className="available-page-size-selector">
+                  <span>Rows</span>
+
+                  <select
+                    value={pageSize}
+                    onChange={(event) => {
+                      setPageSize(
+                        Number(
+                          event.target.value,
+                        ),
+                      );
+                    }}
+                  >
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={150}>150</option>
+                  </select>
+                </label>
+
+                <div className="available-pagination-status">
+                  Page {data.page}
+                  {' of '}
+                  {data.total_pages}
+                </div>
+
+                <div className="available-pagination-actions">
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={
+                      data.page <= 1
+                    }
+                    onClick={() => {
+                      setPage(
+                        data.page - 1,
+                      );
+                    }}
+                  >
+                    Previous
+                  </button>
+
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={
+                      data.page
+                      >= data.total_pages
+                    }
+                    onClick={() => {
+                      setPage(
+                        data.page + 1,
+                      );
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+
               <AvailablePlayersTable
-                data={availablePlayers.data}
+                data={data}
                 canWrite={canWrite}
                 onClaim={setClaimPlayer}
               />
+                  </>
+                );
+              })()}
             </>
           )
           : null

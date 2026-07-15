@@ -103,6 +103,9 @@ class WaiverAvailablePlayersResponse(Base):
     value_basis: ValueBasis
     value_label: str
 
+    page: int = 1
+    page_size: int = 50
+    total_pages: int = 0
     total_players: int
 
     players: list[WaiverAvailablePlayer] = Field(

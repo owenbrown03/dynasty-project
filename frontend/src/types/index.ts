@@ -875,6 +875,9 @@ export interface WaiverAvailablePlayersResponse {
   value_basis: ValueBasis;
   value_label: string;
 
+  page: number;
+  page_size: number;
+  total_pages: number;
   total_players: number;
 
   players: WaiverAvailablePlayer[];

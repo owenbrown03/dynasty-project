@@ -380,6 +380,8 @@ async def get_available_waiver_players(
     league_id: str | None,
     value_basis: ValueBasis,
     war_service: WARService,
+    page: int = 1,
+    page_size: int = 50,
 ) -> WaiverAvailablePlayersResponse:
     """
     Returns all available QB/RB/WR/TE players for one owned league.
@@ -392,6 +394,9 @@ async def get_available_waiver_players(
     - full dynasty WAR
     - selected_value based on value_basis
     """
+
+    safe_page = max(page, 1)
+    safe_page_size = max(page_size, 1)
 
     if league_id:
         roster, league = await get_owned_waiver_league(
@@ -415,6 +420,25 @@ async def get_available_waiver_players(
         sorted_players = sort_available_players(
             players=available_players,
         )
+        total_players = len(sorted_players)
+        total_pages = max(
+            1,
+            (
+                total_players
+                + safe_page_size
+                - 1
+            ) // safe_page_size,
+        )
+        current_page = min(
+            safe_page,
+            total_pages,
+        )
+        page_start = (
+            current_page - 1
+        ) * safe_page_size
+        paged_players = sorted_players[
+            page_start:page_start + safe_page_size
+        ]
 
         return WaiverAvailablePlayersResponse(
             league_id=league.league_id,
@@ -424,8 +448,11 @@ async def get_available_waiver_players(
             is_all_leagues=False,
             value_basis=value_basis,
             value_label=value_label,
-            total_players=len(sorted_players),
-            players=sorted_players,
+            page=current_page,
+            page_size=safe_page_size,
+            total_pages=total_pages,
+            total_players=total_players,
+            players=paged_players,
         )
 
     if not connection.sleeper_user_id:
@@ -440,6 +467,10 @@ async def get_available_waiver_players(
                     site_user_id=connection.site_user_id,
                 ),
             ),
+            page=safe_page,
+            page_size=safe_page_size,
+            total_pages=0,
+            total_players=0,
         )
 
     owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
@@ -476,14 +507,36 @@ async def get_available_waiver_players(
     sorted_players = sort_available_players(
         players=all_available_players,
     )
+    total_players = len(sorted_players)
+    total_pages = max(
+        1,
+        (
+            total_players
+            + safe_page_size
+            - 1
+        ) // safe_page_size,
+    )
+    current_page = min(
+        safe_page,
+        total_pages,
+    )
+    page_start = (
+        current_page - 1
+    ) * safe_page_size
+    paged_players = sorted_players[
+        page_start:page_start + safe_page_size
+    ]
 
     return WaiverAvailablePlayersResponse(
         league_name="All visible leagues",
         is_all_leagues=True,
         value_basis=value_basis,
         value_label=value_label,
-        total_players=len(sorted_players),
-        players=sorted_players,
+        page=current_page,
+        page_size=safe_page_size,
+        total_pages=total_pages,
+        total_players=total_players,
+        players=paged_players,
     )
 
 

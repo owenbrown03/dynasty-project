@@ -55,6 +55,8 @@ export const waiversEndpoints = (
   getAvailablePlayers: (
     leagueId: string | undefined,
     valueBasis: ValueBasis,
+    page: number,
+    pageSize: number,
   ) => {
     return client.get<WaiverAvailablePlayersResponse>(
       `${basePath}/available`,
@@ -62,6 +64,8 @@ export const waiversEndpoints = (
         params: {
           league_id: leagueId,
           value_basis: valueBasis,
+          page,
+          page_size: pageSize,
         },
       },
     );
