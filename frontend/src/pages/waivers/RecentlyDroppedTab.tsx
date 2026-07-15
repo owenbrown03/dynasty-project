@@ -92,6 +92,8 @@ export const RecentlyDroppedTab = ({
           claimPlayer.can_submit_claim,
         claim_blocked_reason:
           claimPlayer.claim_blocked_reason,
+        league_count: 1,
+        league_availability: [],
       };
     },
     [claimPlayer],

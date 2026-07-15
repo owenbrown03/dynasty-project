@@ -313,20 +313,28 @@ export const AvailablePlayersTab = ({
           ? (
             <AvailablePlayerClaimModal
               league={{
-                league_id: claimPlayer.league_id,
-                league_name: claimPlayer.league_name,
+                league_id:
+                  claimPlayer.league_id ?? '',
+                league_name:
+                  claimPlayer.league_name ?? '',
                 league_avatar:
                   claimPlayer.league_avatar,
-                roster_id: claimPlayer.roster_id,
-                roster_size: claimPlayer.roster_size,
+                roster_id:
+                  claimPlayer.roster_id ?? 0,
+                roster_size:
+                  claimPlayer.roster_size ?? 0,
                 roster_capacity:
-                  claimPlayer.roster_capacity,
+                  claimPlayer.roster_capacity
+                  ?? 0,
                 roster_spots_available:
-                  claimPlayer.roster_spots_available,
+                  claimPlayer.roster_spots_available
+                  ?? 0,
                 faab_remaining:
-                  claimPlayer.faab_remaining,
+                  claimPlayer.faab_remaining
+                  ?? 0,
                 faab_percent_remaining:
-                  claimPlayer.faab_percent_remaining,
+                  claimPlayer.faab_percent_remaining
+                  ?? 0,
               }}
               addPlayer={claimPlayer}
               valueBasis={valueBasis}

@@ -18,6 +18,7 @@ from app.infrastructure.redis.client import RedisClient
 from app.models.db.sleeper.api import League, Roster
 from app.models.db.sleeper.connection import SleeperConnection
 from app.schemas.waivers import (
+    WaiverAvailableLeagueAvailability,
     WaiverAvailablePlayer,
     WaiverAvailablePlayersResponse,
     WaiverLeagueOption,
@@ -372,6 +373,148 @@ async def build_available_players_for_league(
     )
 
 
+def aggregate_available_players_by_player_id(
+    *,
+    players: list[WaiverAvailablePlayer],
+) -> list[WaiverAvailablePlayer]:
+    aggregated_by_player_id: dict[
+        str,
+        dict[str, object],
+    ] = {}
+
+    for player in players:
+        league_availability = (
+            WaiverAvailableLeagueAvailability(
+                league_id=player.league_id or '',
+                league_name=player.league_name or '',
+                league_avatar=player.league_avatar,
+                roster_id=player.roster_id or 0,
+                roster_size=player.roster_size or 0,
+                roster_capacity=(
+                    player.roster_capacity or 0
+                ),
+                roster_spots_available=(
+                    player.roster_spots_available
+                    or 0
+                ),
+                faab_remaining=player.faab_remaining or 0,
+                faab_percent_remaining=(
+                    player.faab_percent_remaining
+                    or 0.0
+                ),
+                can_submit_claim=player.can_submit_claim,
+                claim_blocked_reason=(
+                    player.claim_blocked_reason
+                ),
+                selected_value=player.selected_value,
+            )
+        )
+
+        existing = aggregated_by_player_id.get(
+            player.player_id,
+        )
+
+        if existing is None:
+            aggregated_by_player_id[
+                player.player_id
+            ] = {
+                **player.model_dump(),
+                "league_id": None,
+                "league_name": None,
+                "league_avatar": None,
+                "roster_id": None,
+                "roster_size": None,
+                "roster_capacity": None,
+                "roster_spots_available": None,
+                "faab_remaining": None,
+                "faab_percent_remaining": None,
+                "can_submit_claim": True,
+                "claim_blocked_reason": None,
+                "league_count": 1,
+                "league_availability": [
+                    league_availability
+                ],
+            }
+            continue
+
+        existing_availability = existing[
+            "league_availability"
+        ]
+        assert isinstance(
+            existing_availability,
+            list,
+        )
+        existing_availability.append(
+            league_availability
+        )
+        existing["league_count"] = (
+            int(existing["league_count"]) + 1
+        )
+
+        existing_value = existing.get(
+            "selected_value",
+        )
+        next_value = player.selected_value
+
+        if (
+            existing_value is None
+            or (
+                next_value is not None
+                and next_value > existing_value
+            )
+        ):
+            existing.update(
+                {
+                    "selected_value": next_value,
+                    "redraft_starter_war": (
+                        player.redraft_starter_war
+                    ),
+                    "redraft_roster_war": (
+                        player.redraft_roster_war
+                    ),
+                    "dynasty_starter_war": (
+                        player.dynasty_starter_war
+                    ),
+                    "dynasty_roster_war": (
+                        player.dynasty_roster_war
+                    ),
+                    "my_redraft_starter_war": (
+                        player.my_redraft_starter_war
+                    ),
+                    "my_redraft_roster_war": (
+                        player.my_redraft_roster_war
+                    ),
+                    "my_dynasty_starter_war": (
+                        player.my_dynasty_starter_war
+                    ),
+                    "my_dynasty_roster_war": (
+                        player.my_dynasty_roster_war
+                    ),
+                }
+            )
+
+    aggregated_players = [
+        WaiverAvailablePlayer(**player)
+        for player in aggregated_by_player_id.values()
+    ]
+
+    for player in aggregated_players:
+        player.league_availability.sort(
+            key=lambda availability: (
+                availability.selected_value is None,
+                -(
+                    availability.selected_value
+                    if availability.selected_value
+                    is not None
+                    else 0.0
+                ),
+                availability.league_name.lower(),
+            ),
+        )
+
+    return aggregated_players
+
+
 async def get_available_waiver_players(
     *,
     db: AsyncSession,
@@ -504,8 +647,13 @@ async def get_available_waiver_players(
             league_players,
         )
 
+    aggregated_players = (
+        aggregate_available_players_by_player_id(
+            players=all_available_players,
+        )
+    )
     sorted_players = sort_available_players(
-        players=all_available_players,
+        players=aggregated_players,
     )
     total_players = len(sorted_players)
     total_pages = max(
