@@ -49,6 +49,7 @@ def test_tx_to_db_uses_status_updated_timestamp():
     )
 
     assert transaction.time_ms == 123
+    assert transaction.status == "complete"
     assert movements == []
     assert waivers == []
     assert picks == []

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.war.dynasty.models import DynastyProjection
@@ -171,7 +171,10 @@ async def get_recently_dropped_players(
         .where(
             Transaction.league_id.in_(league_ids),
             Movement.action == "DROP",
-            Transaction.status == "complete",
+            or_(
+                Transaction.status == "complete",
+                Transaction.status.is_(None),
+            ),
             Transaction.type.in_(RECENT_DROP_TRANSACTION_TYPES),
             Movement.player_id.is_not(None),
         )
