@@ -164,7 +164,11 @@ def build_position_rank_war_history(
         for position in ROSTER_CONSTRUCTION_POSITIONS:
             position_wars = sorted(
                 (
-                    player.redraft_roster_war or 0.0
+                    getattr(
+                        player,
+                        "roster_war",
+                        0.0,
+                    ) or 0.0
                     for player in results
                     if player.position == position
                 ),
