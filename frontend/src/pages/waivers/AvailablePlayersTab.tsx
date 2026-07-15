@@ -24,17 +24,18 @@ import { AvailablePlayersTable } from './AvailablePlayersTable';
 
 interface AvailablePlayersTabProps {
   valueBasis: ValueBasis;
+  selectedLeagueId: string | undefined;
+  onSelectedLeagueIdChange: (
+    leagueId: string | undefined,
+  ) => void;
 }
 
 
 export const AvailablePlayersTab = ({
   valueBasis,
+  selectedLeagueId,
+  onSelectedLeagueIdChange,
 }: AvailablePlayersTabProps) => {
-  const [
-    selectedLeagueId,
-    setSelectedLeagueId,
-  ] = useState<string | undefined>();
-
   const [
     claimPlayer,
     setClaimPlayer,
@@ -49,16 +50,22 @@ export const AvailablePlayersTab = ({
   const leagues = useWaiverLeagueOptions();
 
   useEffect(() => {
-    if (
-      !selectedLeagueId
-      && leagues.data.length > 0
-    ) {
-      setSelectedLeagueId(
-        leagues.data[0].league_id,
+    if (selectedLeagueId) {
+      const hasSelectedLeague = leagues.data.some(
+        (league) => (
+          league.league_id === selectedLeagueId
+        ),
       );
+
+      if (!hasSelectedLeague) {
+        onSelectedLeagueIdChange(
+          undefined,
+        );
+      }
     }
   }, [
     leagues.data,
+    onSelectedLeagueIdChange,
     selectedLeagueId,
   ]);
 
@@ -74,19 +81,6 @@ export const AvailablePlayersTab = ({
       leagues.data,
       selectedLeagueId,
     ],
-  );
-
-  const claimBlockedReason = (
-    selectedLeague
-    && selectedLeague.roster_spots_available < 0
-      ? (
-        `This roster is ${
-          Math.abs(
-            selectedLeague.roster_spots_available,
-          )
-        } players over capacity. Remove players before claiming.`
-      )
-      : undefined
   );
 
   const availablePlayers = useAvailableWaiverPlayers(
@@ -136,8 +130,9 @@ export const AvailablePlayersTab = ({
           </h2>
 
           <p>
-            Full available QB, RB, WR, and TE pool,
-            sorted by your selected value basis.
+            Full available QB, RB, WR, and TE pool
+            across your visible leagues, sorted by
+            your selected value basis.
           </p>
         </div>
 
@@ -145,7 +140,9 @@ export const AvailablePlayersTab = ({
           leagues={leagues.data}
           selectedLeagueId={selectedLeagueId}
           onChange={(leagueId) => {
-            setSelectedLeagueId(leagueId);
+            onSelectedLeagueIdChange(
+              leagueId,
+            );
             setClaimPlayer(null);
           }}
         />
@@ -194,6 +191,15 @@ export const AvailablePlayersTab = ({
               <div className="available-players-summary">
                 <span>
                   {
+                    availablePlayers.data
+                      .is_all_leagues
+                      ? 'All visible leagues'
+                      : selectedLeague?.league_name
+                  }
+                </span>
+
+                <span>
+                  {
                     availablePlayers.data.total_players
                       .toLocaleString()
                   }
@@ -207,11 +213,7 @@ export const AvailablePlayersTab = ({
 
               <AvailablePlayersTable
                 data={availablePlayers.data}
-                canWrite={
-                  canWrite
-                  && !claimBlockedReason
-                }
-                claimDisabledReason={claimBlockedReason}
+                canWrite={canWrite}
                 onClaim={setClaimPlayer}
               />
             </>
@@ -221,10 +223,24 @@ export const AvailablePlayersTab = ({
 
       {
         claimPlayer
-        && selectedLeague
           ? (
             <AvailablePlayerClaimModal
-              league={selectedLeague}
+              league={{
+                league_id: claimPlayer.league_id,
+                league_name: claimPlayer.league_name,
+                league_avatar:
+                  claimPlayer.league_avatar,
+                roster_id: claimPlayer.roster_id,
+                roster_size: claimPlayer.roster_size,
+                roster_capacity:
+                  claimPlayer.roster_capacity,
+                roster_spots_available:
+                  claimPlayer.roster_spots_available,
+                faab_remaining:
+                  claimPlayer.faab_remaining,
+                faab_percent_remaining:
+                  claimPlayer.faab_percent_remaining,
+              }}
               addPlayer={claimPlayer}
               valueBasis={valueBasis}
               onClose={() => {

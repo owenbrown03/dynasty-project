@@ -119,10 +119,11 @@ async def waiver_leagues(
 )
 async def available_waiver_players(
     ctx: ContextDep,
-    league_id: str = Query(
-        ...,
+    league_id: str | None = Query(
+        default=None,
         description=(
-            "Owned Sleeper league whose available players should be shown."
+            "Owned Sleeper league whose available players should be shown. "
+            "Omit this to aggregate available players across all visible leagues."
         ),
     ),
     value_basis: ValueBasis = Query(

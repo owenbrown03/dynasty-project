@@ -77,6 +77,19 @@
   font-weight: 700;
 }
 
+.waiver-league-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.waiver-league-link-button:hover h2 {
+  color: var(--color-accent);
+}
+
 .waiver-league-header p {
   margin: 5px 0 0;
 
@@ -655,6 +668,22 @@
 
   color: var(--color-text-faint);
   font-size: 9px;
+}
+
+.available-league-cell strong,
+.available-league-cell span {
+  display: block;
+}
+
+.available-league-cell strong {
+  color: var(--color-text-strong);
+  font-size: 12px;
+}
+
+.available-league-cell span {
+  margin-top: 3px;
+  color: var(--color-text-faint);
+  font-size: 10px;
 }
 
 .available-claim-button {

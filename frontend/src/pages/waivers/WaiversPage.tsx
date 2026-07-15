@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { useSearchParams } from 'react-router';
 
 import './WaiversPage.css';
 
@@ -12,13 +13,54 @@ import { BulkClaimsTab } from './BulkClaimsTab';
 
 export const WaiversPage = () => {
   const valuePreference = useValuePreference();
-  const [activeTab, setActiveTab] = useState<
-    'overview'
-    | 'recent-drops'
-    | 'available'
-    | 'bulk'
-  >('overview');
   const valueBasis = valuePreference.preference;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = useMemo(() => {
+    const tab = searchParams.get('tab');
+
+    if (
+      tab === 'overview'
+      || tab === 'available'
+      || tab === 'recent-drops'
+      || tab === 'bulk'
+    ) {
+      return tab;
+    }
+
+    return 'overview';
+  }, [searchParams]);
+  const selectedLeagueId = (
+    searchParams.get('league_id')
+    ?? undefined
+  );
+
+  const setActiveTab = (
+    nextTab: (
+      'overview'
+      | 'recent-drops'
+      | 'available'
+      | 'bulk'
+    ),
+  ) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', nextTab);
+    setSearchParams(next);
+  };
+
+  const setSelectedLeagueId = (
+    nextLeagueId: string | undefined,
+  ) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', 'available');
+
+    if (nextLeagueId) {
+      next.set('league_id', nextLeagueId);
+    } else {
+      next.delete('league_id');
+    }
+
+    setSearchParams(next);
+  };
 
   return (
     <div className="waivers-page">
@@ -50,6 +92,9 @@ export const WaiversPage = () => {
           ? (
             <WaiversOverviewTab
               valueBasis={valueBasis}
+              onOpenAvailableLeague={
+                setSelectedLeagueId
+              }
             />
           )
           : activeTab === 'recent-drops'
@@ -62,6 +107,12 @@ export const WaiversPage = () => {
             ? (
               <AvailablePlayersTab
                 valueBasis={valueBasis}
+                selectedLeagueId={
+                  selectedLeagueId
+                }
+                onSelectedLeagueIdChange={
+                  setSelectedLeagueId
+                }
               />
             )
             : (

@@ -97,7 +97,7 @@ export const queryKeys = {
       [
         'waiver-available-players',
         username ?? null,
-        leagueId ?? null,
+        leagueId ?? 'all',
         valueBasis,
       ] as const,
     availablePlayersRoot: [

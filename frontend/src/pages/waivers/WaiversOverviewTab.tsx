@@ -9,11 +9,15 @@ import { WaiverLeagueCard } from './WaiverLeagueCard';
 
 interface WaiversOverviewTabProps {
   valueBasis: ValueBasis;
+  onOpenAvailableLeague: (
+    leagueId: string,
+  ) => void;
 }
 
 
 export const WaiversOverviewTab = ({
   valueBasis,
+  onOpenAvailableLeague,
 }: WaiversOverviewTabProps) => {
   const waivers = useWaiverOverview(valueBasis);
 
@@ -81,6 +85,9 @@ export const WaiversOverviewTab = ({
             <WaiverLeagueCard
               key={league.league_id}
               league={league}
+              onOpenAvailableLeague={
+                onOpenAvailableLeague
+              }
             />
           ))
         }

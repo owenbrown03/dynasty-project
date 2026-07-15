@@ -45,21 +45,6 @@ export const WaiversTabs = ({
       <button
         className={
           `waivers-tab ${
-            activeTab === 'recent-drops'
-              ? 'active'
-              : ''
-          }`
-        }
-        onClick={() => {
-          onChange('recent-drops');
-        }}
-      >
-        Recent Drops
-      </button>
-
-      <button
-        className={
-          `waivers-tab ${
             activeTab === 'available'
               ? 'active'
               : ''
@@ -70,6 +55,21 @@ export const WaiversTabs = ({
         }}
       >
         Available Players
+      </button>
+
+      <button
+        className={
+          `waivers-tab ${
+            activeTab === 'recent-drops'
+              ? 'active'
+              : ''
+          }`
+        }
+        onClick={() => {
+          onChange('recent-drops');
+        }}
+      >
+        Recent Drops
       </button>
 
       <button

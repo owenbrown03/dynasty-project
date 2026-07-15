@@ -182,12 +182,6 @@ export function useAvailableWaiverPlayers(
     ),
 
     queryFn: async () => {
-      if (!leagueId) {
-        throw new Error(
-          'Missing waiver league id',
-        );
-      }
-
       return api.waivers
         .getAvailablePlayers(
           leagueId,
@@ -198,7 +192,6 @@ export function useAvailableWaiverPlayers(
 
     enabled: (
       canRead
-      && !!leagueId
     ),
   });
 

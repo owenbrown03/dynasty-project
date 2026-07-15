@@ -86,6 +86,12 @@ export const RecentlyDroppedTab = ({
 
       return {
         ...claimPlayer,
+        roster_size: 0,
+        roster_capacity: 0,
+        can_submit_claim:
+          claimPlayer.can_submit_claim,
+        claim_blocked_reason:
+          claimPlayer.claim_blocked_reason,
       };
     },
     [claimPlayer],

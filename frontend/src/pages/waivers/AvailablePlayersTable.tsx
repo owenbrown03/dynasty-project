@@ -18,7 +18,6 @@ import {
 interface AvailablePlayersTableProps {
   data: WaiverAvailablePlayersResponse;
   canWrite: boolean;
-  claimDisabledReason?: string;
 
   onClaim: (
     player: WaiverAvailablePlayer,
@@ -30,8 +29,8 @@ interface AvailablePlayersRowProps {
   player: WaiverAvailablePlayer;
   valueBasis: ValueBasis;
   valueLabel: string;
+  isAllLeagues: boolean;
   canWrite: boolean;
-  claimDisabledReason?: string;
 
   onClaim: (
     player: WaiverAvailablePlayer,
@@ -43,10 +42,21 @@ const AvailablePlayersRow = ({
   player,
   valueBasis,
   valueLabel,
+  isAllLeagues,
   canWrite,
-  claimDisabledReason,
   onClaim,
 }: AvailablePlayersRowProps) => {
+  const rowCanClaim = (
+    canWrite
+    && player.can_submit_claim
+  );
+  const claimTitle = player.claim_blocked_reason
+    ?? (
+      canWrite
+        ? 'Build a waiver claim'
+        : 'Enable Sleeper write access to submit claims'
+    );
+
   return (
     <tr>
       <td className="available-player-name-cell">
@@ -76,6 +86,24 @@ const AvailablePlayersRow = ({
       <td>
         {player.team ?? 'FA'}
       </td>
+
+      {
+        isAllLeagues
+          ? (
+            <td className="available-league-cell">
+              <strong>
+                {player.league_name}
+              </strong>
+
+              <span>
+                FAAB ${player.faab_remaining}
+                {' · '}
+                Spots {player.roster_spots_available}
+              </span>
+            </td>
+          )
+          : null
+      }
 
       <td>
         {formatAge(player.age)}
@@ -118,15 +146,8 @@ const AvailablePlayersRow = ({
           onClick={() => {
             onClaim(player);
           }}
-          disabled={!canWrite}
-          title={
-            claimDisabledReason
-            ?? (
-              canWrite
-                ? 'Build a waiver claim'
-                : 'Enable Sleeper write access to submit claims'
-            )
-          }
+          disabled={!rowCanClaim}
+          title={claimTitle}
         >
           <Send size={13} />
           Claim
@@ -140,7 +161,6 @@ const AvailablePlayersRow = ({
 export const AvailablePlayersTable = ({
   data,
   canWrite,
-  claimDisabledReason,
   onClaim,
 }: AvailablePlayersTableProps) => {
   return (
@@ -151,6 +171,11 @@ export const AvailablePlayersTable = ({
             <th>Player</th>
             <th>Pos</th>
             <th>Team</th>
+            {
+              data.is_all_leagues
+                ? <th>League</th>
+                : null
+            }
             <th>Age</th>
             <th>{data.value_label}</th>
             <th>KTC</th>
@@ -165,12 +190,14 @@ export const AvailablePlayersTable = ({
           {
             data.players.map((player) => (
               <AvailablePlayersRow
-                key={player.player_id}
+                key={`${player.league_id}:${player.player_id}`}
                 player={player}
                 valueBasis={data.value_basis}
                 valueLabel={data.value_label}
+                isAllLeagues={
+                  data.is_all_leagues
+                }
                 canWrite={canWrite}
-                claimDisabledReason={claimDisabledReason}
                 onClaim={onClaim}
               />
             ))

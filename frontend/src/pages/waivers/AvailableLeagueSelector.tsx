@@ -5,7 +5,7 @@ interface AvailableLeagueSelectorProps {
   leagues: WaiverLeagueOption[];
   selectedLeagueId: string | undefined;
   onChange: (
-    leagueId: string,
+    leagueId: string | undefined,
   ) => void;
 }
 
@@ -20,11 +20,19 @@ export const AvailableLeagueSelector = ({
       <span>League</span>
 
       <select
-        value={selectedLeagueId ?? ''}
+        value={selectedLeagueId ?? 'all'}
         onChange={(event) => {
-          onChange(event.target.value);
+          onChange(
+            event.target.value === 'all'
+              ? undefined
+              : event.target.value,
+          );
         }}
       >
+        <option value="all">
+          All visible leagues
+        </option>
+
         {
           leagues.map((league) => (
             <option

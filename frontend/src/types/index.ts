@@ -846,15 +846,31 @@ export interface WaiverLeagueOption {
 }
 
 export interface WaiverAvailablePlayer extends PlayerValue {
-  selected_value: number | null;
-}
-
-export interface WaiverAvailablePlayersResponse {
   league_id: string;
   league_name: string;
   league_avatar: string | null;
 
   roster_id: number;
+  roster_size: number;
+  roster_capacity: number;
+  roster_spots_available: number;
+
+  faab_remaining: number;
+  faab_percent_remaining: number;
+
+  can_submit_claim: boolean;
+  claim_blocked_reason: string | null;
+
+  selected_value: number | null;
+}
+
+export interface WaiverAvailablePlayersResponse {
+  league_id: string | null;
+  league_name: string;
+  league_avatar: string | null;
+
+  roster_id: number | null;
+  is_all_leagues: boolean;
 
   value_basis: ValueBasis;
   value_label: string;

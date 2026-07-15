@@ -53,7 +53,7 @@ export const waiversEndpoints = (
   },
 
   getAvailablePlayers: (
-    leagueId: string,
+    leagueId: string | undefined,
     valueBasis: ValueBasis,
   ) => {
     return client.get<WaiverAvailablePlayersResponse>(

@@ -74,15 +74,31 @@ class WaiverLeagueOption(Base):
 
 
 class WaiverAvailablePlayer(PlayerValue):
-    selected_value: float | None = None
-
-
-class WaiverAvailablePlayersResponse(Base):
     league_id: str
     league_name: str
     league_avatar: str | None = None
 
     roster_id: int
+    roster_size: int
+    roster_capacity: int
+    roster_spots_available: int
+
+    faab_remaining: int
+    faab_percent_remaining: float
+
+    can_submit_claim: bool = True
+    claim_blocked_reason: str | None = None
+
+    selected_value: float | None = None
+
+
+class WaiverAvailablePlayersResponse(Base):
+    league_id: str | None = None
+    league_name: str
+    league_avatar: str | None = None
+
+    roster_id: int | None = None
+    is_all_leagues: bool = False
 
     value_basis: ValueBasis
     value_label: str

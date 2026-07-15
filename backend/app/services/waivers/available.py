@@ -254,42 +254,38 @@ def sort_available_players(
     )
 
 
-async def get_available_waiver_players(
+def build_claim_blocked_reason(
+    *,
+    roster_spots_available: int,
+) -> str | None:
+    if roster_spots_available >= 0:
+        return None
+
+    return (
+        f"This roster is {abs(roster_spots_available)} "
+        "players over capacity. Remove players before claiming."
+    )
+
+
+async def build_available_players_for_league(
     *,
     db: AsyncSession,
     redis: RedisClient,
     connection: SleeperConnection,
-    league_id: str,
+    roster: Roster,
+    league: League,
     value_basis: ValueBasis,
     war_service: WARService,
-) -> WaiverAvailablePlayersResponse:
-    """
-    Returns all available QB/RB/WR/TE players for one owned league.
-
-    Every returned player includes:
-    - KTC
-    - FantasyCalc
-    - Underdog position rank
-    - current redraft WAR
-    - full dynasty WAR
-    - selected_value based on value_basis
-    """
-
-    roster, league = await get_owned_waiver_league(
-        db=db,
-        connection=connection,
-        league_id=league_id,
-    )
-
+) -> tuple[list[WaiverAvailablePlayer], str]:
     rostered_player_ids = await get_rostered_player_ids(
         db=db,
-        league_id=league_id,
+        league_id=league.league_id,
     )
 
     redraft_war_players = await war_service.calculate(
         db=db,
         redis=redis,
-        league_id=league_id,
+        league_id=league.league_id,
     )
 
     available_war_players = get_available_war_players(
@@ -326,6 +322,21 @@ async def get_available_waiver_players(
             player_values=player_values,
         )
 
+    roster_spots_available = roster.open_roster_spots(
+        league,
+    )
+    claim_blocked_reason = build_claim_blocked_reason(
+        roster_spots_available=roster_spots_available,
+    )
+    faab_remaining = roster.faab_remaining(league)
+    faab_percent_remaining = 0.0
+
+    if league.waiver_budget > 0:
+        faab_percent_remaining = round(
+            (faab_remaining / league.waiver_budget) * 100,
+            1,
+        )
+
     available_players: list[WaiverAvailablePlayer] = []
 
     for player in player_values:
@@ -338,27 +349,139 @@ async def get_available_waiver_players(
         available_players.append(
             WaiverAvailablePlayer(
                 **player.model_dump(),
+                league_id=league.league_id,
+                league_name=league.name,
+                league_avatar=league.avatar,
+                roster_id=roster.roster_id,
+                roster_size=roster.roster_size,
+                roster_capacity=roster.claimable_roster_capacity(
+                    league,
+                ),
+                roster_spots_available=roster_spots_available,
+                faab_remaining=faab_remaining,
+                faab_percent_remaining=faab_percent_remaining,
+                can_submit_claim=claim_blocked_reason is None,
+                claim_blocked_reason=claim_blocked_reason,
                 selected_value=selected_value,
             )
         )
 
+    return available_players, get_value_label(
+        value_basis,
+        war_value_settings,
+    )
+
+
+async def get_available_waiver_players(
+    *,
+    db: AsyncSession,
+    redis: RedisClient,
+    connection: SleeperConnection,
+    league_id: str | None,
+    value_basis: ValueBasis,
+    war_service: WARService,
+) -> WaiverAvailablePlayersResponse:
+    """
+    Returns all available QB/RB/WR/TE players for one owned league.
+
+    Every returned player includes:
+    - KTC
+    - FantasyCalc
+    - Underdog position rank
+    - current redraft WAR
+    - full dynasty WAR
+    - selected_value based on value_basis
+    """
+
+    if league_id:
+        roster, league = await get_owned_waiver_league(
+            db=db,
+            connection=connection,
+            league_id=league_id,
+        )
+
+        available_players, value_label = (
+            await build_available_players_for_league(
+                db=db,
+                redis=redis,
+                connection=connection,
+                roster=roster,
+                league=league,
+                value_basis=value_basis,
+                war_service=war_service,
+            )
+        )
+
+        sorted_players = sort_available_players(
+            players=available_players,
+        )
+
+        return WaiverAvailablePlayersResponse(
+            league_id=league.league_id,
+            league_name=league.name,
+            league_avatar=league.avatar,
+            roster_id=roster.roster_id,
+            is_all_leagues=False,
+            value_basis=value_basis,
+            value_label=value_label,
+            total_players=len(sorted_players),
+            players=sorted_players,
+        )
+
+    if not connection.sleeper_user_id:
+        return WaiverAvailablePlayersResponse(
+            league_name="All visible leagues",
+            is_all_leagues=True,
+            value_basis=value_basis,
+            value_label=get_value_label(
+                value_basis,
+                await get_war_value_settings_by_user_id(
+                    db=db,
+                    site_user_id=connection.site_user_id,
+                ),
+            ),
+        )
+
+    owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
+        db=db,
+        sleeper_user_id=connection.sleeper_user_id,
+        site_user_id=connection.site_user_id,
+    )
+
+    all_available_players: list[WaiverAvailablePlayer] = []
+    value_label = get_value_label(
+        value_basis,
+        await get_war_value_settings_by_user_id(
+            db=db,
+            site_user_id=connection.site_user_id,
+        ),
+    )
+
+    for row in owned_rows:
+        league_players, value_label = (
+            await build_available_players_for_league(
+                db=db,
+                redis=redis,
+                connection=connection,
+                roster=row.roster,
+                league=row.league,
+                value_basis=value_basis,
+                war_service=war_service,
+            )
+        )
+        all_available_players.extend(
+            league_players,
+        )
+
     sorted_players = sort_available_players(
-        players=available_players,
+        players=all_available_players,
     )
 
     return WaiverAvailablePlayersResponse(
-        league_id=league.league_id,
-        league_name=league.name,
-        league_avatar=league.avatar,
-
-        roster_id=roster.roster_id,
-
+        league_name="All visible leagues",
+        is_all_leagues=True,
         value_basis=value_basis,
-        value_label=get_value_label(
-            value_basis,
-            war_value_settings,
-        ),
-
+        value_label=value_label,
         total_players=len(sorted_players),
         players=sorted_players,
     )
