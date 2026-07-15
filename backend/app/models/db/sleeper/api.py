@@ -204,6 +204,28 @@ class Roster(SQLModel, table=True):
     def roster_size(self) -> int:
         return len(self.players)
 
+    @property
+    def occupied_reserve_slots(self) -> int:
+        return len(
+            self.reserve or [],
+        )
+
+    @property
+    def occupied_taxi_slots(self) -> int:
+        return len(
+            self.taxi or [],
+        )
+
+    def claimable_roster_capacity(
+        self,
+        league: "League",
+    ) -> int:
+        return (
+            league.roster_size
+            + self.occupied_reserve_slots
+            + self.occupied_taxi_slots
+        )
+
     def faab_remaining(self, league: "League") -> int:
         return max(
             league.waiver_budget - self.waiver_budget_used,
@@ -211,13 +233,12 @@ class Roster(SQLModel, table=True):
         )
 
     def open_roster_spots(self, league: "League") -> int:
-        max_players = (
-            league.roster_size
-            + league.taxi_slots
-            + league.reserve_slots
+        return (
+            self.claimable_roster_capacity(
+                league,
+            )
+            - len(self.players)
         )
-
-        return max_players - len(self.players)
 
     league: "League" = Relationship(back_populates="roster")
     user: Optional["User"] = Relationship(back_populates="roster")

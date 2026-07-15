@@ -316,10 +316,8 @@ async def get_waiver_overview(
                 1,
             )
 
-        roster_capacity = (
-            league.roster_size
-            + league.taxi_slots
-            + league.reserve_slots
+        roster_capacity = roster.claimable_roster_capacity(
+            league,
         )
 
         overview_cards.append(

@@ -55,10 +55,8 @@ def build_league_option(
             1,
         )
 
-    roster_capacity = (
-        league.roster_size
-        + league.taxi_slots
-        + league.reserve_slots
+    roster_capacity = roster.claimable_roster_capacity(
+        league,
     )
 
     return WaiverLeagueOption(
