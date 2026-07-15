@@ -160,12 +160,24 @@ def needs_recent_activity_sync(
     if sync_state.last_synced_at is None:
         return True
 
+    last_synced_at = sync_state.last_synced_at
     current = now or datetime.now(UTC)
+
+    if last_synced_at.tzinfo is None:
+        last_synced_at = last_synced_at.replace(
+            tzinfo=UTC,
+        )
+
+    if current.tzinfo is None:
+        current = current.replace(
+            tzinfo=UTC,
+        )
+
     freshness_cutoff = current - timedelta(
         minutes=RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES,
     )
 
-    return sync_state.last_synced_at < freshness_cutoff
+    return last_synced_at < freshness_cutoff
 
 
 def needs_full_refresh(

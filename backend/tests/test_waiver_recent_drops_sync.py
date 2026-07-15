@@ -133,6 +133,48 @@ def test_needs_recent_activity_sync_uses_short_freshness_window():
     )
 
 
+def test_needs_recent_activity_sync_handles_naive_db_timestamps():
+    now = datetime(
+        2026,
+        7,
+        15,
+        13,
+        45,
+        tzinfo=UTC,
+    )
+
+    assert (
+        league_crud.needs_recent_activity_sync(
+            SimpleNamespace(
+                last_synced_at=datetime(
+                    2026,
+                    7,
+                    15,
+                    13,
+                    20,
+                ),
+            ),
+            now=now,
+        )
+        is True
+    )
+    assert (
+        league_crud.needs_recent_activity_sync(
+            SimpleNamespace(
+                last_synced_at=datetime(
+                    2026,
+                    7,
+                    15,
+                    13,
+                    40,
+                ),
+            ),
+            now=now,
+        )
+        is False
+    )
+
+
 def test_sync_transactions_for_known_leagues_fetches_recent_weeks(
     monkeypatch,
 ):
