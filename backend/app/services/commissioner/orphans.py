@@ -62,10 +62,8 @@ def build_settings_badges(
         for slot in roster_positions
     )
 
-    roster_size = (
-        len(roster_positions)
-        + int(settings.get("reserve_slots", 0) or 0)
-        + int(settings.get("taxi_slots", 0) or 0)
+    roster_size = len(
+        roster_positions,
     )
 
     badges = [

@@ -49,7 +49,7 @@ def test_build_settings_badges_includes_expected_league_summary():
         "Best Ball",
         "12 Team",
         "Start 8",
-        "15 Roster",
+        "10 Roster",
         "SF",
         "1.5 PPR",
         "6 PPTD",
