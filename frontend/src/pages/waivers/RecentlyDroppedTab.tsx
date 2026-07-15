@@ -175,74 +175,78 @@ export const RecentlyDroppedTab = ({
                 key={`${player.transaction_id}-${player.player_id}`}
                 className="recent-drop-card"
               >
-                <div className="recent-drop-card-header">
-                  <div className="player-with-avatar">
-                    <PlayerAvatar
-                      playerId={player.player_id}
-                      name={player.name}
-                      size="md"
-                    />
+                <div className="recent-drop-main">
+                  <div className="recent-drop-card-header">
+                    <div className="player-with-avatar">
+                      <PlayerAvatar
+                        playerId={player.player_id}
+                        name={player.name}
+                        size="md"
+                      />
 
-                    <div className="player-with-avatar-copy">
-                      <strong>{player.name}</strong>
-                      <span>
-                        {[player.position, player.team].filter(Boolean).join(' · ')}
-                      </span>
+                      <div className="player-with-avatar-copy">
+                        <strong>{player.name}</strong>
+                        <span>
+                          {[player.position, player.team].filter(Boolean).join(' · ')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="recent-drop-value">
+                      <span>{data.value_label}</span>
+                      <strong>
+                        {
+                          formatSelectedValue(
+                            player.selected_value,
+                            valueBasis,
+                          )
+                        }
+                      </strong>
                     </div>
                   </div>
 
-                  <div className="recent-drop-value">
-                    <span>{data.value_label}</span>
-                    <strong>
-                      {
-                        formatSelectedValue(
-                          player.selected_value,
-                          valueBasis,
+                  <div className="recent-drop-meta-row">
+                    <div className="recent-drop-league">
+                      <LeagueAvatar
+                        avatarId={player.league_avatar}
+                        name={player.league_name}
+                        size="sm"
+                      />
+
+                      <div className="recent-drop-league-copy">
+                        <strong>{player.league_name}</strong>
+                        <span>
+                          FAAB ${player.faab_remaining}
+                          {' · '}
+                          {player.faab_percent_remaining.toFixed(1)}% left
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="recent-drop-time">
+                      <Clock3 size={14} />
+                      <span>{formatDroppedAt(player.dropped_at_ms)}</span>
+                    </div>
+                  </div>
+
+                  <div className="recent-drop-footer">
+                    {
+                      claimDisabledReason
+                        ? (
+                          <span className="waiver-read-only recent-drop-status">
+                            {claimDisabledReason}
+                          </span>
                         )
-                      }
-                    </strong>
+                        : (
+                          <span className="waiver-read-only recent-drop-status recent-drop-status-ready">
+                            Ready to claim in this league.
+                          </span>
+                        )
+                    }
                   </div>
                 </div>
 
-                <div className="recent-drop-meta-row">
-                  <div className="recent-drop-league">
-                    <LeagueAvatar
-                      avatarId={player.league_avatar}
-                      name={player.league_name}
-                      size="sm"
-                    />
-
-                    <div>
-                      <strong>{player.league_name}</strong>
-                      <span>
-                        FAAB ${player.faab_remaining}
-                        {' · '}
-                        {player.faab_percent_remaining.toFixed(1)}% left
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="recent-drop-time">
-                    <Clock3 size={14} />
-                    <span>{formatDroppedAt(player.dropped_at_ms)}</span>
-                  </div>
-                </div>
-
-                <div className="recent-drop-footer">
-                  {
-                    claimDisabledReason
-                      ? (
-                        <span className="waiver-read-only">
-                          {claimDisabledReason}
-                        </span>
-                      )
-                      : (
-                        <span className="waiver-read-only">
-                          Ready to claim in this league.
-                        </span>
-                      )
-                  }
-
+                <div className="recent-drop-actions">
                   <button
                     type="button"
                     className="button-secondary waiver-claim-button"

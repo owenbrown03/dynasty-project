@@ -677,19 +677,26 @@
 
 .recent-drop-card {
   display: grid;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
-  padding: 14px;
+  padding: 18px 20px;
+}
+
+.recent-drop-main {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
 }
 
 .recent-drop-card-header,
-.recent-drop-meta-row,
-.recent-drop-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+.recent-drop-meta-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
 }
 
 .recent-drop-card-header .player-with-avatar,
@@ -718,10 +725,45 @@
   font-size: 14px;
 }
 
+.recent-drop-value strong {
+  font-size: 18px;
+}
+
 .recent-drop-league {
   display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.recent-drop-league-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.recent-drop-league-copy strong,
+.recent-drop-league-copy span {
+  display: block;
+}
+
+.recent-drop-status {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+.recent-drop-status-ready {
+  color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-success) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-success) 8%, transparent);
 }
 
 .recent-drop-time {
@@ -729,6 +771,18 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.recent-drop-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.recent-drop-actions .waiver-claim-button {
+  min-width: 132px;
+  min-height: 44px;
+  font-size: 12px;
 }
 
 @media (max-width: 760px) {
@@ -746,16 +800,27 @@
     flex-direction: column;
   }
 
+  .recent-drop-card {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
   .recent-drop-card-header,
-  .recent-drop-meta-row,
-  .recent-drop-footer {
-    align-items: stretch;
-    flex-direction: column;
+  .recent-drop-meta-row {
+    grid-template-columns: 1fr;
   }
 
   .recent-drop-value,
   .recent-drop-time {
     justify-items: start;
+  }
+
+  .recent-drop-actions {
+    justify-content: stretch;
+  }
+
+  .recent-drop-actions .waiver-claim-button {
+    width: 100%;
   }
 }
 
