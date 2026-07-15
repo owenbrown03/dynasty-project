@@ -3,7 +3,11 @@ import { useState } from 'react';
 import './RosterCard.css';
 
 import { UserAvatar } from '@/components/users/UserAvatar';
-import type { LeaguePick, LeagueRoster } from '@/types';
+import type {
+  LeaguePick,
+  LeagueRoster,
+  LeagueRosterConstructionTarget,
+} from '@/types';
 import { PlayerTable } from './PlayerTable';
 import { formatNumber } from '@/utils/format';
 import { buildRosterConstructionRows } from './rosterConstruction';
@@ -15,7 +19,7 @@ import {
 
 interface Props {
   roster: LeagueRoster;
-  rosterPositions: string[];
+  rosterConstructionTargets: LeagueRosterConstructionTarget[];
   draftPickProjectionSummary?: string | null;
 }
 
@@ -72,13 +76,13 @@ function PickList({
 }
 export function RosterCard({
   roster,
-  rosterPositions,
+  rosterConstructionTargets,
   draftPickProjectionSummary,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const constructionRows = buildRosterConstructionRows(
     roster,
-    rosterPositions,
+    rosterConstructionTargets,
   );
 
   return (
@@ -219,18 +223,18 @@ export function RosterCard({
                         <span>
                           {row.targetCount}
                           {' '}
-                          WAR-weighted target
+                          league target
                         </span>
                         <span>
                           {row.warShare.toFixed(1)}
-                          % dynasty WAR share
+                          % historical WAR share
                         </span>
                         <small>
                           {
                             row.delta > 0
-                              ? `${row.delta.toFixed(1)} over target`
+                              ? `${row.delta} over target`
                               : row.delta < 0
-                                ? `${Math.abs(row.delta).toFixed(1)} under target`
+                                ? `${Math.abs(row.delta)} under target`
                                 : 'On target'
                           }
                         </small>

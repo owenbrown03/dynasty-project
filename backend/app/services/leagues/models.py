@@ -78,6 +78,12 @@ class LeagueRoster(BaseModel):
     picks: list[LeaguePick]
 
 
+class LeagueRosterConstructionTarget(BaseModel):
+    position: str
+    target_count: int
+    war_share: float
+
+
 class LeagueDetailsResponse(BaseModel):
     league_id: str
     league_name: str
@@ -85,6 +91,7 @@ class LeagueDetailsResponse(BaseModel):
     season: str
     total_rosters: int
     roster_positions: list[str]
+    roster_construction_targets: list[LeagueRosterConstructionTarget]
     note: str = ""
     draft_pick_projection_summary: str | None = None
     settings_badges: list[str]

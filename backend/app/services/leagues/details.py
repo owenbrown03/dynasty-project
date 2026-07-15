@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +39,7 @@ from app.services.leagues.models import (
     LeagueOwner,
     LeaguePick,
     LeaguePlayer,
+    LeagueRosterConstructionTarget,
     LeagueWarPlayerPoint,
     LeagueWarPlayerSeason,
     LeagueRoster,
@@ -55,6 +57,13 @@ from app.services.waivers.dynasty import build_dynasty_projection
 WAR_PLAYER_DISPLAY_LIMIT = 500
 WAR_POSITION_RANK_DISPLAY_LIMIT = (
     WAR_PLAYER_DISPLAY_LIMIT // 4
+)
+ROSTER_CONSTRUCTION_HISTORY_YEARS = 5
+ROSTER_CONSTRUCTION_POSITIONS = (
+    "QB",
+    "RB",
+    "WR",
+    "TE",
 )
 
 
@@ -130,6 +139,156 @@ def calculate_average_age(
     return round(sum(ages) / len(ages), 1)
 
 
+def build_direct_starter_minimums(
+    roster_positions: list[str],
+) -> dict[str, int]:
+    return {
+        position: sum(
+            1
+            for slot in roster_positions
+            if slot == position
+        )
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    }
+
+
+def build_position_rank_war_history(
+    seasonal_results: list[list],
+) -> dict[str, dict[int, list[float]]]:
+    history = {
+        position: defaultdict(list)
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    }
+
+    for results in seasonal_results:
+        for position in ROSTER_CONSTRUCTION_POSITIONS:
+            position_wars = sorted(
+                (
+                    player.redraft_roster_war or 0.0
+                    for player in results
+                    if player.position == position
+                ),
+                reverse=True,
+            )
+
+            for rank, war in enumerate(
+                position_wars,
+                start=1,
+            ):
+                history[position][rank].append(war)
+
+    return history
+
+
+def get_average_rank_war(
+    *,
+    history: dict[str, dict[int, list[float]]],
+    position: str,
+    rank: int,
+) -> float:
+    wars = history[position].get(rank)
+    if wars:
+        return sum(wars) / len(wars)
+
+    return 0.0
+
+
+def determine_target_roster_size(
+    *,
+    league,
+    roster_rows: list,
+) -> int:
+    roster_sizes = [
+        len(roster.players or [])
+        + roster.open_roster_spots(league)
+        for roster in roster_rows
+    ]
+
+    if not roster_sizes:
+        return len(league.roster_positions or [])
+
+    return max(roster_sizes)
+
+
+def build_league_roster_construction_targets(
+    *,
+    league,
+    roster_rows: list,
+    seasonal_results: list[list],
+) -> list[LeagueRosterConstructionTarget]:
+    history = build_position_rank_war_history(
+        seasonal_results,
+    )
+    direct_starter_minimums = build_direct_starter_minimums(
+        list(league.roster_positions or []),
+    )
+    roster_size = determine_target_roster_size(
+        league=league,
+        roster_rows=roster_rows,
+    )
+    target_counts = dict(direct_starter_minimums)
+    selected_war_by_position = {
+        position: 0.0
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    }
+
+    for position in ROSTER_CONSTRUCTION_POSITIONS:
+        for rank in range(1, target_counts[position] + 1):
+            selected_war_by_position[position] += (
+                get_average_rank_war(
+                    history=history,
+                    position=position,
+                    rank=rank,
+                )
+            )
+
+    while sum(target_counts.values()) < roster_size:
+        next_position = max(
+            ROSTER_CONSTRUCTION_POSITIONS,
+            key=lambda position: (
+                get_average_rank_war(
+                    history=history,
+                    position=position,
+                    rank=target_counts[position] + 1,
+                ),
+                -target_counts[position],
+                -direct_starter_minimums[position],
+                position,
+            ),
+        )
+        next_rank = target_counts[next_position] + 1
+        target_counts[next_position] = next_rank
+        selected_war_by_position[next_position] += (
+            get_average_rank_war(
+                history=history,
+                position=next_position,
+                rank=next_rank,
+            )
+        )
+
+    total_selected_war = sum(
+        max(war, 0.0)
+        for war in selected_war_by_position.values()
+    )
+
+    return [
+        LeagueRosterConstructionTarget(
+            position=position,
+            target_count=target_counts[position],
+            war_share=round(
+                (
+                    max(
+                        selected_war_by_position[position],
+                        0.0,
+                    ) / total_selected_war
+                ) * 100,
+                1,
+            ) if total_selected_war > 0 else 0.0,
+        )
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    ]
+
+
 class LeagueDetails:
     def __init__(self):
         self.war_service = war_service
@@ -174,6 +333,14 @@ class LeagueDetails:
         shared = await self.war_service.load_shared_data(
             db,
             int(league.season),
+        )
+        roster_construction_seasonal_results = (
+            await self.build_roster_construction_seasonal_results(
+                db=db,
+                league=league,
+                players=shared.players,
+                current_shared=shared,
+            )
         )
         war_position_history = await self.build_war_position_history(
             db=db,
@@ -663,6 +830,16 @@ class LeagueDetails:
         for rank, roster in enumerate(rosters, start=1):
             roster.rank = rank
 
+        roster_construction_targets = (
+            build_league_roster_construction_targets(
+                league=league,
+                roster_rows=roster_rows,
+                seasonal_results=(
+                    roster_construction_seasonal_results
+                ),
+            )
+        )
+
         return LeagueDetailsResponse(
             league_id=league.league_id,
             league_name=league.name,
@@ -671,6 +848,9 @@ class LeagueDetails:
             total_rosters=league.total_rosters,
             roster_positions=list(
                 league.roster_positions or [],
+            ),
+            roster_construction_targets=(
+                roster_construction_targets
             ),
             draft_pick_projection_summary=(
                 build_draft_pick_projection_summary(
@@ -697,6 +877,55 @@ class LeagueDetails:
             war_player_history=war_player_history,
             rosters=rosters,
         )
+
+    async def build_roster_construction_seasonal_results(
+        self,
+        *,
+        db: AsyncSession,
+        league,
+        players: dict,
+        current_shared: WARSharedData,
+    ) -> list[list]:
+        seasonal_results: list[list] = []
+        current_season = int(league.season)
+
+        for season in range(
+            current_season - ROSTER_CONSTRUCTION_HISTORY_YEARS,
+            current_season,
+        ):
+            stats_rows = await self.war_service.loader.get_season_stats(
+                db,
+                season,
+            )
+
+            if not stats_rows:
+                continue
+
+            season_league = league.model_copy(
+                update={
+                    "season": str(season),
+                },
+            )
+
+            seasonal_results.append(
+                await self.war_service.calculate_with_data(
+                    league=season_league,
+                    shared=WARSharedData(
+                        players=players,
+                        projections=stats_rows,
+                    ),
+                )
+            )
+
+        if seasonal_results:
+            return seasonal_results
+
+        return [
+            await self.war_service.calculate_with_data(
+                league=league,
+                shared=current_shared,
+            )
+        ]
 
     async def build_war_position_history(
         self,

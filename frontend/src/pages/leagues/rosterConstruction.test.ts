@@ -108,40 +108,61 @@ const roster: LeagueRoster = {
 };
 
 describe('buildRosterConstructionRows', () => {
-  it('anchors targets to lineup demand before blending in WAR', () => {
+  it('compares a roster against shared league-level targets', () => {
     expect(
       buildRosterConstructionRows(
         roster,
-        ['QB', 'RB', 'WR', 'REC_FLEX'],
+        [
+          {
+            position: 'QB',
+            target_count: 3,
+            war_share: 28.4,
+          },
+          {
+            position: 'RB',
+            target_count: 8,
+            war_share: 24.1,
+          },
+          {
+            position: 'WR',
+            target_count: 9,
+            war_share: 38.6,
+          },
+          {
+            position: 'TE',
+            target_count: 2,
+            war_share: 8.9,
+          },
+        ],
       ),
     ).toEqual([
       {
         position: 'QB',
         playerCount: 2,
-        targetCount: 1.6,
-        delta: 0.4,
-        warShare: 70,
+        targetCount: 3,
+        delta: -1,
+        warShare: 28.4,
       },
       {
         position: 'RB',
         playerCount: 1,
-        targetCount: 1.4,
-        delta: -0.4,
-        warShare: 20,
+        targetCount: 8,
+        delta: -7,
+        warShare: 24.1,
       },
       {
         position: 'WR',
         playerCount: 1,
-        targetCount: 1.5,
-        delta: -0.4,
-        warShare: 10,
+        targetCount: 9,
+        delta: -8,
+        warShare: 38.6,
       },
       {
         position: 'TE',
         playerCount: 0,
-        targetCount: 0.2,
-        delta: -0.2,
-        warShare: 0,
+        targetCount: 2,
+        delta: -2,
+        warShare: 8.9,
       },
     ]);
   });

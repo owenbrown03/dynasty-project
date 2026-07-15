@@ -291,6 +291,12 @@ export interface LeagueRoster {
   picks: LeaguePick[];
 }
 
+export interface LeagueRosterConstructionTarget {
+  position: string;
+  target_count: number;
+  war_share: number;
+}
+
 export interface LeagueDetails {
   league_id: string;
   league_name: string;
@@ -298,6 +304,7 @@ export interface LeagueDetails {
   season: string;
   total_rosters: number;
   roster_positions: string[];
+  roster_construction_targets: LeagueRosterConstructionTarget[];
   note: string;
   draft_pick_projection_summary: string | null;
   settings_badges: string[];

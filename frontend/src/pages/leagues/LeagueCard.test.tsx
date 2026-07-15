@@ -27,6 +27,12 @@ const league: LeagueDetails = {
   season: '2026',
   total_rosters: 12,
   roster_positions: ['QB', 'RB', 'WR', 'TE', 'FLEX', 'BN'],
+  roster_construction_targets: [
+    { position: 'QB', target_count: 3, war_share: 28.4 },
+    { position: 'RB', target_count: 8, war_share: 24.1 },
+    { position: 'WR', target_count: 9, war_share: 38.6 },
+    { position: 'TE', target_count: 2, war_share: 8.9 },
+  ],
   note: '',
   draft_pick_projection_summary: null,
   war_position_history: [],
