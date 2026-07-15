@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 FETCH_CHUNK_SIZE = 250
 DB_BATCH_SIZE = 100
 FULL_REFRESH_INTERVAL_DAYS = 7
+RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES = 15
 
 
 # --------------------------------------------------
@@ -146,6 +147,25 @@ def was_synced_today(
         sync_state.last_synced_at.date()
         == datetime.now(UTC).date()
     )
+
+
+def needs_recent_activity_sync(
+    sync_state: model.LeagueSyncState | None,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    if sync_state is None:
+        return True
+
+    if sync_state.last_synced_at is None:
+        return True
+
+    current = now or datetime.now(UTC)
+    freshness_cutoff = current - timedelta(
+        minutes=RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES,
+    )
+
+    return sync_state.last_synced_at < freshness_cutoff
 
 
 def needs_full_refresh(
@@ -827,6 +847,97 @@ async def save_league_bundle_to_db(
     except Exception as e:
         logger.error(f"save bundle failed: {e}", exc_info=True)
         return False
+
+
+async def sync_transactions_for_known_leagues(
+    *,
+    db: AsyncSession,
+    leagues: list[model.League],
+    curr_week: int,
+    sleeper,
+) -> dict[str, int]:
+    league_ids = [
+        league.league_id
+        for league in leagues
+        if getattr(league, "league_id", None)
+    ]
+
+    if not league_ids:
+        return {}
+
+    sync_states = await get_sync_states(
+        db,
+        league_ids,
+    )
+    synced_weeks_by_league_id: dict[str, int] = {}
+
+    for league in leagues:
+        league_id = getattr(
+            league,
+            "league_id",
+            None,
+        )
+        if not league_id:
+            continue
+
+        sync_state = sync_states.get(
+            league_id,
+        )
+        last_synced_week = (
+            sync_state.last_synced_week
+            if sync_state is not None
+            else 0
+        )
+        transaction_weeks = get_transaction_weeks_to_fetch(
+            last_synced_week=last_synced_week,
+            curr_week=curr_week,
+        )
+
+        tx_lists = await asyncio.gather(
+            *[
+                sleeper.read.get_transactions(
+                    league_id,
+                    week,
+                )
+                for week in transaction_weeks
+            ],
+            return_exceptions=True,
+        )
+
+        transactions = [
+            transaction
+            for batch in tx_lists
+            if isinstance(batch, list)
+            for transaction in batch
+        ]
+
+        await _save_transactions(
+            db,
+            transactions,
+            league_id,
+        )
+        synced_weeks_by_league_id[league_id] = max(
+            last_synced_week,
+            curr_week,
+        )
+
+    if synced_weeks_by_league_id:
+        await _update_sync_states(
+            db=db,
+            bundles=[
+                {
+                    "league_id": league_id,
+                    "synced_week": synced_week,
+                    "transactions_only": True,
+                }
+                for league_id, synced_week in (
+                    synced_weeks_by_league_id.items()
+                )
+            ],
+        )
+        await db.commit()
+
+    return synced_weeks_by_league_id
 
 
 # --------------------------------------------------

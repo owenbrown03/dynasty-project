@@ -43,8 +43,8 @@ from app.services.waivers.claims import submit_claim
 from app.services.waivers.recent_drops import (
     get_recent_drops_sync_required,
     get_recently_dropped_players,
+    sync_recent_drop_activity,
 )
-from app.tasks.user import sync_user_data_task
 
 router = APIRouter()
 
@@ -212,10 +212,12 @@ async def recent_waiver_drops(
     if (
         sync_requested
         and ctx.connection
-        and ctx.connection.sleeper_username
+        and ctx.sleeper
     ):
-        await sync_user_data_task.kiq(
-            ctx.connection.sleeper_username,
+        await sync_recent_drop_activity(
+            db=ctx.db,
+            sleeper=ctx.sleeper,
+            connection=ctx.connection,
         )
 
     war_service = WARService()

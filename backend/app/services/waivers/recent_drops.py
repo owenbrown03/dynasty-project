@@ -9,7 +9,11 @@ from app.analytics.war.dynasty.models import DynastyProjection
 from app.analytics.war.redraft.models import PlayerWAR
 from app.analytics.war.redraft.service import WARService
 from app.crud.auth.user import get_war_value_settings_by_user_id
-from app.crud.sleeper.league import get_sync_states, was_synced_today
+from app.crud.sleeper.league import (
+    get_sync_states,
+    needs_recent_activity_sync,
+    sync_transactions_for_known_leagues,
+)
 from app.crud.value import get_player_values
 from app.infrastructure.redis.client import RedisClient
 from app.models.db.sleeper.api import League, Movement, Player, Roster, Transaction
@@ -45,7 +49,7 @@ def needs_recent_drops_sync(
     league_ids: list[str],
 ) -> bool:
     return any(
-        not was_synced_today(
+        needs_recent_activity_sync(
             sync_states.get(league_id),
         )
         for league_id in league_ids
@@ -345,3 +349,61 @@ async def get_recently_dropped_players(
         total_players=len(players),
         players=players,
     )
+
+
+async def sync_recent_drop_activity(
+    *,
+    db: AsyncSession,
+    sleeper,
+    connection: SleeperConnection,
+) -> bool:
+    if not connection.sleeper_user_id:
+        return False
+
+    visible_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
+        db=db,
+        sleeper_user_id=connection.sleeper_user_id,
+        site_user_id=connection.site_user_id,
+    )
+
+    leagues = [
+        row.league
+        for row in visible_rows
+    ]
+
+    if not leagues:
+        return False
+
+    sync_states = await get_sync_states(
+        db,
+        [
+            league.league_id
+            for league in leagues
+        ],
+    )
+
+    leagues_to_sync = [
+        league
+        for league in leagues
+        if needs_recent_activity_sync(
+            sync_states.get(league.league_id),
+        )
+    ]
+
+    if not leagues_to_sync:
+        return False
+
+    state = await sleeper.read.get_nfl_state()
+    curr_week = max(
+        int(state.week),
+        1,
+    )
+
+    await sync_transactions_for_known_leagues(
+        db=db,
+        leagues=leagues_to_sync,
+        curr_week=curr_week,
+        sleeper=sleeper,
+    )
+
+    return True
