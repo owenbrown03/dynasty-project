@@ -174,8 +174,8 @@ export function RosterCard({
           <strong>{roster.waiver_position}</strong>
         </div>
         <div className="roster-summary-stat">
-          <span>Moves</span>
-          <strong>{roster.total_moves}</strong>
+          <span>Trades</span>
+          <strong>{roster.total_trades}</strong>
         </div>
       </div>
 

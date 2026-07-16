@@ -20,7 +20,7 @@ const roster: LeagueRoster = {
   projected_points: 0,
   faab_remaining: 100,
   waiver_position: 1,
-  total_moves: 0,
+  total_trades: 0,
   open_roster_spots: 0,
   average_age: null,
   total_ktc_value: 0,

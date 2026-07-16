@@ -5,6 +5,7 @@ import hashlib
 import json
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -24,6 +25,7 @@ from app.crud.sleeper.personal import (
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
 from app.models.db.fc.models import FantasyCalcValue
+from app.models.db.sleeper import api as sleeper_model
 from app.services.draft.picks import (
     build_owned_pick_assets_by_roster_id,
     build_roster_name_by_id,
@@ -280,6 +282,46 @@ def determine_target_roster_size(
     return max(roster_sizes)
 
 
+async def get_trade_counts_by_roster_id(
+    *,
+    db: AsyncSession,
+    league_id: str,
+    roster_ids: list[int],
+) -> dict[int, int]:
+    if not roster_ids:
+        return {}
+
+    result = await db.execute(
+        select(
+            sleeper_model.Movement.roster_id,
+            func.count(
+                func.distinct(
+                    sleeper_model.Transaction.transaction_id,
+                )
+            ),
+        )
+        .join(
+            sleeper_model.Transaction,
+            sleeper_model.Transaction.transaction_id
+            == sleeper_model.Movement.transaction_id,
+        )
+        .where(
+            sleeper_model.Transaction.league_id == league_id,
+            sleeper_model.Transaction.type == "trade",
+            sleeper_model.Movement.roster_id.in_(roster_ids),
+        )
+        .group_by(
+            sleeper_model.Movement.roster_id,
+        )
+    )
+
+    return {
+        int(roster_id): int(trade_count)
+        for roster_id, trade_count in result.all()
+        if roster_id is not None
+    }
+
+
 def build_league_roster_construction_targets(
     *,
     league,
@@ -491,6 +533,16 @@ class LeagueDetails:
 
         league = leagues[0][0]
         roster_rows = [roster for _, roster in leagues]
+        trade_counts_by_roster_id = (
+            await get_trade_counts_by_roster_id(
+                db=db,
+                league_id=league_id,
+                roster_ids=[
+                    roster.roster_id
+                    for roster in roster_rows
+                ],
+            )
+        )
         notes_by_league_id = (
             await get_user_notes_by_league_id(
                 db=db,
@@ -952,7 +1004,10 @@ class LeagueDetails:
                     ),
                     faab_remaining=roster.faab_remaining(league),
                     waiver_position=roster.waiver_position,
-                    total_moves=roster.total_moves,
+                    total_trades=trade_counts_by_roster_id.get(
+                        roster.roster_id,
+                        0,
+                    ),
                     open_roster_spots=roster.open_roster_spots(league),
                     average_age=calculate_average_age(roster_players),
                     total_ktc_value=total_ktc_value,

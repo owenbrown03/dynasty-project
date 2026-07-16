@@ -270,7 +270,7 @@ export interface LeagueRoster {
   projected_points: number;
   faab_remaining: number;
   waiver_position: number;
-  total_moves: number;
+  total_trades: number;
   open_roster_spots: number;
   average_age: number | null;
   total_ktc_value: number;

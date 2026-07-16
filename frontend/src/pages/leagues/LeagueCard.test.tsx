@@ -58,7 +58,7 @@ const league: LeagueDetails = {
       projected_points: 210.4,
       faab_remaining: 75,
       waiver_position: 3,
-      total_moves: 10,
+      total_trades: 10,
       open_roster_spots: 1,
       average_age: 25.6,
       total_ktc_value: 1000,
