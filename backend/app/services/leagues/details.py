@@ -72,7 +72,7 @@ ROSTER_CONSTRUCTION_POSITIONS = (
 ROSTER_CONSTRUCTION_CACHE_TTL_SECONDS = (
     6 * 60 * 60
 )
-ROSTER_CONSTRUCTION_CACHE_VERSION = "v1"
+ROSTER_CONSTRUCTION_CACHE_VERSION = "v2"
 
 
 def is_slot_eligible(slot: str, position: str | None) -> bool:
@@ -205,6 +205,64 @@ def get_average_rank_war(
     return 0.0
 
 
+def get_average_scarcity_band_war(
+    *,
+    history: dict[str, dict[int, list[float]]],
+    position: str,
+    per_team_slot: int,
+    league_size: int,
+) -> float:
+    """
+    Map a per-team roster slot to the correct league-wide scarcity band.
+
+    Example in a 12-team league:
+    - 1st rostered QB per team corresponds to QB1-QB12 league-wide
+    - 2nd rostered QB per team corresponds to QB13-QB24
+    - 3rd rostered QB per team corresponds to QB25-QB36
+
+    Using the single positional rank directly (QB2, QB3, etc.) wildly
+    overstates deep-position value and produces unrealistic targets like
+    rostering 16 QBs per team.
+    """
+
+    safe_league_size = max(
+        league_size,
+        1,
+    )
+    safe_slot = max(
+        per_team_slot,
+        1,
+    )
+    band_start = (
+        (safe_slot - 1) * safe_league_size
+    ) + 1
+    band_end = safe_slot * safe_league_size
+
+    band_values = [
+        get_average_rank_war(
+            history=history,
+            position=position,
+            rank=rank,
+        )
+        for rank in range(
+            band_start,
+            band_end + 1,
+        )
+    ]
+    populated_values = [
+        value
+        for value in band_values
+        if value != 0.0
+    ]
+
+    if populated_values:
+        return sum(populated_values) / len(
+            populated_values,
+        )
+
+    return 0.0
+
+
 def determine_target_roster_size(
     *,
     league,
@@ -238,6 +296,18 @@ def build_league_roster_construction_targets(
         league=league,
         roster_rows=roster_rows,
     )
+    league_size = max(
+        int(
+            getattr(
+                league,
+                "total_rosters",
+                0,
+            )
+            or 0
+        ),
+        len(roster_rows),
+        1,
+    )
     target_counts = dict(direct_starter_minimums)
     selected_war_by_position = {
         position: 0.0
@@ -247,10 +317,11 @@ def build_league_roster_construction_targets(
     for position in ROSTER_CONSTRUCTION_POSITIONS:
         for rank in range(1, target_counts[position] + 1):
             selected_war_by_position[position] += (
-                get_average_rank_war(
+                get_average_scarcity_band_war(
                     history=history,
                     position=position,
-                    rank=rank,
+                    per_team_slot=rank,
+                    league_size=league_size,
                 )
             )
 
@@ -258,10 +329,13 @@ def build_league_roster_construction_targets(
         next_position = max(
             ROSTER_CONSTRUCTION_POSITIONS,
             key=lambda position: (
-                get_average_rank_war(
+                get_average_scarcity_band_war(
                     history=history,
                     position=position,
-                    rank=target_counts[position] + 1,
+                    per_team_slot=(
+                        target_counts[position] + 1
+                    ),
+                    league_size=league_size,
                 ),
                 -target_counts[position],
                 -direct_starter_minimums[position],
@@ -271,10 +345,11 @@ def build_league_roster_construction_targets(
         next_rank = target_counts[next_position] + 1
         target_counts[next_position] = next_rank
         selected_war_by_position[next_position] += (
-            get_average_rank_war(
+            get_average_scarcity_band_war(
                 history=history,
                 position=next_position,
-                rank=next_rank,
+                per_team_slot=next_rank,
+                league_size=league_size,
             )
         )
 
