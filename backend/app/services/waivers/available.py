@@ -26,6 +26,9 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.values.war_settings import (
+    normalize_war_value_settings,
+)
 from app.services.personal_values import hydrate_personal_player_values
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
@@ -37,6 +40,9 @@ from app.services.war.shared import (
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
 )
+
+ALL_LEAGUES_MY_WAR_CANDIDATE_MULTIPLIER = 5
+ALL_LEAGUES_MY_WAR_MIN_CANDIDATES = 200
 
 
 def build_league_option(
@@ -509,6 +515,245 @@ def aggregate_available_players_by_player_id(
     return aggregated_players
 
 
+def get_coarse_my_war_value(
+    *,
+    player: WaiverAvailablePlayer,
+    war_value_settings,
+) -> float | None:
+    normalized_settings = normalize_war_value_settings(
+        war_value_settings,
+    )
+    coarse_settings = {
+        **normalized_settings,
+        "sleeper_projection": normalized_settings["my"],
+    }
+    return get_player_value(
+        player=player,
+        basis=ValueBasis.SLEEPER_WAR,
+        war_value_settings=coarse_settings,
+    )
+
+
+async def hydrate_all_leagues_page_for_my_war(
+    *,
+    db: AsyncSession,
+    redis: RedisClient,
+    connection: SleeperConnection,
+    war_value_settings,
+    redraft_war_by_league_id: dict[str, list[PlayerWAR]],
+    owned_rows,
+    paged_players: list[WaiverAvailablePlayer],
+) -> list[WaiverAvailablePlayer]:
+    if not paged_players:
+        return []
+
+    player_ids = {
+        player.player_id
+        for player in paged_players
+    }
+    if not player_ids:
+        return paged_players
+
+    row_by_league_id = {
+        row.league.league_id: row
+        for row in owned_rows
+    }
+    hydrated_by_key: dict[
+        tuple[str, str],
+        WaiverAvailablePlayer,
+    ] = {}
+
+    for player in paged_players:
+        for availability in player.league_availability:
+            if availability.league_id not in row_by_league_id:
+                continue
+
+            row = row_by_league_id[
+                availability.league_id
+            ]
+            redraft_war_players = (
+                redraft_war_by_league_id[
+                    availability.league_id
+                ]
+            )
+            redraft_by_player_id = {
+                war_player.player_id: war_player
+                for war_player in redraft_war_players
+            }
+            if player.player_id not in redraft_by_player_id:
+                continue
+
+            dynasty_war_by_player_id = (
+                await build_cached_dynasty_projections_by_player_id(
+                    redis=redis,
+                    player_wars=[
+                        redraft_by_player_id[
+                            player.player_id
+                        ]
+                    ],
+                )
+            )
+            player_values = await get_player_values(
+                db=db,
+                player_ids=[player.player_id],
+                redraft_war_players=redraft_war_players,
+                dynasty_war_by_player_id=(
+                    dynasty_war_by_player_id
+                ),
+            )
+            player_values = await hydrate_personal_player_values(
+                db=db,
+                site_user_id=connection.site_user_id,
+                league=row.league,
+                player_values=player_values,
+                redis=redis,
+            )
+            if not player_values:
+                continue
+
+            hydrated_value = player_values[0]
+            hydrated_by_key[
+                (
+                    availability.league_id,
+                    player.player_id,
+                )
+            ] = WaiverAvailablePlayer(
+                **hydrated_value.model_dump(),
+                league_id=row.league.league_id,
+                league_name=row.league.name,
+                league_avatar=row.league.avatar,
+                roster_id=row.roster.roster_id,
+                roster_size=row.roster.roster_size,
+                roster_capacity=(
+                    row.roster.claimable_roster_capacity(
+                        row.league,
+                    )
+                ),
+                roster_spots_available=(
+                    row.roster.open_roster_spots(
+                        row.league,
+                    )
+                ),
+                faab_remaining=(
+                    row.roster.faab_remaining(
+                        row.league,
+                    )
+                ),
+                faab_percent_remaining=(
+                    round(
+                        (
+                            row.roster.faab_remaining(
+                                row.league,
+                            )
+                            / row.league.waiver_budget
+                        )
+                        * 100,
+                        1,
+                    )
+                    if row.league.waiver_budget > 0
+                    else 0.0
+                ),
+                can_submit_claim=(
+                    row.roster.open_roster_spots(
+                        row.league,
+                    )
+                    > 0
+                ),
+                claim_blocked_reason=(
+                    build_claim_blocked_reason(
+                        roster_spots_available=(
+                            row.roster.open_roster_spots(
+                                row.league,
+                            )
+                        )
+                    )
+                ),
+                selected_value=get_player_value(
+                    player=hydrated_value,
+                    basis=ValueBasis.MY_WAR,
+                    war_value_settings=war_value_settings,
+                ),
+            )
+
+    hydrated_players: list[WaiverAvailablePlayer] = []
+
+    for player in paged_players:
+        updated_availability: list[
+            WaiverAvailableLeagueAvailability
+        ] = []
+        best_player = player
+        best_value = player.selected_value
+
+        for availability in player.league_availability:
+            hydrated = hydrated_by_key.get(
+                (
+                    availability.league_id,
+                    player.player_id,
+                )
+            )
+            if hydrated is None:
+                updated_availability.append(
+                    availability
+                )
+                continue
+
+            updated_availability.append(
+                availability.model_copy(
+                    update={
+                        "selected_value": (
+                            hydrated.selected_value
+                        ),
+                    },
+                )
+            )
+            if (
+                best_value is None
+                or (
+                    hydrated.selected_value is not None
+                    and hydrated.selected_value > best_value
+                )
+            ):
+                best_player = hydrated
+                best_value = hydrated.selected_value
+
+        hydrated_players.append(
+            best_player.model_copy(
+                update={
+                    "league_count": player.league_count,
+                    "league_availability": sorted(
+                        updated_availability,
+                        key=lambda item: (
+                            item.selected_value is None,
+                            -(
+                                item.selected_value
+                                if item.selected_value
+                                is not None
+                                else 0.0
+                            ),
+                            item.league_name.lower(),
+                        ),
+                    ),
+                    "selected_value": best_value,
+                    "league_id": None,
+                    "league_name": None,
+                    "league_avatar": None,
+                    "roster_id": None,
+                    "roster_size": None,
+                    "roster_capacity": None,
+                    "roster_spots_available": None,
+                    "faab_remaining": None,
+                    "faab_percent_remaining": None,
+                    "can_submit_claim": True,
+                    "claim_blocked_reason": None,
+                },
+            )
+        )
+
+    return sort_available_players(
+        players=hydrated_players,
+    )
+
+
 async def get_available_waiver_players(
     *,
     db: AsyncSession,
@@ -644,7 +889,11 @@ async def get_available_waiver_players(
                 connection=connection,
                 roster=row.roster,
                 league=row.league,
-                value_basis=value_basis,
+                value_basis=(
+                    ValueBasis.SLEEPER_WAR
+                    if value_basis == ValueBasis.MY_WAR
+                    else value_basis
+                ),
                 war_service=war_service,
                 redraft_war_players=(
                     redraft_war_by_league_id[
@@ -663,6 +912,33 @@ async def get_available_waiver_players(
             players=all_available_players,
         )
     )
+    if value_basis == ValueBasis.MY_WAR:
+        aggregated_players = [
+            player.model_copy(
+                update={
+                    "selected_value": (
+                        get_coarse_my_war_value(
+                            player=player,
+                            war_value_settings=(
+                                war_value_settings
+                            ),
+                        )
+                    ),
+                    "league_availability": [
+                        availability.model_copy(
+                            update={
+                                "selected_value": None,
+                            },
+                        )
+                        for availability in (
+                            player.league_availability
+                        )
+                    ],
+                },
+            )
+            for player in aggregated_players
+        ]
+
     sorted_players = sort_available_players(
         players=aggregated_players,
     )
@@ -685,6 +961,45 @@ async def get_available_waiver_players(
     paged_players = sorted_players[
         page_start:page_start + safe_page_size
     ]
+
+    if value_basis == ValueBasis.MY_WAR:
+        candidate_count = min(
+            total_players,
+            max(
+                ALL_LEAGUES_MY_WAR_MIN_CANDIDATES,
+                current_page
+                * safe_page_size
+                * ALL_LEAGUES_MY_WAR_CANDIDATE_MULTIPLIER,
+            ),
+        )
+        candidate_players = sorted_players[
+            :candidate_count
+        ]
+        candidate_page_start = min(
+            page_start,
+            max(
+                0,
+                len(candidate_players)
+                - safe_page_size,
+            ),
+        )
+        candidate_page_players = candidate_players[
+            candidate_page_start:candidate_page_start
+            + safe_page_size
+        ]
+        paged_players = (
+            await hydrate_all_leagues_page_for_my_war(
+                db=db,
+                redis=redis,
+                connection=connection,
+                war_value_settings=war_value_settings,
+                redraft_war_by_league_id=(
+                    redraft_war_by_league_id
+                ),
+                owned_rows=owned_rows,
+                paged_players=candidate_page_players,
+            )
+        )
 
     return WaiverAvailablePlayersResponse(
         league_name="All visible leagues",
