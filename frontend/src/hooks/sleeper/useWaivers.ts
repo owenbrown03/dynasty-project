@@ -18,6 +18,7 @@ import type {
   WaiverClaimRequest,
   WaiverClaimResponse,
   WaiverOverviewResponse,
+  WaiverRecentlyDroppedResponse,
   WaiverRosterPlayersResponse,
 } from '@/types';
 
@@ -80,6 +81,9 @@ export function useSubmitWaiverClaim() {
           queryKey: queryKeys.waivers.availablePlayersRoot,
         }),
         queryClient.invalidateQueries({
+          queryKey: queryKeys.waivers.recentDropsRoot,
+        }),
+        queryClient.invalidateQueries({
           queryKey: queryKeys.waivers.rosterPlayersRoot,
         }),
       ]);
@@ -96,6 +100,46 @@ export function useSubmitWaiverClaim() {
     error: mutation.error,
 
     reset: mutation.reset,
+  };
+}
+
+export function useRecentlyDroppedPlayers(
+  valueBasis: ValueBasis,
+  page: number,
+  pageSize: number,
+) {
+  const {
+    username,
+    canRead,
+  } = useSleeperConnection();
+
+  const query = useQuery<WaiverRecentlyDroppedResponse>({
+    queryKey: queryKeys.waivers.recentDrops(
+      username,
+      valueBasis,
+      page,
+      pageSize,
+    ),
+
+    queryFn: async () => {
+      return api.waivers
+        .getRecentDrops(
+          valueBasis,
+          page,
+          pageSize,
+        )
+        .then((res) => res.data);
+    },
+
+    enabled: canRead,
+  });
+
+  return {
+    data: query.data,
+    username,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
   };
 }
 
@@ -132,6 +176,8 @@ export function useWaiverLeagueOptions() {
 export function useAvailableWaiverPlayers(
   leagueId: string | undefined,
   valueBasis: ValueBasis,
+  page: number,
+  pageSize: number,
 ) {
   const {
     canRead,
@@ -143,26 +189,23 @@ export function useAvailableWaiverPlayers(
       username,
       leagueId,
       valueBasis,
+      page,
+      pageSize,
     ),
 
     queryFn: async () => {
-      if (!leagueId) {
-        throw new Error(
-          'Missing waiver league id',
-        );
-      }
-
       return api.waivers
         .getAvailablePlayers(
           leagueId,
           valueBasis,
+          page,
+          pageSize,
         )
         .then((res) => res.data);
     },
 
     enabled: (
       canRead
-      && !!leagueId
     ),
   });
 

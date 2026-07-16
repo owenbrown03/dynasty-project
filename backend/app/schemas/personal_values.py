@@ -12,6 +12,7 @@ class PersonalValueSearchResult(Base):
     underdog_position_rank: str | None = None
     ktc_value: float | None = None
     fc_value: float | None = None
+    adp_value: float | None = None
     dynasty_roster_war: float | None = None
 
 
@@ -50,6 +51,7 @@ class PersonalValuePlayer(Base):
     underdog_position_rank: str | None = None
     ktc_value: float | None = None
     fc_value: float | None = None
+    adp_value: float | None = None
 
 
 class PersonalValueDetailResponse(Base):

@@ -49,7 +49,10 @@ class BulkTradeCounterparty(Base):
     user_id: str | None = None
     name: str
 
-    matching_picks: list[TradeDraftPickAsset] = Field(
+    send_pick_choices: list["BulkTradePickChoice"] = Field(
+        default_factory=list,
+    )
+    receive_pick_choices: list["BulkTradePickChoice"] = Field(
         default_factory=list,
     )
 
@@ -61,49 +64,42 @@ class BulkTradeLeagueAvailability(Base):
 
     your_roster_id: int
 
-    target_owner_roster_id: int | None = None
-    target_owner_user_id: str | None = None
-    target_owner_name: str | None = None
-
-    you_own_target_player: bool
-
     is_eligible: bool
     ineligibility_reason: str | None = None
-
-    """
-    BUY:
-        Matching picks you own and can send for the target.
-
-    SELL:
-        Empty, because the receiving manager's matching picks live under
-        `counterparty_options`.
-    """
-    matching_picks: list[TradeDraftPickAsset] = Field(
-        default_factory=list,
-    )
-
-    """
-    BUY:
-        Empty because the target owner is already known.
-
-    SELL:
-        Every opposing manager who has a matching pick and can receive
-        your target player.
-    """
     counterparty_options: list[BulkTradeCounterparty] = Field(
         default_factory=list,
     )
 
 
 class BulkTradeAvailabilityResponse(Base):
-    player: BulkTradePlayerSearchResult
-
-    direction: TradeDirection
-
-    pick_season: str
-    pick_round: int
+    send_players: list[BulkTradePlayerSearchResult] = Field(
+        default_factory=list,
+    )
+    send_picks: list["BulkTradePickRequest"] = Field(
+        default_factory=list,
+    )
+    receive_players: list[BulkTradePlayerSearchResult] = Field(
+        default_factory=list,
+    )
+    receive_picks: list["BulkTradePickRequest"] = Field(
+        default_factory=list,
+    )
 
     leagues: list[BulkTradeLeagueAvailability] = Field(
+        default_factory=list,
+    )
+
+
+class BulkTradePickRequest(Base):
+    season: str
+    round: int
+
+
+class BulkTradePickChoice(Base):
+    request_index: int
+    season: str
+    round: int
+    matching_picks: list[TradeDraftPickAsset] = Field(
         default_factory=list,
     )
 
@@ -121,17 +117,47 @@ class BulkTradePickReference(Base):
     og_roster_id: int
 
 
+class BulkTradeAvailabilityRequest(Base):
+    send_player_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    send_picks: list[BulkTradePickRequest] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    receive_player_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    receive_picks: list[BulkTradePickRequest] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+
+
 class BulkTradeOfferRequest(Base):
     league_id: str
 
     your_roster_id: int
     counterparty_roster_id: int
 
-    target_player_id: str
-
-    direction: TradeDirection
-
-    pick: BulkTradePickReference
+    send_player_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    send_picks: list[BulkTradePickReference] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    receive_player_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    receive_picks: list[BulkTradePickReference] = Field(
+        default_factory=list,
+        max_length=8,
+    )
 
     expires_at: int | None = None
 
@@ -167,3 +193,4 @@ class TradeCalculatorPickValueResponse(Base):
     ppr: int
     ktc_value: float | None = None
     fc_value: float | None = None
+    rookie_war_value: float | None = None

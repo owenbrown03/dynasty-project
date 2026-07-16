@@ -6,6 +6,16 @@ interface Props {
   leagues: DashboardLeague[];
 }
 
+function formatLeagueRecord(
+  league: DashboardLeague,
+) {
+  if (league.ties > 0) {
+    return `${league.wins}-${league.losses}-${league.ties}`;
+  }
+
+  return `${league.wins}-${league.losses}`;
+}
+
 export function DashboardLeagues({
   leagues,
 }: Props) {
@@ -18,10 +28,6 @@ export function DashboardLeagues({
           <p className="dashboard-section-kicker">
             Leagues
           </p>
-
-          <h2 className="dashboard-section-title">
-            Cross-league rankings
-          </h2>
         </div>
       </div>
 
@@ -64,8 +70,7 @@ export function DashboardLeagues({
                 </h3>
 
                 <p className="portfolio-league-subtitle">
-                  {league.league_size}
-                  {' '}teams
+                  {formatLeagueRecord(league)}
                 </p>
               </div>
             </div>

@@ -20,7 +20,7 @@ const roster: LeagueRoster = {
   projected_points: 0,
   faab_remaining: 100,
   waiver_position: 1,
-  total_moves: 0,
+  total_trades: 0,
   open_roster_spots: 0,
   average_age: null,
   total_ktc_value: 0,
@@ -31,8 +31,10 @@ const roster: LeagueRoster = {
   total_dynasty_roster_war: 0,
   total_pick_ktc_value: 0,
   total_pick_fc_value: 0,
+  total_pick_rookie_war_value: 0,
   total_asset_ktc_value: 0,
   total_asset_fc_value: 0,
+  stat_ranks: {},
   picks: [],
   players: [
     {
@@ -107,39 +109,61 @@ const roster: LeagueRoster = {
 };
 
 describe('buildRosterConstructionRows', () => {
-  it('builds WAR-weighted position targets from a roster', () => {
+  it('compares a roster against shared league-level targets', () => {
     expect(
       buildRosterConstructionRows(
         roster,
+        [
+          {
+            position: 'QB',
+            target_count: 3,
+            war_share: 28.4,
+          },
+          {
+            position: 'RB',
+            target_count: 8,
+            war_share: 24.1,
+          },
+          {
+            position: 'WR',
+            target_count: 9,
+            war_share: 38.6,
+          },
+          {
+            position: 'TE',
+            target_count: 2,
+            war_share: 8.9,
+          },
+        ],
       ),
     ).toEqual([
       {
         position: 'QB',
         playerCount: 2,
-        targetCount: 2.8,
-        delta: -0.8,
-        warShare: 70,
+        targetCount: 3,
+        delta: -1,
+        warShare: 28.4,
       },
       {
         position: 'RB',
         playerCount: 1,
-        targetCount: 0.8,
-        delta: 0.2,
-        warShare: 20,
+        targetCount: 8,
+        delta: -7,
+        warShare: 24.1,
       },
       {
         position: 'WR',
         playerCount: 1,
-        targetCount: 0.4,
-        delta: 0.6,
-        warShare: 10,
+        targetCount: 9,
+        delta: -8,
+        warShare: 38.6,
       },
       {
         position: 'TE',
         playerCount: 0,
-        targetCount: 0,
-        delta: 0,
-        warShare: 0,
+        targetCount: 2,
+        delta: -2,
+        warShare: 8.9,
       },
     ]);
   });

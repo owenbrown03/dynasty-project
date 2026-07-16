@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 FETCH_CHUNK_SIZE = 250
 DB_BATCH_SIZE = 100
 FULL_REFRESH_INTERVAL_DAYS = 7
+RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES = 15
 
 
 # --------------------------------------------------
@@ -146,6 +147,37 @@ def was_synced_today(
         sync_state.last_synced_at.date()
         == datetime.now(UTC).date()
     )
+
+
+def needs_recent_activity_sync(
+    sync_state: model.LeagueSyncState | None,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    if sync_state is None:
+        return True
+
+    if sync_state.last_synced_at is None:
+        return True
+
+    last_synced_at = sync_state.last_synced_at
+    current = now or datetime.now(UTC)
+
+    if last_synced_at.tzinfo is None:
+        last_synced_at = last_synced_at.replace(
+            tzinfo=UTC,
+        )
+
+    if current.tzinfo is None:
+        current = current.replace(
+            tzinfo=UTC,
+        )
+
+    freshness_cutoff = current - timedelta(
+        minutes=RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES,
+    )
+
+    return last_synced_at < freshness_cutoff
 
 
 def needs_full_refresh(
@@ -439,7 +471,7 @@ async def fetch_league_bundle(
             == "transactions_only"
             and not full_refresh_due
         ):
-            tx_lists, winners_bracket, losers_bracket = await asyncio.gather(
+            tx_lists, winners_bracket, losers_bracket, traded_picks = await asyncio.gather(
                 asyncio.gather(
                     *[
                         sleeper.read.get_transactions(
@@ -466,6 +498,9 @@ async def fetch_league_bundle(
                     0,
                     result=[],
                 ),
+                sleeper.read.get_traded_picks(
+                    league_id,
+                ),
             )
 
             transactions = [
@@ -478,6 +513,7 @@ async def fetch_league_bundle(
             bundle = {
                 "league_id": league_id,
                 "transactions": transactions,
+                "traded_picks": traded_picks if isinstance(traded_picks, list) else [],
                 "transactions_only": True,
                 "synced_week": max(
                     last_synced_week,
@@ -499,6 +535,7 @@ async def fetch_league_bundle(
             tx_lists,
             winners_bracket,
             losers_bracket,
+            traded_picks,
         ) = await asyncio.gather(
             sleeper.read.get_league(
                 league_id,
@@ -538,6 +575,23 @@ async def fetch_league_bundle(
                 0,
                 result=[],
             ),
+            sleeper.read.get_traded_picks(
+                league_id,
+            ),
+        )
+
+        draft_pick_lists = (
+            await asyncio.gather(
+                *[
+                    sleeper.read.get_draft_picks(
+                        draft.draft_id,
+                    )
+                    for draft in drafts
+                ],
+                return_exceptions=True,
+            )
+            if drafts
+            else []
         )
 
         transactions = [
@@ -547,6 +601,19 @@ async def fetch_league_bundle(
             for transaction in batch
         ]
 
+        draft_picks_by_draft_id = {
+            draft.draft_id: (
+                draft_pick_list
+                if isinstance(draft_pick_list, list)
+                else []
+            )
+            for draft, draft_pick_list in zip(
+                drafts,
+                draft_pick_lists,
+                strict=False,
+            )
+        }
+
         return {
             "league_id": league_id,
 
@@ -555,8 +622,10 @@ async def fetch_league_bundle(
             "users": users,
             "rosters": rosters,
             "drafts": drafts,
+            "draft_picks_by_draft_id": draft_picks_by_draft_id,
 
             "transactions": transactions,
+            "traded_picks": traded_picks if isinstance(traded_picks, list) else [],
             "winners_bracket": winners_bracket,
             "losers_bracket": losers_bracket,
 
@@ -670,6 +739,11 @@ async def save_league_bundle_to_db(
         if bundle.get("transactions_only"):
             # Known league — only save new transactions
             await _save_transactions(db, bundle.get("transactions", []), league_id)
+            await _backfill_traded_picks(
+                db,
+                league_id,
+                bundle.get("traded_picks", []),
+            )
             await _save_playoff_matchups(
                 db,
                 bundle.get("winners_bracket", []),
@@ -753,7 +827,21 @@ async def save_league_bundle_to_db(
                 "draft_id",
             )
 
+        await _save_draft_selections(
+            db,
+            drafts=bundle.get("drafts", []),
+            draft_picks_by_draft_id=(
+                bundle.get("draft_picks_by_draft_id", {})
+            ),
+            league_dict=league_dict,
+        )
+
         await _save_transactions(db, bundle.get("transactions", []), league_id)
+        await _backfill_traded_picks(
+            db,
+            league_id,
+            bundle.get("traded_picks", []),
+        )
         await _save_playoff_matchups(
             db,
             bundle.get("winners_bracket", []),
@@ -773,6 +861,97 @@ async def save_league_bundle_to_db(
         return False
 
 
+async def sync_transactions_for_known_leagues(
+    *,
+    db: AsyncSession,
+    leagues: list[model.League],
+    curr_week: int,
+    sleeper,
+) -> dict[str, int]:
+    league_ids = [
+        league.league_id
+        for league in leagues
+        if getattr(league, "league_id", None)
+    ]
+
+    if not league_ids:
+        return {}
+
+    sync_states = await get_sync_states(
+        db,
+        league_ids,
+    )
+    synced_weeks_by_league_id: dict[str, int] = {}
+
+    for league in leagues:
+        league_id = getattr(
+            league,
+            "league_id",
+            None,
+        )
+        if not league_id:
+            continue
+
+        sync_state = sync_states.get(
+            league_id,
+        )
+        last_synced_week = (
+            sync_state.last_synced_week
+            if sync_state is not None
+            else 0
+        )
+        transaction_weeks = get_transaction_weeks_to_fetch(
+            last_synced_week=last_synced_week,
+            curr_week=curr_week,
+        )
+
+        tx_lists = await asyncio.gather(
+            *[
+                sleeper.read.get_transactions(
+                    league_id,
+                    week,
+                )
+                for week in transaction_weeks
+            ],
+            return_exceptions=True,
+        )
+
+        transactions = [
+            transaction
+            for batch in tx_lists
+            if isinstance(batch, list)
+            for transaction in batch
+        ]
+
+        await _save_transactions(
+            db,
+            transactions,
+            league_id,
+        )
+        synced_weeks_by_league_id[league_id] = max(
+            last_synced_week,
+            curr_week,
+        )
+
+    if synced_weeks_by_league_id:
+        await _update_sync_states(
+            db=db,
+            bundles=[
+                {
+                    "league_id": league_id,
+                    "synced_week": synced_week,
+                    "transactions_only": True,
+                }
+                for league_id, synced_week in (
+                    synced_weeks_by_league_id.items()
+                )
+            ],
+        )
+        await db.commit()
+
+    return synced_weeks_by_league_id
+
+
 # --------------------------------------------------
 # Transaction saving (shared between both paths)
 # --------------------------------------------------
@@ -783,22 +962,27 @@ async def _save_transactions(
     league_id: str,
 ) -> None:
     """
-    Upserts transaction metadata for every trade so fields such as status
-    remain current, while only inserting movement/pick/waiver children once.
+    Upserts transaction metadata for every transaction so fields such as
+    status remain current, while only inserting movement/pick/waiver
+    children once.
     """
 
-    trades = [
+    persisted_transactions = [
         transaction
         for transaction in transactions
-        if transaction.type == "trade"
+        if getattr(
+            transaction,
+            "transaction_id",
+            None,
+        )
     ]
 
-    if not trades:
+    if not persisted_transactions:
         return
 
     incoming_ids = [
         transaction.transaction_id
-        for transaction in trades
+        for transaction in persisted_transactions
     ]
 
     result = await db.execute(
@@ -820,7 +1004,7 @@ async def _save_transactions(
     waiver_dicts = []
     pick_dicts = []
 
-    for transaction in trades:
+    for transaction in persisted_transactions:
         transaction_dict, movements, waivers, picks = (
             transformers.tx_to_db(
                 transaction,
@@ -886,6 +1070,114 @@ async def _save_transactions(
             ).values(
                 pick_dicts,
             )
+        )
+
+
+async def _save_draft_selections(
+    db: AsyncSession,
+    *,
+    drafts: list,
+    draft_picks_by_draft_id: dict[str, list],
+    league_dict: dict,
+) -> None:
+    if not drafts:
+        return
+
+    selection_dicts: list[dict] = []
+    draft_ids: list[str] = []
+
+    for draft in drafts:
+        raw_picks = draft_picks_by_draft_id.get(
+            draft.draft_id,
+            [],
+        )
+
+        if not raw_picks:
+            continue
+
+        draft_ids.append(
+            draft.draft_id,
+        )
+
+        for fallback_pick_no, raw_pick in enumerate(
+            raw_picks,
+            start=1,
+        ):
+            if not isinstance(raw_pick, dict):
+                continue
+
+            selection_dicts.append(
+                transformers.draft_selection_to_db(
+                    raw_pick=raw_pick,
+                    draft_id=draft.draft_id,
+                    league_id=league_dict["league_id"],
+                    season=str(draft.season),
+                    total_rosters=int(
+                        league_dict["total_rosters"],
+                    ),
+                    fallback_pick_no=fallback_pick_no,
+                    return_dict=True,
+                )
+            )
+
+    if draft_ids:
+        await db.execute(
+            model.DraftSelection.__table__.delete().where(
+                model.DraftSelection.draft_id.in_(
+                    draft_ids,
+                )
+            )
+        )
+
+    if selection_dicts:
+        await db.execute(
+            insert(
+                model.DraftSelection,
+            ).values(
+                selection_dicts,
+            )
+        )
+
+
+async def _backfill_traded_picks(
+    db: AsyncSession,
+    league_id: str,
+    traded_picks: list,
+) -> None:
+    if not traded_picks:
+        return
+
+    existing = await db.execute(
+        select(
+            model.TradedPick.season,
+            model.TradedPick.round,
+            model.TradedPick.og_roster_id,
+            model.TradedPick.new_roster_id,
+        ).where(
+            model.TradedPick.league_id == league_id,
+        )
+    )
+    existing_keys = {
+        (season, round_num, og_id, new_id)
+        for season, round_num, og_id, new_id in existing.all()
+    }
+
+    new_dicts = []
+    for p in traded_picks:
+        key = (p.season, p.round, p.roster_id, p.owner_id)
+        if key not in existing_keys:
+            new_dicts.append({
+                "league_id": league_id,
+                "season": p.season,
+                "round": p.round,
+                "new_roster_id": p.owner_id,
+                "old_roster_id": p.previous_owner_id,
+                "og_roster_id": p.roster_id,
+            })
+
+    if new_dicts:
+        await db.execute(
+            insert(model.TradedPick).values(new_dicts)
         )
 
 

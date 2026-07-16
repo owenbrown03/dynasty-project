@@ -14,11 +14,15 @@ import { WaiverClaimAction } from './WaiverClaimAction';
 
 interface WaiverLeagueCardProps {
   league: WaiverLeagueOverview;
+  onOpenAvailableLeague: (
+    leagueId: string,
+  ) => void;
 }
 
 
 export const WaiverLeagueCard = ({
   league,
+  onOpenAvailableLeague,
 }: WaiverLeagueCardProps) => {
   const rosterStatusClass = (
     league.roster_spots_available < 0
@@ -50,10 +54,20 @@ export const WaiverLeagueCard = ({
             size="md"
           />
 
-          <div>
-            <h2>
-              {league.league_name}
-            </h2>
+            <div>
+            <button
+              type="button"
+              className="waiver-league-link-button"
+              onClick={() => {
+                onOpenAvailableLeague(
+                  league.league_id,
+                );
+              }}
+            >
+              <h2>
+                {league.league_name}
+              </h2>
+            </button>
 
             <p>
               {league.value_label}

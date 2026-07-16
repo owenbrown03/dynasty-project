@@ -73,20 +73,63 @@ class WaiverLeagueOption(Base):
     faab_percent_remaining: float
 
 
-class WaiverAvailablePlayer(PlayerValue):
-    selected_value: float | None = None
-
-
-class WaiverAvailablePlayersResponse(Base):
+class WaiverAvailableLeagueAvailability(Base):
     league_id: str
     league_name: str
     league_avatar: str | None = None
 
     roster_id: int
+    roster_size: int
+    roster_capacity: int
+    roster_spots_available: int
+
+    faab_remaining: int
+    faab_percent_remaining: float
+
+    can_submit_claim: bool = True
+    claim_blocked_reason: str | None = None
+
+    selected_value: float | None = None
+
+
+class WaiverAvailablePlayer(PlayerValue):
+    league_id: str | None = None
+    league_name: str | None = None
+    league_avatar: str | None = None
+
+    roster_id: int | None = None
+    roster_size: int | None = None
+    roster_capacity: int | None = None
+    roster_spots_available: int | None = None
+
+    faab_remaining: int | None = None
+    faab_percent_remaining: float | None = None
+
+    can_submit_claim: bool = True
+    claim_blocked_reason: str | None = None
+
+    league_count: int = 1
+    league_availability: list[
+        WaiverAvailableLeagueAvailability
+    ] = Field(default_factory=list)
+
+    selected_value: float | None = None
+
+
+class WaiverAvailablePlayersResponse(Base):
+    league_id: str | None = None
+    league_name: str
+    league_avatar: str | None = None
+
+    roster_id: int | None = None
+    is_all_leagues: bool = False
 
     value_basis: ValueBasis
     value_label: str
 
+    page: int = 1
+    page_size: int = 50
+    total_pages: int = 0
     total_players: int
 
     players: list[WaiverAvailablePlayer] = Field(
@@ -110,6 +153,44 @@ class WaiverRosterPlayersResponse(Base):
     total_players: int
 
     players: list[WaiverRosterPlayer] = Field(
+        default_factory=list,
+    )
+
+
+class WaiverRecentlyDroppedPlayer(PlayerValue):
+    transaction_id: str
+    dropped_at_ms: int
+
+    league_id: str
+    league_name: str
+    league_avatar: str | None = None
+
+    roster_id: int
+
+    roster_spots_available: int
+    faab_remaining: int
+    faab_percent_remaining: float
+
+    can_submit_claim: bool
+    claim_blocked_reason: str | None = None
+
+    selected_value: float | None = None
+
+
+class WaiverRecentlyDroppedResponse(Base):
+    sleeper_username: str | None = None
+
+    value_basis: ValueBasis
+    value_label: str
+
+    sync_requested: bool = False
+
+    page: int = 1
+    page_size: int = 50
+    total_pages: int = 0
+    total_players: int
+
+    players: list[WaiverRecentlyDroppedPlayer] = Field(
         default_factory=list,
     )
 

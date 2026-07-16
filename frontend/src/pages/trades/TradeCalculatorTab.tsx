@@ -7,6 +7,7 @@ import {
 } from '@/hooks/sleeper/useBulkTrades';
 import type {
   BulkTradePlayerSearchResult,
+  BulkTradePickRequest,
 } from '@/types';
 import { notify } from '@/utils/notify';
 
@@ -26,7 +27,17 @@ type CalculatorAsset = {
   meta: string;
   ktcValue: number | null;
   fcValue: number | null;
+  player?: BulkTradePlayerSearchResult;
+  pickSeason?: string;
+  pickRound?: number;
 };
+
+export interface TradeCalculatorBulkOfferSeed {
+  sendPlayers: BulkTradePlayerSearchResult[];
+  sendPicks: BulkTradePickRequest[];
+  receivePlayers: BulkTradePlayerSearchResult[];
+  receivePicks: BulkTradePickRequest[];
+}
 
 
 function getAssetValue(
@@ -64,15 +75,90 @@ function buildPlayerAsset(
       .join(' · '),
     ktcValue: player.ktc_value,
     fcValue: player.fc_value,
+    player,
   };
 }
 
+function buildBulkOfferSeed({
+  mySide,
+  teamAReceives,
+  teamBReceives,
+}: {
+  mySide: CalculatorSide;
+  teamAReceives: CalculatorAsset[];
+  teamBReceives: CalculatorAsset[];
+}): TradeCalculatorBulkOfferSeed | null {
+  if (
+    teamAReceives.length === 0
+    || teamBReceives.length === 0
+  ) {
+    return null;
+  }
 
-export function TradeCalculatorTab() {
+  const myAssets = mySide === 'team-a'
+    ? teamAReceives
+    : teamBReceives;
+  const counterpartyAssets = mySide === 'team-a'
+    ? teamBReceives
+    : teamAReceives;
+  const myPlayers = myAssets.filter(
+    asset => asset.type === 'player' && asset.player,
+  );
+  const myPicks = myAssets.filter(
+    asset => asset.type === 'pick'
+      && asset.pickSeason
+      && asset.pickRound,
+  );
+  const counterpartyPlayers = counterpartyAssets.filter(
+    asset => asset.type === 'player' && asset.player,
+  );
+  const counterpartyPicks = counterpartyAssets.filter(
+    asset => asset.type === 'pick'
+      && asset.pickSeason
+      && asset.pickRound,
+  );
+
+  if (
+    myAssets.length === 0
+    || counterpartyAssets.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    sendPlayers: myPlayers.map(
+      asset => asset.player!,
+    ),
+    sendPicks: myPicks.map(
+      asset => ({
+        season: asset.pickSeason!,
+        round: asset.pickRound!,
+      }),
+    ),
+    receivePlayers: counterpartyPlayers.map(
+      asset => asset.player!,
+    ),
+    receivePicks: counterpartyPicks.map(
+      asset => ({
+        season: asset.pickSeason!,
+        round: asset.pickRound!,
+      }),
+    ),
+  };
+}
+
+export function TradeCalculatorTab({
+  onSendToBulkOffers,
+}: {
+  onSendToBulkOffers?: (
+    seed: TradeCalculatorBulkOfferSeed,
+  ) => void;
+}) {
   const [valueBasis, setValueBasis] = useState<CalculatorBasis>('ktc');
   const [searchQuery, setSearchQuery] = useState('');
   const [teamAReceives, setTeamAReceives] = useState<CalculatorAsset[]>([]);
   const [teamBReceives, setTeamBReceives] = useState<CalculatorAsset[]>([]);
+  const [mySide, setMySide] = useState<CalculatorSide>('team-a');
   const [pickSide, setPickSide] = useState<CalculatorSide>('team-a');
   const [pickSeason, setPickSeason] = useState('2027');
   const [pickRound, setPickRound] = useState(1);
@@ -140,6 +226,18 @@ export function TradeCalculatorTab() {
   ) * waiverValue;
   const teamANet = teamATotal + rosterSpotAdjustmentA;
   const teamBNet = teamBTotal + rosterSpotAdjustmentB;
+  const bulkOfferSeed = useMemo(
+    () => buildBulkOfferSeed({
+      mySide,
+      teamAReceives,
+      teamBReceives,
+    }),
+    [
+      mySide,
+      teamAReceives,
+      teamBReceives,
+    ],
+  );
 
   const addPick = async () => {
     setAddingPick(true);
@@ -170,6 +268,8 @@ export function TradeCalculatorTab() {
           meta: `${totalRosters} team · ${numQbs === 2 ? 'SF' : '1QB'} · ${ppr} PPR`,
           ktcValue: pickValue.ktc_value,
           fcValue: pickValue.fc_value,
+          pickSeason,
+          pickRound,
         },
       );
     } catch {
@@ -258,6 +358,21 @@ export function TradeCalculatorTab() {
               <option value={0}>0</option>
               <option value={1}>1</option>
               <option value={2}>2</option>
+            </select>
+          </label>
+
+          <label>
+            <span>My side</span>
+            <select
+              value={mySide}
+              onChange={(event) => {
+                setMySide(
+                  event.target.value as CalculatorSide,
+                );
+              }}
+            >
+              <option value="team-a">Team A</option>
+              <option value="team-b">Team B</option>
             </select>
           </label>
         </div>
@@ -505,6 +620,32 @@ export function TradeCalculatorTab() {
               </section>
             ))
           }
+        </div>
+
+        <div className="trade-calculator-bulk-send">
+          <div>
+            <span className="page-eyebrow">Bulk send</span>
+            <p>
+              Seed the Bulk Offers tab with any mix of players and picks on either side.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="button-primary"
+            disabled={!bulkOfferSeed}
+            onClick={() => {
+              if (!bulkOfferSeed || !onSendToBulkOffers) {
+                return;
+              }
+
+              onSendToBulkOffers(
+                bulkOfferSeed,
+              );
+            }}
+          >
+            Send to bulk offers
+          </button>
         </div>
       </section>
     </div>

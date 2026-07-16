@@ -5,9 +5,6 @@ from math import floor
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.analytics.war.dynasty.factory import (
-    build_dynasty_war_service,
-)
 from app.analytics.war.redraft.singleton import war_service
 from app.core.context import Context
 from app.crud.sleeper.player import (
@@ -32,7 +29,9 @@ from app.services.values.canonical import (
     build_canonical_war_league,
 )
 from app.services.personal_values import hydrate_personal_player_values
-from app.services.waivers.dynasty import build_dynasty_projection
+from app.services.war.shared import (
+    build_cached_dynasty_projections_by_player_id,
+)
 
 
 TIER_LABELS = [
@@ -93,29 +92,19 @@ def assign_tier_label(
 
 async def build_dynasty_values_by_player_id(
     *,
+    redis,
     players: list,
 ) -> dict[str, object]:
-    dynasty_service = build_dynasty_war_service()
-    dynasty_by_player_id: dict[str, object] = {}
-
-    for player in players:
-        if player.player_id in dynasty_by_player_id:
-            continue
-
-        projection = build_dynasty_projection(
-            dynasty_service=dynasty_service,
-            player_war=player,
-        )
-
-        if projection is not None:
-            dynasty_by_player_id[player.player_id] = projection
-
-    return dynasty_by_player_id
+    return await build_cached_dynasty_projections_by_player_id(
+        redis=redis,
+        player_wars=list(players),
+    )
 
 
 async def load_player_values_for_basis(
     *,
     db: AsyncSession,
+    redis,
     value_basis: ValueBasis,
     site_user_id=None,
     war_value_settings: WarValueSettings | None = None,
@@ -160,6 +149,7 @@ async def load_player_values_for_basis(
     }:
         dynasty_war_by_player_id = (
             await build_dynasty_values_by_player_id(
+                redis=redis,
                 players=war_players,
             )
         )
@@ -177,6 +167,7 @@ async def load_player_values_for_basis(
             site_user_id=site_user_id,
             league=league,
             player_values=player_values,
+            redis=redis,
         )
 
     return player_values
@@ -256,6 +247,7 @@ async def get_player_tier_board(
 
     player_values = await load_player_values_for_basis(
         db=ctx.db,
+        redis=ctx.redis,
         value_basis=value_basis,
         site_user_id=ctx.site_user.id if ctx.site_user else None,
         war_value_settings=ctx.site_user.settings.get("war_value_settings")

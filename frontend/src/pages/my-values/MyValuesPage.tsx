@@ -34,6 +34,7 @@ type SortColumn =
   | 'underdog_rank'
   | 'ktc'
   | 'fantasycalc'
+  | 'adp'
   | 'market_war'
   | 'my_war'
   | 'delta';
@@ -75,6 +76,7 @@ const SORT_LABELS: Record<SortColumn, string> = {
   underdog_rank: 'Underdog rank',
   ktc: 'KTC',
   fantasycalc: 'FantasyCalc',
+  adp: 'ADP',
   market_war: 'Market dynasty roster WAR',
   my_war: 'My dynasty roster WAR',
   delta: 'Delta',
@@ -86,6 +88,10 @@ function getDefaultSortColumn(
 ): SortColumn {
   if (preference === 'fantasycalc') {
     return 'fantasycalc';
+  }
+
+  if (preference === 'adp') {
+    return 'adp';
   }
 
   if (preference === 'ktc') {
@@ -151,6 +157,8 @@ function getItemValueByColumn(
       return item.player.ktc_value ?? Number.NEGATIVE_INFINITY;
     case 'fantasycalc':
       return item.player.fc_value ?? Number.NEGATIVE_INFINITY;
+    case 'adp':
+      return item.player.adp_value ?? Number.NEGATIVE_INFINITY;
     case 'market_war':
       return item.market_values.dynasty_roster_war ?? Number.NEGATIVE_INFINITY;
     case 'my_war':
@@ -521,6 +529,8 @@ export const MyValuesPage = () => {
       const leftMetric = (
         searchSort === 'fantasycalc'
           ? left.fc_value
+          : searchSort === 'adp'
+            ? left.adp_value
           : searchSort === 'my_war'
             || searchSort === 'market_war'
             ? left.dynasty_roster_war
@@ -529,6 +539,8 @@ export const MyValuesPage = () => {
       const rightMetric = (
         searchSort === 'fantasycalc'
           ? right.fc_value
+          : searchSort === 'adp'
+            ? right.adp_value
           : searchSort === 'my_war'
             || searchSort === 'market_war'
             ? right.dynasty_roster_war
@@ -1148,6 +1160,7 @@ export const MyValuesPage = () => {
                         <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('underdog_rank'); }}>UD Rank</button></th>
                         <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('ktc'); }}>KTC</button></th>
                         <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('fantasycalc'); }}>FC</button></th>
+                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('adp'); }}>ADP</button></th>
                         <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('market_war'); }}>Market D Ro</button></th>
                         <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('my_war'); }}>My D Ro</button></th>
                         <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('delta'); }}>Delta</button></th>
@@ -1202,6 +1215,7 @@ export const MyValuesPage = () => {
                             <td>{item.player.underdog_position_rank ?? '--'}</td>
                             <td>{formatMarketNumber(item.player.ktc_value)}</td>
                             <td>{formatMarketNumber(item.player.fc_value)}</td>
+                            <td>{formatMarketNumber(item.player.adp_value)}</td>
                             <td>{formatMetric(item.market_values.dynasty_roster_war)}</td>
                             <td>{formatMetric(item.custom_values.dynasty_roster_war)}</td>
                             <td>
@@ -1286,6 +1300,7 @@ export const MyValuesPage = () => {
                             <div className="my-values-search-metrics">
                               <span>KTC {result.ktc_value?.toLocaleString() ?? '--'}</span>
                               <span>FC {result.fc_value?.toLocaleString() ?? '--'}</span>
+                              <span>ADP {formatMarketNumber(result.adp_value)}</span>
                               <span>WAR {formatMetric(result.dynasty_roster_war)}</span>
                             </div>
                           </button>
@@ -1338,6 +1353,7 @@ export const MyValuesPage = () => {
                             <span>{selectedPlayer.underdog_position_rank ?? 'No UD rank'}</span>
                             <span>KTC {formatMarketNumber(selectedPlayer.ktc_value)}</span>
                             <span>FC {formatMarketNumber(selectedPlayer.fc_value)}</span>
+                            <span>ADP {formatMarketNumber(selectedPlayer.adp_value)}</span>
                           </div>
                           <h2>{selectedPlayer.name}</h2>
                           <p>

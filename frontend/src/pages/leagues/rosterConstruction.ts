@@ -1,4 +1,7 @@
-import type { LeagueRoster } from '@/types';
+import type {
+  LeagueRoster,
+  LeagueRosterConstructionTarget,
+} from '@/types';
 
 const CORE_POSITIONS = [
   'QB',
@@ -20,70 +23,33 @@ export interface RosterConstructionRow {
 
 export function buildRosterConstructionRows(
   roster: LeagueRoster,
+  targets: LeagueRosterConstructionTarget[],
 ): RosterConstructionRow[] {
-  const totalPlayers = Math.max(
-    roster.players.length,
-    1,
-  );
-  const totalDynastyWar = CORE_POSITIONS.reduce(
-    (total, position) => (
-      total + getPositionWar(
-        roster,
-        position,
-      )
+  const targetsByPosition = new Map(
+    targets.map(
+      target => [
+        target.position,
+        target,
+      ],
     ),
-    0,
   );
 
   return CORE_POSITIONS.map((position) => {
     const playerCount = roster.players.filter(
-      (player) => player.position === position,
+      player => player.position === position,
     ).length;
-    const positionWar = getPositionWar(
-      roster,
-      position,
-    );
-    const warShare = totalDynastyWar > 0
-      ? positionWar / totalDynastyWar
-      : playerCount / totalPlayers;
-    const targetCount = roundCount(
-      warShare * totalPlayers,
-    );
+    const target = targetsByPosition.get(position);
 
     return {
       position,
       playerCount,
-      targetCount,
-      delta: roundCount(
-        playerCount - targetCount,
-      ),
+      targetCount: target?.target_count ?? 0,
+      delta: playerCount - (target?.target_count ?? 0),
       warShare: roundPercent(
-        warShare * 100,
+        target?.war_share ?? 0,
       ),
     };
   });
-}
-
-function getPositionWar(
-  roster: LeagueRoster,
-  position: CorePosition,
-) {
-  return roster.players.reduce(
-    (total, player) => (
-      total + (
-        player.position === position
-          ? (player.dynasty_roster_war ?? 0)
-          : 0
-      )
-    ),
-    0,
-  );
-}
-
-function roundCount(
-  value: number,
-) {
-  return Math.round(value * 10) / 10;
 }
 
 function roundPercent(

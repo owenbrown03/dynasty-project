@@ -12,6 +12,7 @@ import type {
   BulkWaiverClaimRequest,
   BulkWaiverClaimResponse,
   BulkWaiverPlayerSearchResult,
+  WaiverRecentlyDroppedResponse,
 } from '@/types';
 
 
@@ -32,6 +33,23 @@ export const waiversEndpoints = (
     );
   },
 
+  getRecentDrops: (
+    valueBasis: ValueBasis,
+    page: number,
+    pageSize: number,
+  ) => {
+    return client.get<WaiverRecentlyDroppedResponse>(
+      `${basePath}/recent-drops`,
+      {
+        params: {
+          value_basis: valueBasis,
+          page,
+          page_size: pageSize,
+        },
+      },
+    );
+  },
+
   getLeagues: () => {
     return client.get<WaiverLeagueOption[]>(
       `${basePath}/leagues`,
@@ -39,8 +57,10 @@ export const waiversEndpoints = (
   },
 
   getAvailablePlayers: (
-    leagueId: string,
+    leagueId: string | undefined,
     valueBasis: ValueBasis,
+    page: number,
+    pageSize: number,
   ) => {
     return client.get<WaiverAvailablePlayersResponse>(
       `${basePath}/available`,
@@ -48,6 +68,8 @@ export const waiversEndpoints = (
         params: {
           league_id: leagueId,
           value_basis: valueBasis,
+          page,
+          page_size: pageSize,
         },
       },
     );

@@ -11,7 +11,6 @@ import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import type {
   BulkTradeCounterparty,
   BulkTradeLeagueAvailability,
-  TradeDirection,
   TradeDraftPickAsset,
 } from '@/types';
 
@@ -19,31 +18,17 @@ import type {
 export interface BulkTradeLeagueSelection {
   selected: boolean;
   counterpartyRosterId: number | null;
-  pickOgRosterId: number | null;
+  sendPickOgRosterIdsByRequestIndex: Record<number, number | null>;
+  receivePickOgRosterIdsByRequestIndex: Record<number, number | null>;
 }
 
 
 interface BulkTradeLeagueRowProps {
   league: BulkTradeLeagueAvailability;
-  direction: TradeDirection;
   selection: BulkTradeLeagueSelection;
   onChange: (
     nextSelection: BulkTradeLeagueSelection,
   ) => void;
-}
-
-
-function getPickByOriginalRosterId(
-  picks: TradeDraftPickAsset[],
-  ogRosterId: number | null,
-): TradeDraftPickAsset | null {
-  if (ogRosterId === null) {
-    return null;
-  }
-
-  return picks.find(
-    pick => pick.og_roster_id === ogRosterId,
-  ) ?? null;
 }
 
 
@@ -56,16 +41,25 @@ function getCounterpartyByRosterId(
   }
 
   return counterparties.find(
-    counterparty => (
-      counterparty.roster_id === rosterId
-    ),
+    counterparty => counterparty.roster_id === rosterId,
   ) ?? null;
+}
+
+
+function renderPickSelectionLabel(
+  picks: TradeDraftPickAsset[],
+  selectedOgRosterId: number | null,
+): string {
+  const selectedPick = picks.find(
+    pick => pick.og_roster_id === selectedOgRosterId,
+  );
+
+  return selectedPick?.label ?? 'Choose pick';
 }
 
 
 export const BulkTradeLeagueRow = ({
   league,
-  direction,
   selection,
   onChange,
 }: BulkTradeLeagueRowProps) => {
@@ -82,17 +76,6 @@ export const BulkTradeLeagueRow = ({
       league.counterparty_options,
       selection.counterpartyRosterId,
     ],
-  );
-
-  const availablePicks = (
-    direction === 'buy'
-      ? league.matching_picks
-      : selectedCounterparty?.matching_picks ?? []
-  );
-
-  const selectedPick = getPickByOriginalRosterId(
-    availablePicks,
-    selection.pickOgRosterId,
   );
 
   if (!league.is_eligible) {
@@ -124,12 +107,6 @@ export const BulkTradeLeagueRow = ({
       </article>
     );
   }
-
-  const targetManagerLabel = (
-    direction === 'buy'
-      ? league.target_owner_name ?? 'Unknown manager'
-      : selectedCounterparty?.name ?? 'Choose manager'
-  );
 
   return (
     <article
@@ -170,145 +147,203 @@ export const BulkTradeLeagueRow = ({
             </strong>
 
             <span>
-              {
-                direction === 'buy'
-                  ? `Buy from ${targetManagerLabel}`
-                  : `Sell to ${targetManagerLabel}`
-              }
+              Trade with{' '}
+              {selectedCounterparty?.name ?? 'Choose manager'}
             </span>
           </div>
         </div>
       </div>
 
-      {
-        direction === 'sell'
-          ? (
-            <label className="bulk-trade-row-select">
-              <span>
-                Manager
-              </span>
-
-              <select
-                value={
-                  selection.counterpartyRosterId
-                  ?? ''
-                }
-                disabled={!selection.selected}
-                onChange={event => {
-                  const rosterId = Number(
-                    event.target.value,
-                  );
-
-                  const nextCounterparty = (
-                    getCounterpartyByRosterId(
-                      league.counterparty_options,
-                      rosterId,
-                    )
-                  );
-
-                  onChange({
-                    ...selection,
-                    counterpartyRosterId: rosterId,
-                    pickOgRosterId: (
-                      nextCounterparty?.matching_picks[0]
-                        ?.og_roster_id
-                      ?? null
-                    ),
-                  });
-                }}
-              >
-                {
-                  league.counterparty_options.map(
-                    counterparty => (
-                      <option
-                        key={counterparty.roster_id}
-                        value={counterparty.roster_id}
-                      >
-                        {counterparty.name}
-                      </option>
-                    ),
-                  )
-                }
-              </select>
-            </label>
-          )
-          : null
-      }
-
       <label className="bulk-trade-row-select">
         <span>
-          {
-            direction === 'buy'
-              ? 'You send'
-              : 'You receive'
-          }
+          Manager
         </span>
 
         <select
-          value={selection.pickOgRosterId ?? ''}
-          disabled={
-            !selection.selected
-            || availablePicks.length === 0
-          }
+          value={selection.counterpartyRosterId ?? ''}
+          disabled={!selection.selected}
           onChange={event => {
+            const rosterId = event.target.value
+              ? Number(event.target.value)
+              : null;
+
+            const nextCounterparty = getCounterpartyByRosterId(
+              league.counterparty_options,
+              rosterId,
+            );
+
             onChange({
               ...selection,
-              pickOgRosterId: Number(
-                event.target.value,
+              counterpartyRosterId: rosterId,
+              sendPickOgRosterIdsByRequestIndex: Object.fromEntries(
+                (nextCounterparty?.send_pick_choices ?? []).map(
+                  pickChoice => [
+                    pickChoice.request_index,
+                    pickChoice.matching_picks[0]?.og_roster_id ?? null,
+                  ],
+                ),
+              ),
+              receivePickOgRosterIdsByRequestIndex: Object.fromEntries(
+                (nextCounterparty?.receive_pick_choices ?? []).map(
+                  pickChoice => [
+                    pickChoice.request_index,
+                    pickChoice.matching_picks[0]?.og_roster_id ?? null,
+                  ],
+                ),
               ),
             });
           }}
         >
           {
-            availablePicks.map(pick => (
-              <option
-                key={pick.og_roster_id}
-                value={pick.og_roster_id}
-              >
-                {pick.label}
-              </option>
-            ))
+            league.counterparty_options.map(
+              counterparty => (
+                <option
+                  key={counterparty.roster_id}
+                  value={counterparty.roster_id}
+                >
+                  {counterparty.name}
+                </option>
+              ),
+            )
           }
         </select>
       </label>
 
+      <div className="bulk-trade-row-select-group">
+        {
+          (selectedCounterparty?.send_pick_choices ?? []).map(
+            pickChoice => (
+              <label
+                key={`${league.league_id}-send-${pickChoice.request_index}`}
+                className="bulk-trade-row-select"
+              >
+                <span>
+                  You send {pickChoice.season} R{pickChoice.round}
+                </span>
+
+                <select
+                  value={
+                    selection.sendPickOgRosterIdsByRequestIndex[
+                      pickChoice.request_index
+                    ] ?? ''
+                  }
+                  disabled={
+                    !selection.selected
+                    || pickChoice.matching_picks.length === 0
+                  }
+                  onChange={event => {
+                    onChange({
+                      ...selection,
+                      sendPickOgRosterIdsByRequestIndex: {
+                        ...selection.sendPickOgRosterIdsByRequestIndex,
+                        [pickChoice.request_index]: (
+                          event.target.value
+                            ? Number(event.target.value)
+                            : null
+                        ),
+                      },
+                    });
+                  }}
+                >
+                  {
+                    pickChoice.matching_picks.map(
+                      pick => (
+                        <option
+                          key={`${pickChoice.request_index}-${pick.og_roster_id}`}
+                          value={pick.og_roster_id}
+                        >
+                          {renderPickSelectionLabel(
+                            pickChoice.matching_picks,
+                            pick.og_roster_id,
+                          )}
+                        </option>
+                      ),
+                    )
+                  }
+                </select>
+              </label>
+            ),
+          )
+        }
+
+        {
+          (selectedCounterparty?.receive_pick_choices ?? []).map(
+            pickChoice => (
+              <label
+                key={`${league.league_id}-receive-${pickChoice.request_index}`}
+                className="bulk-trade-row-select"
+              >
+                <span>
+                  You receive {pickChoice.season} R{pickChoice.round}
+                </span>
+
+                <select
+                  value={
+                    selection.receivePickOgRosterIdsByRequestIndex[
+                      pickChoice.request_index
+                    ] ?? ''
+                  }
+                  disabled={
+                    !selection.selected
+                    || pickChoice.matching_picks.length === 0
+                  }
+                  onChange={event => {
+                    onChange({
+                      ...selection,
+                      receivePickOgRosterIdsByRequestIndex: {
+                        ...selection.receivePickOgRosterIdsByRequestIndex,
+                        [pickChoice.request_index]: (
+                          event.target.value
+                            ? Number(event.target.value)
+                            : null
+                        ),
+                      },
+                    });
+                  }}
+                >
+                  {
+                    pickChoice.matching_picks.map(
+                      pick => (
+                        <option
+                          key={`${pickChoice.request_index}-${pick.og_roster_id}`}
+                          value={pick.og_roster_id}
+                        >
+                          {renderPickSelectionLabel(
+                            pickChoice.matching_picks,
+                            pick.og_roster_id,
+                          )}
+                        </option>
+                      ),
+                    )
+                  }
+                </select>
+              </label>
+            ),
+          )
+        }
+      </div>
+
       <button
-        className="bulk-trade-details-button"
+        className="bulk-trade-row-details"
+        type="button"
         onClick={() => {
-          setShowDetails(
-            current => !current,
-          );
+          setShowDetails(current => !current);
         }}
-        title="Show trade details"
       >
         {
           showDetails
             ? <ChevronUp size={16} />
             : <ChevronDown size={16} />
         }
+        Details
       </button>
 
       {
         showDetails
           ? (
-            <div className="bulk-trade-row-details">
+            <div className="bulk-trade-row-detail-copy">
               <span>
-                Your roster: #{league.your_roster_id}
-              </span>
-
-              <span>
-                Counterparty roster: {
-                  direction === 'buy'
-                    ? league.target_owner_roster_id
-                    : selection.counterpartyRosterId
-                }
-              </span>
-
-              <span>
-                Pick: {
-                  selectedPick?.label
-                  ?? 'No pick selected'
-                }
+                Counterparties who can satisfy the full mixed package in this league are listed above.
               </span>
             </div>
           )

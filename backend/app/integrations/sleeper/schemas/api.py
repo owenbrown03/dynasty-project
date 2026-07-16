@@ -154,6 +154,7 @@ class Transaction(Base):
     transaction_id: str
     status_updated: int
     type: str
+    status: Optional[str] = None
     roster_ids: List[int] = Field(default_factory=list)
     adds: Optional[Dict[str, int]] = None
     drops: Optional[Dict[str, int]] = None

@@ -109,22 +109,99 @@ class WARService:
         if cached is not None:
             return cached
 
+        fingerprint = self.build_cache_fingerprint(
+            league,
+        )
+        fingerprint_cached = await war_cache.get_fingerprint(
+            redis,
+            fingerprint,
+            projection_season,
+        )
+
+        if fingerprint_cached is not None:
+            await war_cache.set_league(
+                redis,
+                league_id,
+                projection_season,
+                fingerprint_cached,
+            )
+            return fingerprint_cached
+
         shared = await self.load_shared_data(
             db,
             projection_season,
         )
+
+        results = await self.calculate_with_shared_cache(
+            redis=redis,
+            league=league,
+            shared=shared,
+        )
+
+        return results
+
+    def build_cache_fingerprint(
+        self,
+        league,
+    ) -> str:
+        return json.dumps(
+            {
+                "season": league.season,
+                "total_rosters": league.total_rosters,
+                "scoring_settings": league.scoring_settings,
+                "roster_positions": league.roster_positions,
+            },
+            sort_keys=True,
+        )
+
+    async def calculate_with_shared_cache(
+        self,
+        *,
+        redis: RedisClient | None,
+        league,
+        shared: WARSharedData,
+    ):
+        projection_season = int(
+            league.season,
+        )
+        fingerprint = self.build_cache_fingerprint(
+            league,
+        )
+
+        if redis is not None:
+            fingerprint_cached = await war_cache.get_fingerprint(
+                redis,
+                fingerprint,
+                projection_season,
+            )
+
+            if fingerprint_cached is not None:
+                await war_cache.set_league(
+                    redis,
+                    league.league_id,
+                    projection_season,
+                    fingerprint_cached,
+                )
+                return fingerprint_cached
 
         results = await self.calculate_with_data(
             league,
             shared,
         )
 
-        await war_cache.set_league(
-            redis,
-            league_id,
-            projection_season,
-            results,
-        )
+        if redis is not None:
+            await war_cache.set_fingerprint(
+                redis,
+                fingerprint,
+                projection_season,
+                results,
+            )
+            await war_cache.set_league(
+                redis,
+                league.league_id,
+                projection_season,
+                results,
+            )
 
         return results
 

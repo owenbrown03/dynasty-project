@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from collections import defaultdict
+import hashlib
+import json
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.analytics.war.dynasty.factory import build_dynasty_war_service
 from app.analytics.war.redraft.singleton import war_service
 from app.analytics.war.redraft.service import WARSharedData
 from app.crud.sleeper.draft import (
+    get_completed_draft_seasons_by_league_ids,
     get_drafts_by_league_ids,
     get_traded_picks_by_league_ids,
 )
@@ -22,6 +26,7 @@ from app.crud.sleeper.personal import (
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
 from app.models.db.fc.models import FantasyCalcValue
+from app.models.db.sleeper import api as sleeper_model
 from app.services.draft.picks import (
     build_owned_pick_assets_by_roster_id,
     build_roster_name_by_id,
@@ -29,7 +34,7 @@ from app.services.draft.picks import (
 )
 from app.services.draft.projection import (
     build_draft_pick_projection_summary,
-    build_projected_pick_slots_by_roster_id,
+    build_cached_projected_pick_slots_by_roster_id,
     build_projected_slot_source_label,
 )
 from app.services.draft.values import get_resolved_pick_values_by_key
@@ -38,6 +43,7 @@ from app.services.leagues.models import (
     LeagueOwner,
     LeaguePick,
     LeaguePlayer,
+    LeagueRosterConstructionTarget,
     LeagueWarPlayerPoint,
     LeagueWarPlayerSeason,
     LeagueRoster,
@@ -50,12 +56,26 @@ from app.services.leagues.settings import (
 )
 from app.services.values.basis import ValueBasis
 from app.services.personal_values import hydrate_personal_player_values
-from app.services.waivers.dynasty import build_dynasty_projection
+from app.services.war.shared import (
+    build_cached_dynasty_projections_by_player_id,
+    build_player_war_signature,
+)
 
 WAR_PLAYER_DISPLAY_LIMIT = 500
 WAR_POSITION_RANK_DISPLAY_LIMIT = (
     WAR_PLAYER_DISPLAY_LIMIT // 4
 )
+ROSTER_CONSTRUCTION_HISTORY_YEARS = 5
+ROSTER_CONSTRUCTION_POSITIONS = (
+    "QB",
+    "RB",
+    "WR",
+    "TE",
+)
+ROSTER_CONSTRUCTION_CACHE_TTL_SECONDS = (
+    6 * 60 * 60
+)
+ROSTER_CONSTRUCTION_CACHE_VERSION = "v2"
 
 
 def is_slot_eligible(slot: str, position: str | None) -> bool:
@@ -130,6 +150,441 @@ def calculate_average_age(
     return round(sum(ages) / len(ages), 1)
 
 
+ROSTER_STAT_RANK_CONFIG = (
+    ("projected_points", True),
+    ("total_asset_ktc_value", True),
+    ("total_asset_fc_value", True),
+    ("total_ktc_value", True),
+    ("total_pick_ktc_value", True),
+    ("total_fc_value", True),
+    ("total_pick_fc_value", True),
+    ("total_pick_rookie_war_value", True),
+    ("total_redraft_starter_war", True),
+    ("total_redraft_roster_war", True),
+    ("total_dynasty_starter_war", True),
+    ("total_dynasty_roster_war", True),
+    ("average_age", False),
+    ("open_roster_spots", True),
+    ("faab_remaining", True),
+    ("waiver_position", False),
+    ("total_trades", True),
+)
+
+
+def assign_roster_stat_ranks(
+    rosters: list[LeagueRoster],
+) -> None:
+    for metric_name, descending in ROSTER_STAT_RANK_CONFIG:
+        sorted_rosters = sorted(
+            rosters,
+            key=lambda roster: (
+                (
+                    getattr(
+                        roster,
+                        metric_name,
+                        None,
+                    )
+                    is None
+                ),
+                (
+                    -getattr(
+                        roster,
+                        metric_name,
+                        0,
+                    )
+                    if descending
+                    else getattr(
+                        roster,
+                        metric_name,
+                        0,
+                    )
+                ),
+                roster.roster_id,
+            ),
+        )
+
+        previous_value = object()
+        current_rank = 0
+
+        for index, roster in enumerate(
+            sorted_rosters,
+            start=1,
+        ):
+            value = getattr(
+                roster,
+                metric_name,
+                None,
+            )
+
+            if value != previous_value:
+                current_rank = index
+                previous_value = value
+
+            roster.stat_ranks[metric_name] = current_rank
+
+
+def build_direct_starter_minimums(
+    roster_positions: list[str],
+) -> dict[str, int]:
+    return {
+        position: sum(
+            1
+            for slot in roster_positions
+            if slot == position
+        )
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    }
+
+
+def build_position_rank_war_history(
+    seasonal_results: list[list],
+) -> dict[str, dict[int, list[float]]]:
+    history = {
+        position: defaultdict(list)
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    }
+
+    for results in seasonal_results:
+        for position in ROSTER_CONSTRUCTION_POSITIONS:
+            position_wars = sorted(
+                (
+                    getattr(
+                        player,
+                        "roster_war",
+                        0.0,
+                    ) or 0.0
+                    for player in results
+                    if player.position == position
+                ),
+                reverse=True,
+            )
+
+            for rank, war in enumerate(
+                position_wars,
+                start=1,
+            ):
+                history[position][rank].append(war)
+
+    return history
+
+
+def get_average_rank_war(
+    *,
+    history: dict[str, dict[int, list[float]]],
+    position: str,
+    rank: int,
+) -> float:
+    wars = history[position].get(rank)
+    if wars:
+        return sum(wars) / len(wars)
+
+    return 0.0
+
+
+def get_average_scarcity_band_war(
+    *,
+    history: dict[str, dict[int, list[float]]],
+    position: str,
+    per_team_slot: int,
+    league_size: int,
+) -> float:
+    """
+    Map a per-team roster slot to the correct league-wide scarcity band.
+
+    Example in a 12-team league:
+    - 1st rostered QB per team corresponds to QB1-QB12 league-wide
+    - 2nd rostered QB per team corresponds to QB13-QB24
+    - 3rd rostered QB per team corresponds to QB25-QB36
+
+    Using the single positional rank directly (QB2, QB3, etc.) wildly
+    overstates deep-position value and produces unrealistic targets like
+    rostering 16 QBs per team.
+    """
+
+    safe_league_size = max(
+        league_size,
+        1,
+    )
+    safe_slot = max(
+        per_team_slot,
+        1,
+    )
+    band_start = (
+        (safe_slot - 1) * safe_league_size
+    ) + 1
+    band_end = safe_slot * safe_league_size
+
+    band_values = [
+        get_average_rank_war(
+            history=history,
+            position=position,
+            rank=rank,
+        )
+        for rank in range(
+            band_start,
+            band_end + 1,
+        )
+    ]
+    populated_values = [
+        value
+        for value in band_values
+        if value != 0.0
+    ]
+
+    if populated_values:
+        return sum(populated_values) / len(
+            populated_values,
+        )
+
+    return 0.0
+
+
+def determine_target_roster_size(
+    *,
+    league,
+    roster_rows: list,
+) -> int:
+    roster_sizes = [
+        len(roster.players or [])
+        + roster.open_roster_spots(league)
+        for roster in roster_rows
+    ]
+
+    if not roster_sizes:
+        return len(league.roster_positions or [])
+
+    return max(roster_sizes)
+
+
+async def get_trade_counts_by_roster_id(
+    *,
+    db: AsyncSession,
+    league_id: str,
+    roster_ids: list[int],
+) -> dict[int, int]:
+    if not roster_ids:
+        return {}
+
+    result = await db.execute(
+        select(
+            sleeper_model.Movement.roster_id,
+            func.count(
+                func.distinct(
+                    sleeper_model.Transaction.transaction_id,
+                )
+            ),
+        )
+        .join(
+            sleeper_model.Transaction,
+            sleeper_model.Transaction.transaction_id
+            == sleeper_model.Movement.transaction_id,
+        )
+        .where(
+            sleeper_model.Transaction.league_id == league_id,
+            sleeper_model.Transaction.type == "trade",
+            sleeper_model.Movement.roster_id.in_(roster_ids),
+        )
+        .group_by(
+            sleeper_model.Movement.roster_id,
+        )
+    )
+
+    return {
+        int(roster_id): int(trade_count)
+        for roster_id, trade_count in result.all()
+        if roster_id is not None
+    }
+
+
+def build_league_roster_construction_targets(
+    *,
+    league,
+    roster_rows: list,
+    seasonal_results: list[list],
+) -> list[LeagueRosterConstructionTarget]:
+    history = build_position_rank_war_history(
+        seasonal_results,
+    )
+    direct_starter_minimums = build_direct_starter_minimums(
+        list(league.roster_positions or []),
+    )
+    roster_size = determine_target_roster_size(
+        league=league,
+        roster_rows=roster_rows,
+    )
+    league_size = max(
+        int(
+            getattr(
+                league,
+                "total_rosters",
+                0,
+            )
+            or 0
+        ),
+        len(roster_rows),
+        1,
+    )
+    target_counts = dict(direct_starter_minimums)
+    selected_war_by_position = {
+        position: 0.0
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    }
+
+    for position in ROSTER_CONSTRUCTION_POSITIONS:
+        for rank in range(1, target_counts[position] + 1):
+            selected_war_by_position[position] += (
+                get_average_scarcity_band_war(
+                    history=history,
+                    position=position,
+                    per_team_slot=rank,
+                    league_size=league_size,
+                )
+            )
+
+    while sum(target_counts.values()) < roster_size:
+        next_position = max(
+            ROSTER_CONSTRUCTION_POSITIONS,
+            key=lambda position: (
+                get_average_scarcity_band_war(
+                    history=history,
+                    position=position,
+                    per_team_slot=(
+                        target_counts[position] + 1
+                    ),
+                    league_size=league_size,
+                ),
+                -target_counts[position],
+                -direct_starter_minimums[position],
+                position,
+            ),
+        )
+        next_rank = target_counts[next_position] + 1
+        target_counts[next_position] = next_rank
+        selected_war_by_position[next_position] += (
+            get_average_scarcity_band_war(
+                history=history,
+                position=next_position,
+                per_team_slot=next_rank,
+                league_size=league_size,
+            )
+        )
+
+    total_selected_war = sum(
+        max(war, 0.0)
+        for war in selected_war_by_position.values()
+    )
+
+    return [
+        LeagueRosterConstructionTarget(
+            position=position,
+            target_count=target_counts[position],
+            war_share=round(
+                (
+                    max(
+                        selected_war_by_position[position],
+                        0.0,
+                    ) / total_selected_war
+                ) * 100,
+                1,
+            ) if total_selected_war > 0 else 0.0,
+        )
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    ]
+
+
+def _build_roster_construction_cache_key(
+    *,
+    league,
+    roster_rows: list,
+    seasonal_results: list[list],
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(
+        json.dumps(
+            {
+                "league_id": league.league_id,
+                "season": league.season,
+                "total_rosters": league.total_rosters,
+                "roster_positions": (
+                    league.roster_positions or []
+                ),
+                "roster_sizes": sorted(
+                    [
+                        len(roster.players or [])
+                        + roster.open_roster_spots(
+                            league,
+                        )
+                        for roster in roster_rows
+                    ]
+                ),
+                "seasonal_signatures": [
+                    build_player_war_signature(
+                        player_wars=list(results),
+                    )
+                    for results in seasonal_results
+                ],
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    return (
+        "roster-construction:"
+        f"{ROSTER_CONSTRUCTION_CACHE_VERSION}:"
+        f"{digest.hexdigest()}"
+    )
+
+
+async def build_cached_league_roster_construction_targets(
+    *,
+    redis,
+    league,
+    roster_rows: list,
+    seasonal_results: list[list],
+) -> list[LeagueRosterConstructionTarget]:
+    cache_key = _build_roster_construction_cache_key(
+        league=league,
+        roster_rows=roster_rows,
+        seasonal_results=seasonal_results,
+    )
+
+    if redis is not None:
+        cached_payload = await redis.get(
+            cache_key,
+        )
+
+        if cached_payload:
+            return [
+                LeagueRosterConstructionTarget.model_validate(
+                    row,
+                )
+                for row in json.loads(cached_payload)
+            ]
+
+    targets = build_league_roster_construction_targets(
+        league=league,
+        roster_rows=roster_rows,
+        seasonal_results=seasonal_results,
+    )
+
+    if redis is not None:
+        await redis.set(
+            cache_key,
+            json.dumps(
+                [
+                    target.model_dump()
+                    for target in targets
+                ],
+                separators=(",", ":"),
+            ),
+            ttl_seconds=(
+                ROSTER_CONSTRUCTION_CACHE_TTL_SECONDS
+            ),
+        )
+
+    return targets
+
+
 class LeagueDetails:
     def __init__(self):
         self.war_service = war_service
@@ -152,6 +607,16 @@ class LeagueDetails:
 
         league = leagues[0][0]
         roster_rows = [roster for _, roster in leagues]
+        trade_counts_by_roster_id = (
+            await get_trade_counts_by_roster_id(
+                db=db,
+                league_id=league_id,
+                roster_ids=[
+                    roster.roster_id
+                    for roster in roster_rows
+                ],
+            )
+        )
         notes_by_league_id = (
             await get_user_notes_by_league_id(
                 db=db,
@@ -174,6 +639,14 @@ class LeagueDetails:
         shared = await self.war_service.load_shared_data(
             db,
             int(league.season),
+        )
+        roster_construction_seasonal_results = (
+            await self.build_roster_construction_seasonal_results(
+                db=db,
+                league=league,
+                players=shared.players,
+                current_shared=shared,
+            )
         )
         war_position_history = await self.build_war_position_history(
             db=db,
@@ -198,22 +671,12 @@ class LeagueDetails:
             for player in war_players
         }
 
-        dynasty_service = build_dynasty_war_service()
-        dynasty_war_by_player_id = {}
-
-        for war_player in war_players:
-            if war_player.player_id in dynasty_war_by_player_id:
-                continue
-
-            projection = build_dynasty_projection(
-                player_war=war_player,
-                dynasty_service=dynasty_service,
+        dynasty_war_by_player_id = (
+            await build_cached_dynasty_projections_by_player_id(
+                redis=redis,
+                player_wars=war_players,
             )
-
-            if projection is not None:
-                dynasty_war_by_player_id[
-                    war_player.player_id
-                ] = projection
+        )
 
         player_ids = set()
         owner_ids = set()
@@ -239,6 +702,7 @@ class LeagueDetails:
             site_user_id=site_user_id,
             league=league,
             player_values=player_values,
+            redis=redis,
         )
 
         player_map = {
@@ -389,12 +853,19 @@ class LeagueDetails:
             db,
             [league_id],
         )
+        completed_draft_seasons_by_league_id = (
+            await get_completed_draft_seasons_by_league_ids(
+                db,
+                [league_id],
+            )
+        )
         traded_picks_by_league_id = await get_traded_picks_by_league_ids(
             db,
             [league_id],
         )
         projected_pick_slots_by_roster_id = (
-            build_projected_pick_slots_by_roster_id(
+            await build_cached_projected_pick_slots_by_roster_id(
+                redis=redis,
                 league=league,
                 rosters=roster_rows,
                 current_week=current_week,
@@ -411,7 +882,14 @@ class LeagueDetails:
             )
         )
         projected_pick_season = get_first_future_pick_season(
-            league
+            league,
+            drafts=drafts_by_league_id.get(league_id, []),
+            completed_draft_seasons=(
+                completed_draft_seasons_by_league_id.get(
+                    league_id,
+                    set(),
+                )
+            ),
         )
         projected_slots_by_season_and_roster_id = {
             (
@@ -449,6 +927,12 @@ class LeagueDetails:
             projected_slot_source_label=(
                 projected_slot_source_label
             ),
+            completed_draft_seasons=(
+                completed_draft_seasons_by_league_id.get(
+                    league_id,
+                    set(),
+                )
+            ),
         )
 
         all_pick_assets = [
@@ -474,6 +958,20 @@ class LeagueDetails:
             league_total_rosters=league.total_rosters,
             league_ppr=ppr,
         )
+        rookie_war_pick_values_by_key = await get_resolved_pick_values_by_key(
+            db,
+            picks=all_pick_assets,
+            value_basis=ValueBasis.ROOKIE_PICK_WAR,
+            league_num_qbs=num_qbs,
+            league_total_rosters=league.total_rosters,
+            league_ppr=ppr,
+            league_scoring_settings=dict(
+                league.scoring_settings or {},
+            ),
+            league_roster_positions=list(
+                league.roster_positions or [],
+            ),
+        )
 
         rosters: list[LeagueRoster] = []
 
@@ -486,6 +984,7 @@ class LeagueDetails:
             picks = []
             total_pick_fc_value = 0.0
             total_pick_ktc_value = 0.0
+            total_pick_rookie_war_value = 0.0
 
             for pick in raw_pick_assets_by_roster_id.get(
                 roster.roster_id,
@@ -499,6 +998,11 @@ class LeagueDetails:
 
                 fc_pick_value = fc_pick_values_by_key.get(key)
                 ktc_pick_value = ktc_pick_values_by_key.get(key)
+                rookie_war_pick_value = (
+                    rookie_war_pick_values_by_key.get(
+                        key,
+                    )
+                )
 
                 fc_value = (
                     fc_pick_value.value
@@ -510,9 +1014,17 @@ class LeagueDetails:
                     if ktc_pick_value is not None
                     else None
                 )
+                rookie_war_value = (
+                    rookie_war_pick_value.value
+                    if rookie_war_pick_value is not None
+                    else None
+                )
 
                 total_pick_fc_value += fc_value or 0.0
                 total_pick_ktc_value += ktc_value or 0.0
+                total_pick_rookie_war_value += (
+                    rookie_war_value or 0.0
+                )
 
                 picks.append(
                     LeaguePick(
@@ -526,6 +1038,7 @@ class LeagueDetails:
                         slot_source_label=pick.slot_source_label,
                         fc_value=fc_value,
                         ktc_value=ktc_value,
+                        rookie_war_value=rookie_war_value,
                     )
                 )
 
@@ -584,7 +1097,10 @@ class LeagueDetails:
                     ),
                     faab_remaining=roster.faab_remaining(league),
                     waiver_position=roster.waiver_position,
-                    total_moves=roster.total_moves,
+                    total_trades=trade_counts_by_roster_id.get(
+                        roster.roster_id,
+                        0,
+                    ),
                     open_roster_spots=roster.open_roster_spots(league),
                     average_age=calculate_average_age(roster_players),
                     total_ktc_value=total_ktc_value,
@@ -595,6 +1111,10 @@ class LeagueDetails:
                     total_dynasty_roster_war=total_dynasty_roster_war,
                     total_pick_ktc_value=round(total_pick_ktc_value, 2),
                     total_pick_fc_value=round(total_pick_fc_value, 2),
+                    total_pick_rookie_war_value=round(
+                        total_pick_rookie_war_value,
+                        2,
+                    ),
                     total_asset_ktc_value=round(total_ktc_value + total_pick_ktc_value, 2),
                     total_asset_fc_value=round(total_fc_value + total_pick_fc_value, 2),
                     players=roster_players,
@@ -630,12 +1150,33 @@ class LeagueDetails:
         for rank, roster in enumerate(rosters, start=1):
             roster.rank = rank
 
+        assign_roster_stat_ranks(
+            rosters,
+        )
+
+        roster_construction_targets = (
+            await build_cached_league_roster_construction_targets(
+                redis=redis,
+                league=league,
+                roster_rows=roster_rows,
+                seasonal_results=(
+                    roster_construction_seasonal_results
+                ),
+            )
+        )
+
         return LeagueDetailsResponse(
             league_id=league.league_id,
             league_name=league.name,
             avatar=league.avatar,
             season=str(league.season),
             total_rosters=league.total_rosters,
+            roster_positions=list(
+                league.roster_positions or [],
+            ),
+            roster_construction_targets=(
+                roster_construction_targets
+            ),
             draft_pick_projection_summary=(
                 build_draft_pick_projection_summary(
                     current_week=current_week,
@@ -661,6 +1202,55 @@ class LeagueDetails:
             war_player_history=war_player_history,
             rosters=rosters,
         )
+
+    async def build_roster_construction_seasonal_results(
+        self,
+        *,
+        db: AsyncSession,
+        league,
+        players: dict,
+        current_shared: WARSharedData,
+    ) -> list[list]:
+        seasonal_results: list[list] = []
+        current_season = int(league.season)
+
+        for season in range(
+            current_season - ROSTER_CONSTRUCTION_HISTORY_YEARS,
+            current_season,
+        ):
+            stats_rows = await self.war_service.loader.get_season_stats(
+                db,
+                season,
+            )
+
+            if not stats_rows:
+                continue
+
+            season_league = league.model_copy(
+                update={
+                    "season": str(season),
+                },
+            )
+
+            seasonal_results.append(
+                await self.war_service.calculate_with_data(
+                    league=season_league,
+                    shared=WARSharedData(
+                        players=players,
+                        projections=stats_rows,
+                    ),
+                )
+            )
+
+        if seasonal_results:
+            return seasonal_results
+
+        return [
+            await self.war_service.calculate_with_data(
+                league=league,
+                shared=current_shared,
+            )
+        ]
 
     async def build_war_position_history(
         self,

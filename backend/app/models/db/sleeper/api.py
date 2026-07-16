@@ -92,6 +92,10 @@ class League(SQLModel, table=True):
     def is_dynasty(self) -> bool:
         return self.settings.get("type", 0) == 2
 
+    @property
+    def is_best_ball(self) -> bool:
+        return self.settings.get("best_ball", 0) == 1
+
     roster: List["Roster"] = Relationship(
         back_populates="league",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
@@ -204,6 +208,31 @@ class Roster(SQLModel, table=True):
     def roster_size(self) -> int:
         return len(self.players)
 
+    @property
+    def occupied_reserve_slots(self) -> int:
+        return len(
+            self.reserve or [],
+        )
+
+    @property
+    def occupied_taxi_slots(self) -> int:
+        return len(
+            self.taxi or [],
+        )
+
+    def claimable_roster_capacity(
+        self,
+        league: "League",
+    ) -> int:
+        if league.is_best_ball:
+            return league.roster_size
+
+        return (
+            league.roster_size
+            + self.occupied_reserve_slots
+            + self.occupied_taxi_slots
+        )
+
     def faab_remaining(self, league: "League") -> int:
         return max(
             league.waiver_budget - self.waiver_budget_used,
@@ -211,13 +240,12 @@ class Roster(SQLModel, table=True):
         )
 
     def open_roster_spots(self, league: "League") -> int:
-        max_players = (
-            league.roster_size
-            + league.taxi_slots
-            + league.reserve_slots
+        return (
+            self.claimable_roster_capacity(
+                league,
+            )
+            - len(self.players)
         )
-
-        return max_players - len(self.players)
 
     league: "League" = Relationship(back_populates="roster")
     user: Optional["User"] = Relationship(back_populates="roster")
@@ -302,6 +330,48 @@ class Draft(SQLModel, table=True):
     slot_to_roster_id: Optional[Dict[str, int]] = Field(default_factory=dict, sa_type=JSON, nullable=True)
 
     league: "League" = Relationship(back_populates="draft")
+    selections: List["DraftSelection"] = Relationship(
+        back_populates="draft",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+
+class DraftSelection(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    draft_id: str = Field(
+        foreign_key="draft.draft_id",
+        index=True,
+    )
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
+    season: str = Field(index=True)
+    round: int = Field(index=True)
+    pick_no: int = Field(index=True)
+    round_slot: int = Field(index=True)
+    roster_id: Optional[int] = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    player_id: Optional[str] = Field(
+        default=None,
+        foreign_key="player.player_id",
+        nullable=True,
+        index=True,
+    )
+    is_keeper: bool = Field(default=False, nullable=False)
+
+    draft: "Draft" = Relationship(back_populates="selections")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "draft_id",
+            "pick_no",
+            name="uq_draftselection_draft_pick_no",
+        ),
+    )
 
 
 class Movement(SQLModel, table=True):
@@ -330,14 +400,23 @@ class WaiverBudget(SQLModel, table=True):
 
 class TradedPick(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    transaction_id: str = Field(foreign_key="transaction.transaction_id", index=True)
+    transaction_id: Optional[str] = Field(
+        default=None,
+        foreign_key="transaction.transaction_id",
+        index=True,
+        nullable=True,
+    )
+    league_id: str = Field(
+        foreign_key="league.league_id",
+        index=True,
+    )
     season: str = Field(index=True)
     round: int = Field(index=True)
     new_roster_id: int = Field(index=True)
     old_roster_id: int = Field(index=True)
     og_roster_id: int = Field(index=True)
 
-    transaction: "Transaction" = Relationship(back_populates="draft_pick")
+    transaction: Optional["Transaction"] = Relationship(back_populates="draft_pick")
 
 
 class PlayoffMatchup(SQLModel, table=True):

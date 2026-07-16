@@ -46,12 +46,11 @@ async def get_current_pick_assets_by_league(
     *,
     sleeper,
     rosters_by_league_id: dict[str, list],
-    pick_season: str,
-    pick_round: int,
+    requested_picks: list[tuple[str, int]],
     roster_names_by_league_id: dict[str, dict[int, str]],
 ) -> dict[str, list[TradeDraftPickAsset]]:
     """
-    Resolve current ownership of one pick year/round across leagues.
+    Resolve current ownership of one or more pick year/round pairs across leagues.
 
     Source of truth:
         Sleeper's /league/{league_id}/traded_picks endpoint.
@@ -74,6 +73,14 @@ async def get_current_pick_assets_by_league(
     if not league_ids:
         return {}
 
+    requested_pick_set = {
+        (
+            str(season),
+            int(round_number),
+        )
+        for season, round_number in requested_picks
+    }
+
     # Start from the normal baseline:
     #
     # {
@@ -90,10 +97,11 @@ async def get_current_pick_assets_by_league(
         pick_owner_by_league[league_id] = {
             (
                 roster.roster_id,
-                str(pick_season),
-                int(pick_round),
+                str(season),
+                int(round_number),
             ): roster.roster_id
             for roster in rosters
+            for season, round_number in requested_picks
         }
 
     # One current-pick-state request per league, concurrently.
@@ -134,13 +142,12 @@ async def get_current_pick_assets_by_league(
         ]
 
         for traded_pick in traded_picks:
-            if (
-                str(traded_pick.season)
-                != str(pick_season)
-            ):
-                continue
+            requested_key = (
+                str(traded_pick.season),
+                int(traded_pick.round),
+            )
 
-            if traded_pick.round != pick_round:
+            if requested_key not in requested_pick_set:
                 continue
 
             if (

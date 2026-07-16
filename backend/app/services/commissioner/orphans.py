@@ -2,22 +2,20 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from app.analytics.war.dynasty.factory import (
-    build_dynasty_war_service,
-)
 from app.analytics.war.redraft.singleton import war_service
 from app.crud.auth.user import get_war_value_settings_by_user_id
 from app.crud.sleeper.draft import (
+    get_completed_draft_seasons_by_league_ids,
     get_drafts_by_league_ids,
     get_traded_picks_by_league_ids,
 )
 from app.crud.sleeper.league import (
     get_sync_states,
-    get_user_leagues,
 )
 from app.crud.sleeper.roster import get_all_rosters_by_league
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
+from app.infrastructure.redis.client import RedisClient
 from app.schemas.commissioner import (
     CommissionerLineupSlot,
     CommissionerOrphanRoster,
@@ -28,13 +26,17 @@ from app.schemas.player import PlayerValue
 from app.services.draft.picks import (
     build_owned_pick_assets_by_roster_id,
     build_roster_name_by_id,
+    get_first_future_pick_season,
 )
 from app.services.draft.projection import (
-    build_projected_pick_slots_by_roster_id,
+    build_cached_projected_pick_slots_by_roster_id,
     build_projected_slot_source_label,
 )
 from app.services.draft.values import (
     get_resolved_pick_values_by_key,
+)
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_username,
 )
 from app.services.values.basis import (
     ValueBasis,
@@ -42,9 +44,12 @@ from app.services.values.basis import (
     get_value_label,
 )
 from app.services.personal_values import hydrate_personal_player_values
+from app.services.war.shared import (
+    build_cached_dynasty_projections_by_player_id,
+    build_shared_redraft_war_by_league_id,
+)
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
-    build_dynasty_projection,
 )
 
 
@@ -60,10 +65,8 @@ def build_settings_badges(
         for slot in roster_positions
     )
 
-    roster_size = (
-        len(roster_positions)
-        + int(settings.get("reserve_slots", 0) or 0)
-        + int(settings.get("taxi_slots", 0) or 0)
+    roster_size = len(
+        roster_positions,
     )
 
     badges = [
@@ -195,10 +198,12 @@ def get_average_age(
 async def build_league_player_values(
     *,
     db,
+    redis: RedisClient | None,
     league,
     player_ids: list[str],
     value_basis: ValueBasis,
     site_user_id=None,
+    war_players=None,
 ) -> list[PlayerValue]:
     unique_player_ids = list(
         dict.fromkeys(player_ids),
@@ -215,15 +220,16 @@ async def build_league_player_values(
             dynasty_war_by_player_id={},
         )
 
-    shared = await war_service.load_shared_data(
-        db,
-        int(league.season),
-    )
+    if war_players is None:
+        shared = await war_service.load_shared_data(
+            db,
+            int(league.season),
+        )
 
-    war_players = await war_service.calculate_with_data(
-        league=league,
-        shared=shared,
-    )
+        war_players = await war_service.calculate_with_data(
+            league=league,
+            shared=shared,
+        )
 
     dynasty_war_by_player_id = {}
 
@@ -233,21 +239,12 @@ async def build_league_player_values(
         ValueBasis.SLEEPER_WAR,
         ValueBasis.MY_WAR,
     }:
-        dynasty_service = build_dynasty_war_service()
-
-        for player in war_players:
-            if player.player_id in dynasty_war_by_player_id:
-                continue
-
-            projection = build_dynasty_projection(
-                player_war=player,
-                dynasty_service=dynasty_service,
+        dynasty_war_by_player_id = (
+            await build_cached_dynasty_projections_by_player_id(
+                redis=redis,
+                player_wars=list(war_players),
             )
-
-            if projection is not None:
-                dynasty_war_by_player_id[
-                    player.player_id
-                ] = projection
+        )
 
     player_values = await get_player_values(
         db,
@@ -262,6 +259,7 @@ async def build_league_player_values(
             site_user_id=site_user_id,
             league=league,
             player_values=player_values,
+            redis=redis,
         )
 
     return player_values
@@ -270,16 +268,18 @@ async def build_league_player_values(
 async def get_commissioner_orphans(
     *,
     db,
+    redis: RedisClient | None = None,
     username: str,
     value_basis: ValueBasis,
     site_user_id=None,
 ) -> CommissionerOrphansResponse:
-    user_leagues = await get_user_leagues(
-        db,
-        username,
+    visible_rows = await get_visible_owned_league_rows_by_username(
+        db=db,
+        username=username,
+        site_user_id=site_user_id,
     )
 
-    if not user_leagues:
+    if not visible_rows:
         return CommissionerOrphansResponse(
             username=username,
             value_basis=value_basis,
@@ -288,8 +288,8 @@ async def get_commissioner_orphans(
         )
 
     leagues_by_id = {
-        league.league_id: league
-        for league, _ in user_leagues
+        row.league.league_id: row.league
+        for row in visible_rows
     }
 
     rosters_by_league_id = await get_all_rosters_by_league(
@@ -317,6 +317,12 @@ async def get_commissioner_orphans(
     drafts_by_league_id = await get_drafts_by_league_ids(
         db,
         orphan_league_ids,
+    )
+    completed_draft_seasons_by_league_id = (
+        await get_completed_draft_seasons_by_league_ids(
+            db,
+            orphan_league_ids,
+        )
     )
     sync_states_by_league_id = await get_sync_states(
         db,
@@ -349,6 +355,17 @@ async def get_commissioner_orphans(
         db=db,
         site_user_id=site_user_id,
     )
+    redraft_war_by_league_id = (
+        await build_shared_redraft_war_by_league_id(
+            db=db,
+            redis=redis,
+            leagues=[
+                leagues_by_id[league_id]
+                for league_id in orphan_league_ids
+            ],
+            war_service=war_service,
+        )
+    )
 
     for league_id in orphan_league_ids:
         league = leagues_by_id[league_id]
@@ -365,10 +382,14 @@ async def get_commissioner_orphans(
 
         player_values = await build_league_player_values(
             db=db,
+            redis=redis,
             league=league,
             player_ids=all_player_ids,
             value_basis=value_basis,
             site_user_id=site_user_id,
+            war_players=redraft_war_by_league_id[
+                league_id
+            ],
         )
 
         player_by_id = {
@@ -386,7 +407,8 @@ async def get_commissioner_orphans(
             else 0
         )
         projected_pick_slots_by_roster_id = (
-            build_projected_pick_slots_by_roster_id(
+            await build_cached_projected_pick_slots_by_roster_id(
+                redis=redis,
                 league=league,
                 rosters=rosters,
                 current_week=current_week,
@@ -394,7 +416,19 @@ async def get_commissioner_orphans(
         )
         projected_slots_by_season_and_roster_id = {
             (
-                str(int(league.season) + 1),
+                get_first_future_pick_season(
+                    league,
+                    drafts=drafts_by_league_id.get(
+                        league_id,
+                        [],
+                    ),
+                    completed_draft_seasons=(
+                        completed_draft_seasons_by_league_id.get(
+                            league_id,
+                            set(),
+                        )
+                    ),
+                ),
                 roster_id,
             ): slot
             for roster_id, slot in (
@@ -433,6 +467,12 @@ async def get_commissioner_orphans(
                 ),
                 projected_slot_source_label=(
                     projected_slot_source_label
+                ),
+                completed_draft_seasons=(
+                    completed_draft_seasons_by_league_id.get(
+                        league_id,
+                        set(),
+                    )
                 ),
             )
         )
@@ -486,6 +526,12 @@ async def get_commissioner_orphans(
                 ),
                 projected_slot_source_label=(
                     projected_slot_source_label
+                ),
+                completed_draft_seasons=(
+                    completed_draft_seasons_by_league_id.get(
+                        league_id,
+                        set(),
+                    )
                 ),
             )
         )

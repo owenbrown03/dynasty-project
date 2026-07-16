@@ -9,7 +9,6 @@
 .league-header {
   display: flex;
   align-items: end;
-  justify-content: space-between;
   gap: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--color-border);
@@ -45,26 +44,6 @@
   font-weight: 600;
 }
 
-.league-summary-stat {
-  display: grid;
-  justify-items: end;
-  gap: 2px;
-}
-
-.league-summary-stat strong {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-text-strong);
-}
-
-.league-summary-stat small {
-  color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .league-badge-row {
   display: flex;
   flex-wrap: wrap;
@@ -88,6 +67,10 @@
   gap: 10px;
 }
 
+.league-overview-panel {
+  gap: 12px;
+}
+
 .league-settings-header,
 .league-detail-header {
   display: flex;
@@ -107,6 +90,11 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
+}
+
+.league-overview-content {
+  display: grid;
+  gap: 12px;
 }
 
 .league-settings-item {
@@ -201,12 +189,7 @@
 
 @media (max-width: 760px) {
   .league-header {
-    flex-direction: column;
     align-items: flex-start;
-  }
-
-  .league-summary-stat {
-    justify-items: start;
   }
 
   .league-pick-row {

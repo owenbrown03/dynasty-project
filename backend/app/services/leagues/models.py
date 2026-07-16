@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LeagueSettingsDetail(BaseModel):
@@ -23,6 +23,7 @@ class LeaguePick(BaseModel):
     slot_source_label: str | None = None
     fc_value: float | None = None
     ktc_value: float | None = None
+    rookie_war_value: float | None = None
 
 
 class LeaguePlayer(BaseModel):
@@ -59,7 +60,7 @@ class LeagueRoster(BaseModel):
     projected_points: float
     faab_remaining: int
     waiver_position: int
-    total_moves: int
+    total_trades: int
     open_roster_spots: int
     average_age: float | None = None
     total_ktc_value: float
@@ -70,10 +71,20 @@ class LeagueRoster(BaseModel):
     total_dynasty_roster_war: float
     total_pick_ktc_value: float
     total_pick_fc_value: float
+    total_pick_rookie_war_value: float
     total_asset_ktc_value: float
     total_asset_fc_value: float
+    stat_ranks: dict[str, int] = Field(
+        default_factory=dict,
+    )
     players: list[LeaguePlayer]
     picks: list[LeaguePick]
+
+
+class LeagueRosterConstructionTarget(BaseModel):
+    position: str
+    target_count: int
+    war_share: float
 
 
 class LeagueDetailsResponse(BaseModel):
@@ -82,6 +93,8 @@ class LeagueDetailsResponse(BaseModel):
     avatar: str | None = None
     season: str
     total_rosters: int
+    roster_positions: list[str]
+    roster_construction_targets: list[LeagueRosterConstructionTarget]
     note: str = ""
     draft_pick_projection_summary: str | None = None
     settings_badges: list[str]

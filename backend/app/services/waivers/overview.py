@@ -28,6 +28,9 @@ from app.services.personal_values import hydrate_personal_player_values
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
+from app.services.war.shared import (
+    build_shared_redraft_war_by_league_id,
+)
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
     project_players_for_waivers,
@@ -172,13 +175,22 @@ async def get_waiver_overview(
     )
 
     overview_cards: list[WaiverLeagueOverview] = []
-
-    for roster, league in owned_roster_rows:
-        redraft_war_players = await war_service.calculate(
+    redraft_war_by_league_id = (
+        await build_shared_redraft_war_by_league_id(
             db=db,
             redis=redis,
-            league_id=league.league_id,
+            leagues=[
+                league
+                for _, league in owned_roster_rows
+            ],
+            war_service=war_service,
         )
+    )
+
+    for roster, league in owned_roster_rows:
+        redraft_war_players = redraft_war_by_league_id[
+            league.league_id
+        ]
 
         redraft_war_by_player_id = {
             player.player_id: player
@@ -253,14 +265,6 @@ async def get_waiver_overview(
             redraft_war_players=redraft_war_players,
             dynasty_war_by_player_id=dynasty_war_by_player_id,
         )
-        if value_basis == ValueBasis.MY_WAR:
-            enriched_values = await hydrate_personal_player_values(
-                db=db,
-                site_user_id=connection.site_user_id,
-                league=league,
-                player_values=enriched_values,
-            )
-
         enriched_by_player_id = {
             player.player_id: player
             for player in enriched_values
@@ -278,9 +282,109 @@ async def get_waiver_overview(
             if player_id in enriched_by_player_id
         ]
 
+        effective_available_values = (
+            available_values
+        )
+        effective_drop_candidate_values = (
+            drop_candidate_values
+        )
+
+        if value_basis == ValueBasis.MY_WAR:
+            coarse_available_values = [
+                player.model_copy(
+                    update={
+                        "my_redraft_starter_war": (
+                            player.redraft_starter_war
+                        ),
+                        "my_redraft_roster_war": (
+                            player.redraft_roster_war
+                        ),
+                        "my_dynasty_starter_war": (
+                            player.dynasty_starter_war
+                        ),
+                        "my_dynasty_roster_war": (
+                            player.dynasty_roster_war
+                        ),
+                    },
+                )
+                for player in available_values
+            ]
+            coarse_drop_candidate_values = [
+                player.model_copy(
+                    update={
+                        "my_redraft_starter_war": (
+                            player.redraft_starter_war
+                        ),
+                        "my_redraft_roster_war": (
+                            player.redraft_roster_war
+                        ),
+                        "my_dynasty_starter_war": (
+                            player.dynasty_starter_war
+                        ),
+                        "my_dynasty_roster_war": (
+                            player.dynasty_roster_war
+                        ),
+                    },
+                )
+                for player in drop_candidate_values
+            ]
+            suggested_add, _ = get_best_available_player(
+                available_players=coarse_available_values,
+                value_basis=value_basis,
+                war_value_settings=war_value_settings,
+            )
+            suggested_drop, _ = get_suggested_drop(
+                roster_players=coarse_drop_candidate_values,
+                value_basis=value_basis,
+                war_value_settings=war_value_settings,
+            )
+            hydrate_ids = list(
+                dict.fromkeys(
+                    [
+                        player.player_id
+                        for player in [
+                            suggested_add,
+                            suggested_drop,
+                        ]
+                        if player is not None
+                    ]
+                )
+            )
+            hydrated_values = await hydrate_personal_player_values(
+                db=db,
+                site_user_id=connection.site_user_id,
+                league=league,
+                player_values=[
+                    enriched_by_player_id[player_id]
+                    for player_id in hydrate_ids
+                    if player_id in enriched_by_player_id
+                ],
+                redis=redis,
+            )
+            hydrated_by_player_id = {
+                player.player_id: player
+                for player in hydrated_values
+            }
+            effective_available_values = [
+                hydrated_by_player_id.get(
+                    player.player_id,
+                    player,
+                )
+                for player in available_values
+                if player.player_id in hydrate_ids
+            ]
+            effective_drop_candidate_values = [
+                hydrated_by_player_id.get(
+                    player.player_id,
+                    player,
+                )
+                for player in drop_candidate_values
+                if player.player_id in hydrate_ids
+            ]
+
         suggested_add, suggested_add_value = (
             get_best_available_player(
-                available_players=available_values,
+                available_players=effective_available_values,
                 value_basis=value_basis,
                 war_value_settings=war_value_settings,
             )
@@ -288,7 +392,7 @@ async def get_waiver_overview(
 
         suggested_drop, suggested_drop_value = (
             get_suggested_drop(
-                roster_players=drop_candidate_values,
+                roster_players=effective_drop_candidate_values,
                 value_basis=value_basis,
                 war_value_settings=war_value_settings,
             )
@@ -316,10 +420,8 @@ async def get_waiver_overview(
                 1,
             )
 
-        roster_capacity = (
-            league.roster_size
-            + league.taxi_slots
-            + league.reserve_slots
+        roster_capacity = roster.claimable_roster_capacity(
+            league,
         )
 
         overview_cards.append(

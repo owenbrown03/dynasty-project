@@ -8,6 +8,7 @@ export function isValuePreference(
 ): value is ValueBasis {
   return value === 'ktc'
     || value === 'fantasycalc'
+    || value === 'adp'
     || value === 'sleeper_war'
     || value === 'my_war'
     || value === 'dynasty_starter_war'

@@ -1098,9 +1098,7 @@ export function FinancePage() {
     return Array.from(seen.entries()).map(([leagueFamilyId, leagueName]) => ({
       leagueFamilyId,
       leagueName,
-    })).sort((left, right) => (
-      left.leagueName.localeCompare(right.leagueName)
-    ));
+    }));
   }, [displayedTrackerEntries]);
 
   const overviewSummary = useMemo(() => {

@@ -9,12 +9,12 @@ import { api } from '@/api/v1/endpoints';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
 import type {
+  BulkTradeAvailabilityRequest,
   BulkTradeAvailabilityResponse,
   BulkTradePlayerSearchResult,
   BulkTradeProposalRequest,
   BulkTradeProposalResponse,
   TradeCalculatorPickValueResponse,
-  TradeDirection,
 } from '@/types';
 
 
@@ -49,10 +49,7 @@ export function useBulkTradePlayerSearch(
 
 
 export function useBulkTradeAvailability(
-  playerId: string | undefined,
-  direction: TradeDirection,
-  pickSeason: string,
-  pickRound: number,
+  payload: BulkTradeAvailabilityRequest | null,
 ) {
   const {
     canRead,
@@ -64,32 +61,34 @@ export function useBulkTradeAvailability(
   >({
     queryKey: queryKeys.trades.bulkAvailability(
       username,
-      playerId,
-      direction,
-      pickSeason,
-      pickRound,
+      JSON.stringify(payload),
     ),
     queryFn: async () => {
-      if (!playerId) {
+      if (!payload) {
         throw new Error(
-          'Missing selected player.',
+          'Missing selected trade package.',
         );
       }
 
       return api.trades.getBulkAvailability(
-        playerId,
-        direction,
-        pickSeason,
-        pickRound,
+        payload,
       ).then(
         response => response.data,
       );
     },
     enabled: (
       canRead
-      && !!playerId
-      && pickSeason.length === 4
-      && pickRound >= 1
+      && !!payload
+      && (
+        payload.send_player_ids.length
+        + payload.send_picks.length
+        > 0
+      )
+      && (
+        payload.receive_player_ids.length
+        + payload.receive_picks.length
+        > 0
+      )
     ),
   });
 

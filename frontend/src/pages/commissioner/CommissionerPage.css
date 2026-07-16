@@ -92,12 +92,16 @@
 }
 
 .commissioner-card-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--color-border);
+}
+
+.commissioner-card-heading {
+  min-width: 0;
 }
 
 .commissioner-card-kicker,
@@ -113,6 +117,10 @@
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.03em;
+  line-height: 1.05;
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .commissioner-card-subtitle {
@@ -126,7 +134,6 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  min-width: 300px;
 }
 
 .commissioner-card-stats span {
@@ -400,13 +407,16 @@
     grid-template-columns: 1fr;
   }
 
-  .commissioner-card-header {
-    flex-direction: column;
+  .commissioner-card {
+    padding: 12px;
   }
 
   .commissioner-card-stats {
     grid-template-columns: 1fr;
-    min-width: 0;
+  }
+
+  .commissioner-card-title {
+    font-size: 17px;
   }
 
   .commissioner-username-row {

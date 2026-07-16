@@ -13,6 +13,7 @@ from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
 )
 from app.utils.age import calculate_age
+from app.crud.value import _calculate_adp_value
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class LocalPlayerSearchResult:
     age: float | None
     ktc_value: int | None
     fc_value: int | None
+    adp_value: float | None
     underdog_position_rank: str | None
 
 
@@ -145,6 +147,15 @@ async def search_local_dynasty_players(
                 ].value
                 if player.player_id in fc_by_player_id
                 else None
+            ),
+            adp_value=(
+                _calculate_adp_value(
+                    underdog_by_player_id[
+                        player.player_id
+                    ].adp
+                    if player.player_id in underdog_by_player_id
+                    else None
+                )
             ),
             underdog_position_rank=(
                 underdog_by_player_id[

@@ -24,17 +24,26 @@ import { AvailablePlayersTable } from './AvailablePlayersTable';
 
 interface AvailablePlayersTabProps {
   valueBasis: ValueBasis;
+  selectedLeagueId: string | undefined;
+  onSelectedLeagueIdChange: (
+    leagueId: string | undefined,
+  ) => void;
 }
 
 
 export const AvailablePlayersTab = ({
   valueBasis,
+  selectedLeagueId,
+  onSelectedLeagueIdChange,
 }: AvailablePlayersTabProps) => {
   const [
-    selectedLeagueId,
-    setSelectedLeagueId,
-  ] = useState<string | undefined>();
-
+    page,
+    setPage,
+  ] = useState(1);
+  const [
+    pageSize,
+    setPageSize,
+  ] = useState(50);
   const [
     claimPlayer,
     setClaimPlayer,
@@ -49,16 +58,22 @@ export const AvailablePlayersTab = ({
   const leagues = useWaiverLeagueOptions();
 
   useEffect(() => {
-    if (
-      !selectedLeagueId
-      && leagues.data.length > 0
-    ) {
-      setSelectedLeagueId(
-        leagues.data[0].league_id,
+    if (selectedLeagueId) {
+      const hasSelectedLeague = leagues.data.some(
+        (league) => (
+          league.league_id === selectedLeagueId
+        ),
       );
+
+      if (!hasSelectedLeague) {
+        onSelectedLeagueIdChange(
+          undefined,
+        );
+      }
     }
   }, [
     leagues.data,
+    onSelectedLeagueIdChange,
     selectedLeagueId,
   ]);
 
@@ -76,23 +91,20 @@ export const AvailablePlayersTab = ({
     ],
   );
 
-  const claimBlockedReason = (
-    selectedLeague
-    && selectedLeague.roster_spots_available < 0
-      ? (
-        `This roster is ${
-          Math.abs(
-            selectedLeague.roster_spots_available,
-          )
-        } players over capacity. Remove players before claiming.`
-      )
-      : undefined
-  );
-
   const availablePlayers = useAvailableWaiverPlayers(
     selectedLeagueId,
     valueBasis,
+    page,
+    pageSize,
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    selectedLeagueId,
+    valueBasis,
+    pageSize,
+  ]);
 
   if (leagues.loading) {
     return (
@@ -136,8 +148,9 @@ export const AvailablePlayersTab = ({
           </h2>
 
           <p>
-            Full available QB, RB, WR, and TE pool,
-            sorted by your selected value basis.
+            Full available QB, RB, WR, and TE pool
+            across your visible leagues, sorted by
+            your selected value basis.
           </p>
         </div>
 
@@ -145,7 +158,10 @@ export const AvailablePlayersTab = ({
           leagues={leagues.data}
           selectedLeagueId={selectedLeagueId}
           onChange={(leagueId) => {
-            setSelectedLeagueId(leagueId);
+            onSelectedLeagueIdChange(
+              leagueId,
+            );
+            setPage(1);
             setClaimPlayer(null);
           }}
         />
@@ -191,29 +207,102 @@ export const AvailablePlayersTab = ({
         availablePlayers.data
           ? (
             <>
+              {(() => {
+                const data = availablePlayers.data;
+
+                return (
+                  <>
               <div className="available-players-summary">
                 <span>
                   {
-                    availablePlayers.data.total_players
+                    data
+                      .is_all_leagues
+                      ? 'All visible leagues'
+                      : selectedLeague?.league_name
+                  }
+                </span>
+
+                <span>
+                  {
+                    data.total_players
                       .toLocaleString()
                   }
                   {' '}available players
                 </span>
 
                 <span>
-                  Ranked by {availablePlayers.data.value_label}
+                  Ranked by {data.value_label}
                 </span>
               </div>
 
+              <div className="available-pagination-toolbar">
+                <label className="available-page-size-selector">
+                  <span>Rows</span>
+
+                  <select
+                    value={pageSize}
+                    onChange={(event) => {
+                      setPageSize(
+                        Number(
+                          event.target.value,
+                        ),
+                      );
+                    }}
+                  >
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={150}>150</option>
+                  </select>
+                </label>
+
+                <div className="available-pagination-status">
+                  Page {data.page}
+                  {' of '}
+                  {data.total_pages}
+                </div>
+
+                <div className="available-pagination-actions">
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={
+                      data.page <= 1
+                    }
+                    onClick={() => {
+                      setPage(
+                        data.page - 1,
+                      );
+                    }}
+                  >
+                    Previous
+                  </button>
+
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={
+                      data.page
+                      >= data.total_pages
+                    }
+                    onClick={() => {
+                      setPage(
+                        data.page + 1,
+                      );
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+
               <AvailablePlayersTable
-                data={availablePlayers.data}
-                canWrite={
-                  canWrite
-                  && !claimBlockedReason
-                }
-                claimDisabledReason={claimBlockedReason}
+                data={data}
+                canWrite={canWrite}
                 onClaim={setClaimPlayer}
               />
+                  </>
+                );
+              })()}
             </>
           )
           : null
@@ -221,10 +310,32 @@ export const AvailablePlayersTab = ({
 
       {
         claimPlayer
-        && selectedLeague
           ? (
             <AvailablePlayerClaimModal
-              league={selectedLeague}
+              league={{
+                league_id:
+                  claimPlayer.league_id ?? '',
+                league_name:
+                  claimPlayer.league_name ?? '',
+                league_avatar:
+                  claimPlayer.league_avatar,
+                roster_id:
+                  claimPlayer.roster_id ?? 0,
+                roster_size:
+                  claimPlayer.roster_size ?? 0,
+                roster_capacity:
+                  claimPlayer.roster_capacity
+                  ?? 0,
+                roster_spots_available:
+                  claimPlayer.roster_spots_available
+                  ?? 0,
+                faab_remaining:
+                  claimPlayer.faab_remaining
+                  ?? 0,
+                faab_percent_remaining:
+                  claimPlayer.faab_percent_remaining
+                  ?? 0,
+              }}
               addPlayer={claimPlayer}
               valueBasis={valueBasis}
               onClose={() => {

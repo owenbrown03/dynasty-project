@@ -13,6 +13,10 @@ export const VALUE_BASIS_OPTIONS: Array<{
     label: 'FantasyCalc Value',
   },
   {
+    value: 'adp',
+    label: 'ADP Value',
+  },
+  {
     value: 'sleeper_war',
     label: 'Sleeper Projection WAR',
   },

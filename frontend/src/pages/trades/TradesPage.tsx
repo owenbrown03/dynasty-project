@@ -3,7 +3,10 @@ import {
 } from 'react';
 
 import { BulkOffersTab } from './BulkOffersTab';
-import { TradeCalculatorTab } from './TradeCalculatorTab';
+import {
+  TradeCalculatorTab,
+  type TradeCalculatorBulkOfferSeed,
+} from './TradeCalculatorTab';
 import { TradeResearchTab } from './TradeResearchTab';
 
 import './TradesPage.css';
@@ -18,6 +21,9 @@ type TradesTab =
 export const TradesPage = () => {
   const [activeTab, setActiveTab] = useState<TradesTab>(
     'bulk-offers',
+  );
+  const [bulkOfferSeed, setBulkOfferSeed] = useState<TradeCalculatorBulkOfferSeed | null>(
+    null,
   );
 
   return (
@@ -79,9 +85,16 @@ export const TradesPage = () => {
 
       {
         activeTab === 'bulk-offers'
-          ? <BulkOffersTab />
+          ? <BulkOffersTab seed={bulkOfferSeed} />
           : activeTab === 'calculator'
-            ? <TradeCalculatorTab />
+            ? (
+              <TradeCalculatorTab
+                onSendToBulkOffers={(seed) => {
+                  setBulkOfferSeed(seed);
+                  setActiveTab('bulk-offers');
+                }}
+              />
+            )
             : <TradeResearchTab />
       }
     </main>

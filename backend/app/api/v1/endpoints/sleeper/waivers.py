@@ -17,6 +17,7 @@ from app.schemas.waivers import (
     WaiverClaimRequest,
     WaiverClaimResponse,
     WaiverOverviewResponse,
+    WaiverRecentlyDroppedResponse,
 )
 from app.schemas.waivers import (
     WaiverAvailablePlayersResponse,
@@ -39,6 +40,11 @@ from app.services.values.basis import (
 )
 from app.services.waivers.overview import get_waiver_overview
 from app.services.waivers.claims import submit_claim
+from app.services.waivers.recent_drops import (
+    get_recent_drops_sync_required,
+    get_recently_dropped_players,
+    sync_recent_drop_activity,
+)
 
 router = APIRouter()
 
@@ -113,16 +119,32 @@ async def waiver_leagues(
 )
 async def available_waiver_players(
     ctx: ContextDep,
-    league_id: str = Query(
-        ...,
+    league_id: str | None = Query(
+        default=None,
         description=(
-            "Owned Sleeper league whose available players should be shown."
+            "Owned Sleeper league whose available players should be shown. "
+            "Omit this to aggregate available players across all visible leagues."
         ),
     ),
     value_basis: ValueBasis = Query(
         default=DEFAULT_VALUE_BASIS,
         description=(
             "The player value system used to sort the returned players."
+        ),
+    ),
+    page: int = Query(
+        default=1,
+        ge=1,
+        description=(
+            "1-indexed result page."
+        ),
+    ),
+    page_size: int = Query(
+        default=50,
+        ge=1,
+        le=150,
+        description=(
+            "Number of players to return per page."
         ),
     ),
 ) -> WaiverAvailablePlayersResponse:
@@ -143,6 +165,8 @@ async def available_waiver_players(
         league_id=league_id,
         value_basis=value_basis,
         war_service=war_service,
+        page=page,
+        page_size=page_size,
     )
 
 
@@ -178,6 +202,64 @@ async def roster_waiver_players(
         league_id=league_id,
         value_basis=value_basis,
         war_service=war_service,
+    )
+
+
+@router.get(
+    "/recent-drops",
+    response_model=WaiverRecentlyDroppedResponse,
+)
+async def recent_waiver_drops(
+    ctx: ContextDep,
+    value_basis: ValueBasis = Query(
+        default=DEFAULT_VALUE_BASIS,
+    ),
+    page: int = Query(
+        default=1,
+        ge=1,
+        description="1-indexed result page.",
+    ),
+    page_size: int = Query(
+        default=50,
+        ge=1,
+        le=150,
+        description="Number of recently dropped players to return per page.",
+    ),
+) -> WaiverRecentlyDroppedResponse:
+    require_sleeper_connection(
+        ctx,
+        detail=(
+            "Connect a Sleeper account before viewing recently dropped players."
+        ),
+    )
+
+    sync_requested = await get_recent_drops_sync_required(
+        db=ctx.db,
+        connection=ctx.connection,
+    )
+
+    if (
+        sync_requested
+        and ctx.connection
+        and ctx.sleeper
+    ):
+        await sync_recent_drop_activity(
+            db=ctx.db,
+            sleeper=ctx.sleeper,
+            connection=ctx.connection,
+        )
+
+    war_service = WARService()
+
+    return await get_recently_dropped_players(
+        db=ctx.db,
+        redis=ctx.redis,
+        connection=ctx.connection,
+        value_basis=value_basis,
+        war_service=war_service,
+        sync_requested=sync_requested,
+        page=page,
+        page_size=page_size,
     )
 
 

@@ -10,6 +10,13 @@ const league: LeagueDetails = {
   avatar: null,
   season: '2026',
   total_rosters: 12,
+  roster_positions: ['QB', 'RB', 'WR', 'TE', 'FLEX', 'BN'],
+  roster_construction_targets: [
+    { position: 'QB', target_count: 3, war_share: 28.4 },
+    { position: 'RB', target_count: 8, war_share: 24.1 },
+    { position: 'WR', target_count: 9, war_share: 38.6 },
+    { position: 'TE', target_count: 2, war_share: 8.9 },
+  ],
   note: '',
   draft_pick_projection_summary: null,
   war_position_history: [],
@@ -33,7 +40,7 @@ const league: LeagueDetails = {
       projected_points: 0,
       faab_remaining: 100,
       waiver_position: 1,
-      total_moves: 0,
+      total_trades: 0,
       open_roster_spots: 0,
       average_age: null,
       total_ktc_value: 0,
@@ -44,8 +51,10 @@ const league: LeagueDetails = {
       total_dynasty_roster_war: 0,
       total_pick_ktc_value: 0,
       total_pick_fc_value: 0,
+      total_pick_rookie_war_value: 0,
       total_asset_ktc_value: 0,
       total_asset_fc_value: 0,
+      stat_ranks: {},
       picks: [],
       players: [
         {
@@ -100,7 +109,7 @@ const league: LeagueDetails = {
       projected_points: 0,
       faab_remaining: 100,
       waiver_position: 2,
-      total_moves: 0,
+      total_trades: 0,
       open_roster_spots: 0,
       average_age: null,
       total_ktc_value: 0,
@@ -111,8 +120,10 @@ const league: LeagueDetails = {
       total_dynasty_roster_war: 0,
       total_pick_ktc_value: 0,
       total_pick_fc_value: 0,
+      total_pick_rookie_war_value: 0,
       total_asset_ktc_value: 0,
       total_asset_fc_value: 0,
+      stat_ranks: {},
       picks: [],
       players: [
         {

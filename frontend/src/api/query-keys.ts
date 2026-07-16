@@ -1,7 +1,4 @@
-import type {
-  TradeDirection,
-  ValueBasis,
-} from '@/types';
+import type { ValueBasis } from '@/types';
 
 export const queryKeys = {
   bootstrap: ['bootstrap'] as const,
@@ -28,6 +25,7 @@ export const queryKeys = {
   },
 
   leagues: {
+    detailsRoot: ['league-details'] as const,
     overviewRoot: ['league-overview'] as const,
     overview: (
       username: string | null | undefined,
@@ -40,7 +38,13 @@ export const queryKeys = {
       ] as const,
     details: (
       leagueId: string | undefined,
-    ) => ['league-details', leagueId ?? null] as const,
+      viewerKey: string | null | undefined,
+    ) =>
+      [
+        'league-details',
+        leagueId ?? null,
+        viewerKey ?? null,
+      ] as const,
     dashboard: (
       username: string | null | undefined,
     ) =>
@@ -55,18 +59,12 @@ export const queryKeys = {
       ['bulk-trade-player-search', query] as const,
     bulkAvailability: (
       username: string | null | undefined,
-      playerId: string | undefined,
-      direction: TradeDirection,
-      pickSeason: string,
-      pickRound: number,
+      packageKey: string,
     ) =>
       [
         'bulk-trade-availability',
         username ?? null,
-        playerId ?? null,
-        direction,
-        pickSeason,
-        pickRound,
+        packageKey,
       ] as const,
     bulkAvailabilityRoot: [
       'bulk-trade-availability',
@@ -84,6 +82,20 @@ export const queryKeys = {
         valueBasis,
       ] as const,
     overviewRoot: ['waiver-overview'] as const,
+    recentDrops: (
+      username: string | null | undefined,
+      valueBasis: ValueBasis,
+      page: number,
+      pageSize: number,
+    ) =>
+      [
+        'waiver-recent-drops',
+        username ?? null,
+        valueBasis,
+        page,
+        pageSize,
+      ] as const,
+    recentDropsRoot: ['waiver-recent-drops'] as const,
     leagues: (
       username: string | null | undefined,
     ) => ['waiver-leagues', username ?? null] as const,
@@ -92,12 +104,16 @@ export const queryKeys = {
       username: string | null | undefined,
       leagueId: string | undefined,
       valueBasis: ValueBasis,
+      page: number,
+      pageSize: number,
     ) =>
       [
         'waiver-available-players',
         username ?? null,
-        leagueId ?? null,
+        leagueId ?? 'all',
         valueBasis,
+        page,
+        pageSize,
       ] as const,
     availablePlayersRoot: [
       'waiver-available-players',

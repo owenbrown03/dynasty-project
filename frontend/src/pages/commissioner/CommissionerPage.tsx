@@ -63,6 +63,7 @@ function formatValue(
   if (
     valueBasis === 'ktc'
     || valueBasis === 'fantasycalc'
+    || valueBasis === 'adp'
   ) {
     return Math.round(value).toLocaleString();
   }
@@ -184,7 +185,7 @@ function CommissionerOrphanCard({
   return (
     <article className="commissioner-card">
       <header className="commissioner-card-header">
-        <div>
+        <div className="commissioner-card-heading">
           <p className="commissioner-card-kicker">
             League
           </p>
@@ -868,7 +869,7 @@ export const CommissionerPage = () => {
           </label>
 
           {
-            shareUrl
+            shareUrl && activeTab === 'orphans'
               ? (
                 <button
                   className="button-secondary"
