@@ -25,6 +25,7 @@ export const queryKeys = {
   },
 
   leagues: {
+    detailsRoot: ['league-details'] as const,
     overviewRoot: ['league-overview'] as const,
     overview: (
       username: string | null | undefined,
@@ -37,7 +38,13 @@ export const queryKeys = {
       ] as const,
     details: (
       leagueId: string | undefined,
-    ) => ['league-details', leagueId ?? null] as const,
+      viewerKey: string | null | undefined,
+    ) =>
+      [
+        'league-details',
+        leagueId ?? null,
+        viewerKey ?? null,
+      ] as const,
     dashboard: (
       username: string | null | undefined,
     ) =>

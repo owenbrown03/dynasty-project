@@ -530,8 +530,23 @@ async def build_cached_projected_pick_slots_by_roster_id(
         )
 
         if cached_payload:
+            cached_result = json.loads(cached_payload)
+            cached_slots = cached_result.get(
+                "slots_by_roster_id",
+                {},
+            )
+
             return DraftPickProjectionResult(
-                **json.loads(cached_payload),
+                slots_by_roster_id={
+                    int(roster_id): int(slot)
+                    for roster_id, slot in cached_slots.items()
+                },
+                method_used=cached_result.get(
+                    "method_used",
+                ),
+                fallback_from_method=cached_result.get(
+                    "fallback_from_method",
+                ),
             )
 
     result = build_projected_pick_slots_by_roster_id(

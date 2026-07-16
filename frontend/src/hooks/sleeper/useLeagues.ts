@@ -7,6 +7,7 @@ import {
 import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import type {
+  Bootstrap,
   LeagueOverview,
   LeagueDetails,
   Dashboard,
@@ -17,6 +18,26 @@ import type {
 } from '@/types';
 
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
+import { useBootstrap } from '@/hooks/useBootstrap';
+
+
+function buildLeagueDetailsViewerKey(
+  bootstrap: Bootstrap | undefined,
+) {
+  if (!bootstrap) {
+    return 'anonymous';
+  }
+
+  return JSON.stringify({
+    authenticated: bootstrap.authenticated,
+    siteUserId: bootstrap.site_user?.id ?? null,
+    valuePreference: bootstrap.value_preference ?? null,
+    warValueSettings:
+      bootstrap.war_value_settings,
+    draftPickProjectionSettings:
+      bootstrap.draft_pick_projection_settings,
+  });
+}
 
 
 export function useLeagueOverview(
@@ -100,9 +121,16 @@ export function useLeagueVisibility() {
 
 
 export function useLeagueDetails(league_id?: string) {
+  const bootstrap = useBootstrap();
+  const viewerKey =
+    buildLeagueDetailsViewerKey(
+      bootstrap.data
+    );
+
   const query = useQuery<LeagueDetails>({
     queryKey: queryKeys.leagues.details(
       league_id,
+      viewerKey,
     ),
 
     queryFn: async () => {
@@ -167,9 +195,9 @@ export function useSaveUserNote() {
         .saveNote(payload)
         .then((res) => res.data);
     },
-    onSuccess: async (data) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: queryKeys.leagues.details(data.league_id),
+        queryKey: queryKeys.leagues.detailsRoot,
       });
     },
   });
@@ -179,4 +207,3 @@ export function useSaveUserNote() {
     saving: mutation.isPending,
   };
 }
-
