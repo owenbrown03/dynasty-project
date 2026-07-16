@@ -268,7 +268,7 @@ async def build_league_player_values(
 async def get_commissioner_orphans(
     *,
     db,
-    redis: RedisClient | None,
+    redis: RedisClient | None = None,
     username: str,
     value_basis: ValueBasis,
     site_user_id=None,

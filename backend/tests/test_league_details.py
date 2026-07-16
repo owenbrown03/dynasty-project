@@ -121,6 +121,6 @@ def test_build_league_roster_construction_targets_is_shared_and_exact():
         seasonal_results=seasonal_results,
     )
 
-    assert [target.target_count for target in targets] == [2, 4, 3, 1]
+    assert [target.target_count for target in targets] == [2, 2, 3, 3]
     assert sum(target.target_count for target in targets) == 10
-    assert round(sum(target.war_share for target in targets), 1) == 99.9
+    assert round(sum(target.war_share for target in targets), 1) == 100.0

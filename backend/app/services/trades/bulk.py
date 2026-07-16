@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from types import SimpleNamespace
 import time
 
 from fastapi import HTTPException, status
@@ -239,6 +240,51 @@ def build_pick_choices_for_roster(
         )
 
     return pick_choices
+
+
+def get_counterparty_options(
+    *,
+    your_roster_id: int,
+    league_rosters: list,
+    pick_assets: list,
+    requested_picks: list[BulkTradePickRequest],
+    user_names_by_id: dict[str, str],
+):
+    """
+    Backward-compatible helper for tests and older callers.
+
+    Returns counterparties that can satisfy the full requested pick package,
+    preserving one `BulkTradePickChoice` entry per requested pick.
+    """
+
+    counterparties = []
+
+    for roster in league_rosters:
+        if roster.roster_id == your_roster_id:
+            continue
+
+        pick_choices = build_pick_choices_for_roster(
+            owner_roster_id=roster.roster_id,
+            pick_assets=pick_assets,
+            requested_picks=requested_picks,
+        )
+
+        if len(pick_choices) != len(requested_picks):
+            continue
+
+        counterparties.append(
+            SimpleNamespace(
+                roster_id=roster.roster_id,
+                user_id=roster.owner_id,
+                name=user_names_by_id.get(
+                    roster.owner_id,
+                    f"Roster {roster.roster_id}",
+                ),
+                pick_choices=pick_choices,
+            )
+        )
+
+    return counterparties
 
 
 def roster_has_all_players(

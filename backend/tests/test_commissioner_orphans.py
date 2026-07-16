@@ -306,6 +306,9 @@ def test_commissioner_orphans_uses_visible_current_leagues(monkeypatch):
     async def fake_get_drafts_by_league_ids(*args, **kwargs):
         return {}
 
+    async def fake_get_completed_draft_seasons_by_league_ids(*args, **kwargs):
+        return {}
+
     async def fake_get_sync_states(*args, **kwargs):
         return {}
 
@@ -321,6 +324,19 @@ def test_commissioner_orphans_uses_visible_current_leagues(monkeypatch):
     async def fake_get_resolved_pick_values_by_key(*args, **kwargs):
         return {}
 
+    async def fake_build_shared_redraft_war_by_league_id(*args, **kwargs):
+        return {
+            "current-visible": [],
+        }
+
+    async def fake_build_cached_projected_pick_slots_by_roster_id(
+        *args,
+        **kwargs,
+    ):
+        return SimpleNamespace(
+            slots_by_roster_id={},
+        )
+
     monkeypatch.setattr(
         orphan_service,
         "get_visible_owned_league_rows_by_username",
@@ -335,6 +351,11 @@ def test_commissioner_orphans_uses_visible_current_leagues(monkeypatch):
         orphan_service,
         "get_drafts_by_league_ids",
         fake_get_drafts_by_league_ids,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "get_completed_draft_seasons_by_league_ids",
+        fake_get_completed_draft_seasons_by_league_ids,
     )
     monkeypatch.setattr(
         orphan_service,
@@ -360,6 +381,16 @@ def test_commissioner_orphans_uses_visible_current_leagues(monkeypatch):
         orphan_service,
         "get_resolved_pick_values_by_key",
         fake_get_resolved_pick_values_by_key,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "build_shared_redraft_war_by_league_id",
+        fake_build_shared_redraft_war_by_league_id,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "build_cached_projected_pick_slots_by_roster_id",
+        fake_build_cached_projected_pick_slots_by_roster_id,
     )
 
     result = asyncio.run(
