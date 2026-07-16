@@ -28,10 +28,6 @@ export function DashboardLeagues({
           <p className="dashboard-section-kicker">
             Leagues
           </p>
-
-          <h2 className="dashboard-section-title">
-            Cross-league rankings
-          </h2>
         </div>
       </div>
 

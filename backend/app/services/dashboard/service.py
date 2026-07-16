@@ -23,12 +23,6 @@ from .cards import (
 from .crud import (
     get_all_league_rosters,
 )
-from .summary import (
-    build_summary,
-)
-from .top_assets import (
-    build_top_assets,
-)
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
@@ -290,25 +284,6 @@ async def build_player_maps_by_league(
     return player_maps_by_league_id
 
 
-def flatten_player_maps(
-    player_maps_by_league_id,
-) -> list:
-    """
-    Keeps player values in their original league context.
-
-    A player rostered in multiple leagues intentionally appears multiple
-    times here because their WAR can differ per league.
-    """
-
-    return [
-        player
-        for player_map in (
-            player_maps_by_league_id.values()
-        )
-        for player in player_map.values()
-    ]
-
-
 async def get_user_dashboard(
     db,
     redis,
@@ -362,9 +337,7 @@ async def get_user_dashboard(
 
     if not leagues:
         return {
-            "summary": {},
             "leagues": [],
-            "top_assets": [],
         }
 
     league_ids = list(
@@ -402,10 +375,6 @@ async def get_user_dashboard(
         )
     )
 
-    all_player_values = flatten_player_maps(
-        player_maps_by_league_id,
-    )
-
     league_cards = build_league_cards(
         leagues=leagues,
         all_rosters=all_rosters,
@@ -421,17 +390,6 @@ async def get_user_dashboard(
         ),
     )
 
-    summary = build_summary(
-        league_cards=league_cards,
-        all_players=all_player_values,
-    )
-
-    top_assets = build_top_assets(
-        players=all_player_values,
-    )
-
     return {
-        "summary": summary,
         "leagues": league_cards,
-        "top_assets": top_assets,
     }

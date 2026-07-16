@@ -315,18 +315,6 @@ export interface LeagueDetails {
   rosters: LeagueRoster[];
 }
 
-export interface DashboardSummary {
-  league_count: number;
-  player_count: number;
-  total_ktc_value: number;
-  total_fc_value: number;
-  total_dynasty_starter_war: number;
-  total_dynasty_roster_war: number;
-  total_redraft_starter_war: number;
-  total_redraft_roster_war: number;
-  average_age: number;
-}
-
 export interface DashboardLeague {
   league_id: string;
   league_name: string;
@@ -358,23 +346,8 @@ export interface DashboardLeague {
   age_rank: number;
 }
 
-export interface DashboardAsset {
-  player_id: string;
-  name: string;
-  position: string;
-  team: string | null;
-
-  ktc_value: number | null;
-  fc_value: number | null;
-
-  starter_war: number | null;
-  roster_war: number | null;
-}
-
 export interface Dashboard {
-  summary: DashboardSummary;
   leagues: DashboardLeague[];
-  top_assets: DashboardAsset[];
 }
 
 export type ValueBasis =
