@@ -49,7 +49,10 @@ class BulkTradeCounterparty(Base):
     user_id: str | None = None
     name: str
 
-    pick_choices: list["BulkTradePickChoice"] = Field(
+    send_pick_choices: list["BulkTradePickChoice"] = Field(
+        default_factory=list,
+    )
+    receive_pick_choices: list["BulkTradePickChoice"] = Field(
         default_factory=list,
     )
 
@@ -61,46 +64,24 @@ class BulkTradeLeagueAvailability(Base):
 
     your_roster_id: int
 
-    target_owner_roster_id: int | None = None
-    target_owner_user_id: str | None = None
-    target_owner_name: str | None = None
-
-    you_own_target_player: bool
-
     is_eligible: bool
     ineligibility_reason: str | None = None
-
-    """
-    BUY:
-        Matching picks you own and can send for the target.
-
-    SELL:
-        Empty, because the receiving manager's matching picks live under
-        `counterparty_options`.
-    """
-    pick_choices: list["BulkTradePickChoice"] = Field(
-        default_factory=list,
-    )
-
-    """
-    BUY:
-        Empty because the target owner is already known.
-
-    SELL:
-        Every opposing manager who has a matching pick and can receive
-        your target player.
-    """
     counterparty_options: list[BulkTradeCounterparty] = Field(
         default_factory=list,
     )
 
 
 class BulkTradeAvailabilityResponse(Base):
-    direction: TradeDirection
-    players: list[BulkTradePlayerSearchResult] = Field(
+    send_players: list[BulkTradePlayerSearchResult] = Field(
         default_factory=list,
     )
-    picks: list["BulkTradePickRequest"] = Field(
+    send_picks: list["BulkTradePickRequest"] = Field(
+        default_factory=list,
+    )
+    receive_players: list[BulkTradePlayerSearchResult] = Field(
+        default_factory=list,
+    )
+    receive_picks: list["BulkTradePickRequest"] = Field(
         default_factory=list,
     )
 
@@ -137,13 +118,20 @@ class BulkTradePickReference(Base):
 
 
 class BulkTradeAvailabilityRequest(Base):
-    direction: TradeDirection
-    player_ids: list[str] = Field(
-        min_length=1,
+    send_player_ids: list[str] = Field(
+        default_factory=list,
         max_length=8,
     )
-    picks: list[BulkTradePickRequest] = Field(
-        min_length=1,
+    send_picks: list[BulkTradePickRequest] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    receive_player_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    receive_picks: list[BulkTradePickRequest] = Field(
+        default_factory=list,
         max_length=8,
     )
 
@@ -154,15 +142,20 @@ class BulkTradeOfferRequest(Base):
     your_roster_id: int
     counterparty_roster_id: int
 
-    player_ids: list[str] = Field(
-        min_length=1,
+    send_player_ids: list[str] = Field(
+        default_factory=list,
         max_length=8,
     )
-
-    direction: TradeDirection
-
-    picks: list[BulkTradePickReference] = Field(
-        min_length=1,
+    send_picks: list[BulkTradePickReference] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    receive_player_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+    )
+    receive_picks: list[BulkTradePickReference] = Field(
+        default_factory=list,
         max_length=8,
     )
 

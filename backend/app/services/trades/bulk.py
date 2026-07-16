@@ -25,7 +25,6 @@ from app.schemas.trades import (
     BulkTradeProposalRequest,
     BulkTradeProposalResponse,
     BulkTradeProposalResult,
-    TradeDirection,
 )
 from app.services.players.search import (
     search_local_dynasty_players,
@@ -39,7 +38,7 @@ from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
 )
 from app.utils.age import calculate_age
-from app.crud.sleeper.roster import get_all_rosters_by_league, get_owned_roster_rows, get_target_owner_roster
+from app.crud.sleeper.roster import get_all_rosters_by_league, get_owned_roster_rows
 from app.crud.sleeper.user import get_user_names_by_id
 from app.crud.sleeper.personal import get_league_sort_orders
 
@@ -204,73 +203,59 @@ def build_roster_names_by_league_id(
     }
 
 
-def get_counterparty_options(
+def build_pick_choices_for_roster(
     *,
-    your_roster_id: int,
-    league_rosters: list,
+    owner_roster_id: int,
     pick_assets: list,
     requested_picks: list[BulkTradePickRequest],
-    user_names_by_id: dict[str, str],
-) -> list[BulkTradeCounterparty]:
-    """
-    Sell flow: return every opposing roster that owns at least one matching
-    price pick.
-    """
+    ) -> list[BulkTradePickChoice]:
+    pick_choices: list[BulkTradePickChoice] = []
 
-    options = []
-
-    for roster in league_rosters:
-        if roster.roster_id == your_roster_id:
-            continue
-
-        pick_choices: list[BulkTradePickChoice] = []
-
-        for request_index, requested_pick in enumerate(
-            requested_picks,
-        ):
-            matching_picks = [
-                pick
-                for pick in get_owned_matching_picks(
-                    pick_assets=pick_assets,
-                    owner_roster_id=roster.roster_id,
-                )
-                if (
-                    pick.season == requested_pick.season
-                    and pick.round == requested_pick.round
-                )
-            ]
-
-            if not matching_picks:
-                pick_choices = []
-                break
-
-            pick_choices.append(
-                BulkTradePickChoice(
-                    request_index=request_index,
-                    season=requested_pick.season,
-                    round=requested_pick.round,
-                    matching_picks=matching_picks,
-                )
+    for request_index, requested_pick in enumerate(
+        requested_picks,
+    ):
+        matching_picks = [
+            pick
+            for pick in get_owned_matching_picks(
+                pick_assets=pick_assets,
+                owner_roster_id=owner_roster_id,
             )
+            if (
+                pick.season == requested_pick.season
+                and pick.round == requested_pick.round
+            )
+        ]
 
-        if not pick_choices:
-            continue
+        if not matching_picks:
+            return []
 
-        options.append(
-            BulkTradeCounterparty(
-                roster_id=roster.roster_id,
-                user_id=roster.owner_id,
-                name=user_names_by_id.get(
-                    roster.owner_id,
-                    f"Roster {roster.roster_id}",
-                ),
-                pick_choices=pick_choices,
+        pick_choices.append(
+            BulkTradePickChoice(
+                request_index=request_index,
+                season=requested_pick.season,
+                round=requested_pick.round,
+                matching_picks=matching_picks,
             )
         )
 
-    return sorted(
-        options,
-        key=lambda option: option.name.lower(),
+    return pick_choices
+
+
+def roster_has_all_players(
+    *,
+    roster,
+    player_ids: list[str],
+) -> bool:
+    if not player_ids:
+        return True
+
+    roster_player_ids = set(
+        roster.players or [],
+    )
+
+    return all(
+        player_id in roster_player_ids
+        for player_id in player_ids
     )
 
 
@@ -279,26 +264,29 @@ async def get_bulk_trade_availability(
     db: AsyncSession,
     connection: SleeperConnection,
     sleeper: SleeperClient,
-    player_ids: list[str],
-    direction: TradeDirection,
-    picks: list[BulkTradePickRequest],
+    send_player_ids: list[str],
+    send_picks: list[BulkTradePickRequest],
+    receive_player_ids: list[str],
+    receive_picks: list[BulkTradePickRequest],
 ) -> BulkTradeAvailabilityResponse:
-    """
-    Builds buy/sell availability across all leagues owned by the connected
-    Sleeper user.
+    if (
+        len(send_player_ids) + len(send_picks) == 0
+        or len(receive_player_ids) + len(receive_picks) == 0
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Select at least one asset on each side of the trade."
+            ),
+        )
 
-    Buy:
-    - Target player must be rostered by someone else.
-    - You must currently own at least one matching pick.
-
-    Sell:
-    - You must currently own the target player.
-    - At least one opposing roster must own a matching pick.
-    """
-
-    target_players = await get_bulk_trade_target_players(
+    send_players = await get_bulk_trade_target_players(
         db=db,
-        player_ids=player_ids,
+        player_ids=send_player_ids,
+    )
+    receive_players = await get_bulk_trade_target_players(
+        db=db,
+        player_ids=receive_player_ids,
     )
 
     owned_roster_rows = await get_owned_roster_rows(
@@ -354,11 +342,20 @@ async def get_bulk_trade_availability(
             sleeper=sleeper,
             rosters_by_league_id=rosters_by_league,
             requested_picks=[
-                (
-                    pick.season,
-                    pick.round,
-                )
-                for pick in picks
+                *[
+                    (
+                        pick.season,
+                        pick.round,
+                    )
+                    for pick in send_picks
+                ],
+                *[
+                    (
+                        pick.season,
+                        pick.round,
+                    )
+                    for pick in receive_picks
+                ],
             ],
             roster_names_by_league_id=(
                 roster_names_by_league_id
@@ -378,228 +375,78 @@ async def get_bulk_trade_availability(
             league.league_id,
             [],
         )
-
-        target_owner_rosters = [
-            get_target_owner_roster(
-                target_player_id=target_player.player_id,
-                league_rosters=league_rosters,
-            )
-            for target_player in target_players
-        ]
-
-        target_owner_roster_ids = {
-            roster.roster_id
-            for roster in target_owner_rosters
-            if roster is not None
-        }
-
-        you_own_target_players = all(
-            target_owner_roster is not None
-            and target_owner_roster.roster_id == your_roster.roster_id
-            for target_owner_roster in target_owner_rosters
-        )
-
-        # --------------------------------------------------
-        # Buy
-        # --------------------------------------------------
-        if direction == TradeDirection.BUY:
-            if any(
-                target_owner_roster is None
-                for target_owner_roster in target_owner_rosters
-            ):
-                availability_rows.append(
-                    BulkTradeLeagueAvailability(
-                        league_id=league.league_id,
-                        league_name=league.name,
-                        league_avatar=league.avatar,
-
-                        your_roster_id=your_roster.roster_id,
-
-                        you_own_target_player=False,
-
-                        is_eligible=False,
-                        ineligibility_reason=(
-                            "At least one selected player is not rostered in this league."
-                        ),
-                    )
-                )
-                continue
-
-            if len(target_owner_roster_ids) != 1:
-                availability_rows.append(
-                    BulkTradeLeagueAvailability(
-                        league_id=league.league_id,
-                        league_name=league.name,
-                        league_avatar=league.avatar,
-                        your_roster_id=your_roster.roster_id,
-                        you_own_target_player=False,
-                        is_eligible=False,
-                        ineligibility_reason=(
-                            "The selected players are not all rostered by the same manager in this league."
-                        ),
-                    )
-                )
-                continue
-
-            target_owner_roster = next(
-                iter(target_owner_roster_ids),
-            )
-            target_owner_roster_row = next(
-                roster
-                for roster in target_owner_rosters
-                if roster is not None
-            )
-
-            if you_own_target_players:
-                availability_rows.append(
-                    BulkTradeLeagueAvailability(
-                        league_id=league.league_id,
-                        league_name=league.name,
-                        league_avatar=league.avatar,
-
-                        your_roster_id=your_roster.roster_id,
-
-                        target_owner_roster_id=target_owner_roster,
-                        target_owner_user_id=(
-                            target_owner_roster_row.owner_id
-                        ),
-                        target_owner_name=(
-                            user_names_by_id.get(
-                                target_owner_roster_row.owner_id,
-                                f"Roster {target_owner_roster}",
-                            )
-                        ),
-
-                        you_own_target_player=True,
-
-                        is_eligible=False,
-                        ineligibility_reason=(
-                            "You already roster every selected player."
-                        ),
-                    )
-                )
-                continue
-
-            pick_choices: list[BulkTradePickChoice] = []
-
-            for request_index, pick_request in enumerate(
-                picks,
-            ):
-                matching_picks = [
-                    pick
-                    for pick in get_owned_matching_picks(
-                        pick_assets=pick_assets,
-                        owner_roster_id=your_roster.roster_id,
-                    )
-                    if (
-                        pick.season == pick_request.season
-                        and pick.round == pick_request.round
-                    )
-                ]
-
-                if not matching_picks:
-                    pick_choices = []
-                    break
-
-                pick_choices.append(
-                    BulkTradePickChoice(
-                        request_index=request_index,
-                        season=pick_request.season,
-                        round=pick_request.round,
-                        matching_picks=matching_picks,
-                    )
-                )
-
-            if not pick_choices:
-                availability_rows.append(
-                    BulkTradeLeagueAvailability(
-                        league_id=league.league_id,
-                        league_name=league.name,
-                        league_avatar=league.avatar,
-
-                        your_roster_id=your_roster.roster_id,
-
-                        target_owner_roster_id=target_owner_roster,
-                        target_owner_user_id=(
-                            target_owner_roster_row.owner_id
-                        ),
-                        target_owner_name=(
-                            user_names_by_id.get(
-                                target_owner_roster_row.owner_id,
-                                f"Roster {target_owner_roster}",
-                            )
-                        ),
-
-                        you_own_target_player=False,
-
-                        is_eligible=False,
-                        ineligibility_reason=(
-                            "You do not currently own every requested pick in this league."
-                        ),
-                    )
-                )
-                continue
-
+        if not roster_has_all_players(
+            roster=your_roster,
+            player_ids=send_player_ids,
+        ):
             availability_rows.append(
                 BulkTradeLeagueAvailability(
                     league_id=league.league_id,
                     league_name=league.name,
                     league_avatar=league.avatar,
-
                     your_roster_id=your_roster.roster_id,
-
-                    target_owner_roster_id=target_owner_roster,
-                    target_owner_user_id=(
-                        target_owner_roster_row.owner_id
-                    ),
-                    target_owner_name=(
-                        user_names_by_id.get(
-                            target_owner_roster_row.owner_id,
-                            f"Roster {target_owner_roster}",
-                        )
-                    ),
-
-                    you_own_target_player=False,
-
-                    is_eligible=True,
-                    pick_choices=pick_choices,
-                )
-            )
-            continue
-
-        # --------------------------------------------------
-        # Sell
-        # --------------------------------------------------
-        if not you_own_target_players:
-            availability_rows.append(
-                BulkTradeLeagueAvailability(
-                    league_id=league.league_id,
-                    league_name=league.name,
-                    league_avatar=league.avatar,
-
-                    your_roster_id=your_roster.roster_id,
-
-                    target_owner_roster_id=None,
-                    target_owner_user_id=None,
-                    target_owner_name=None,
-
-                    you_own_target_player=False,
-
                     is_eligible=False,
                     ineligibility_reason=(
-                        "You do not roster every selected player in this league."
+                        "You do not roster every selected send player in this league."
                     ),
                 )
             )
             continue
 
-        counterparty_options = get_counterparty_options(
-            your_roster_id=your_roster.roster_id,
-            league_rosters=league_rosters,
+        send_pick_choices = build_pick_choices_for_roster(
+            owner_roster_id=your_roster.roster_id,
             pick_assets=pick_assets,
-            requested_picks=picks,
-            user_names_by_id=user_names_by_id,
+            requested_picks=send_picks,
         )
+
+        if len(send_pick_choices) != len(send_picks):
+            availability_rows.append(
+                BulkTradeLeagueAvailability(
+                    league_id=league.league_id,
+                    league_name=league.name,
+                    league_avatar=league.avatar,
+                    your_roster_id=your_roster.roster_id,
+                    is_eligible=False,
+                    ineligibility_reason=(
+                        "You do not currently own every selected send pick in this league."
+                    ),
+                )
+            )
+            continue
+
+        counterparty_options: list[BulkTradeCounterparty] = []
+
+        for roster in league_rosters:
+            if roster.roster_id == your_roster.roster_id:
+                continue
+
+            if not roster_has_all_players(
+                roster=roster,
+                player_ids=receive_player_ids,
+            ):
+                continue
+
+            receive_pick_choices = build_pick_choices_for_roster(
+                owner_roster_id=roster.roster_id,
+                pick_assets=pick_assets,
+                requested_picks=receive_picks,
+            )
+
+            if len(receive_pick_choices) != len(receive_picks):
+                continue
+
+            counterparty_options.append(
+                BulkTradeCounterparty(
+                    roster_id=roster.roster_id,
+                    user_id=roster.owner_id,
+                    name=user_names_by_id.get(
+                        roster.owner_id,
+                        f"Roster {roster.roster_id}",
+                    ),
+                    send_pick_choices=send_pick_choices,
+                    receive_pick_choices=receive_pick_choices,
+                )
+            )
 
         if not counterparty_options:
             availability_rows.append(
@@ -607,14 +454,10 @@ async def get_bulk_trade_availability(
                     league_id=league.league_id,
                     league_name=league.name,
                     league_avatar=league.avatar,
-
                     your_roster_id=your_roster.roster_id,
-
-                    you_own_target_player=True,
-
                     is_eligible=False,
                     ineligibility_reason=(
-                        "No opposing roster currently owns every requested pick package."
+                        "No single opposing roster can satisfy every selected receive asset in this league."
                     ),
                 )
             )
@@ -625,22 +468,21 @@ async def get_bulk_trade_availability(
                 league_id=league.league_id,
                 league_name=league.name,
                 league_avatar=league.avatar,
-
                 your_roster_id=your_roster.roster_id,
-
-                you_own_target_player=True,
-
                 is_eligible=True,
                 counterparty_options=counterparty_options,
             )
         )
 
     return BulkTradeAvailabilityResponse(
-        direction=direction,
-        players=build_target_player_results(
-            target_players,
+        send_players=build_target_player_results(
+            send_players,
         ),
-        picks=picks,
+        send_picks=send_picks,
+        receive_players=build_target_player_results(
+            receive_players,
+        ),
+        receive_picks=receive_picks,
         leagues=availability_rows,
     )
 
@@ -658,8 +500,8 @@ async def validate_and_build_trade_variables(
     It confirms:
     - You own the submitting roster.
     - The counterparty exists.
-    - The target player is on the correct side.
-    - The selected original pick is currently owned by the sending roster.
+    - The send-side players and picks are yours.
+    - The receive-side players and picks belong to the selected counterparty.
     """
 
     if not connection.sleeper_user_id:
@@ -742,70 +584,41 @@ async def validate_and_build_trade_variables(
             ),
         )
 
-    target_owner_rosters = [
-        get_target_owner_roster(
-            target_player_id=player_id,
-            league_rosters=league_rosters,
-        )
-        for player_id in offer.player_ids
-    ]
-
-    if offer.direction == TradeDirection.BUY:
-        if any(
-            target_owner_roster is None
-            for target_owner_roster in target_owner_rosters
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "At least one selected player is not rostered in this league."
-                ),
-            )
-
-        if any(
-            target_owner_roster.roster_id
-            != counterparty_roster.roster_id
-            for target_owner_roster in target_owner_rosters
-            if target_owner_roster is not None
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "The selected trade partner no longer owns every selected player."
-                ),
-            )
-
-        pick_sender_roster_id = your_roster.roster_id
-        pick_receiver_roster_id = (
-            counterparty_roster.roster_id
+    if (
+        len(offer.send_player_ids)
+        + len(offer.send_picks)
+        == 0
+        or len(offer.receive_player_ids)
+        + len(offer.receive_picks)
+        == 0
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Each bulk trade offer must include assets on both sides."
+            ),
         )
 
-        player_sender_roster_id = (
-            counterparty_roster.roster_id
+    if not roster_has_all_players(
+        roster=your_roster,
+        player_ids=offer.send_player_ids,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "You no longer roster every selected send player in this league."
+            ),
         )
-        player_receiver_roster_id = your_roster.roster_id
 
-    else:
-        if any(
-            target_owner_roster is None
-            or target_owner_roster.roster_id != your_roster.roster_id
-            for target_owner_roster in target_owner_rosters
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "You no longer roster every selected player in this league."
-                ),
-            )
-
-        pick_sender_roster_id = (
-            counterparty_roster.roster_id
-        )
-        pick_receiver_roster_id = your_roster.roster_id
-
-        player_sender_roster_id = your_roster.roster_id
-        player_receiver_roster_id = (
-            counterparty_roster.roster_id
+    if not roster_has_all_players(
+        roster=counterparty_roster,
+        player_ids=offer.receive_player_ids,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "The selected trade partner no longer owns every selected receive player."
+            ),
         )
 
     user_ids = {
@@ -840,7 +653,10 @@ async def validate_and_build_trade_variables(
                     pick.season,
                     pick.round,
                 )
-                for pick in offer.picks
+                for pick in [
+                    *offer.send_picks,
+                    *offer.receive_picks,
+                ]
             ],
             roster_names_by_league_id=(
                 roster_names_by_league_id
@@ -853,37 +669,58 @@ async def validate_and_build_trade_variables(
         [],
     )
 
-    matching_picks = []
+    def resolve_selected_picks(
+        *,
+        selected_picks,
+        sender_roster_id: int,
+        error_prefix: str,
+    ) -> list:
+        matching_picks = []
 
-    for selected_pick in offer.picks:
-        matching_pick = next(
-            (
-                asset
-                for asset in pick_assets
-                if (
-                    asset.season == selected_pick.season
-                    and asset.round == selected_pick.round
-                    and asset.og_roster_id == selected_pick.og_roster_id
-                    and asset.current_owner_roster_id == pick_sender_roster_id
-                )
-            ),
-            None,
-        )
-
-        if matching_pick is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"You do not currently own the selected "
-                    f"{selected_pick.season} Round {selected_pick.round} "
-                    f"pick from original roster "
-                    f"{selected_pick.og_roster_id}."
+        for selected_pick in selected_picks:
+            matching_pick = next(
+                (
+                    asset
+                    for asset in pick_assets
+                    if (
+                        asset.season == selected_pick.season
+                        and asset.round == selected_pick.round
+                        and asset.og_roster_id == selected_pick.og_roster_id
+                        and asset.current_owner_roster_id == sender_roster_id
+                    )
                 ),
+                None,
             )
 
-        matching_picks.append(
-            matching_pick,
-        )
+            if matching_pick is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"{error_prefix} "
+                        f"{selected_pick.season} Round {selected_pick.round} "
+                        f"pick from original roster "
+                        f"{selected_pick.og_roster_id}."
+                    ),
+                )
+
+            matching_picks.append(
+                matching_pick,
+            )
+
+        return matching_picks
+
+    send_matching_picks = resolve_selected_picks(
+        selected_picks=offer.send_picks,
+        sender_roster_id=your_roster.roster_id,
+        error_prefix="You do not currently own the selected",
+    )
+    receive_matching_picks = resolve_selected_picks(
+        selected_picks=offer.receive_picks,
+        sender_roster_id=counterparty_roster.roster_id,
+        error_prefix=(
+            "The selected trade partner does not currently own the selected"
+        ),
+    )
 
     expires_at = (
         offer.expires_at
@@ -893,36 +730,58 @@ async def validate_and_build_trade_variables(
     )
 
     draft_picks = [
-        build_sleeper_draft_pick_string(
-            og_roster_id=matching_pick.og_roster_id,
-            season=matching_pick.season,
-            round_number=matching_pick.round,
-            receiving_roster_id=pick_receiver_roster_id,
-            sending_roster_id=pick_sender_roster_id,
-        )
-        for matching_pick in matching_picks
+        *[
+            build_sleeper_draft_pick_string(
+                og_roster_id=matching_pick.og_roster_id,
+                season=matching_pick.season,
+                round_number=matching_pick.round,
+                receiving_roster_id=counterparty_roster.roster_id,
+                sending_roster_id=your_roster.roster_id,
+            )
+            for matching_pick in send_matching_picks
+        ],
+        *[
+            build_sleeper_draft_pick_string(
+                og_roster_id=matching_pick.og_roster_id,
+                season=matching_pick.season,
+                round_number=matching_pick.round,
+                receiving_roster_id=your_roster.roster_id,
+                sending_roster_id=counterparty_roster.roster_id,
+            )
+            for matching_pick in receive_matching_picks
+        ],
     ]
 
     return {
         "league_id": league.league_id,
 
         "k_adds": [
-            *offer.player_ids,
+            *offer.send_player_ids,
+            *offer.receive_player_ids,
         ],
         "v_adds": [
             *[
-                player_receiver_roster_id
-                for _ in offer.player_ids
+                counterparty_roster.roster_id
+                for _ in offer.send_player_ids
+            ],
+            *[
+                your_roster.roster_id
+                for _ in offer.receive_player_ids
             ],
         ],
 
         "k_drops": [
-            *offer.player_ids,
+            *offer.send_player_ids,
+            *offer.receive_player_ids,
         ],
         "v_drops": [
             *[
-                player_sender_roster_id
-                for _ in offer.player_ids
+                your_roster.roster_id
+                for _ in offer.send_player_ids
+            ],
+            *[
+                counterparty_roster.roster_id
+                for _ in offer.receive_player_ids
             ],
         ],
 

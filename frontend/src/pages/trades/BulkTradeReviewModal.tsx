@@ -7,9 +7,9 @@ import {
 
 import type {
   BulkTradeOfferRequest,
-  BulkTradeProposalResult,
+  BulkTradePickRequest,
   BulkTradePlayerSearchResult,
-  TradeDirection,
+  BulkTradeProposalResult,
 } from '@/types';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 
@@ -18,13 +18,16 @@ interface ReviewOffer {
   offer: BulkTradeOfferRequest;
   leagueName: string;
   counterpartyName: string;
-  pickLabels: string[];
+  sendPickLabels: string[];
+  receivePickLabels: string[];
 }
 
 
 interface BulkTradeReviewModalProps {
-  direction: TradeDirection;
-  players: BulkTradePlayerSearchResult[];
+  sendPlayers: BulkTradePlayerSearchResult[];
+  sendPicks: BulkTradePickRequest[];
+  receivePlayers: BulkTradePlayerSearchResult[];
+  receivePicks: BulkTradePickRequest[];
   offers: ReviewOffer[];
 
   submitting: boolean;
@@ -48,9 +51,22 @@ function getErrorMessage(
 }
 
 
+function renderAssetSummary(
+  playerNames: string[],
+  pickLabels: string[],
+): string {
+  return [
+    ...playerNames,
+    ...pickLabels,
+  ].join(', ');
+}
+
+
 export const BulkTradeReviewModal = ({
-  direction,
-  players,
+  sendPlayers,
+  sendPicks,
+  receivePlayers,
+  receivePicks,
   offers,
   submitting,
   results,
@@ -75,17 +91,13 @@ export const BulkTradeReviewModal = ({
 
             <div className="bulk-trade-player-heading">
               <PlayerAvatar
-                playerId={players[0]?.player_id ?? 'unknown'}
-                name={players[0]?.name ?? 'Players'}
+                playerId={receivePlayers[0]?.player_id ?? sendPlayers[0]?.player_id ?? 'unknown'}
+                name={receivePlayers[0]?.name ?? sendPlayers[0]?.name ?? 'Trade package'}
                 size="md"
               />
 
               <h2>
-                {
-                  direction === 'buy'
-                    ? `Buy ${players.map(player => player.name).join(', ')}`
-                    : `Sell ${players.map(player => player.name).join(', ')}`
-                }
+                Mixed bulk trade package
               </h2>
             </div>
           </div>
@@ -157,47 +169,31 @@ export const BulkTradeReviewModal = ({
                       </span>
 
                       <div>
-                        {
-                          direction === 'buy'
-                            ? (
-                              <>
-                                <span>
-                                  You send:
-                                </span>
+                        <span>
+                          You send:
+                        </span>
 
-                                <strong>
-                                  {item.pickLabels.join(', ')}
-                                </strong>
-
-                                <span>
-                                  You receive:
-                                </span>
-
-                                <strong>
-                                  {players.map(player => player.name).join(', ')}
-                                </strong>
-                              </>
+                        <strong>
+                          {
+                            renderAssetSummary(
+                              sendPlayers.map(player => player.name),
+                              item.sendPickLabels,
                             )
-                            : (
-                              <>
-                                <span>
-                                  You send:
-                                </span>
+                          }
+                        </strong>
 
-                                <strong>
-                                  {players.map(player => player.name).join(', ')}
-                                </strong>
+                        <span>
+                          You receive:
+                        </span>
 
-                                <span>
-                                  You receive:
-                                </span>
-
-                                <strong>
-                                  {item.pickLabels.join(', ')}
-                                </strong>
-                              </>
+                        <strong>
+                          {
+                            renderAssetSummary(
+                              receivePlayers.map(player => player.name),
+                              item.receivePickLabels,
                             )
-                        }
+                          }
+                        </strong>
                       </div>
                     </article>
                   ))
@@ -266,6 +262,16 @@ export const BulkTradeReviewModal = ({
               )
               : null
           }
+        </div>
+
+        <div className="bulk-trade-review-footer">
+          <span>
+            {sendPlayers.length + receivePlayers.length}
+            {' '}
+            players · {sendPicks.length + receivePicks.length}
+            {' '}
+            picks · {offers.length} leagues
+          </span>
         </div>
       </div>
     </div>

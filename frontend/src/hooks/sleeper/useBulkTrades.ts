@@ -79,8 +79,16 @@ export function useBulkTradeAvailability(
     enabled: (
       canRead
       && !!payload
-      && payload.player_ids.length > 0
-      && payload.picks.length > 0
+      && (
+        payload.send_player_ids.length
+        + payload.send_picks.length
+        > 0
+      )
+      && (
+        payload.receive_player_ids.length
+        + payload.receive_picks.length
+        > 0
+      )
     ),
   });
 

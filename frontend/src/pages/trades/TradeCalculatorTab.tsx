@@ -8,7 +8,6 @@ import {
 import type {
   BulkTradePlayerSearchResult,
   BulkTradePickRequest,
-  TradeDirection,
 } from '@/types';
 import { notify } from '@/utils/notify';
 
@@ -34,9 +33,10 @@ type CalculatorAsset = {
 };
 
 export interface TradeCalculatorBulkOfferSeed {
-  direction: TradeDirection;
-  players: BulkTradePlayerSearchResult[];
-  picks: BulkTradePickRequest[];
+  sendPlayers: BulkTradePlayerSearchResult[];
+  sendPicks: BulkTradePickRequest[];
+  receivePlayers: BulkTradePlayerSearchResult[];
+  receivePicks: BulkTradePickRequest[];
 }
 
 
@@ -119,42 +119,32 @@ function buildBulkOfferSeed({
   );
 
   if (
-    myPlayers.length === myAssets.length
-    && counterpartyPicks.length === counterpartyAssets.length
+    myAssets.length === 0
+    || counterpartyAssets.length === 0
   ) {
-    return {
-      direction: 'buy',
-      players: myPlayers.map(
-        asset => asset.player!,
-      ),
-      picks: counterpartyPicks.map(
-        asset => ({
-          season: asset.pickSeason!,
-          round: asset.pickRound!,
-        }),
-      ),
-    };
+    return null;
   }
 
-  if (
-    myPicks.length === myAssets.length
-    && counterpartyPlayers.length === counterpartyAssets.length
-  ) {
-    return {
-      direction: 'sell',
-      players: counterpartyPlayers.map(
-        asset => asset.player!,
-      ),
-      picks: myPicks.map(
-        asset => ({
-          season: asset.pickSeason!,
-          round: asset.pickRound!,
-        }),
-      ),
-    };
-  }
-
-  return null;
+  return {
+    sendPlayers: myPlayers.map(
+      asset => asset.player!,
+    ),
+    sendPicks: myPicks.map(
+      asset => ({
+        season: asset.pickSeason!,
+        round: asset.pickRound!,
+      }),
+    ),
+    receivePlayers: counterpartyPlayers.map(
+      asset => asset.player!,
+    ),
+    receivePicks: counterpartyPicks.map(
+      asset => ({
+        season: asset.pickSeason!,
+        round: asset.pickRound!,
+      }),
+    ),
+  };
 }
 
 export function TradeCalculatorTab({
@@ -636,7 +626,7 @@ export function TradeCalculatorTab({
           <div>
             <span className="page-eyebrow">Bulk send</span>
             <p>
-              Seed the Bulk Offers tab when one side is all players and the other side is all picks.
+              Seed the Bulk Offers tab with any mix of players and picks on either side.
             </p>
           </div>
 

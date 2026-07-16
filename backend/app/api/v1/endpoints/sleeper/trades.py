@@ -17,7 +17,6 @@ from app.schemas.trades import (
     BulkTradeProposalRequest,
     BulkTradeProposalResponse,
     TradeCalculatorPickValueResponse,
-    TradeDirection,
 )
 from app.services.trades.bulk import (
     get_bulk_trade_availability,
@@ -90,9 +89,10 @@ async def bulk_trade_availability_endpoint(
         db=ctx.db,
         connection=ctx.connection,
         sleeper=ctx.sleeper,
-        player_ids=body.player_ids,
-        direction=body.direction,
-        picks=body.picks,
+        send_player_ids=body.send_player_ids,
+        send_picks=body.send_picks,
+        receive_player_ids=body.receive_player_ids,
+        receive_picks=body.receive_picks,
     )
 
 

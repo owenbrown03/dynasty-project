@@ -16,6 +16,8 @@ import type {
 
 
 interface BulkTradePlayerSearchProps {
+  label?: string;
+  placeholder?: string;
   selectedPlayers: BulkTradePlayerSearchResult[];
   onAddPlayer: (
     player: BulkTradePlayerSearchResult,
@@ -38,6 +40,8 @@ function formatMarketValue(
 
 
 export const BulkTradePlayerSearch = ({
+  label = 'Players',
+  placeholder = 'Search a player...',
   selectedPlayers,
   onAddPlayer,
   onRemovePlayer,
@@ -80,7 +84,7 @@ export const BulkTradePlayerSearch = ({
     <section className="bulk-trade-player-search">
       <label className="bulk-trade-search-label">
         <span>
-          Players
+          {label}
         </span>
 
         <div className="bulk-trade-search-input-wrap">
@@ -93,7 +97,7 @@ export const BulkTradePlayerSearch = ({
                 event.target.value,
               );
             }}
-            placeholder="Search a player to buy or sell..."
+            placeholder={placeholder}
           />
 
           {

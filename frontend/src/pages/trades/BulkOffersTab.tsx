@@ -22,7 +22,6 @@ import type {
   BulkTradeOfferRequest,
   BulkTradePickRequest,
   BulkTradePlayerSearchResult,
-  TradeDirection,
   TradeDraftPickAsset,
 } from '@/types';
 
@@ -107,30 +106,32 @@ function formatPickPackage(
 }
 
 
+function buildPickSelectionMap(
+  pickChoices: {
+    request_index: number;
+    matching_picks: TradeDraftPickAsset[];
+  }[],
+): Record<number, number | null> {
+  return Object.fromEntries(
+    pickChoices.map(
+      pickChoice => [
+        pickChoice.request_index,
+        pickChoice.matching_picks[0]?.og_roster_id ?? null,
+      ],
+    ),
+  );
+}
+
+
 function createInitialSelection(
   league: BulkTradeLeagueAvailability,
-  direction: TradeDirection,
 ): BulkTradeLeagueSelection {
   if (!league.is_eligible) {
     return {
       selected: false,
       counterpartyRosterId: null,
-      pickOgRosterIdsByRequestIndex: {},
-    };
-  }
-
-  if (direction === 'buy') {
-    return {
-      selected: true,
-      counterpartyRosterId: league.target_owner_roster_id,
-      pickOgRosterIdsByRequestIndex: Object.fromEntries(
-        league.pick_choices.map(
-          pickChoice => [
-            pickChoice.request_index,
-            pickChoice.matching_picks[0]?.og_roster_id ?? null,
-          ],
-        ),
-      ),
+      sendPickOgRosterIdsByRequestIndex: {},
+      receivePickOgRosterIdsByRequestIndex: {},
     };
   }
 
@@ -139,36 +140,40 @@ function createInitialSelection(
   return {
     selected: true,
     counterpartyRosterId: firstCounterparty?.roster_id ?? null,
-    pickOgRosterIdsByRequestIndex: Object.fromEntries(
-      (firstCounterparty?.pick_choices ?? []).map(
-        pickChoice => [
-          pickChoice.request_index,
-          pickChoice.matching_picks[0]?.og_roster_id ?? null,
-        ],
-      ),
+    sendPickOgRosterIdsByRequestIndex: buildPickSelectionMap(
+      firstCounterparty?.send_pick_choices ?? [],
+    ),
+    receivePickOgRosterIdsByRequestIndex: buildPickSelectionMap(
+      firstCounterparty?.receive_pick_choices ?? [],
     ),
   };
 }
 
 
-function getSelectedPicks(
+function getCounterpartyByRosterId(
   league: BulkTradeLeagueAvailability,
-  selection: BulkTradeLeagueSelection,
-  direction: TradeDirection,
-): TradeDraftPickAsset[] {
-  const pickChoices = (
-    direction === 'buy'
-      ? league.pick_choices
-      : league.counterparty_options.find(
-        (option: BulkTradeCounterparty) => (
-          option.roster_id === selection.counterpartyRosterId
-        ),
-      )?.pick_choices ?? []
-  );
+  rosterId: number | null,
+): BulkTradeCounterparty | null {
+  if (rosterId === null) {
+    return null;
+  }
 
+  return league.counterparty_options.find(
+    option => option.roster_id === rosterId,
+  ) ?? null;
+}
+
+
+function resolveSelectedPicks(
+  pickChoices: {
+    request_index: number;
+    matching_picks: TradeDraftPickAsset[];
+  }[],
+  selectionsByRequestIndex: Record<number, number | null>,
+): TradeDraftPickAsset[] {
   return pickChoices.flatMap(
     pickChoice => {
-      const selectedOgRosterId = selection.pickOgRosterIdsByRequestIndex[
+      const selectedOgRosterId = selectionsByRequestIndex[
         pickChoice.request_index
       ];
 
@@ -183,23 +188,27 @@ function getSelectedPicks(
 
 
 function buildAvailabilityPayload(
-  players: BulkTradePlayerSearchResult[],
-  picks: BulkTradePickRequest[],
-  direction: TradeDirection,
+  sendPlayers: BulkTradePlayerSearchResult[],
+  sendPicks: BulkTradePickRequest[],
+  receivePlayers: BulkTradePlayerSearchResult[],
+  receivePicks: BulkTradePickRequest[],
 ): BulkTradeAvailabilityRequest | null {
   if (
-    players.length === 0
-    || picks.length === 0
+    sendPlayers.length + sendPicks.length === 0
+    || receivePlayers.length + receivePicks.length === 0
   ) {
     return null;
   }
 
   return {
-    direction,
-    player_ids: players.map(
+    send_player_ids: sendPlayers.map(
       player => player.player_id,
     ),
-    picks,
+    send_picks: sendPicks,
+    receive_player_ids: receivePlayers.map(
+      player => player.player_id,
+    ),
+    receive_picks: receivePicks,
   };
 }
 
@@ -217,29 +226,30 @@ export const BulkOffersTab = ({
     [],
   );
 
-  const [direction, setDirection] = useState<TradeDirection>('buy');
-  const [pickSeason, setPickSeason] = useState(validPickYears[0] ?? DEFAULT_PICK_SEASON);
-  const [pickRound, setPickRound] = useState(DEFAULT_PICK_ROUND);
-  const [selectedPlayers, setSelectedPlayers] = useState<BulkTradePlayerSearchResult[]>([]);
-  const [requestedPicks, setRequestedPicks] = useState<BulkTradePickRequest[]>([
-    {
-      season: validPickYears[0] ?? DEFAULT_PICK_SEASON,
-      round: DEFAULT_PICK_ROUND,
-    },
-  ]);
+  const [sendPickSeason, setSendPickSeason] = useState(validPickYears[0] ?? DEFAULT_PICK_SEASON);
+  const [sendPickRound, setSendPickRound] = useState(DEFAULT_PICK_ROUND);
+  const [receivePickSeason, setReceivePickSeason] = useState(validPickYears[0] ?? DEFAULT_PICK_SEASON);
+  const [receivePickRound, setReceivePickRound] = useState(DEFAULT_PICK_ROUND);
+
+  const [sendPlayers, setSendPlayers] = useState<BulkTradePlayerSearchResult[]>([]);
+  const [sendPicks, setSendPicks] = useState<BulkTradePickRequest[]>([]);
+  const [receivePlayers, setReceivePlayers] = useState<BulkTradePlayerSearchResult[]>([]);
+  const [receivePicks, setReceivePicks] = useState<BulkTradePickRequest[]>([]);
   const [selectionsByLeagueId, setSelectionsByLeagueId] = useState<Record<string, BulkTradeLeagueSelection>>({});
   const [isReviewOpen, setIsReviewOpen] = useState(false);
 
   const availabilityPayload = useMemo(
     () => buildAvailabilityPayload(
-      selectedPlayers,
-      requestedPicks,
-      direction,
+      sendPlayers,
+      sendPicks,
+      receivePlayers,
+      receivePicks,
     ),
     [
-      direction,
-      requestedPicks,
-      selectedPlayers,
+      receivePicks,
+      receivePlayers,
+      sendPicks,
+      sendPlayers,
     ],
   );
 
@@ -256,13 +266,20 @@ export const BulkOffersTab = ({
   } = useSubmitBulkTradeOffers();
 
   useEffect(() => {
-    if (!validPickYears.includes(pickSeason)) {
-      setPickSeason(
+    if (!validPickYears.includes(sendPickSeason)) {
+      setSendPickSeason(
+        validPickYears[0] ?? DEFAULT_PICK_SEASON,
+      );
+    }
+
+    if (!validPickYears.includes(receivePickSeason)) {
+      setReceivePickSeason(
         validPickYears[0] ?? DEFAULT_PICK_SEASON,
       );
     }
   }, [
-    pickSeason,
+    receivePickSeason,
+    sendPickSeason,
     validPickYears,
   ]);
 
@@ -280,14 +297,12 @@ export const BulkOffersTab = ({
           league.league_id,
           createInitialSelection(
             league,
-            direction,
           ),
         ]),
       ),
     );
   }, [
     availability.data,
-    direction,
   ]);
 
   useEffect(() => {
@@ -295,12 +310,17 @@ export const BulkOffersTab = ({
       return;
     }
 
-    setDirection(seed.direction);
-    setSelectedPlayers(
-      dedupePlayers(seed.players),
+    setSendPlayers(
+      dedupePlayers(seed.sendPlayers),
     );
-    setRequestedPicks(
-      dedupePicks(seed.picks),
+    setSendPicks(
+      dedupePicks(seed.sendPicks),
+    );
+    setReceivePlayers(
+      dedupePlayers(seed.receivePlayers),
+    );
+    setReceivePicks(
+      dedupePicks(seed.receivePicks),
     );
     setSelectionsByLeagueId({});
     setIsReviewOpen(false);
@@ -313,28 +333,38 @@ export const BulkOffersTab = ({
   const offers = useMemo(() => {
     const data = availability.data;
 
-    if (!data || selectedPlayers.length === 0) {
+    if (!data) {
       return [];
     }
 
     return data.leagues.flatMap((league: BulkTradeLeagueAvailability) => {
       const selection = selectionsByLeagueId[league.league_id];
+      const counterparty = getCounterpartyByRosterId(
+        league,
+        selection?.counterpartyRosterId ?? null,
+      );
 
       if (
         !league.is_eligible
         || !selection?.selected
-        || selection.counterpartyRosterId === null
+        || !counterparty
       ) {
         return [];
       }
 
-      const picks = getSelectedPicks(
-        league,
-        selection,
-        direction,
+      const selectedSendPicks = resolveSelectedPicks(
+        counterparty.send_pick_choices,
+        selection.sendPickOgRosterIdsByRequestIndex,
+      );
+      const selectedReceivePicks = resolveSelectedPicks(
+        counterparty.receive_pick_choices,
+        selection.receivePickOgRosterIdsByRequestIndex,
       );
 
-      if (picks.length !== requestedPicks.length) {
+      if (
+        selectedSendPicks.length !== sendPicks.length
+        || selectedReceivePicks.length !== receivePicks.length
+      ) {
         return [];
       }
 
@@ -342,12 +372,21 @@ export const BulkOffersTab = ({
         {
           league_id: league.league_id,
           your_roster_id: league.your_roster_id,
-          counterparty_roster_id: selection.counterpartyRosterId,
-          player_ids: selectedPlayers.map(
+          counterparty_roster_id: counterparty.roster_id,
+          send_player_ids: sendPlayers.map(
             player => player.player_id,
           ),
-          direction,
-          picks: picks.map(
+          send_picks: selectedSendPicks.map(
+            pick => ({
+              season: pick.season,
+              round: pick.round,
+              og_roster_id: pick.og_roster_id,
+            }),
+          ),
+          receive_player_ids: receivePlayers.map(
+            player => player.player_id,
+          ),
+          receive_picks: selectedReceivePicks.map(
             pick => ({
               season: pick.season,
               round: pick.round,
@@ -359,10 +398,11 @@ export const BulkOffersTab = ({
     });
   }, [
     availability.data,
-    direction,
-    requestedPicks.length,
-    selectedPlayers,
+    receivePicks.length,
+    receivePlayers,
     selectionsByLeagueId,
+    sendPicks.length,
+    sendPlayers,
   ]);
 
   const reviewOffers = useMemo(() => {
@@ -382,28 +422,33 @@ export const BulkOffersTab = ({
       }
 
       const selection = selectionsByLeagueId[league.league_id];
-      const picks = getSelectedPicks(
+      const counterparty = getCounterpartyByRosterId(
         league,
-        selection,
-        direction,
+        selection?.counterpartyRosterId ?? null,
       );
 
-      const counterpartyName = (
-        direction === 'buy'
-          ? league.target_owner_name
-          : league.counterparty_options.find(
-            (option: BulkTradeCounterparty) => (
-              option.roster_id === offer.counterparty_roster_id
-            ),
-          )?.name
+      if (!counterparty) {
+        return [];
+      }
+
+      const selectedSendPicks = resolveSelectedPicks(
+        counterparty.send_pick_choices,
+        selection.sendPickOgRosterIdsByRequestIndex,
+      );
+      const selectedReceivePicks = resolveSelectedPicks(
+        counterparty.receive_pick_choices,
+        selection.receivePickOgRosterIdsByRequestIndex,
       );
 
       return [
         {
           offer,
           leagueName: league.league_name,
-          counterpartyName: counterpartyName ?? `Roster ${offer.counterparty_roster_id}`,
-          pickLabels: picks.map(
+          counterpartyName: counterparty.name,
+          sendPickLabels: selectedSendPicks.map(
+            pick => pick.label,
+          ),
+          receivePickLabels: selectedReceivePicks.map(
             pick => pick.label,
           ),
         },
@@ -411,7 +456,6 @@ export const BulkOffersTab = ({
     });
   }, [
     availability.data,
-    direction,
     offers,
     selectionsByLeagueId,
   ]);
@@ -424,22 +468,11 @@ export const BulkOffersTab = ({
 
   const selectedCount = offers.length;
 
-  const handleDirectionChange = (
-    nextDirection: TradeDirection,
-  ) => {
-    setDirection(nextDirection);
-    setSelectionsByLeagueId({});
-    reset();
-  };
-
   const handleReset = () => {
-    setSelectedPlayers([]);
-    setRequestedPicks([
-      {
-        season: validPickYears[0] ?? DEFAULT_PICK_SEASON,
-        round: DEFAULT_PICK_ROUND,
-      },
-    ]);
+    setSendPlayers([]);
+    setSendPicks([]);
+    setReceivePlayers([]);
+    setReceivePicks([]);
     setSelectionsByLeagueId({});
     setIsReviewOpen(false);
     reset();
@@ -468,12 +501,15 @@ export const BulkOffersTab = ({
           </h1>
 
           <p>
-            Build the same player package for the same pick package across your leagues, review each one, and send only the leagues you select.
+            Build the same mixed asset package across your leagues, review each one, and send only the leagues you select.
           </p>
         </div>
 
         {
-          selectedPlayers.length > 0
+          sendPlayers.length > 0
+          || sendPicks.length > 0
+          || receivePlayers.length > 0
+          || receivePicks.length > 0
             ? (
               <button
                 className="button-secondary"
@@ -489,30 +525,12 @@ export const BulkOffersTab = ({
       </div>
 
       <div className="bulk-trade-config-card">
-        <div className="bulk-trade-direction-toggle">
-          <button
-            className={direction === 'buy' ? 'active' : ''}
-            onClick={() => {
-              handleDirectionChange('buy');
-            }}
-          >
-            Buy
-          </button>
-
-          <button
-            className={direction === 'sell' ? 'active' : ''}
-            onClick={() => {
-              handleDirectionChange('sell');
-            }}
-          >
-            Sell
-          </button>
-        </div>
-
         <BulkTradePlayerSearch
-          selectedPlayers={selectedPlayers}
+          label="You send players"
+          placeholder="Search a player you want to send..."
+          selectedPlayers={sendPlayers}
           onAddPlayer={player => {
-            setSelectedPlayers(current => dedupePlayers([
+            setSendPlayers(current => dedupePlayers([
               ...current,
               player,
             ]));
@@ -520,7 +538,7 @@ export const BulkOffersTab = ({
             reset();
           }}
           onRemovePlayer={playerId => {
-            setSelectedPlayers(current => current.filter(
+            setSendPlayers(current => current.filter(
               player => player.player_id !== playerId,
             ));
             setSelectionsByLeagueId({});
@@ -531,19 +549,19 @@ export const BulkOffersTab = ({
         <div className="bulk-trade-price-controls">
           <label>
             <span>
-              Pick year
+              Send pick year
             </span>
 
             <select
-              value={pickSeason}
+              value={sendPickSeason}
               onChange={event => {
-                setPickSeason(event.target.value);
+                setSendPickSeason(event.target.value);
               }}
             >
               {
                 validPickYears.map(year => (
                   <option
-                    key={year}
+                    key={`send-${year}`}
                     value={year}
                   >
                     {year}
@@ -555,13 +573,13 @@ export const BulkOffersTab = ({
 
           <label>
             <span>
-              Round
+              Send round
             </span>
 
             <select
-              value={pickRound}
+              value={sendPickRound}
               onChange={event => {
-                setPickRound(Number(event.target.value));
+                setSendPickRound(Number(event.target.value));
               }}
             >
               {
@@ -572,7 +590,7 @@ export const BulkOffersTab = ({
                   (_, index) => index + 1,
                 ).map(round => (
                   <option
-                    key={round}
+                    key={`send-round-${round}`}
                     value={round}
                   >
                     Round {round}
@@ -584,11 +602,13 @@ export const BulkOffersTab = ({
 
           <div className="bulk-trade-price-summary">
             <span>
-              Pick package
+              Send pick package
             </span>
 
             <strong>
-              {formatPickPackage(requestedPicks)}
+              {sendPicks.length > 0
+                ? formatPickPackage(sendPicks)
+                : 'None selected'}
             </strong>
           </div>
 
@@ -596,54 +616,203 @@ export const BulkOffersTab = ({
             className="button-secondary"
             type="button"
             onClick={() => {
-              setRequestedPicks(current => dedupePicks([
+              setSendPicks(current => dedupePicks([
                 ...current,
                 {
-                  season: pickSeason,
-                  round: pickRound,
+                  season: sendPickSeason,
+                  round: sendPickRound,
                 },
               ]));
               setSelectionsByLeagueId({});
               reset();
             }}
           >
-            Add pick
+            Add send pick
           </button>
         </div>
 
-        <div className="bulk-trade-search-results">
-          {
-            requestedPicks.map((pick, index) => (
-              <div
-                key={`${pick.season}-${pick.round}-${index}`}
-                className="bulk-trade-selected-player"
-              >
-                <div className="player-with-avatar-copy">
-                  <strong>{pick.season} Round {pick.round}</strong>
-                  <span>Requested draft pick</span>
-                </div>
+        {
+          sendPicks.length > 0
+            ? (
+              <div className="bulk-trade-search-results">
+                {
+                  sendPicks.map((pick, index) => (
+                    <div
+                      key={`send-${pick.season}-${pick.round}-${index}`}
+                      className="bulk-trade-selected-player"
+                    >
+                      <div className="player-with-avatar-copy">
+                        <strong>{pick.season} Round {pick.round}</strong>
+                        <span>Pick you send</span>
+                      </div>
 
-                <button
-                  className="button-secondary"
-                  onClick={() => {
-                    setRequestedPicks(current => current.filter(
-                      (_, currentIndex) => currentIndex !== index,
-                    ));
-                    setSelectionsByLeagueId({});
-                    reset();
-                  }}
-                  disabled={requestedPicks.length === 1}
-                >
-                  Remove
-                </button>
+                      <button
+                        className="button-secondary"
+                        onClick={() => {
+                          setSendPicks(current => current.filter(
+                            (_, currentIndex) => currentIndex !== index,
+                          ));
+                          setSelectionsByLeagueId({});
+                          reset();
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))
+                }
               </div>
-            ))
-          }
+            )
+            : null
+        }
+
+        <BulkTradePlayerSearch
+          label="You receive players"
+          placeholder="Search a player you want to receive..."
+          selectedPlayers={receivePlayers}
+          onAddPlayer={player => {
+            setReceivePlayers(current => dedupePlayers([
+              ...current,
+              player,
+            ]));
+            setSelectionsByLeagueId({});
+            reset();
+          }}
+          onRemovePlayer={playerId => {
+            setReceivePlayers(current => current.filter(
+              player => player.player_id !== playerId,
+            ));
+            setSelectionsByLeagueId({});
+            reset();
+          }}
+        />
+
+        <div className="bulk-trade-price-controls">
+          <label>
+            <span>
+              Receive pick year
+            </span>
+
+            <select
+              value={receivePickSeason}
+              onChange={event => {
+                setReceivePickSeason(event.target.value);
+              }}
+            >
+              {
+                validPickYears.map(year => (
+                  <option
+                    key={`receive-${year}`}
+                    value={year}
+                  >
+                    {year}
+                  </option>
+                ))
+              }
+            </select>
+          </label>
+
+          <label>
+            <span>
+              Receive round
+            </span>
+
+            <select
+              value={receivePickRound}
+              onChange={event => {
+                setReceivePickRound(Number(event.target.value));
+              }}
+            >
+              {
+                Array.from(
+                  {
+                    length: 8,
+                  },
+                  (_, index) => index + 1,
+                ).map(round => (
+                  <option
+                    key={`receive-round-${round}`}
+                    value={round}
+                  >
+                    Round {round}
+                  </option>
+                ))
+              }
+            </select>
+          </label>
+
+          <div className="bulk-trade-price-summary">
+            <span>
+              Receive pick package
+            </span>
+
+            <strong>
+              {receivePicks.length > 0
+                ? formatPickPackage(receivePicks)
+                : 'None selected'}
+            </strong>
+          </div>
+
+          <button
+            className="button-secondary"
+            type="button"
+            onClick={() => {
+              setReceivePicks(current => dedupePicks([
+                ...current,
+                {
+                  season: receivePickSeason,
+                  round: receivePickRound,
+                },
+              ]));
+              setSelectionsByLeagueId({});
+              reset();
+            }}
+          >
+            Add receive pick
+          </button>
         </div>
+
+        {
+          receivePicks.length > 0
+            ? (
+              <div className="bulk-trade-search-results">
+                {
+                  receivePicks.map((pick, index) => (
+                    <div
+                      key={`receive-${pick.season}-${pick.round}-${index}`}
+                      className="bulk-trade-selected-player"
+                    >
+                      <div className="player-with-avatar-copy">
+                        <strong>{pick.season} Round {pick.round}</strong>
+                        <span>Pick you receive</span>
+                      </div>
+
+                      <button
+                        className="button-secondary"
+                        onClick={() => {
+                          setReceivePicks(current => current.filter(
+                            (_, currentIndex) => currentIndex !== index,
+                          ));
+                          setSelectionsByLeagueId({});
+                          reset();
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))
+                }
+              </div>
+            )
+            : null
+        }
       </div>
 
       {
-        selectedPlayers.length > 0
+        (sendPlayers.length > 0
+          || sendPicks.length > 0
+          || receivePlayers.length > 0
+          || receivePicks.length > 0)
         && availability.loading
           ? (
             <div className="bulk-trade-loading">
@@ -651,7 +820,7 @@ export const BulkOffersTab = ({
                 className="trade-spinner"
                 size={18}
               />
-              Checking league ownership and pick inventory...
+              Checking league ownership and counterparty inventory...
             </div>
           )
           : null
@@ -686,11 +855,15 @@ export const BulkOffersTab = ({
                   </strong>
 
                   <span>
-                    {
-                      direction === 'buy'
-                        ? `Offer ${formatPickPackage(requestedPicks)} for ${selectedPlayers.map(player => player.name).join(', ')}`
-                        : `Offer ${selectedPlayers.map(player => player.name).join(', ')} for ${formatPickPackage(requestedPicks)}`
-                    }
+                    Send {[
+                      ...sendPlayers.map(player => player.name),
+                      ...sendPicks.map(pick => `${pick.season} R${pick.round}`),
+                    ].join(', ')}
+                    {' for '}
+                    {[
+                      ...receivePlayers.map(player => player.name),
+                      ...receivePicks.map(pick => `${pick.season} R${pick.round}`),
+                    ].join(', ')}
                   </span>
                 </div>
 
@@ -726,12 +899,10 @@ export const BulkOffersTab = ({
                       <BulkTradeLeagueRow
                         key={league.league_id}
                         league={league}
-                        direction={direction}
                         selection={
                           selectionsByLeagueId[league.league_id]
                           ?? createInitialSelection(
                             league,
-                            direction,
                           )
                         }
                         onChange={nextSelection => {
@@ -752,21 +923,18 @@ export const BulkOffersTab = ({
 
       {
         isReviewOpen
-        && selectedPlayers.length > 0
           ? (
             <BulkTradeReviewModal
-              direction={direction}
-              players={selectedPlayers}
+              sendPlayers={sendPlayers}
+              sendPicks={sendPicks}
+              receivePlayers={receivePlayers}
+              receivePicks={receivePicks}
               offers={reviewOffers}
               submitting={submitting}
               results={results}
               error={submitError}
               onClose={() => {
                 setIsReviewOpen(false);
-
-                if (results.length > 0) {
-                  reset();
-                }
               }}
               onSubmit={handleSubmit}
             />
