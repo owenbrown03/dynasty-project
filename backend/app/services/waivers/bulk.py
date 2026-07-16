@@ -387,6 +387,7 @@ async def build_bulk_league_availability(
                 site_user_id=site_user_id,
                 league=league,
                 player_values=player_values,
+                redis=redis,
             )
         except HTTPException as exc:
             if exc.status_code != status.HTTP_400_BAD_REQUEST:

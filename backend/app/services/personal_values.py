@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from collections import defaultdict
 from dataclasses import dataclass
@@ -27,6 +28,7 @@ from app.crud.sleeper.personal import (
     upsert_personal_projection,
 )
 from app.crud.value import get_player_values
+from app.infrastructure.redis.client import RedisClient
 from app.schemas.player import PlayerValue
 from app.schemas.personal_values import (
     PersonalProjectionSeasonItem,
@@ -58,6 +60,10 @@ DYNASTY_POSITIONS = {
 CURVE_VERSION = "league_context_v1"
 CURVE_BAND_RADIUS = 5
 HISTORICAL_LOOKBACK_SEASONS = 5
+PERSONAL_VALUE_HYDRATION_CACHE_TTL_SECONDS = (
+    6 * 60 * 60
+)
+PERSONAL_VALUE_HYDRATION_CACHE_VERSION = "v1"
 POOL_POSITIONS = [
     "QB",
     "RB",
@@ -120,6 +126,94 @@ def _build_settings_fingerprint(
         },
         sort_keys=True,
         separators=(",", ":"),
+    )
+
+
+def _build_personal_projection_stamp(
+    *,
+    saved_projections: list,
+) -> str:
+    if not saved_projections:
+        return "none"
+
+    ordered_rows = sorted(
+        saved_projections,
+        key=lambda projection: (
+            projection.player_id,
+            projection.season,
+        ),
+    )
+    return "|".join(
+        f"{projection.player_id}:{projection.season}:"
+        f"{projection.updated_at.isoformat()}"
+        for projection in ordered_rows
+    )
+
+
+def _build_personal_player_values_signature(
+    *,
+    player_values: list[PlayerValue],
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(
+        json.dumps(
+            [
+                {
+                    "player_id": player.player_id,
+                    "position": player.position,
+                    "age": player.age,
+                    "underdog_position_rank": (
+                        player.underdog_position_rank
+                    ),
+                    "redraft_starter_war": (
+                        player.redraft_starter_war
+                    ),
+                    "redraft_roster_war": (
+                        player.redraft_roster_war
+                    ),
+                    "dynasty_starter_war": (
+                        player.dynasty_starter_war
+                    ),
+                    "dynasty_roster_war": (
+                        player.dynasty_roster_war
+                    ),
+                }
+                for player in player_values
+            ],
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    return digest.hexdigest()
+
+
+def _build_personal_value_hydration_cache_key(
+    *,
+    site_user_id,
+    league,
+    player_values: list[PlayerValue],
+    saved_projections: list,
+) -> str:
+    settings_fingerprint = _build_settings_fingerprint(
+        total_rosters=league.total_rosters,
+        scoring_settings=league.scoring_settings or {},
+        roster_positions=league.roster_positions or [],
+    )
+    settings_hash = hashlib.sha256(
+        settings_fingerprint.encode("utf-8")
+    ).hexdigest()
+    projection_hash = hashlib.sha256(
+        _build_personal_projection_stamp(
+            saved_projections=saved_projections,
+        ).encode("utf-8")
+    ).hexdigest()
+
+    return (
+        "personal-value-hydration:"
+        f"{PERSONAL_VALUE_HYDRATION_CACHE_VERSION}:"
+        f"{site_user_id}:{league.season}:{settings_hash}:"
+        f"{projection_hash}:"
+        f"{_build_personal_player_values_signature(player_values=player_values)}"
     )
 
 
@@ -945,15 +1039,12 @@ async def hydrate_personal_player_values(
     site_user_id,
     league,
     player_values: list[PlayerValue],
+    redis: RedisClient | None = None,
 ) -> list[PlayerValue]:
     if site_user_id is None or not player_values:
         return player_values
 
     current_season = int(league.season)
-    curve_rows_by_position = await _ensure_personal_rank_curve(
-        db=db,
-        league=league,
-    )
     supported_player_ids = [
         player.player_id
         for player in player_values
@@ -967,6 +1058,31 @@ async def hydrate_personal_player_values(
         db=db,
         site_user_id=site_user_id,
         player_ids=supported_player_ids,
+    )
+    cache_key = None
+
+    if redis is not None:
+        cache_key = (
+            _build_personal_value_hydration_cache_key(
+                site_user_id=site_user_id,
+                league=league,
+                player_values=player_values,
+                saved_projections=saved_projections,
+            )
+        )
+        cached_payload = await redis.get(
+            cache_key,
+        )
+
+        if cached_payload:
+            return [
+                PlayerValue.model_validate(row)
+                for row in json.loads(cached_payload)
+            ]
+
+    curve_rows_by_position = await _ensure_personal_rank_curve(
+        db=db,
+        league=league,
     )
     outcomes_by_projection_id = await get_personal_projection_outcomes(
         db=db,
@@ -1027,6 +1143,21 @@ async def hydrate_personal_player_values(
                     ),
                 },
             )
+        )
+
+    if redis is not None and cache_key is not None:
+        await redis.set(
+            cache_key,
+            json.dumps(
+                [
+                    player.model_dump()
+                    for player in hydrated_values
+                ],
+                separators=(",", ":"),
+            ),
+            ttl_seconds=(
+                PERSONAL_VALUE_HYDRATION_CACHE_TTL_SECONDS
+            ),
         )
 
     return hydrated_values

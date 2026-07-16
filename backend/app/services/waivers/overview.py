@@ -270,6 +270,7 @@ async def get_waiver_overview(
                 site_user_id=connection.site_user_id,
                 league=league,
                 player_values=enriched_values,
+                redis=redis,
             )
 
         enriched_by_player_id = {

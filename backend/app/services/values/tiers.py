@@ -116,6 +116,7 @@ async def build_dynasty_values_by_player_id(
 async def load_player_values_for_basis(
     *,
     db: AsyncSession,
+    redis,
     value_basis: ValueBasis,
     site_user_id=None,
     war_value_settings: WarValueSettings | None = None,
@@ -177,6 +178,7 @@ async def load_player_values_for_basis(
             site_user_id=site_user_id,
             league=league,
             player_values=player_values,
+            redis=redis,
         )
 
     return player_values
@@ -256,6 +258,7 @@ async def get_player_tier_board(
 
     player_values = await load_player_values_for_basis(
         db=ctx.db,
+        redis=ctx.redis,
         value_basis=value_basis,
         site_user_id=ctx.site_user.id if ctx.site_user else None,
         war_value_settings=ctx.site_user.settings.get("war_value_settings")

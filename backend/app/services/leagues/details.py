@@ -410,6 +410,7 @@ class LeagueDetails:
             site_user_id=site_user_id,
             league=league,
             player_values=player_values,
+            redis=redis,
         )
 
         player_map = {

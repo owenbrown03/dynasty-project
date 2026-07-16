@@ -17,6 +17,7 @@ from app.crud.sleeper.league import (
 from app.crud.sleeper.roster import get_all_rosters_by_league
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
+from app.infrastructure.redis.client import RedisClient
 from app.schemas.commissioner import (
     CommissionerLineupSlot,
     CommissionerOrphanRoster,
@@ -198,6 +199,7 @@ def get_average_age(
 async def build_league_player_values(
     *,
     db,
+    redis: RedisClient | None,
     league,
     player_ids: list[str],
     value_basis: ValueBasis,
@@ -267,6 +269,7 @@ async def build_league_player_values(
             site_user_id=site_user_id,
             league=league,
             player_values=player_values,
+            redis=redis,
         )
 
     return player_values
@@ -275,6 +278,7 @@ async def build_league_player_values(
 async def get_commissioner_orphans(
     *,
     db,
+    redis: RedisClient | None,
     username: str,
     value_basis: ValueBasis,
     site_user_id=None,
@@ -381,6 +385,7 @@ async def get_commissioner_orphans(
 
         player_values = await build_league_player_values(
             db=db,
+            redis=redis,
             league=league,
             player_ids=all_player_ids,
             value_basis=value_basis,

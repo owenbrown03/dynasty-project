@@ -327,6 +327,7 @@ async def build_available_players_for_league(
             site_user_id=connection.site_user_id,
             league=league,
             player_values=player_values,
+            redis=redis,
         )
 
     roster_spots_available = roster.open_roster_spots(
@@ -783,6 +784,7 @@ async def get_roster_waiver_players(
             site_user_id=connection.site_user_id,
             league=league,
             player_values=player_values,
+            redis=redis,
         )
 
     roster_players: list[WaiverRosterPlayer] = []

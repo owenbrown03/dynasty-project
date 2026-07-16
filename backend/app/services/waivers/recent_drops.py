@@ -284,6 +284,7 @@ async def get_recently_dropped_players(
                 site_user_id=connection.site_user_id,
                 league=league,
                 player_values=player_values,
+                redis=redis,
             )
 
         for player_value in player_values:
