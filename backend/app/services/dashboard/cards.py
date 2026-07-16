@@ -55,6 +55,9 @@ def build_team_metrics(
 
     return {
         "owner_id": roster.owner_id,
+        "wins": roster.wins,
+        "losses": roster.losses,
+        "ties": roster.ties,
 
         "player_count": len(players),
 
@@ -170,6 +173,9 @@ def build_league_cards(
                 "avatar": league.avatar,
 
                 "league_size": len(teams),
+                "wins": mine["wins"],
+                "losses": mine["losses"],
+                "ties": mine["ties"],
 
                 "ktc_value": mine["ktc_value"],
                 "ktc_rank": mine["ktc_rank"],

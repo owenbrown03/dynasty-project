@@ -331,6 +331,9 @@ export interface DashboardLeague {
   league_name: string;
   avatar: string | null;
   league_size: number;
+  wins: number;
+  losses: number;
+  ties: number;
 
   ktc_value: number;
   ktc_rank: number;
