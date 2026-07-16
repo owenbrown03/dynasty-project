@@ -92,6 +92,10 @@ class League(SQLModel, table=True):
     def is_dynasty(self) -> bool:
         return self.settings.get("type", 0) == 2
 
+    @property
+    def is_best_ball(self) -> bool:
+        return self.settings.get("best_ball", 0) == 1
+
     roster: List["Roster"] = Relationship(
         back_populates="league",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
@@ -220,6 +224,9 @@ class Roster(SQLModel, table=True):
         self,
         league: "League",
     ) -> int:
+        if league.is_best_ball:
+            return league.roster_size
+
         return (
             league.roster_size
             + self.occupied_reserve_slots
