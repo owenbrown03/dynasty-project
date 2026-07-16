@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 
 from fastapi import HTTPException, status
@@ -277,17 +278,20 @@ async def build_available_players_for_league(
     league: League,
     value_basis: ValueBasis,
     war_service: WARService,
+    redraft_war_players: list[PlayerWAR] | None = None,
+    war_value_settings=None,
 ) -> tuple[list[WaiverAvailablePlayer], str]:
     rostered_player_ids = await get_rostered_player_ids(
         db=db,
         league_id=league.league_id,
     )
 
-    redraft_war_players = await war_service.calculate(
-        db=db,
-        redis=redis,
-        league_id=league.league_id,
-    )
+    if redraft_war_players is None:
+        redraft_war_players = await war_service.calculate(
+            db=db,
+            redis=redis,
+            league_id=league.league_id,
+        )
 
     available_war_players = get_available_war_players(
         war_players=redraft_war_players,
@@ -304,10 +308,11 @@ async def build_available_players_for_league(
             available_war_players=available_war_players,
         )
     )
-    war_value_settings = await get_war_value_settings_by_user_id(
-        db=db,
-        site_user_id=connection.site_user_id,
-    )
+    if war_value_settings is None:
+        war_value_settings = await get_war_value_settings_by_user_id(
+            db=db,
+            site_user_id=connection.site_user_id,
+        )
 
     player_values = await get_player_values(
         db=db,
@@ -371,6 +376,74 @@ async def build_available_players_for_league(
         value_basis,
         war_value_settings,
     )
+
+
+def build_league_war_fingerprint(
+    *,
+    league: League,
+) -> str:
+    return json.dumps(
+        {
+            "season": league.season,
+            "total_rosters": league.total_rosters,
+            "scoring_settings": (
+                league.scoring_settings
+            ),
+            "roster_positions": (
+                league.roster_positions
+            ),
+        },
+        sort_keys=True,
+    )
+
+
+async def build_shared_redraft_war_by_league_id(
+    *,
+    db: AsyncSession,
+    owned_rows,
+    war_service: WARService,
+) -> dict[str, list[PlayerWAR]]:
+    war_by_fingerprint: dict[
+        str,
+        list[PlayerWAR],
+    ] = {}
+    shared_by_season: dict[int, object] = {}
+    war_by_league_id: dict[
+        str,
+        list[PlayerWAR],
+    ] = {}
+
+    for row in owned_rows:
+        league = row.league
+        fingerprint = build_league_war_fingerprint(
+            league=league,
+        )
+
+        if fingerprint not in war_by_fingerprint:
+            projection_season = int(league.season)
+
+            if projection_season not in shared_by_season:
+                shared_by_season[
+                    projection_season
+                ] = await war_service.load_shared_data(
+                    db,
+                    projection_season,
+                )
+
+            war_by_fingerprint[fingerprint] = (
+                await war_service.calculate_with_data(
+                    league=league,
+                    shared=shared_by_season[
+                        projection_season
+                    ],
+                )
+            )
+
+        war_by_league_id[
+            league.league_id
+        ] = war_by_fingerprint[fingerprint]
+
+    return war_by_league_id
 
 
 def aggregate_available_players_by_player_id(
@@ -623,12 +696,20 @@ async def get_available_waiver_players(
     )
 
     all_available_players: list[WaiverAvailablePlayer] = []
+    war_value_settings = await get_war_value_settings_by_user_id(
+        db=db,
+        site_user_id=connection.site_user_id,
+    )
     value_label = get_value_label(
         value_basis,
-        await get_war_value_settings_by_user_id(
+        war_value_settings,
+    )
+    redraft_war_by_league_id = (
+        await build_shared_redraft_war_by_league_id(
             db=db,
-            site_user_id=connection.site_user_id,
-        ),
+            owned_rows=owned_rows,
+            war_service=war_service,
+        )
     )
 
     for row in owned_rows:
@@ -641,6 +722,12 @@ async def get_available_waiver_players(
                 league=row.league,
                 value_basis=value_basis,
                 war_service=war_service,
+                redraft_war_players=(
+                    redraft_war_by_league_id[
+                        row.league.league_id
+                    ]
+                ),
+                war_value_settings=war_value_settings,
             )
         )
         all_available_players.extend(
