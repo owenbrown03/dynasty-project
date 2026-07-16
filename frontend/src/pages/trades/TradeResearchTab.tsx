@@ -1,4 +1,8 @@
-import { useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { TradeCards } from './TradeCards';
@@ -8,6 +12,8 @@ export const TradeResearchTab = () => {
   const trades = useTrades();
   const [search, setSearch] = useState('');
   const [selectedSettings, setSelectedSettings] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   const availableSettings = useMemo(
     () => {
@@ -62,6 +68,45 @@ export const TradeResearchTab = () => {
       search,
       selectedSettings,
       trades.data,
+    ],
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredTrades.length / pageSize,
+    ),
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    pageSize,
+    search,
+    selectedSettings,
+  ]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [
+    page,
+    totalPages,
+  ]);
+
+  const paginatedTrades = useMemo(
+    () => {
+      const startIndex = (page - 1) * pageSize;
+      return filteredTrades.slice(
+        startIndex,
+        startIndex + pageSize,
+      );
+    },
+    [
+      filteredTrades,
+      page,
+      pageSize,
     ],
   );
 
@@ -150,7 +195,64 @@ export const TradeResearchTab = () => {
 
         {
           filteredTrades.length > 0
-            ? <TradeCards trades={filteredTrades} />
+            ? (
+              <div className="available-pagination-toolbar">
+                <label className="available-page-size-selector">
+                  <span>Rows</span>
+
+                  <select
+                    value={pageSize}
+                    onChange={(event) => {
+                      setPageSize(
+                        Number(
+                          event.target.value,
+                        ),
+                      );
+                    }}
+                  >
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={150}>150</option>
+                  </select>
+                </label>
+
+                <div className="available-pagination-status">
+                  Page {page}
+                  {' of '}
+                  {totalPages}
+                </div>
+
+                <div className="available-pagination-actions">
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={page <= 1}
+                    onClick={() => {
+                      setPage(page - 1);
+                    }}
+                  >
+                    Previous
+                  </button>
+
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    disabled={page >= totalPages}
+                    onClick={() => {
+                      setPage(page + 1);
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )
+            : null
+        }
+
+        {
+          filteredTrades.length > 0
+            ? <TradeCards trades={paginatedTrades} />
             : (
               <p className="no-results-text">
                 No trades matched the current filters.
