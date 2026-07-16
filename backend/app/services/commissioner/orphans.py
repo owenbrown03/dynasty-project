@@ -44,6 +44,9 @@ from app.services.values.basis import (
     get_value_label,
 )
 from app.services.personal_values import hydrate_personal_player_values
+from app.services.war.shared import (
+    build_shared_redraft_war_by_league_id,
+)
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
     build_dynasty_projection,
@@ -199,6 +202,7 @@ async def build_league_player_values(
     player_ids: list[str],
     value_basis: ValueBasis,
     site_user_id=None,
+    war_players=None,
 ) -> list[PlayerValue]:
     unique_player_ids = list(
         dict.fromkeys(player_ids),
@@ -215,15 +219,16 @@ async def build_league_player_values(
             dynasty_war_by_player_id={},
         )
 
-    shared = await war_service.load_shared_data(
-        db,
-        int(league.season),
-    )
+    if war_players is None:
+        shared = await war_service.load_shared_data(
+            db,
+            int(league.season),
+        )
 
-    war_players = await war_service.calculate_with_data(
-        league=league,
-        shared=shared,
-    )
+        war_players = await war_service.calculate_with_data(
+            league=league,
+            shared=shared,
+        )
 
     dynasty_war_by_player_id = {}
 
@@ -350,6 +355,16 @@ async def get_commissioner_orphans(
         db=db,
         site_user_id=site_user_id,
     )
+    redraft_war_by_league_id = (
+        await build_shared_redraft_war_by_league_id(
+            db=db,
+            leagues=[
+                leagues_by_id[league_id]
+                for league_id in orphan_league_ids
+            ],
+            war_service=war_service,
+        )
+    )
 
     for league_id in orphan_league_ids:
         league = leagues_by_id[league_id]
@@ -370,6 +385,9 @@ async def get_commissioner_orphans(
             player_ids=all_player_ids,
             value_basis=value_basis,
             site_user_id=site_user_id,
+            war_players=redraft_war_by_league_id[
+                league_id
+            ],
         )
 
         player_by_id = {

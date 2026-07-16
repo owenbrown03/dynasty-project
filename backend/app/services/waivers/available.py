@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import json
 from collections.abc import Iterable
 
 from fastapi import HTTPException, status
@@ -34,6 +32,9 @@ from app.services.values.basis import (
 from app.services.personal_values import hydrate_personal_player_values
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
+)
+from app.services.war.shared import (
+    build_shared_redraft_war_by_league_id,
 )
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
@@ -378,74 +379,6 @@ async def build_available_players_for_league(
     )
 
 
-def build_league_war_fingerprint(
-    *,
-    league: League,
-) -> str:
-    return json.dumps(
-        {
-            "season": league.season,
-            "total_rosters": league.total_rosters,
-            "scoring_settings": (
-                league.scoring_settings
-            ),
-            "roster_positions": (
-                league.roster_positions
-            ),
-        },
-        sort_keys=True,
-    )
-
-
-async def build_shared_redraft_war_by_league_id(
-    *,
-    db: AsyncSession,
-    owned_rows,
-    war_service: WARService,
-) -> dict[str, list[PlayerWAR]]:
-    war_by_fingerprint: dict[
-        str,
-        list[PlayerWAR],
-    ] = {}
-    shared_by_season: dict[int, object] = {}
-    war_by_league_id: dict[
-        str,
-        list[PlayerWAR],
-    ] = {}
-
-    for row in owned_rows:
-        league = row.league
-        fingerprint = build_league_war_fingerprint(
-            league=league,
-        )
-
-        if fingerprint not in war_by_fingerprint:
-            projection_season = int(league.season)
-
-            if projection_season not in shared_by_season:
-                shared_by_season[
-                    projection_season
-                ] = await war_service.load_shared_data(
-                    db,
-                    projection_season,
-                )
-
-            war_by_fingerprint[fingerprint] = (
-                await war_service.calculate_with_data(
-                    league=league,
-                    shared=shared_by_season[
-                        projection_season
-                    ],
-                )
-            )
-
-        war_by_league_id[
-            league.league_id
-        ] = war_by_fingerprint[fingerprint]
-
-    return war_by_league_id
-
-
 def aggregate_available_players_by_player_id(
     *,
     players: list[WaiverAvailablePlayer],
@@ -707,7 +640,10 @@ async def get_available_waiver_players(
     redraft_war_by_league_id = (
         await build_shared_redraft_war_by_league_id(
             db=db,
-            owned_rows=owned_rows,
+            leagues=[
+                row.league
+                for row in owned_rows
+            ],
             war_service=war_service,
         )
     )

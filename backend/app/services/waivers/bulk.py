@@ -44,6 +44,9 @@ from app.services.personal_values import hydrate_personal_player_values
 from app.services.players.search import (
     search_local_dynasty_players,
 )
+from app.services.war.shared import (
+    build_shared_redraft_war_by_league_id,
+)
 from app.services.waivers.claims import (
     get_claim_block_reason,
     submit_claim,
@@ -248,6 +251,8 @@ async def build_bulk_league_availability(
     rostered_player_ids: set[str],
     value_basis: ValueBasis,
     war_service: WARService,
+    redraft_war_players: list[PlayerWAR] | None = None,
+    war_value_settings=None,
 ) -> BulkWaiverLeagueAvailability:
     """
     Builds one bulk-claim row for a single owned league.
@@ -318,11 +323,12 @@ async def build_bulk_league_availability(
             requires_drop=requires_drop,
         )
 
-    redraft_war_players = await war_service.calculate(
-        db=db,
-        redis=redis,
-        league_id=league.league_id,
-    )
+    if redraft_war_players is None:
+        redraft_war_players = await war_service.calculate(
+            db=db,
+            redis=redis,
+            league_id=league.league_id,
+        )
 
     war_by_player_id = {
         player.player_id: player
@@ -358,10 +364,11 @@ async def build_bulk_league_availability(
             )
         )
 
-    war_value_settings = await get_war_value_settings_by_user_id(
-        db=db,
-        site_user_id=site_user_id,
-    )
+    if war_value_settings is None:
+        war_value_settings = await get_war_value_settings_by_user_id(
+            db=db,
+            site_user_id=site_user_id,
+        )
 
     player_values = await get_player_values(
         db=db,
@@ -537,6 +544,20 @@ async def get_bulk_waiver_availability(
             league_ids=league_ids,
         )
     )
+    war_value_settings = await get_war_value_settings_by_user_id(
+        db=db,
+        site_user_id=connection.site_user_id,
+    )
+    redraft_war_by_league_id = (
+        await build_shared_redraft_war_by_league_id(
+            db=db,
+            leagues=[
+                league
+                for _, league in owned_roster_rows
+            ],
+            war_service=war_service,
+        )
+    )
 
     league_availability: list[
         BulkWaiverLeagueAvailability
@@ -558,6 +579,12 @@ async def get_bulk_waiver_availability(
                 ),
                 value_basis=value_basis,
                 war_service=war_service,
+                redraft_war_players=(
+                    redraft_war_by_league_id[
+                        league.league_id
+                    ]
+                ),
+                war_value_settings=war_value_settings,
             )
         )
 
@@ -579,10 +606,7 @@ async def get_bulk_waiver_availability(
         value_basis=value_basis,
         value_label=get_value_label(
             value_basis,
-            await get_war_value_settings_by_user_id(
-                db=db,
-                site_user_id=connection.site_user_id,
-            ),
+            war_value_settings,
         ),
 
         leagues=league_availability,

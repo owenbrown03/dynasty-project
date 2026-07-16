@@ -47,6 +47,9 @@ from app.services.leagues.models import LeaguePlayer
 from app.services.leagues.details import (
     calculate_projected_starter_points,
 )
+from app.services.war.shared import (
+    build_shared_redraft_war_by_league_id,
+)
 
 PLAYOFF_FINISH_PROBABILITY_BY_SEED = {
     1: {
@@ -279,6 +282,15 @@ async def build_finance_projected_seed_by_league_roster(
         tuple[str, int],
         int,
     ] = {}
+    redraft_war_by_league_id = (
+        await build_shared_redraft_war_by_league_id(
+            db=ctx.db,
+            leagues=list(
+                leagues_by_id.values()
+            ),
+            war_service=war_service,
+        )
+    )
 
     for league_id, league in leagues_by_id.items():
         rosters = rosters_by_league_id.get(
@@ -294,11 +306,9 @@ async def build_finance_projected_seed_by_league_roster(
             else 0
         )
 
-        redraft_war_players = await war_service.calculate(
-            db=ctx.db,
-            redis=ctx.redis,
-            league_id=league_id,
-        )
+        redraft_war_players = redraft_war_by_league_id[
+            league_id
+        ]
         war_lookup = {
             player.player_id: player
             for player in redraft_war_players

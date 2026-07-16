@@ -24,6 +24,9 @@ from app.schemas.waivers import (
 )
 from app.services.leagues.selection import get_visible_owned_league_rows_by_sleeper_user_id
 from app.services.personal_values import hydrate_personal_player_values
+from app.services.war.shared import (
+    build_shared_redraft_war_by_league_id,
+)
 from app.services.values.basis import (
     ValueBasis,
     get_player_value,
@@ -221,6 +224,15 @@ async def get_recently_dropped_players(
 
     selected_value_by_key: dict[tuple[str, str], float | None] = {}
     player_value_by_key: dict[tuple[str, str], object] = {}
+    redraft_war_by_league_id = (
+        await build_shared_redraft_war_by_league_id(
+            db=db,
+            leagues=list(
+                league_by_id.values()
+            ),
+            war_service=war_service,
+        )
+    )
 
     for league_id, entries in league_drop_rows.items():
         league = league_by_id.get(
@@ -230,11 +242,9 @@ async def get_recently_dropped_players(
         if league is None:
             continue
 
-        redraft_war_players = await war_service.calculate(
-            db=db,
-            redis=redis,
-            league_id=league_id,
-        )
+        redraft_war_players = redraft_war_by_league_id[
+            league_id
+        ]
 
         redraft_by_player_id = {
             player.player_id: player

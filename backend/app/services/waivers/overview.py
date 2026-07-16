@@ -28,6 +28,9 @@ from app.services.personal_values import hydrate_personal_player_values
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
+from app.services.war.shared import (
+    build_shared_redraft_war_by_league_id,
+)
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
     project_players_for_waivers,
@@ -172,13 +175,21 @@ async def get_waiver_overview(
     )
 
     overview_cards: list[WaiverLeagueOverview] = []
+    redraft_war_by_league_id = (
+        await build_shared_redraft_war_by_league_id(
+            db=db,
+            leagues=[
+                league
+                for _, league in owned_roster_rows
+            ],
+            war_service=war_service,
+        )
+    )
 
     for roster, league in owned_roster_rows:
-        redraft_war_players = await war_service.calculate(
-            db=db,
-            redis=redis,
-            league_id=league.league_id,
-        )
+        redraft_war_players = redraft_war_by_league_id[
+            league.league_id
+        ]
 
         redraft_war_by_player_id = {
             player.player_id: player
