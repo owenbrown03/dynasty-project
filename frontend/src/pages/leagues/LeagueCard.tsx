@@ -54,43 +54,40 @@ export function LeagueCard({
             </p>
           </div>
         </div>
-
-        <div className="league-summary-stat">
-          <strong>{league.rosters.length}</strong>
-          <small>rosters</small>
-        </div>
       </header>
 
-      <div className="league-badge-row">
-        {
-          league.settings_badges.map((badge) => (
-            <span
-              key={`${league.league_id}-${badge}`}
-              className="league-badge"
-            >
-              {badge}
-            </span>
-          ))
-        }
-      </div>
-
-      <section className="league-settings-panel">
+      <section className="league-settings-panel league-overview-panel">
         <div className="league-settings-header">
-          <p>League settings</p>
+          <p>League overview</p>
         </div>
 
-        <div className="league-settings-grid">
-          {
-            league.settings_details.map((detail) => (
-              <div
-                key={`${league.league_id}-${detail.label}`}
-                className="league-settings-item"
-              >
-                <span>{detail.label}</span>
-                <strong>{detail.value}</strong>
-              </div>
-            ))
-          }
+        <div className="league-overview-content">
+          <div className="league-badge-row">
+            {
+              league.settings_badges.map((badge) => (
+                <span
+                  key={`${league.league_id}-${badge}`}
+                  className="league-badge"
+                >
+                  {badge}
+                </span>
+              ))
+            }
+          </div>
+
+          <div className="league-settings-grid">
+            {
+              league.settings_details.map((detail) => (
+                <div
+                  key={`${league.league_id}-${detail.label}`}
+                  className="league-settings-item"
+                >
+                  <span>{detail.label}</span>
+                  <strong>{detail.value}</strong>
+                </div>
+              ))
+            }
+          </div>
         </div>
       </section>
 
