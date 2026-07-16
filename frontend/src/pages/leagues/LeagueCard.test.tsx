@@ -104,7 +104,7 @@ describe('LeagueCard', () => {
       screen.getByText('Test League'),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('League settings'),
+      screen.getByText('League overview'),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: /alpha/i }),
