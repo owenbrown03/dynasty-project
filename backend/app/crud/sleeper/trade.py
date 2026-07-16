@@ -83,6 +83,7 @@ async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
             )
         )
         .where(model.Roster.owner_id.in_(lms))
+        .where(model.Transaction.type == "trade")
         .distinct()
     )
     result = await db.execute(trade_ids_stmt)
