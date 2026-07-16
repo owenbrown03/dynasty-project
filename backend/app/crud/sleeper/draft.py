@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -79,6 +80,38 @@ async def get_traded_picks_by_league_ids(
         )
 
     return dict(traded_picks_by_league_id)
+
+
+async def get_completed_draft_seasons_by_league_ids(
+    db: AsyncSession,
+    league_ids: list[str],
+) -> dict[str, set[str]]:
+    if not league_ids:
+        return {}
+
+    result = await db.execute(
+        select(
+            DraftSelection.league_id,
+            DraftSelection.season,
+            func.count(DraftSelection.id),
+        )
+        .where(
+            DraftSelection.league_id.in_(league_ids),
+            DraftSelection.player_id.is_not(None),
+        )
+        .group_by(
+            DraftSelection.league_id,
+            DraftSelection.season,
+        )
+    )
+
+    seasons_by_league_id: dict[str, set[str]] = defaultdict(set)
+
+    for league_id, season, selection_count in result.all():
+        if selection_count:
+            seasons_by_league_id[league_id].add(str(season))
+
+    return dict(seasons_by_league_id)
 
 
 async def get_historical_rookie_draft_selections(

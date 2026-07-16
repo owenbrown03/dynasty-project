@@ -47,8 +47,23 @@ def build_pick_label(
 
 def get_first_future_pick_season(
     league: League,
+    *,
+    drafts: list[Draft] | None = None,
+    completed_draft_seasons: set[str] | None = None,
 ) -> str:
     current_season = int(league.season)
+    current_season_str = str(current_season)
+    completed_draft_seasons = completed_draft_seasons or set()
+    drafts = drafts or []
+
+    if current_season_str in completed_draft_seasons:
+        return str(current_season + 1)
+
+    if any(
+        str(draft.season) == current_season_str
+        for draft in drafts
+    ):
+        return current_season_str
 
     if league.status in {
         "in_season",
@@ -144,6 +159,7 @@ def build_owned_pick_assets_by_roster_id(
         int,
     ] | None = None,
     projected_slot_source_label: str | None = None,
+    completed_draft_seasons: set[str] | None = None,
 ) -> dict[int, list[DraftPickAsset]]:
     output: dict[int, list[DraftPickAsset]] = defaultdict(list)
     resolved_values_by_pick_key = resolved_values_by_pick_key or {}
@@ -153,7 +169,11 @@ def build_owned_pick_assets_by_roster_id(
     )
 
     start_season = int(
-        get_first_future_pick_season(league)
+        get_first_future_pick_season(
+            league,
+            drafts=drafts,
+            completed_draft_seasons=completed_draft_seasons,
+        )
     )
     seasons = [
         str(start_season + offset)

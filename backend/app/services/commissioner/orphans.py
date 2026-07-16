@@ -5,6 +5,7 @@ from collections import defaultdict
 from app.analytics.war.redraft.singleton import war_service
 from app.crud.auth.user import get_war_value_settings_by_user_id
 from app.crud.sleeper.draft import (
+    get_completed_draft_seasons_by_league_ids,
     get_drafts_by_league_ids,
     get_traded_picks_by_league_ids,
 )
@@ -25,6 +26,7 @@ from app.schemas.player import PlayerValue
 from app.services.draft.picks import (
     build_owned_pick_assets_by_roster_id,
     build_roster_name_by_id,
+    get_first_future_pick_season,
 )
 from app.services.draft.projection import (
     build_cached_projected_pick_slots_by_roster_id,
@@ -316,6 +318,12 @@ async def get_commissioner_orphans(
         db,
         orphan_league_ids,
     )
+    completed_draft_seasons_by_league_id = (
+        await get_completed_draft_seasons_by_league_ids(
+            db,
+            orphan_league_ids,
+        )
+    )
     sync_states_by_league_id = await get_sync_states(
         db,
         orphan_league_ids,
@@ -408,7 +416,19 @@ async def get_commissioner_orphans(
         )
         projected_slots_by_season_and_roster_id = {
             (
-                str(int(league.season) + 1),
+                get_first_future_pick_season(
+                    league,
+                    drafts=drafts_by_league_id.get(
+                        league_id,
+                        [],
+                    ),
+                    completed_draft_seasons=(
+                        completed_draft_seasons_by_league_id.get(
+                            league_id,
+                            set(),
+                        )
+                    ),
+                ),
                 roster_id,
             ): slot
             for roster_id, slot in (
@@ -447,6 +467,12 @@ async def get_commissioner_orphans(
                 ),
                 projected_slot_source_label=(
                     projected_slot_source_label
+                ),
+                completed_draft_seasons=(
+                    completed_draft_seasons_by_league_id.get(
+                        league_id,
+                        set(),
+                    )
                 ),
             )
         )
@@ -500,6 +526,12 @@ async def get_commissioner_orphans(
                 ),
                 projected_slot_source_label=(
                     projected_slot_source_label
+                ),
+                completed_draft_seasons=(
+                    completed_draft_seasons_by_league_id.get(
+                        league_id,
+                        set(),
+                    )
                 ),
             )
         )

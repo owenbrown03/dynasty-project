@@ -12,6 +12,7 @@ from sqlmodel import select
 from app.analytics.war.redraft.singleton import war_service
 from app.analytics.war.redraft.service import WARSharedData
 from app.crud.sleeper.draft import (
+    get_completed_draft_seasons_by_league_ids,
     get_drafts_by_league_ids,
     get_traded_picks_by_league_ids,
 )
@@ -852,6 +853,12 @@ class LeagueDetails:
             db,
             [league_id],
         )
+        completed_draft_seasons_by_league_id = (
+            await get_completed_draft_seasons_by_league_ids(
+                db,
+                [league_id],
+            )
+        )
         traded_picks_by_league_id = await get_traded_picks_by_league_ids(
             db,
             [league_id],
@@ -875,7 +882,14 @@ class LeagueDetails:
             )
         )
         projected_pick_season = get_first_future_pick_season(
-            league
+            league,
+            drafts=drafts_by_league_id.get(league_id, []),
+            completed_draft_seasons=(
+                completed_draft_seasons_by_league_id.get(
+                    league_id,
+                    set(),
+                )
+            ),
         )
         projected_slots_by_season_and_roster_id = {
             (
@@ -912,6 +926,12 @@ class LeagueDetails:
             ),
             projected_slot_source_label=(
                 projected_slot_source_label
+            ),
+            completed_draft_seasons=(
+                completed_draft_seasons_by_league_id.get(
+                    league_id,
+                    set(),
+                )
             ),
         )
 
