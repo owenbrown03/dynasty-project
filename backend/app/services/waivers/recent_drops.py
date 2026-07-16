@@ -261,7 +261,8 @@ async def get_recently_dropped_players(
             continue
 
         dynasty_by_player_id: dict[str, DynastyProjection] = (
-            project_full_available_dynasty_pool(
+            await project_full_available_dynasty_pool(
+                redis=redis,
                 available_war_players=league_war_players,
             )
         )

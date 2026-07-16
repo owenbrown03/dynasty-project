@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from app.analytics.war.dynasty.factory import (
-    build_dynasty_war_service,
-)
 from app.analytics.war.redraft.singleton import war_service
 from app.crud.auth.user import get_war_value_settings_by_user_id
 from app.crud.sleeper.draft import (
@@ -30,7 +27,7 @@ from app.services.draft.picks import (
     build_roster_name_by_id,
 )
 from app.services.draft.projection import (
-    build_projected_pick_slots_by_roster_id,
+    build_cached_projected_pick_slots_by_roster_id,
     build_projected_slot_source_label,
 )
 from app.services.draft.values import (
@@ -46,11 +43,11 @@ from app.services.values.basis import (
 )
 from app.services.personal_values import hydrate_personal_player_values
 from app.services.war.shared import (
+    build_cached_dynasty_projections_by_player_id,
     build_shared_redraft_war_by_league_id,
 )
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
-    build_dynasty_projection,
 )
 
 
@@ -240,21 +237,12 @@ async def build_league_player_values(
         ValueBasis.SLEEPER_WAR,
         ValueBasis.MY_WAR,
     }:
-        dynasty_service = build_dynasty_war_service()
-
-        for player in war_players:
-            if player.player_id in dynasty_war_by_player_id:
-                continue
-
-            projection = build_dynasty_projection(
-                player_war=player,
-                dynasty_service=dynasty_service,
+        dynasty_war_by_player_id = (
+            await build_cached_dynasty_projections_by_player_id(
+                redis=redis,
+                player_wars=list(war_players),
             )
-
-            if projection is not None:
-                dynasty_war_by_player_id[
-                    player.player_id
-                ] = projection
+        )
 
     player_values = await get_player_values(
         db,
@@ -410,7 +398,8 @@ async def get_commissioner_orphans(
             else 0
         )
         projected_pick_slots_by_roster_id = (
-            build_projected_pick_slots_by_roster_id(
+            await build_cached_projected_pick_slots_by_roster_id(
+                redis=redis,
                 league=league,
                 rosters=rosters,
                 current_week=current_week,

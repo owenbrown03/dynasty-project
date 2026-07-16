@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import hashlib
+import json
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.analytics.war.dynasty.factory import build_dynasty_war_service
 from app.analytics.war.redraft.singleton import war_service
 from app.analytics.war.redraft.service import WARSharedData
 from app.crud.sleeper.draft import (
@@ -30,7 +31,7 @@ from app.services.draft.picks import (
 )
 from app.services.draft.projection import (
     build_draft_pick_projection_summary,
-    build_projected_pick_slots_by_roster_id,
+    build_cached_projected_pick_slots_by_roster_id,
     build_projected_slot_source_label,
 )
 from app.services.draft.values import get_resolved_pick_values_by_key
@@ -52,7 +53,10 @@ from app.services.leagues.settings import (
 )
 from app.services.values.basis import ValueBasis
 from app.services.personal_values import hydrate_personal_player_values
-from app.services.waivers.dynasty import build_dynasty_projection
+from app.services.war.shared import (
+    build_cached_dynasty_projections_by_player_id,
+    build_player_war_signature,
+)
 
 WAR_PLAYER_DISPLAY_LIMIT = 500
 WAR_POSITION_RANK_DISPLAY_LIMIT = (
@@ -65,6 +69,10 @@ ROSTER_CONSTRUCTION_POSITIONS = (
     "WR",
     "TE",
 )
+ROSTER_CONSTRUCTION_CACHE_TTL_SECONDS = (
+    6 * 60 * 60
+)
+ROSTER_CONSTRUCTION_CACHE_VERSION = "v1"
 
 
 def is_slot_eligible(slot: str, position: str | None) -> bool:
@@ -293,6 +301,99 @@ def build_league_roster_construction_targets(
     ]
 
 
+def _build_roster_construction_cache_key(
+    *,
+    league,
+    roster_rows: list,
+    seasonal_results: list[list],
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(
+        json.dumps(
+            {
+                "league_id": league.league_id,
+                "season": league.season,
+                "total_rosters": league.total_rosters,
+                "roster_positions": (
+                    league.roster_positions or []
+                ),
+                "roster_sizes": sorted(
+                    [
+                        len(roster.players or [])
+                        + roster.open_roster_spots(
+                            league,
+                        )
+                        for roster in roster_rows
+                    ]
+                ),
+                "seasonal_signatures": [
+                    build_player_war_signature(
+                        player_wars=list(results),
+                    )
+                    for results in seasonal_results
+                ],
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    return (
+        "roster-construction:"
+        f"{ROSTER_CONSTRUCTION_CACHE_VERSION}:"
+        f"{digest.hexdigest()}"
+    )
+
+
+async def build_cached_league_roster_construction_targets(
+    *,
+    redis,
+    league,
+    roster_rows: list,
+    seasonal_results: list[list],
+) -> list[LeagueRosterConstructionTarget]:
+    cache_key = _build_roster_construction_cache_key(
+        league=league,
+        roster_rows=roster_rows,
+        seasonal_results=seasonal_results,
+    )
+
+    if redis is not None:
+        cached_payload = await redis.get(
+            cache_key,
+        )
+
+        if cached_payload:
+            return [
+                LeagueRosterConstructionTarget.model_validate(
+                    row,
+                )
+                for row in json.loads(cached_payload)
+            ]
+
+    targets = build_league_roster_construction_targets(
+        league=league,
+        roster_rows=roster_rows,
+        seasonal_results=seasonal_results,
+    )
+
+    if redis is not None:
+        await redis.set(
+            cache_key,
+            json.dumps(
+                [
+                    target.model_dump()
+                    for target in targets
+                ],
+                separators=(",", ":"),
+            ),
+            ttl_seconds=(
+                ROSTER_CONSTRUCTION_CACHE_TTL_SECONDS
+            ),
+        )
+
+    return targets
+
+
 class LeagueDetails:
     def __init__(self):
         self.war_service = war_service
@@ -369,22 +470,12 @@ class LeagueDetails:
             for player in war_players
         }
 
-        dynasty_service = build_dynasty_war_service()
-        dynasty_war_by_player_id = {}
-
-        for war_player in war_players:
-            if war_player.player_id in dynasty_war_by_player_id:
-                continue
-
-            projection = build_dynasty_projection(
-                player_war=war_player,
-                dynasty_service=dynasty_service,
+        dynasty_war_by_player_id = (
+            await build_cached_dynasty_projections_by_player_id(
+                redis=redis,
+                player_wars=war_players,
             )
-
-            if projection is not None:
-                dynasty_war_by_player_id[
-                    war_player.player_id
-                ] = projection
+        )
 
         player_ids = set()
         owner_ids = set()
@@ -566,7 +657,8 @@ class LeagueDetails:
             [league_id],
         )
         projected_pick_slots_by_roster_id = (
-            build_projected_pick_slots_by_roster_id(
+            await build_cached_projected_pick_slots_by_roster_id(
+                redis=redis,
                 league=league,
                 rosters=roster_rows,
                 current_week=current_week,
@@ -836,7 +928,8 @@ class LeagueDetails:
             roster.rank = rank
 
         roster_construction_targets = (
-            build_league_roster_construction_targets(
+            await build_cached_league_roster_construction_targets(
+                redis=redis,
                 league=league,
                 roster_rows=roster_rows,
                 seasonal_results=(

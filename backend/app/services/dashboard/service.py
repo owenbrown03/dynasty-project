@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import Iterable
 
-from app.analytics.war.dynasty.factory import (
-    build_dynasty_war_service,
-)
 from app.analytics.war.redraft.singleton import (
     war_service,
 )
@@ -15,7 +11,9 @@ from app.crud.value import (
 )
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
-    build_dynasty_projection,
+)
+from app.services.war.shared import (
+    build_cached_dynasty_projections_by_player_id,
 )
 
 from .cards import (
@@ -91,11 +89,11 @@ def build_league_rostered_player_ids(
     }
 
 
-def build_dynasty_war_by_player_id(
+async def build_dynasty_war_by_player_id(
     *,
+    redis,
     league_war_by_player_id,
     rostered_player_ids: Iterable[str],
-    dynasty_service,
 ):
     """
     Builds dynasty WAR only for players currently rostered in this league.
@@ -105,33 +103,20 @@ def build_dynasty_war_by_player_id(
     replacement levels.
     """
 
-    dynasty_war_by_player_id = {}
-
-    for player_id in rostered_player_ids:
-        player_war = league_war_by_player_id.get(
-            player_id,
-        )
-
-        if player_war is None:
-            continue
-
-        if (
-            player_war.position
-            not in DYNASTY_FANTASY_POSITIONS
-        ):
-            continue
-
-        projection = build_dynasty_projection(
-            player_war=player_war,
-            dynasty_service=dynasty_service,
-        )
-
-        if projection is not None:
-            dynasty_war_by_player_id[
-                player_id
-            ] = projection
-
-    return dynasty_war_by_player_id
+    return await build_cached_dynasty_projections_by_player_id(
+        redis=redis,
+        player_wars=[
+            league_war_by_player_id[player_id]
+            for player_id in rostered_player_ids
+            if (
+                player_id in league_war_by_player_id
+                and league_war_by_player_id[
+                    player_id
+                ].position
+                in DYNASTY_FANTASY_POSITIONS
+            )
+        ],
+    )
 
 
 async def load_shared_war_data_by_season(
@@ -218,6 +203,7 @@ async def calculate_war_by_league(
 async def build_player_maps_by_league(
     *,
     db,
+    redis,
     leagues,
     all_rosters,
     war_results_by_league_id,
@@ -236,8 +222,6 @@ async def build_player_maps_by_league(
     - redraft WAR for that exact league
     - dynasty WAR projected from that exact league's redraft WAR
     """
-
-    dynasty_service = build_dynasty_war_service()
 
     player_maps_by_league_id = {}
 
@@ -266,14 +250,14 @@ async def build_player_maps_by_league(
         )
 
         dynasty_war_by_player_id = (
-            build_dynasty_war_by_player_id(
+            await build_dynasty_war_by_player_id(
+                redis=redis,
                 league_war_by_player_id=(
                     league_war_by_player_id
                 ),
                 rostered_player_ids=(
                     rostered_player_ids
                 ),
-                dynasty_service=dynasty_service,
             )
         )
 
@@ -335,12 +319,9 @@ async def get_user_dashboard(
     """
     Returns the user's cross-league dashboard.
 
-    Redis stays in the signature because this service is part of the
-    dashboard API contract, even though calculate_with_data() uses already
-    loaded shared WAR data and does not need Redis directly.
+    Redis is used for cross-league dynasty projection caching after the
+    league-specific redraft WAR inputs are computed.
     """
-
-    del redis
 
     user_id = await get_userid_by_username(
         db,
@@ -411,6 +392,7 @@ async def get_user_dashboard(
     player_maps_by_league_id = (
         await build_player_maps_by_league(
             db=db,
+            redis=redis,
             leagues=leagues,
             all_rosters=all_rosters,
             war_results_by_league_id=(

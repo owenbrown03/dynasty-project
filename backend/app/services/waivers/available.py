@@ -5,9 +5,6 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.analytics.war.dynasty.factory import (
-    build_dynasty_war_service,
-)
 from app.analytics.war.redraft.models import PlayerWAR
 from app.analytics.war.redraft.service import WARService
 from app.analytics.war.dynasty.models import DynastyProjection
@@ -34,11 +31,11 @@ from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
 from app.services.war.shared import (
+    build_cached_dynasty_projections_by_player_id,
     build_shared_redraft_war_by_league_id,
 )
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
-    build_dynasty_projection,
 )
 
 
@@ -203,8 +200,9 @@ def get_available_war_players(
     ]
 
 
-def project_full_available_dynasty_pool(
+async def project_full_available_dynasty_pool(
     *,
+    redis: RedisClient | None,
     available_war_players: Iterable[PlayerWAR],
 ) -> dict[str, DynastyProjection]:
     """
@@ -215,22 +213,10 @@ def project_full_available_dynasty_pool(
     dynasty WAR in the detailed table is accurate.
     """
 
-    dynasty_service = build_dynasty_war_service()
-
-    dynasty_by_player_id: dict[str, DynastyProjection] = {}
-
-    for player_war in available_war_players:
-        projection = build_dynasty_projection(
-            player_war=player_war,
-            dynasty_service=dynasty_service,
-        )
-
-        if projection is not None:
-            dynasty_by_player_id[
-                player_war.player_id
-            ] = projection
-
-    return dynasty_by_player_id
+    return await build_cached_dynasty_projections_by_player_id(
+        redis=redis,
+        player_wars=list(available_war_players),
+    )
 
 
 def sort_available_players(
@@ -305,7 +291,8 @@ async def build_available_players_for_league(
     ]
 
     dynasty_war_by_player_id = (
-        project_full_available_dynasty_pool(
+        await project_full_available_dynasty_pool(
+            redis=redis,
             available_war_players=available_war_players,
         )
     )
@@ -763,7 +750,8 @@ async def get_roster_waiver_players(
     ]
 
     dynasty_war_by_player_id = (
-        project_full_available_dynasty_pool(
+        await project_full_available_dynasty_pool(
+            redis=redis,
             available_war_players=roster_war_players,
         )
     )

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from statistics import mean
 
 from fastapi import HTTPException, status
@@ -41,15 +43,21 @@ from app.schemas.finance import (
 )
 from app.models.db.sleeper.api import League, Roster
 from app.services.draft.projection import (
-    build_projected_pick_slots_by_roster_id,
+    build_cached_projected_pick_slots_by_roster_id,
 )
 from app.services.leagues.models import LeaguePlayer
 from app.services.leagues.details import (
     calculate_projected_starter_points,
 )
 from app.services.war.shared import (
+    build_league_war_fingerprint,
     build_shared_redraft_war_by_league_id,
 )
+
+FINANCE_PROJECTED_SEED_CACHE_TTL_SECONDS = (
+    6 * 60 * 60
+)
+FINANCE_PROJECTED_SEED_CACHE_VERSION = "v1"
 
 PLAYOFF_FINISH_PROBABILITY_BY_SEED = {
     1: {
@@ -264,12 +272,104 @@ async def get_rosters_by_league_id(
     return rosters_by_league_id
 
 
+def _build_finance_projected_seed_cache_key(
+    *,
+    ctx: Context,
+    leagues_by_id: dict[str, League],
+    rosters_by_league_id: dict[str, list[Roster]],
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(
+        json.dumps(
+            {
+                "site_user_id": (
+                    str(ctx.site_user.id)
+                    if ctx.site_user is not None
+                    else None
+                ),
+                "projection_settings": (
+                    get_draft_pick_projection_settings(
+                        ctx.site_user,
+                    )
+                ),
+                "leagues": {
+                    league_id: {
+                        "fingerprint": build_league_war_fingerprint(
+                            league=league,
+                        ),
+                        "status": league.status,
+                    }
+                    for league_id, league in sorted(
+                        leagues_by_id.items()
+                    )
+                },
+                "rosters": {
+                    league_id: [
+                        {
+                            "roster_id": roster.roster_id,
+                            "wins": roster.wins,
+                            "losses": roster.losses,
+                            "ties": roster.ties,
+                            "fpts": roster.fpts,
+                            "ppts": roster.ppts,
+                            "players": sorted(
+                                roster.players or []
+                            ),
+                        }
+                        for roster in sorted(
+                            rosters,
+                            key=lambda roster: (
+                                roster.roster_id
+                            ),
+                        )
+                    ]
+                    for league_id, rosters in sorted(
+                        rosters_by_league_id.items()
+                    )
+                },
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    return (
+        "finance-projected-seeds:"
+        f"{FINANCE_PROJECTED_SEED_CACHE_VERSION}:"
+        f"{digest.hexdigest()}"
+    )
+
+
 async def build_finance_projected_seed_by_league_roster(
     *,
     ctx: Context,
     leagues_by_id: dict[str, League],
     rosters_by_league_id: dict[str, list[Roster]],
 ) -> dict[tuple[str, int], int]:
+    cache_key = _build_finance_projected_seed_cache_key(
+        ctx=ctx,
+        leagues_by_id=leagues_by_id,
+        rosters_by_league_id=rosters_by_league_id,
+    )
+
+    if ctx.redis is not None:
+        cached_payload = await ctx.redis.get(
+            cache_key,
+        )
+
+        if cached_payload:
+            return {
+                (
+                    league_id,
+                    int(roster_id),
+                ): projected_seed
+                for league_id, roster_map in json.loads(
+                    cached_payload,
+                ).items()
+                for roster_id, projected_seed in (
+                    roster_map.items()
+                )
+            }
+
     sync_states = await get_sync_states(
         ctx.db,
         list(leagues_by_id.keys()),
@@ -390,7 +490,8 @@ async def build_finance_projected_seed_by_league_roster(
                 2,
             )
 
-        projection = build_projected_pick_slots_by_roster_id(
+        projection = await build_cached_projected_pick_slots_by_roster_id(
+            redis=ctx.redis,
             league=league,
             rosters=rosters,
             current_week=current_week,
@@ -403,11 +504,11 @@ async def build_finance_projected_seed_by_league_roster(
             redraft_roster_war_by_roster_id=(
                 redraft_roster_war_by_roster_id
             ),
-            settings=settings,
-        )
+        settings=settings,
+    )
 
-        for roster_id, draft_slot in projection.slots_by_roster_id.items():
-            projected_seed_by_key[
+    for roster_id, draft_slot in projection.slots_by_roster_id.items():
+        projected_seed_by_key[
                 (
                     league_id,
                     roster_id,
@@ -416,6 +517,29 @@ async def build_finance_projected_seed_by_league_roster(
                 1,
                 league.total_rosters - draft_slot + 1,
             )
+
+    if ctx.redis is not None:
+        serialized = {}
+
+        for (
+            league_id,
+            roster_id,
+        ), projected_seed in projected_seed_by_key.items():
+            serialized.setdefault(
+                league_id,
+                {},
+            )[str(roster_id)] = projected_seed
+
+        await ctx.redis.set(
+            cache_key,
+            json.dumps(
+                serialized,
+                separators=(",", ":"),
+            ),
+            ttl_seconds=(
+                FINANCE_PROJECTED_SEED_CACHE_TTL_SECONDS
+            ),
+        )
 
     return projected_seed_by_key
 

@@ -5,9 +5,6 @@ from math import floor
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.analytics.war.dynasty.factory import (
-    build_dynasty_war_service,
-)
 from app.analytics.war.redraft.singleton import war_service
 from app.core.context import Context
 from app.crud.sleeper.player import (
@@ -32,7 +29,9 @@ from app.services.values.canonical import (
     build_canonical_war_league,
 )
 from app.services.personal_values import hydrate_personal_player_values
-from app.services.waivers.dynasty import build_dynasty_projection
+from app.services.war.shared import (
+    build_cached_dynasty_projections_by_player_id,
+)
 
 
 TIER_LABELS = [
@@ -93,24 +92,13 @@ def assign_tier_label(
 
 async def build_dynasty_values_by_player_id(
     *,
+    redis,
     players: list,
 ) -> dict[str, object]:
-    dynasty_service = build_dynasty_war_service()
-    dynasty_by_player_id: dict[str, object] = {}
-
-    for player in players:
-        if player.player_id in dynasty_by_player_id:
-            continue
-
-        projection = build_dynasty_projection(
-            dynasty_service=dynasty_service,
-            player_war=player,
-        )
-
-        if projection is not None:
-            dynasty_by_player_id[player.player_id] = projection
-
-    return dynasty_by_player_id
+    return await build_cached_dynasty_projections_by_player_id(
+        redis=redis,
+        player_wars=list(players),
+    )
 
 
 async def load_player_values_for_basis(
@@ -161,6 +149,7 @@ async def load_player_values_for_basis(
     }:
         dynasty_war_by_player_id = (
             await build_dynasty_values_by_player_id(
+                redis=redis,
                 players=war_players,
             )
         )

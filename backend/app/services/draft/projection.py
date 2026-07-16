@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from typing import Literal
 
+from app.infrastructure.redis.client import RedisClient
 from app.models.db.sleeper.api import League, Roster
 
+DRAFT_PICK_PROJECTION_CACHE_TTL_SECONDS = (
+    6 * 60 * 60
+)
+DRAFT_PICK_PROJECTION_CACHE_VERSION = "v1"
 
 DRAFT_PICK_PROJECTION_METHODS = {
     "reverse_standings",
@@ -332,6 +339,69 @@ def _sort_rosters_by_metric(
     )
 
 
+def _build_draft_pick_projection_cache_key(
+    *,
+    league: League,
+    rosters: list[Roster],
+    current_week: int,
+    projected_points_by_roster_id: dict[int, float] | None,
+    redraft_starter_war_by_roster_id: dict[int, float] | None,
+    redraft_roster_war_by_roster_id: dict[int, float] | None,
+    settings: dict[str, object] | None,
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(
+        json.dumps(
+            {
+                "league": {
+                    "league_id": league.league_id,
+                    "season": league.season,
+                    "status": league.status,
+                    "total_rosters": league.total_rosters,
+                    "is_dynasty": league.is_dynasty,
+                },
+                "current_week": current_week,
+                "settings": normalize_draft_pick_projection_settings(
+                    settings,
+                ),
+                "rosters": [
+                    {
+                        "roster_id": roster.roster_id,
+                        "wins": roster.wins,
+                        "losses": roster.losses,
+                        "ties": roster.ties,
+                        "fpts": roster.fpts,
+                        "ppts": roster.ppts,
+                    }
+                    for roster in sorted(
+                        rosters,
+                        key=lambda roster: roster.roster_id,
+                    )
+                ],
+                "projected_points_by_roster_id": (
+                    projected_points_by_roster_id
+                    or {}
+                ),
+                "redraft_starter_war_by_roster_id": (
+                    redraft_starter_war_by_roster_id
+                    or {}
+                ),
+                "redraft_roster_war_by_roster_id": (
+                    redraft_roster_war_by_roster_id
+                    or {}
+                ),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    return (
+        "draft-pick-projection:"
+        f"{DRAFT_PICK_PROJECTION_CACHE_VERSION}:"
+        f"{digest.hexdigest()}"
+    )
+
+
 def build_projected_pick_slots_by_roster_id(
     *,
     league: League,
@@ -425,3 +495,79 @@ def build_projected_pick_slots_by_roster_id(
         method_used=method_used,
         fallback_from_method=fallback_from_method,
     )
+
+
+async def build_cached_projected_pick_slots_by_roster_id(
+    *,
+    redis: RedisClient | None,
+    league: League,
+    rosters: list[Roster],
+    current_week: int,
+    projected_points_by_roster_id: dict[int, float] | None = None,
+    redraft_starter_war_by_roster_id: dict[int, float] | None = None,
+    redraft_roster_war_by_roster_id: dict[int, float] | None = None,
+    settings: dict[str, object] | None = None,
+) -> DraftPickProjectionResult:
+    cache_key = _build_draft_pick_projection_cache_key(
+        league=league,
+        rosters=rosters,
+        current_week=current_week,
+        projected_points_by_roster_id=(
+            projected_points_by_roster_id
+        ),
+        redraft_starter_war_by_roster_id=(
+            redraft_starter_war_by_roster_id
+        ),
+        redraft_roster_war_by_roster_id=(
+            redraft_roster_war_by_roster_id
+        ),
+        settings=settings,
+    )
+
+    if redis is not None:
+        cached_payload = await redis.get(
+            cache_key,
+        )
+
+        if cached_payload:
+            return DraftPickProjectionResult(
+                **json.loads(cached_payload),
+            )
+
+    result = build_projected_pick_slots_by_roster_id(
+        league=league,
+        rosters=rosters,
+        current_week=current_week,
+        projected_points_by_roster_id=(
+            projected_points_by_roster_id
+        ),
+        redraft_starter_war_by_roster_id=(
+            redraft_starter_war_by_roster_id
+        ),
+        redraft_roster_war_by_roster_id=(
+            redraft_roster_war_by_roster_id
+        ),
+        settings=settings,
+    )
+
+    if redis is not None:
+        await redis.set(
+            cache_key,
+            json.dumps(
+                {
+                    "slots_by_roster_id": (
+                        result.slots_by_roster_id
+                    ),
+                    "method_used": result.method_used,
+                    "fallback_from_method": (
+                        result.fallback_from_method
+                    ),
+                },
+                separators=(",", ":"),
+            ),
+            ttl_seconds=(
+                DRAFT_PICK_PROJECTION_CACHE_TTL_SECONDS
+            ),
+        )
+
+    return result
