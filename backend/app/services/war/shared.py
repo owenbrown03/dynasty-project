@@ -14,7 +14,7 @@ from app.services.waivers.dynasty import build_dynasty_projection
 DYNASTY_PROJECTION_CACHE_TTL_SECONDS = (
     6 * 60 * 60
 )
-DYNASTY_PROJECTION_CACHE_VERSION = "v1"
+DYNASTY_PROJECTION_CACHE_VERSION = "v2"
 
 
 def build_league_war_fingerprint(
@@ -66,6 +66,17 @@ def build_player_war_signature(
     return digest.hexdigest()
 
 
+def build_player_war_cache_key(
+    *,
+    player_war: PlayerWAR,
+) -> str:
+    return (
+        "dynasty-projection:"
+        f"{DYNASTY_PROJECTION_CACHE_VERSION}:"
+        f"{build_player_war_signature(player_wars=[player_war])}"
+    )
+
+
 async def build_cached_dynasty_projections_by_player_id(
     *,
     redis: RedisClient | None,
@@ -74,34 +85,50 @@ async def build_cached_dynasty_projections_by_player_id(
     if not player_wars:
         return {}
 
-    cache_key = (
-        "dynasty-projection:"
-        f"{DYNASTY_PROJECTION_CACHE_VERSION}:"
-        f"{build_player_war_signature(player_wars=player_wars)}"
-    )
+    unique_player_wars: dict[str, PlayerWAR] = {
+        player_war.player_id: player_war
+        for player_war in player_wars
+    }
+    dynasty_by_player_id: dict[str, DynastyProjection] = {}
+    missing_player_wars: list[PlayerWAR] = []
 
     if redis is not None:
-        cached_payload = await redis.get(
-            cache_key,
+        cache_keys = [
+            build_player_war_cache_key(
+                player_war=player_war,
+            )
+            for player_war in unique_player_wars.values()
+        ]
+        cached_payloads = await redis.mget(
+            cache_keys,
         )
 
-        if cached_payload:
-            return {
-                player_id: DynastyProjection.model_validate(
-                    payload,
+        for player_war, cached_payload in zip(
+            unique_player_wars.values(),
+            cached_payloads,
+            strict=False,
+        ):
+            if not cached_payload:
+                missing_player_wars.append(
+                    player_war,
                 )
-                for player_id, payload in json.loads(
+                continue
+
+            dynasty_by_player_id[
+                player_war.player_id
+            ] = DynastyProjection.model_validate(
+                json.loads(
                     cached_payload,
-                ).items()
-            }
+                )
+            )
+    else:
+        missing_player_wars = list(
+            unique_player_wars.values()
+        )
 
     dynasty_service = build_dynasty_war_service()
-    dynasty_by_player_id: dict[str, DynastyProjection] = {}
 
-    for player_war in player_wars:
-        if player_war.player_id in dynasty_by_player_id:
-            continue
-
+    for player_war in missing_player_wars:
         projection = build_dynasty_projection(
             player_war=player_war,
             dynasty_service=dynasty_service,
@@ -111,23 +138,19 @@ async def build_cached_dynasty_projections_by_player_id(
             dynasty_by_player_id[
                 player_war.player_id
             ] = projection
-
-    if redis is not None:
-        await redis.set(
-            cache_key,
-            json.dumps(
-                {
-                    player_id: projection.model_dump()
-                    for player_id, projection in (
-                        dynasty_by_player_id.items()
-                    )
-                },
-                separators=(",", ":"),
-            ),
-            ttl_seconds=(
-                DYNASTY_PROJECTION_CACHE_TTL_SECONDS
-            ),
-        )
+            if redis is not None:
+                await redis.set(
+                    build_player_war_cache_key(
+                        player_war=player_war,
+                    ),
+                    json.dumps(
+                        projection.model_dump(),
+                        separators=(",", ":"),
+                    ),
+                    ttl_seconds=(
+                        DYNASTY_PROJECTION_CACHE_TTL_SECONDS
+                    ),
+                )
 
     return dynasty_by_player_id
 

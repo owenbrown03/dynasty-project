@@ -8,6 +8,15 @@ class RedisClient:
     async def get(self, key: str):
         return await self.redis.get(key)
 
+    async def mget(
+        self,
+        keys: list[str],
+    ):
+        if not keys:
+            return []
+
+        return await self.redis.mget(keys)
+
     async def set(
         self,
         key: str,

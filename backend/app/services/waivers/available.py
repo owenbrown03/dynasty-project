@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections import defaultdict
 from collections.abc import Iterable
 
 from fastapi import HTTPException, status
@@ -182,6 +183,40 @@ async def get_rostered_player_ids(
         for player_id in (player_ids or [])
         if player_id
     }
+
+
+async def get_rostered_player_ids_by_league(
+    *,
+    db: AsyncSession,
+    league_ids: list[str],
+) -> dict[str, set[str]]:
+    if not league_ids:
+        return {}
+
+    result = await db.execute(
+        select(
+            Roster.league_id,
+            Roster.players,
+        ).where(
+            Roster.league_id.in_(league_ids),
+        )
+    )
+
+    rostered_by_league: dict[
+        str,
+        set[str],
+    ] = defaultdict(set)
+
+    for league_id, player_ids in result.all():
+        rostered_by_league[
+            league_id
+        ].update(
+            player_id
+            for player_id in (player_ids or [])
+            if player_id
+        )
+
+    return rostered_by_league
 
 
 def get_available_war_players(
@@ -754,6 +789,238 @@ async def hydrate_all_leagues_page_for_my_war(
     )
 
 
+async def build_all_leagues_coarse_my_war_players(
+    *,
+    db: AsyncSession,
+    redis: RedisClient,
+    owned_rows,
+    redraft_war_by_league_id: dict[str, list[PlayerWAR]],
+    war_value_settings,
+) -> list[WaiverAvailablePlayer]:
+    league_ids = [
+        row.league.league_id
+        for row in owned_rows
+    ]
+    rostered_by_league = (
+        await get_rostered_player_ids_by_league(
+            db=db,
+            league_ids=league_ids,
+        )
+    )
+    aggregated_by_player_id: dict[
+        str,
+        WaiverAvailablePlayer,
+    ] = {}
+
+    for row in owned_rows:
+        league_id = row.league.league_id
+        redraft_war_players = (
+            redraft_war_by_league_id[
+                league_id
+            ]
+        )
+        available_war_players = (
+            get_available_war_players(
+                war_players=redraft_war_players,
+                rostered_player_ids=(
+                    rostered_by_league.get(
+                        league_id,
+                        set(),
+                    )
+                ),
+            )
+        )
+        dynasty_war_by_player_id = (
+            await project_full_available_dynasty_pool(
+                redis=redis,
+                available_war_players=available_war_players,
+            )
+        )
+        roster_spots_available = (
+            row.roster.open_roster_spots(
+                row.league,
+            )
+        )
+        claim_blocked_reason = (
+            build_claim_blocked_reason(
+                roster_spots_available=(
+                    roster_spots_available
+                ),
+            )
+        )
+        faab_remaining = row.roster.faab_remaining(
+            row.league,
+        )
+        faab_percent_remaining = 0.0
+
+        if row.league.waiver_budget > 0:
+            faab_percent_remaining = round(
+                (
+                    faab_remaining
+                    / row.league.waiver_budget
+                )
+                * 100,
+                1,
+            )
+
+        for war_player in available_war_players:
+            dynasty_projection = (
+                dynasty_war_by_player_id.get(
+                    war_player.player_id,
+                )
+            )
+            player_stub = WaiverAvailablePlayer(
+                player_id=war_player.player_id,
+                name=war_player.name,
+                position=war_player.position,
+                team=war_player.team,
+                age=war_player.age,
+                redraft_starter_war=(
+                    war_player.starter_war
+                ),
+                redraft_roster_war=(
+                    war_player.roster_war
+                ),
+                dynasty_starter_war=(
+                    dynasty_projection.total_starter_war
+                    if dynasty_projection is not None
+                    else None
+                ),
+                dynasty_roster_war=(
+                    dynasty_projection.total_roster_war
+                    if dynasty_projection is not None
+                    else None
+                ),
+                dynasty_expected_games_remaining=(
+                    dynasty_projection.expected_games_remaining
+                    if dynasty_projection is not None
+                    else None
+                ),
+                dynasty_seasons_remaining=(
+                    dynasty_projection.seasons_remaining
+                    if dynasty_projection is not None
+                    else None
+                ),
+            )
+            selected_value = get_coarse_my_war_value(
+                player=player_stub,
+                war_value_settings=war_value_settings,
+            )
+            availability = (
+                WaiverAvailableLeagueAvailability(
+                    league_id=league_id,
+                    league_name=row.league.name,
+                    league_avatar=row.league.avatar,
+                    roster_id=row.roster.roster_id,
+                    roster_size=row.roster.roster_size,
+                    roster_capacity=(
+                        row.roster.claimable_roster_capacity(
+                            row.league,
+                        )
+                    ),
+                    roster_spots_available=(
+                        roster_spots_available
+                    ),
+                    faab_remaining=faab_remaining,
+                    faab_percent_remaining=(
+                        faab_percent_remaining
+                    ),
+                    can_submit_claim=(
+                        claim_blocked_reason is None
+                    ),
+                    claim_blocked_reason=(
+                        claim_blocked_reason
+                    ),
+                    selected_value=selected_value,
+                )
+            )
+            existing = aggregated_by_player_id.get(
+                war_player.player_id,
+            )
+
+            if existing is None:
+                aggregated_by_player_id[
+                    war_player.player_id
+                ] = player_stub.model_copy(
+                    update={
+                        "selected_value": selected_value,
+                        "league_count": 1,
+                        "league_availability": [
+                            availability
+                        ],
+                    },
+                )
+                continue
+
+            updated_availability = [
+                *existing.league_availability,
+                availability,
+            ]
+            existing_best_value = (
+                existing.selected_value
+            )
+            best_player = existing
+
+            if (
+                existing_best_value is None
+                or (
+                    selected_value is not None
+                    and selected_value
+                    > existing_best_value
+                )
+            ):
+                best_player = player_stub.model_copy(
+                    update={
+                        "selected_value": (
+                            selected_value
+                        ),
+                        "league_count": (
+                            existing.league_count
+                            + 1
+                        ),
+                        "league_availability": (
+                            updated_availability
+                        ),
+                    },
+                )
+            else:
+                best_player = existing.model_copy(
+                    update={
+                        "league_count": (
+                            existing.league_count
+                            + 1
+                        ),
+                        "league_availability": (
+                            updated_availability
+                        ),
+                    },
+                )
+
+            aggregated_by_player_id[
+                war_player.player_id
+            ] = best_player
+
+    aggregated_players = list(
+        aggregated_by_player_id.values()
+    )
+
+    for player in aggregated_players:
+        player.league_availability.sort(
+            key=lambda availability: (
+                availability.selected_value is None,
+                -(
+                    availability.selected_value
+                    if availability.selected_value
+                    is not None
+                    else 0.0
+                ),
+                availability.league_name.lower(),
+            ),
+        )
+
+    return aggregated_players
+
+
 async def get_available_waiver_players(
     *,
     db: AsyncSession,
@@ -861,7 +1128,6 @@ async def get_available_waiver_players(
         site_user_id=connection.site_user_id,
     )
 
-    all_available_players: list[WaiverAvailablePlayer] = []
     war_value_settings = await get_war_value_settings_by_user_id(
         db=db,
         site_user_id=connection.site_user_id,
@@ -882,63 +1148,50 @@ async def get_available_waiver_players(
         )
     )
 
-    for row in owned_rows:
-        league_players, value_label = (
-            await build_available_players_for_league(
+    if value_basis == ValueBasis.MY_WAR:
+        aggregated_players = (
+            await build_all_leagues_coarse_my_war_players(
                 db=db,
                 redis=redis,
-                connection=connection,
-                roster=row.roster,
-                league=row.league,
-                value_basis=(
-                    ValueBasis.SLEEPER_WAR
-                    if value_basis == ValueBasis.MY_WAR
-                    else value_basis
-                ),
-                war_service=war_service,
-                redraft_war_players=(
-                    redraft_war_by_league_id[
-                        row.league.league_id
-                    ]
+                owned_rows=owned_rows,
+                redraft_war_by_league_id=(
+                    redraft_war_by_league_id
                 ),
                 war_value_settings=war_value_settings,
             )
         )
-        all_available_players.extend(
-            league_players,
-        )
+    else:
+        all_available_players: list[
+            WaiverAvailablePlayer
+        ] = []
 
-    aggregated_players = (
-        aggregate_available_players_by_player_id(
-            players=all_available_players,
-        )
-    )
-    if value_basis == ValueBasis.MY_WAR:
-        aggregated_players = [
-            player.model_copy(
-                update={
-                    "selected_value": (
-                        get_coarse_my_war_value(
-                            player=player,
-                            war_value_settings=(
-                                war_value_settings
-                            ),
-                        )
+        for row in owned_rows:
+            league_players, value_label = (
+                await build_available_players_for_league(
+                    db=db,
+                    redis=redis,
+                    connection=connection,
+                    roster=row.roster,
+                    league=row.league,
+                    value_basis=value_basis,
+                    war_service=war_service,
+                    redraft_war_players=(
+                        redraft_war_by_league_id[
+                            row.league.league_id
+                        ]
                     ),
-                    "league_availability": [
-                        availability.model_copy(
-                            update={
-                                "selected_value": None,
-                            },
-                        )
-                        for availability in (
-                            player.league_availability
-                        )
-                    ],
-                },
+                    war_value_settings=war_value_settings,
+                )
             )
-            for player in aggregated_players
-        ]
+            all_available_players.extend(
+                league_players,
+            )
+
+        aggregated_players = (
+            aggregate_available_players_by_player_id(
+                players=all_available_players,
+            )
+        )
 
     sorted_players = sort_available_players(
         players=aggregated_players,
