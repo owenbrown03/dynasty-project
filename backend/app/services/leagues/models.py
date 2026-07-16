@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LeagueSettingsDetail(BaseModel):
@@ -74,6 +74,9 @@ class LeagueRoster(BaseModel):
     total_pick_rookie_war_value: float
     total_asset_ktc_value: float
     total_asset_fc_value: float
+    stat_ranks: dict[str, int] = Field(
+        default_factory=dict,
+    )
     players: list[LeaguePlayer]
     picks: list[LeaguePick]
 

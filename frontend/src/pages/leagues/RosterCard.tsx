@@ -23,6 +23,27 @@ interface Props {
   draftPickProjectionSummary?: string | null;
 }
 
+function StatValue({
+  value,
+  rank,
+}: {
+  value: string | number;
+  rank?: number;
+}) {
+  return (
+    <>
+      <strong>{value}</strong>
+      <small>
+        {
+          rank
+            ? `#${rank}`
+            : '—'
+        }
+      </small>
+    </>
+  );
+}
+
 function PickList({
   picks,
   draftPickProjectionSummary,
@@ -108,74 +129,125 @@ export function RosterCard({
 
         <div className="roster-summary-hero">
           <span>Asset KTC</span>
-          <strong>{formatNumber(roster.total_asset_ktc_value)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_asset_ktc_value)}
+            rank={roster.stat_ranks.total_asset_ktc_value}
+          />
         </div>
       </header>
 
       <div className="roster-summary-grid">
         <div className="roster-summary-stat">
           <span>Proj pts</span>
-          <strong>{formatNumber(roster.projected_points)}</strong>
+          <StatValue
+            value={formatNumber(roster.projected_points)}
+            rank={roster.stat_ranks.projected_points}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Asset FC</span>
-          <strong>{formatNumber(roster.total_asset_fc_value)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_asset_fc_value)}
+            rank={roster.stat_ranks.total_asset_fc_value}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Player KTC</span>
-          <strong>{formatNumber(roster.total_ktc_value)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_ktc_value)}
+            rank={roster.stat_ranks.total_ktc_value}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Pick KTC</span>
-          <strong>{formatNumber(roster.total_pick_ktc_value)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_pick_ktc_value)}
+            rank={roster.stat_ranks.total_pick_ktc_value}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Player FC</span>
-          <strong>{formatNumber(roster.total_fc_value)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_fc_value)}
+            rank={roster.stat_ranks.total_fc_value}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Pick FC</span>
-          <strong>{formatNumber(roster.total_pick_fc_value)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_pick_fc_value)}
+            rank={roster.stat_ranks.total_pick_fc_value}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Pick WAR</span>
-          <strong>{formatNumber(roster.total_pick_rookie_war_value)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_pick_rookie_war_value)}
+            rank={roster.stat_ranks.total_pick_rookie_war_value}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>R St WAR</span>
-          <strong>{formatNumber(roster.total_redraft_starter_war)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_redraft_starter_war)}
+            rank={roster.stat_ranks.total_redraft_starter_war}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>R Ro WAR</span>
-          <strong>{formatNumber(roster.total_redraft_roster_war)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_redraft_roster_war)}
+            rank={roster.stat_ranks.total_redraft_roster_war}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>D St WAR</span>
-          <strong>{formatNumber(roster.total_dynasty_starter_war)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_dynasty_starter_war)}
+            rank={roster.stat_ranks.total_dynasty_starter_war}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>D Ro WAR</span>
-          <strong>{formatNumber(roster.total_dynasty_roster_war)}</strong>
+          <StatValue
+            value={formatNumber(roster.total_dynasty_roster_war)}
+            rank={roster.stat_ranks.total_dynasty_roster_war}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Avg age</span>
-          <strong>{formatNumber(roster.average_age)}</strong>
+          <StatValue
+            value={formatNumber(roster.average_age)}
+            rank={roster.stat_ranks.average_age}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Open spots</span>
-          <strong>{roster.open_roster_spots}</strong>
+          <StatValue
+            value={roster.open_roster_spots}
+            rank={roster.stat_ranks.open_roster_spots}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>FAAB</span>
-          <strong>{roster.faab_remaining}</strong>
+          <StatValue
+            value={roster.faab_remaining}
+            rank={roster.stat_ranks.faab_remaining}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Waiver</span>
-          <strong>{roster.waiver_position}</strong>
+          <StatValue
+            value={roster.waiver_position}
+            rank={roster.stat_ranks.waiver_position}
+          />
         </div>
         <div className="roster-summary-stat">
           <span>Trades</span>
-          <strong>{roster.total_trades}</strong>
+          <StatValue
+            value={roster.total_trades}
+            rank={roster.stat_ranks.total_trades}
+          />
         </div>
       </div>
 

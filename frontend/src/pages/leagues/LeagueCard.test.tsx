@@ -72,6 +72,7 @@ const league: LeagueDetails = {
       total_pick_rookie_war_value: 12.5,
       total_asset_ktc_value: 1200,
       total_asset_fc_value: 1050,
+      stat_ranks: {},
       rank: 1,
       players: [],
       picks: [],

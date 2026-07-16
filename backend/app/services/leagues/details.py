@@ -149,6 +149,79 @@ def calculate_average_age(
     return round(sum(ages) / len(ages), 1)
 
 
+ROSTER_STAT_RANK_CONFIG = (
+    ("projected_points", True),
+    ("total_asset_ktc_value", True),
+    ("total_asset_fc_value", True),
+    ("total_ktc_value", True),
+    ("total_pick_ktc_value", True),
+    ("total_fc_value", True),
+    ("total_pick_fc_value", True),
+    ("total_pick_rookie_war_value", True),
+    ("total_redraft_starter_war", True),
+    ("total_redraft_roster_war", True),
+    ("total_dynasty_starter_war", True),
+    ("total_dynasty_roster_war", True),
+    ("average_age", False),
+    ("open_roster_spots", True),
+    ("faab_remaining", True),
+    ("waiver_position", False),
+    ("total_trades", True),
+)
+
+
+def assign_roster_stat_ranks(
+    rosters: list[LeagueRoster],
+) -> None:
+    for metric_name, descending in ROSTER_STAT_RANK_CONFIG:
+        sorted_rosters = sorted(
+            rosters,
+            key=lambda roster: (
+                (
+                    getattr(
+                        roster,
+                        metric_name,
+                        None,
+                    )
+                    is None
+                ),
+                (
+                    -getattr(
+                        roster,
+                        metric_name,
+                        0,
+                    )
+                    if descending
+                    else getattr(
+                        roster,
+                        metric_name,
+                        0,
+                    )
+                ),
+                roster.roster_id,
+            ),
+        )
+
+        previous_value = object()
+        current_rank = 0
+
+        for index, roster in enumerate(
+            sorted_rosters,
+            start=1,
+        ):
+            value = getattr(
+                roster,
+                metric_name,
+                None,
+            )
+
+            if value != previous_value:
+                current_rank = index
+                previous_value = value
+
+            roster.stat_ranks[metric_name] = current_rank
+
+
 def build_direct_starter_minimums(
     roster_positions: list[str],
 ) -> dict[str, int]:
@@ -1056,6 +1129,10 @@ class LeagueDetails:
 
         for rank, roster in enumerate(rosters, start=1):
             roster.rank = rank
+
+        assign_roster_stat_ranks(
+            rosters,
+        )
 
         roster_construction_targets = (
             await build_cached_league_roster_construction_targets(
