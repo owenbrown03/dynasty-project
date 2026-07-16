@@ -214,6 +214,17 @@ async def recent_waiver_drops(
     value_basis: ValueBasis = Query(
         default=DEFAULT_VALUE_BASIS,
     ),
+    page: int = Query(
+        default=1,
+        ge=1,
+        description="1-indexed result page.",
+    ),
+    page_size: int = Query(
+        default=50,
+        ge=1,
+        le=150,
+        description="Number of recently dropped players to return per page.",
+    ),
 ) -> WaiverRecentlyDroppedResponse:
     require_sleeper_connection(
         ctx,
@@ -247,6 +258,8 @@ async def recent_waiver_drops(
         value_basis=value_basis,
         war_service=war_service,
         sync_requested=sync_requested,
+        page=page,
+        page_size=page_size,
     )
 
 

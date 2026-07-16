@@ -811,6 +811,9 @@ export interface WaiverRecentlyDroppedResponse {
 
   sync_requested: boolean;
 
+  page: number;
+  page_size: number;
+  total_pages: number;
   total_players: number;
 
   players: WaiverRecentlyDroppedPlayer[];

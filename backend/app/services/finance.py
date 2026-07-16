@@ -385,6 +385,7 @@ async def build_finance_projected_seed_by_league_roster(
     redraft_war_by_league_id = (
         await build_shared_redraft_war_by_league_id(
             db=ctx.db,
+            redis=ctx.redis,
             leagues=list(
                 leagues_by_id.values()
             ),

@@ -135,6 +135,7 @@ async def build_cached_dynasty_projections_by_player_id(
 async def build_shared_redraft_war_by_league_id(
     *,
     db,
+    redis: RedisClient | None,
     leagues: list[League],
     war_service: WARService,
 ) -> dict[str, list[PlayerWAR]]:
@@ -165,7 +166,8 @@ async def build_shared_redraft_war_by_league_id(
                 )
 
             war_by_fingerprint[fingerprint] = (
-                await war_service.calculate_with_data(
+                await war_service.calculate_with_shared_cache(
+                    redis=redis,
                     league=league,
                     shared=shared_by_season[
                         projection_season

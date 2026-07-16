@@ -35,12 +35,16 @@ export const waiversEndpoints = (
 
   getRecentDrops: (
     valueBasis: ValueBasis,
+    page: number,
+    pageSize: number,
   ) => {
     return client.get<WaiverRecentlyDroppedResponse>(
       `${basePath}/recent-drops`,
       {
         params: {
           value_basis: valueBasis,
+          page,
+          page_size: pageSize,
         },
       },
     );

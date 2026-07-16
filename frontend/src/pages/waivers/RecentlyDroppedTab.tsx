@@ -1,4 +1,8 @@
-import { useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import {
   AlertTriangle,
   Clock3,
@@ -47,15 +51,26 @@ function formatDroppedAt(
 export const RecentlyDroppedTab = ({
   valueBasis,
 }: RecentlyDroppedTabProps) => {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [claimPlayer, setClaimPlayer] = useState<WaiverRecentlyDroppedPlayer | null>(
     null,
   );
   const recentDrops = useRecentlyDroppedPlayers(
     valueBasis,
+    page,
+    pageSize,
   );
   const {
     canWrite,
   } = useSleeperConnection();
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    valueBasis,
+    pageSize,
+  ]);
 
   const modalLeague = useMemo<WaiverLeagueOption | null>(
     () => {
@@ -156,6 +171,61 @@ export const RecentlyDroppedTab = ({
           <span>
             Ranked by {data.value_label}
           </span>
+        </div>
+      </div>
+
+      <div className="available-pagination-toolbar">
+        <label className="available-page-size-selector">
+          <span>Rows</span>
+
+          <select
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(
+                Number(
+                  event.target.value,
+                ),
+              );
+            }}
+          >
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={150}>150</option>
+          </select>
+        </label>
+
+        <div className="available-pagination-status">
+          Page {data.page}
+          {' of '}
+          {data.total_pages}
+        </div>
+
+        <div className="available-pagination-actions">
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={data.page <= 1}
+            onClick={() => {
+              setPage(
+                data.page - 1,
+              );
+            }}
+          >
+            Previous
+          </button>
+
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={data.page >= data.total_pages}
+            onClick={() => {
+              setPage(
+                data.page + 1,
+              );
+            }}
+          >
+            Next
+          </button>
         </div>
       </div>
 

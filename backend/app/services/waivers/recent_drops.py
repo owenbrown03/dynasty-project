@@ -32,12 +32,17 @@ from app.services.values.basis import (
     get_player_value,
     get_value_label,
 )
+from app.services.values.war_settings import (
+    normalize_war_value_settings,
+)
 from app.services.waivers.available import project_full_available_dynasty_pool
 from app.services.waivers.bulk import get_rostered_player_ids_by_league
 from app.services.waivers.claims import get_claim_block_reason
 
 
 MAX_RECENT_DROPS = 200
+RECENT_DROPS_MY_WAR_CANDIDATE_MULTIPLIER = 5
+RECENT_DROPS_MY_WAR_MIN_CANDIDATES = 100
 SUPPORTED_POSITIONS = {
     "QB",
     "RB",
@@ -49,6 +54,36 @@ RECENT_DROP_TRANSACTION_TYPES = {
     "free_agent",
     "commissioner",
 }
+
+
+def sort_recent_drop_items(
+    *,
+    items: list[tuple[str, int, str, Player]],
+    selected_value_by_key: dict[tuple[str, str], float | None],
+) -> list[tuple[str, int, str, Player]]:
+    return sorted(
+        items,
+        key=lambda item: (
+            selected_value_by_key.get(
+                (
+                    item[2],
+                    item[3].player_id,
+                )
+            )
+            is None,
+            -(
+                selected_value_by_key.get(
+                    (
+                        item[2],
+                        item[3].player_id,
+                    )
+                )
+                or 0.0
+            ),
+            -item[1],
+            item[3].search_name,
+        ),
+    )
 
 
 def needs_recent_drops_sync(
@@ -105,6 +140,8 @@ async def get_recently_dropped_players(
     value_basis: ValueBasis,
     war_service: WARService,
     sync_requested: bool = False,
+    page: int = 1,
+    page_size: int = 50,
 ) -> WaiverRecentlyDroppedResponse:
     if not connection.sleeper_user_id:
         return WaiverRecentlyDroppedResponse(
@@ -115,6 +152,9 @@ async def get_recently_dropped_players(
                 None,
             ),
             sync_requested=sync_requested,
+            page=page,
+            page_size=page_size,
+            total_pages=0,
             total_players=0,
             players=[],
         )
@@ -134,6 +174,9 @@ async def get_recently_dropped_players(
                 None,
             ),
             sync_requested=sync_requested,
+            page=page,
+            page_size=page_size,
+            total_pages=0,
             total_players=0,
             players=[],
         )
@@ -221,12 +264,23 @@ async def get_recently_dropped_players(
         value_basis,
         war_value_settings,
     )
+    coarse_settings = None
+
+    if value_basis == ValueBasis.MY_WAR:
+        normalized_settings = normalize_war_value_settings(
+            war_value_settings,
+        )
+        coarse_settings = {
+            **normalized_settings,
+            "sleeper_projection": normalized_settings["my"],
+        }
 
     selected_value_by_key: dict[tuple[str, str], float | None] = {}
     player_value_by_key: dict[tuple[str, str], object] = {}
     redraft_war_by_league_id = (
         await build_shared_redraft_war_by_league_id(
             db=db,
+            redis=redis,
             leagues=list(
                 league_by_id.values()
             ),
@@ -279,15 +333,6 @@ async def get_recently_dropped_players(
             dynasty_war_by_player_id=dynasty_by_player_id,
         )
 
-        if value_basis == ValueBasis.MY_WAR:
-            player_values = await hydrate_personal_player_values(
-                db=db,
-                site_user_id=connection.site_user_id,
-                league=league,
-                player_values=player_values,
-                redis=redis,
-            )
-
         for player_value in player_values:
             key = (
                 league_id,
@@ -296,13 +341,131 @@ async def get_recently_dropped_players(
             player_value_by_key[key] = player_value
             selected_value_by_key[key] = get_player_value(
                 player=player_value,
-                basis=value_basis,
-                war_value_settings=war_value_settings,
+                basis=(
+                    ValueBasis.SLEEPER_WAR
+                    if value_basis == ValueBasis.MY_WAR
+                    else value_basis
+                ),
+                war_value_settings=(
+                    coarse_settings
+                    if value_basis == ValueBasis.MY_WAR
+                    else war_value_settings
+                ),
             )
+
+    valid_drop_items: list[
+        tuple[str, int, str, Player]
+    ] = []
+
+    for transaction_id, time_ms, league_id, _, player in drop_rows:
+        if player is None:
+            continue
+
+        key = (
+            league_id,
+            player.player_id,
+        )
+        if key not in player_value_by_key:
+            continue
+
+        valid_drop_items.append(
+            (
+                transaction_id,
+                time_ms,
+                league_id,
+                player,
+            )
+        )
+
+    if value_basis == ValueBasis.MY_WAR and valid_drop_items:
+        end_index = page * page_size
+        candidate_count = min(
+            len(valid_drop_items),
+            max(
+                RECENT_DROPS_MY_WAR_MIN_CANDIDATES,
+                end_index * RECENT_DROPS_MY_WAR_CANDIDATE_MULTIPLIER,
+            ),
+        )
+        candidate_items = sort_recent_drop_items(
+            items=valid_drop_items,
+            selected_value_by_key=selected_value_by_key,
+        )[:candidate_count]
+        candidate_keys_by_league: dict[
+            str,
+            list[tuple[str, str]]
+        ] = defaultdict(list)
+
+        for _, _, league_id, player in candidate_items:
+            candidate_keys_by_league[
+                league_id
+            ].append(
+                (
+                    league_id,
+                    player.player_id,
+                )
+            )
+
+        for league_id, keys in candidate_keys_by_league.items():
+            league = league_by_id.get(
+                league_id,
+            )
+
+            if league is None:
+                continue
+
+            candidate_player_values = [
+                player_value_by_key[key]
+                for key in keys
+                if key in player_value_by_key
+            ]
+
+            if not candidate_player_values:
+                continue
+
+            hydrated_values = await hydrate_personal_player_values(
+                db=db,
+                site_user_id=connection.site_user_id,
+                league=league,
+                player_values=candidate_player_values,
+                redis=redis,
+            )
+
+            for player_value in hydrated_values:
+                key = (
+                    league_id,
+                    player_value.player_id,
+                )
+                player_value_by_key[key] = player_value
+                selected_value_by_key[key] = get_player_value(
+                    player=player_value,
+                    basis=ValueBasis.MY_WAR,
+                    war_value_settings=war_value_settings,
+                )
+
+    sorted_items = sort_recent_drop_items(
+        items=valid_drop_items,
+        selected_value_by_key=selected_value_by_key,
+    )
+    total_players = len(
+        sorted_items,
+    )
+    total_pages = (
+        max(
+            (total_players + page_size - 1)
+            // page_size,
+            1,
+        )
+        if total_players
+        else 0
+    )
+    start_index = (page - 1) * page_size
+    paged_items = sorted_items[
+        start_index : start_index + page_size
+    ]
 
     players: list[WaiverRecentlyDroppedPlayer] = []
 
-    for transaction_id, time_ms, league_id, _, player in drop_rows:
+    for transaction_id, time_ms, league_id, player in paged_items:
         league = league_by_id.get(
             league_id,
         )
@@ -310,7 +473,7 @@ async def get_recently_dropped_players(
             league_id,
         )
 
-        if league is None or roster is None or player is None:
+        if league is None or roster is None:
             continue
 
         key = (
@@ -367,7 +530,10 @@ async def get_recently_dropped_players(
         value_basis=value_basis,
         value_label=value_label,
         sync_requested=sync_requested,
-        total_players=len(players),
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        total_players=total_players,
         players=players,
     )
 

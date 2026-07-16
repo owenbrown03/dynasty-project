@@ -105,6 +105,8 @@ export function useSubmitWaiverClaim() {
 
 export function useRecentlyDroppedPlayers(
   valueBasis: ValueBasis,
+  page: number,
+  pageSize: number,
 ) {
   const {
     username,
@@ -115,11 +117,17 @@ export function useRecentlyDroppedPlayers(
     queryKey: queryKeys.waivers.recentDrops(
       username,
       valueBasis,
+      page,
+      pageSize,
     ),
 
     queryFn: async () => {
       return api.waivers
-        .getRecentDrops(valueBasis)
+        .getRecentDrops(
+          valueBasis,
+          page,
+          pageSize,
+        )
         .then((res) => res.data);
     },
 

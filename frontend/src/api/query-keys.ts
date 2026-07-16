@@ -78,11 +78,15 @@ export const queryKeys = {
     recentDrops: (
       username: string | null | undefined,
       valueBasis: ValueBasis,
+      page: number,
+      pageSize: number,
     ) =>
       [
         'waiver-recent-drops',
         username ?? null,
         valueBasis,
+        page,
+        pageSize,
       ] as const,
     recentDropsRoot: ['waiver-recent-drops'] as const,
     leagues: (

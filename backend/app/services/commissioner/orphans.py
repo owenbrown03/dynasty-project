@@ -350,6 +350,7 @@ async def get_commissioner_orphans(
     redraft_war_by_league_id = (
         await build_shared_redraft_war_by_league_id(
             db=db,
+            redis=redis,
             leagues=[
                 leagues_by_id[league_id]
                 for league_id in orphan_league_ids

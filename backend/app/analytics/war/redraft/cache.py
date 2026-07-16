@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 from app.infrastructure.redis.client import RedisClient
@@ -15,6 +16,19 @@ class WARCache:
         return (
             f"war:{WAR_CACHE_VERSION}:league:"
             f"{league_id}:{season}"
+        )
+
+    def _fingerprint_key(
+        self,
+        fingerprint: str,
+        season: int,
+    ) -> str:
+        digest = hashlib.sha256(
+            fingerprint.encode("utf-8")
+        ).hexdigest()
+        return (
+            f"war:{WAR_CACHE_VERSION}:fingerprint:"
+            f"{season}:{digest}"
         )
 
     async def get_league(
@@ -52,6 +66,52 @@ class WARCache:
         await redis.set(
             self._league_key(
                 league_id,
+                season,
+            ),
+            json.dumps(
+                [
+                    p.model_dump()
+                    for p in value
+                ]
+            ),
+            ttl_seconds=WAR_CACHE_TTL_SECONDS,
+        )
+
+    async def get_fingerprint(
+        self,
+        redis: RedisClient,
+        fingerprint: str,
+        season: int,
+    ) -> list[PlayerWAR] | None:
+
+        cached = await redis.get(
+            self._fingerprint_key(
+                fingerprint,
+                season,
+            )
+        )
+
+        if cached is None:
+            return None
+
+        data = json.loads(cached)
+
+        return [
+            PlayerWAR(**item)
+            for item in data
+        ]
+
+    async def set_fingerprint(
+        self,
+        redis: RedisClient,
+        fingerprint: str,
+        season: int,
+        value: list[PlayerWAR],
+    ):
+
+        await redis.set(
+            self._fingerprint_key(
+                fingerprint,
                 season,
             ),
             json.dumps(

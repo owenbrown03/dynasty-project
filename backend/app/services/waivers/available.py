@@ -873,6 +873,7 @@ async def get_available_waiver_players(
     redraft_war_by_league_id = (
         await build_shared_redraft_war_by_league_id(
             db=db,
+            redis=redis,
             leagues=[
                 row.league
                 for row in owned_rows
