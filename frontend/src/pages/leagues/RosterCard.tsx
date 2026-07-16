@@ -19,6 +19,7 @@ import {
 
 interface Props {
   roster: LeagueRoster;
+  displayRank: number;
   rosterConstructionTargets: LeagueRosterConstructionTarget[];
   draftPickProjectionSummary?: string | null;
 }
@@ -97,6 +98,7 @@ function PickList({
 }
 export function RosterCard({
   roster,
+  displayRank,
   rosterConstructionTargets,
   draftPickProjectionSummary,
 }: Props) {
@@ -119,7 +121,7 @@ export function RosterCard({
             />
 
             <h3 className="roster-title">
-              #{roster.rank} {roster.owner.display_name}
+              #{displayRank} {roster.owner.display_name}
             </h3>
           </div>
           <p className="roster-subtitle">

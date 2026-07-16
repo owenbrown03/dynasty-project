@@ -84,7 +84,20 @@ const league: LeagueDetails = {
 describe('LeagueCard', () => {
   it('renders league settings and roster ownership summary', () => {
     render(
-      <LeagueCard league={league} />,
+      <LeagueCard
+        league={league}
+        rosterSortBasis="ktc"
+        warValueSettings={{
+          sleeper_projection: {
+            timeframe: 'dynasty',
+            scope: 'roster',
+          },
+          my: {
+            timeframe: 'dynasty',
+            scope: 'roster',
+          },
+        }}
+      />,
     );
 
     expect(
