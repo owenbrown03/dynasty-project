@@ -4,7 +4,7 @@ import hashlib
 import json
 from statistics import mean
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Response, status
 from sqlalchemy import select
 
 from app.core.context import Context
@@ -42,6 +42,7 @@ from app.schemas.finance import (
     FinanceDefaultsUpdate,
 )
 from app.models.db.sleeper.api import League, Roster
+from app.models.db.auth import SiteUser
 from app.services.draft.projection import (
     build_cached_projected_pick_slots_by_roster_id,
 )
@@ -1315,6 +1316,259 @@ async def get_finance_summary(
         league_defaults=league_defaults,
         seasons=entries,
     )
+
+
+async def build_dashboard_finance_metrics_by_league_id(
+    *,
+    db,
+    redis,
+    site_user_id,
+    owned_rows: list[tuple[Roster, League]],
+) -> dict[str, dict[str, float | int | None]]:
+    """
+    Builds lightweight current-season finance metrics for dashboard cards.
+
+    This intentionally reuses the same projection and payout resolution
+    rules as the finance tracker so the dashboard stays numerically
+    consistent with the dedicated finance page.
+    """
+
+    if site_user_id is None or not owned_rows:
+        return {}
+
+    site_user = await db.get(
+        SiteUser,
+        site_user_id,
+    )
+
+    if site_user is None:
+        return {}
+
+    leagues_by_id = {
+        league.league_id: league
+        for _, league in owned_rows
+    }
+    league_ids = list(
+        leagues_by_id.keys(),
+    )
+
+    ctx = Context(
+        response=Response(),
+        db=db,
+        session=None,
+        site_user=site_user,
+        connection=None,
+        sleeper=None,
+        underdog=None,
+        ktc=None,
+        fc=None,
+        redis=redis,
+    )
+
+    rosters_by_league_id = await get_rosters_by_league_id(
+        ctx=ctx,
+        league_ids=league_ids,
+    )
+    projected_seed_by_league_roster = (
+        await build_finance_projected_seed_by_league_roster(
+            ctx=ctx,
+            leagues_by_id=leagues_by_id,
+            rosters_by_league_id=rosters_by_league_id,
+        )
+    )
+    family_key_by_league_id = _build_league_family_key_by_league_id(
+        owned_rows,
+    )
+    finance_entries_by_key = await get_finance_entries_by_key(
+        db=db,
+        site_user_id=site_user.id,
+        league_ids=league_ids,
+    )
+    playoff_matchups_by_league_id = (
+        await get_playoff_matchups_by_league_ids(
+            db,
+            league_ids,
+        )
+    )
+    user_defaults = await get_finance_user_defaults(
+        db=db,
+        site_user_id=site_user.id,
+    )
+    league_defaults_by_family = (
+        await get_finance_league_defaults_by_family_id(
+            db=db,
+            site_user_id=site_user.id,
+            league_family_ids=list(
+                set(
+                    family_key_by_league_id.values()
+                )
+            ),
+        )
+    )
+    commissioner_dues_by_key = await get_commissioner_dues_by_key(
+        db=db,
+        site_user_id=site_user.id,
+        league_ids=league_ids,
+    )
+    commissioner_buy_in_by_league_season = (
+        _build_buy_in_by_league_season(
+            commissioner_dues_by_key,
+        )
+    )
+
+    resolved_settings_by_key: dict[
+        tuple[str, str],
+        dict[str, object],
+    ] = {}
+
+    for _, league in owned_rows:
+        key = (
+            league.league_id,
+            league.season,
+        )
+        family_key = family_key_by_league_id.get(
+            league.league_id,
+            league.league_id,
+        )
+        resolved_settings_by_key[key] = _resolve_entry_settings(
+            finance_entry=finance_entries_by_key.get(
+                key,
+            ),
+            league_default=league_defaults_by_family.get(
+                family_key,
+            ),
+            user_defaults=user_defaults,
+            commissioner_buy_in=(
+                commissioner_buy_in_by_league_season.get(
+                    key,
+                )
+            ),
+        )
+
+    historical_payouts_by_family_and_rank = (
+        _build_historical_payouts_by_family_and_rank(
+            owned_rows=owned_rows,
+            rosters_by_league_id=rosters_by_league_id,
+            resolved_settings_by_key=resolved_settings_by_key,
+            family_key_by_league_id=family_key_by_league_id,
+            playoff_matchups_by_league_id=(
+                playoff_matchups_by_league_id
+            ),
+        )
+    )
+
+    metrics_by_league_id: dict[
+        str,
+        dict[str, float | int | None],
+    ] = {}
+
+    for roster, league in owned_rows:
+        key = (
+            league.league_id,
+            league.season,
+        )
+        resolved = resolved_settings_by_key[key]
+        family_key = family_key_by_league_id.get(
+            league.league_id,
+            league.league_id,
+        )
+        rank = (
+            calculate_rank(
+                rosters=rosters_by_league_id.get(
+                    league.league_id,
+                    [],
+                ),
+                roster_id=roster.roster_id,
+            )
+            if league.total_rosters > 0
+            else None
+        )
+        finish_place = (
+            calculate_final_place_from_brackets(
+                league_id=league.league_id,
+                roster_id=roster.roster_id,
+                playoff_matchups_by_league_id=(
+                    playoff_matchups_by_league_id
+                ),
+            )
+            if league.status == "complete"
+            else None
+        )
+        projected_finish_place = (
+            projected_seed_by_league_roster.get(
+                (
+                    league.league_id,
+                    roster.roster_id,
+                )
+            )
+        )
+
+        if projected_finish_place is None:
+            projected_finish_place = finish_place or rank
+
+        configured_winnings_amount = (
+            payout_for_rank(
+                resolved["payout_structure"],
+                finish_place,
+            )
+            if finish_place is not None
+            else None
+        )
+        historical_payouts = (
+            historical_payouts_by_family_and_rank.get(
+                (
+                    family_key,
+                    projected_finish_place,
+                ),
+                [],
+            )
+            if projected_finish_place is not None
+            else []
+        )
+        expected_winnings_amount = (
+            calculate_expected_winnings_from_seed(
+                payout_structure=resolved["payout_structure"],
+                projected_seed=projected_finish_place,
+                total_rosters=league.total_rosters,
+                playoff_teams=league.playoff_teams,
+            )
+            if projected_finish_place is not None
+            else None
+        )
+
+        if expected_winnings_amount is not None:
+            projected_winnings_amount = expected_winnings_amount
+        elif configured_winnings_amount is not None:
+            projected_winnings_amount = round(
+                configured_winnings_amount,
+                2,
+            )
+        elif historical_payouts:
+            projected_winnings_amount = round(
+                mean(historical_payouts),
+                2,
+            )
+        else:
+            projected_winnings_amount = calculate_projected_winnings(
+                buy_in_amount=resolved["buy_in_amount"],
+                total_rosters=league.total_rosters,
+                playoff_teams=league.playoff_teams,
+                rank=projected_finish_place,
+            )
+
+        metrics_by_league_id[league.league_id] = {
+            "projected_payout": round(
+                projected_winnings_amount,
+                2,
+            ),
+            "projected_seed": projected_finish_place,
+            "buy_in_amount": round(
+                resolved["buy_in_amount"],
+                2,
+            ),
+        }
+
+    return metrics_by_league_id
 
 
 async def save_finance_entry(

@@ -270,6 +270,7 @@ export interface LeagueRoster {
   projected_points: number;
   faab_remaining: number;
   waiver_position: number;
+  total_moves: number;
   total_trades: number;
   open_roster_spots: number;
   average_age: number | null;
@@ -323,6 +324,14 @@ export interface DashboardLeague {
   wins: number;
   losses: number;
   ties: number;
+  standings_rank: number;
+  points_for: number;
+  points_for_rank: number;
+  projected_payout: number | null;
+  projected_seed: number | null;
+  buy_in_amount: number | null;
+  roster_construction_alignment_pct: number | null;
+  roster_construction_moves_needed: number | null;
 
   ktc_value: number;
   ktc_rank: number;
@@ -1081,4 +1090,3 @@ export interface TradeCalculatorPickValueResponse {
   fc_value: number | null;
   rookie_war_value: number | null;
 }
-  total_moves: number;

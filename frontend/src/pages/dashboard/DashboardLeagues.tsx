@@ -1,6 +1,12 @@
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
+import { useValuePreference } from '@/context/useValuePreference';
 import type { DashboardLeague } from '@/types';
 import { useNavigate } from 'react-router';
+import {
+  getDashboardLeagueSelectedRank,
+  getDashboardLeagueSelectedValue,
+  getValueBasisLabel,
+} from '@/utils/valueBasis';
 
 interface Props {
   leagues: DashboardLeague[];
@@ -16,10 +22,53 @@ function formatLeagueRecord(
   return `${league.wins}-${league.losses}`;
 }
 
+function formatOrdinal(
+  value: number | null | undefined,
+) {
+  if (!value) {
+    return '—';
+  }
+
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${value}st`;
+  }
+
+  if (mod10 === 2 && mod100 !== 12) {
+    return `${value}nd`;
+  }
+
+  if (mod10 === 3 && mod100 !== 13) {
+    return `${value}rd`;
+  }
+
+  return `${value}th`;
+}
+
+function formatCurrency(
+  value: number | null | undefined,
+) {
+  if (value == null) {
+    return '—';
+  }
+
+  return value.toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
+}
+
 export function DashboardLeagues({
   leagues,
 }: Props) {
   const navigate = useNavigate();
+  const valuePreference = useValuePreference();
+  const selectedLabel = getValueBasisLabel(
+    valuePreference.preference,
+  );
 
   return (
     <section className="dashboard-section">
@@ -34,12 +83,10 @@ export function DashboardLeagues({
       <div className="portfolio-league-table">
         <div className="portfolio-league-table-head">
           <span>League</span>
-          <span>KTC</span>
-          <span>FC</span>
-          <span>Dynasty S</span>
-          <span>Dynasty R</span>
-          <span>Redraft S</span>
-          <span>Redraft R</span>
+          <span>Standing</span>
+          <span>Projected $</span>
+          <span>Construction</span>
+          <span>{selectedLabel}</span>
           <span>Age</span>
         </div>
 
@@ -70,46 +117,88 @@ export function DashboardLeagues({
                 </h3>
 
                 <p className="portfolio-league-subtitle">
-                  {formatLeagueRecord(league)}
+                  {formatLeagueRecord(league)} · PF #{league.points_for_rank}
                 </p>
               </div>
             </div>
 
             <div className="portfolio-league-metrics">
               <div className="portfolio-league-metric">
-                <span>KTC</span>
-                <strong>{league.ktc_value.toLocaleString()}</strong>
-                <small>#{league.ktc_rank}</small>
+                <span>Standing</span>
+                <strong>
+                  {formatOrdinal(league.standings_rank)}
+                </strong>
+                <small>
+                  of {league.league_size}
+                </small>
               </div>
 
               <div className="portfolio-league-metric">
-                <span>FC</span>
-                <strong>{league.fc_value.toLocaleString()}</strong>
-                <small>#{league.fc_rank}</small>
+                <span>Projected payout</span>
+                <strong>
+                  {formatCurrency(league.projected_payout)}
+                </strong>
+                <small>
+                  {league.projected_seed
+                    ? `Seed ${formatOrdinal(league.projected_seed)}`
+                    : 'No seed yet'}
+                </small>
               </div>
 
               <div className="portfolio-league-metric">
-                <span>Dynasty starter</span>
-                <strong>{league.dynasty_starter_war.toFixed(2)}</strong>
-                <small>#{league.dynasty_starter_war_rank}</small>
+                <span>Construction</span>
+                <strong>
+                  {league.roster_construction_alignment_pct != null
+                    ? `${league.roster_construction_alignment_pct.toFixed(0)}%`
+                    : '—'}
+                </strong>
+                <small>
+                  {league.roster_construction_moves_needed != null
+                    ? `${league.roster_construction_moves_needed} move${
+                      league.roster_construction_moves_needed === 1
+                        ? ''
+                        : 's'
+                    } off`
+                    : 'Unavailable'}
+                </small>
               </div>
 
               <div className="portfolio-league-metric">
-                <span>Dynasty roster</span>
-                <strong>{league.dynasty_roster_war.toFixed(2)}</strong>
-                <small>#{league.dynasty_roster_war_rank}</small>
-              </div>
-
-              <div className="portfolio-league-metric">
-                <span>Redraft starter</span>
-                <strong>{league.redraft_starter_war.toFixed(2)}</strong>
-                <small>#{league.redraft_starter_war_rank}</small>
-              </div>
-
-              <div className="portfolio-league-metric">
-                <span>Redraft roster</span>
-                <strong>{league.redraft_roster_war.toFixed(2)}</strong>
-                <small>#{league.redraft_roster_war_rank}</small>
+                <span>{selectedLabel}</span>
+                <strong>
+                  {
+                    getDashboardLeagueSelectedValue(
+                      league,
+                      valuePreference.preference,
+                    )?.toLocaleString(undefined, {
+                      maximumFractionDigits: (
+                        valuePreference.preference === 'ktc'
+                        || valuePreference.preference === 'fantasycalc'
+                          ? 0
+                          : 2
+                      ),
+                      minimumFractionDigits: (
+                        valuePreference.preference === 'ktc'
+                        || valuePreference.preference === 'fantasycalc'
+                          ? 0
+                          : 2
+                      ),
+                    }) ?? '—'
+                  }
+                </strong>
+                <small>
+                  {
+                    getDashboardLeagueSelectedRank(
+                      league,
+                      valuePreference.preference,
+                    )
+                      ? `#${getDashboardLeagueSelectedRank(
+                        league,
+                        valuePreference.preference,
+                      )}`
+                      : '—'
+                  }
+                </small>
               </div>
 
               <div className="portfolio-league-metric">
@@ -119,7 +208,7 @@ export function DashboardLeagues({
                     ? league.average_age.toFixed(1)
                     : 'N/A'}
                 </strong>
-                <small>#{league.age_rank}</small>
+                <small>#{league.age_rank} youngest</small>
               </div>
             </div>
           </button>
