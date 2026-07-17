@@ -47,3 +47,57 @@ class ADPResponse(Base):
     filters: ADPFilters
     sample: ADPSample
     players: list[ADPPlayerRow] = Field(default_factory=list)
+
+
+class ADPDistributionItem(Base):
+    key: str
+    count: int
+
+
+class ADPDatasetReport(Base):
+    qualified_draft_count: int
+    excluded_draft_count: int
+    unique_league_count: int
+    unique_root_source_count: int
+    earliest_draft_at: datetime | None = None
+    latest_draft_at: datetime | None = None
+    qualification_code_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
+    draft_kind_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
+    qb_format_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
+    te_premium_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
+    team_count_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
+    discovery_depth_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
+    discovery_status_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
+
+
+class ADPDiscoveryStatus(Base):
+    node_type: str
+    node_value: str
+    source_type: str | None = None
+    source_value: str | None = None
+    discovery_depth: int
+    status: str
+    attempt_count: int
+    next_retry_at: datetime | None = None
+    last_checked_at: datetime | None = None
+    failure_reason: str | None = None
+    updated_at: datetime
+
+
+class ADPDiscoveryStatusResponse(Base):
+    counts_by_status: list[ADPDistributionItem] = Field(default_factory=list)
+    nodes: list[ADPDiscoveryStatus] = Field(default_factory=list)

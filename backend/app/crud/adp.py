@@ -40,6 +40,22 @@ class ADPSampleSummary:
 
 
 @dataclass(frozen=True)
+class ADPDistributionCount:
+    key: str
+    count: int
+
+
+@dataclass(frozen=True)
+class ADPDatasetReportRow:
+    qualified_draft_count: int
+    excluded_draft_count: int
+    unique_league_count: int
+    unique_root_source_count: int
+    earliest_draft_at: datetime | None
+    latest_draft_at: datetime | None
+
+
+@dataclass(frozen=True)
 class ADPDraftIngestionSeed:
     draft_id: str
     source_type: str | None
@@ -398,6 +414,199 @@ async def get_ready_discovered_draft_ids(
             source_value=source_value,
         )
         for draft_id, source_type, source_value in result.all()
+    ]
+
+
+async def get_discovery_status_counts(
+    db: AsyncSession,
+) -> list[ADPDistributionCount]:
+    result = await db.execute(
+        select(
+            ADPDiscoveryNode.status,
+            func.count(ADPDiscoveryNode.id),
+        )
+        .group_by(ADPDiscoveryNode.status)
+        .order_by(ADPDiscoveryNode.status.asc())
+    )
+    return [
+        ADPDistributionCount(
+            key=str(key),
+            count=int(count),
+        )
+        for key, count in result.all()
+    ]
+
+
+async def get_recent_discovery_nodes(
+    db: AsyncSession,
+    *,
+    limit: int = 50,
+) -> list[ADPDiscoveryNode]:
+    result = await db.execute(
+        select(ADPDiscoveryNode)
+        .order_by(
+            ADPDiscoveryNode.updated_at.desc(),
+            ADPDiscoveryNode.created_at.desc(),
+        )
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def get_adp_dataset_report_row(
+    db: AsyncSession,
+) -> ADPDatasetReportRow:
+    result = await db.execute(
+        select(
+            func.count(
+                func.distinct(
+                    ADPDraftQualification.draft_id,
+                )
+            ).filter(
+                ADPDraftQualification.is_qualified.is_(True)
+            ),
+            func.count(
+                func.distinct(
+                    ADPDraftQualification.draft_id,
+                )
+            ).filter(
+                ADPDraftQualification.is_qualified.is_(False)
+            ),
+            func.count(
+                func.distinct(
+                    ADPDraftQualification.league_id,
+                )
+            ),
+            func.count(
+                func.distinct(
+                    func.concat(
+                        func.coalesce(
+                            ADPDiscoveryNode.source_type,
+                            "",
+                        ),
+                        ":",
+                        func.coalesce(
+                            ADPDiscoveryNode.source_value,
+                            "",
+                        ),
+                    )
+                )
+            ),
+            func.min(ADPDraftQualification.draft_completed_at),
+            func.max(ADPDraftQualification.draft_completed_at),
+        )
+        .select_from(ADPDraftQualification)
+        .outerjoin(
+            ADPDiscoveryNode,
+            and_(
+                ADPDiscoveryNode.node_type == "draft_id",
+                ADPDiscoveryNode.node_value == ADPDraftQualification.draft_id,
+            ),
+        )
+    )
+    (
+        qualified_draft_count,
+        excluded_draft_count,
+        unique_league_count,
+        unique_root_source_count,
+        earliest_draft_at,
+        latest_draft_at,
+    ) = result.one()
+    return ADPDatasetReportRow(
+        qualified_draft_count=int(qualified_draft_count or 0),
+        excluded_draft_count=int(excluded_draft_count or 0),
+        unique_league_count=int(unique_league_count or 0),
+        unique_root_source_count=int(unique_root_source_count or 0),
+        earliest_draft_at=earliest_draft_at,
+        latest_draft_at=latest_draft_at,
+    )
+
+
+async def get_adp_distribution(
+    db: AsyncSession,
+    *,
+    source: str,
+) -> list[ADPDistributionCount]:
+    if source == "qualification_code":
+        key_column = ADPDraftQualification.qualification_code
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDraftQualification.draft_id),
+            )
+            .group_by(key_column)
+            .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
+        )
+    elif source == "draft_kind":
+        key_column = ADPDraftQualification.draft_kind
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDraftQualification.draft_id),
+            )
+            .group_by(key_column)
+            .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
+        )
+    elif source == "qb_format":
+        key_column = ADPDraftQualification.qb_format
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDraftQualification.draft_id),
+            )
+            .group_by(key_column)
+            .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
+        )
+    elif source == "te_premium":
+        key_column = ADPDraftQualification.te_premium
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDraftQualification.draft_id),
+            )
+            .group_by(key_column)
+            .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
+        )
+    elif source == "team_count":
+        key_column = ADPDraftQualification.team_count
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDraftQualification.draft_id),
+            )
+            .group_by(key_column)
+            .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
+        )
+    elif source == "discovery_depth":
+        key_column = ADPDiscoveryNode.discovery_depth
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDiscoveryNode.id),
+            )
+            .group_by(key_column)
+            .order_by(key_column.asc())
+        )
+    elif source == "discovery_status":
+        key_column = ADPDiscoveryNode.status
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDiscoveryNode.id),
+            )
+            .group_by(key_column)
+            .order_by(key_column.asc())
+        )
+    else:
+        raise ValueError(f"Unsupported ADP distribution source: {source}")
+
+    result = await db.execute(statement)
+    return [
+        ADPDistributionCount(
+            key=str(key if key is not None else "unknown"),
+            count=int(count),
+        )
+        for key, count in result.all()
     ]
 
 

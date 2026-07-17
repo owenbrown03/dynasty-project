@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.analytics.war.redraft.service import WARService
 from app.api.deps import ContextDep
@@ -8,6 +8,19 @@ from app.crud.underdog.sync import sync_underdog_adp
 from app.crud.value import get_player_values
 from app.integrations.sleeper.schemas.api import Projection
 from app.services.dashboard.service import get_user_dashboard
+from app.services.adp.discovery import (
+    process_adp_discovery_batch,
+    seed_existing_leagues_for_adp_discovery,
+)
+from app.services.adp.ingestion import (
+    ingest_discovered_drafts,
+    ingest_existing_league_drafts,
+)
+from app.services.adp.report import (
+    build_adp_dataset_report,
+    get_adp_discovery_status,
+)
+from app.schemas.adp import ADPDatasetReport, ADPDiscoveryStatusResponse
 from app.schemas.league import LeagueOverviewItem
 from app.services.leagues.details import LeagueDetails
 from app.services.leagues.overview import get_league_overview
@@ -163,3 +176,105 @@ async def dashboard(
         ctx.redis,
         username,
     )
+
+
+@router.get(
+    "/adp/report",
+    response_model=ADPDatasetReport,
+)
+async def adp_report(
+    ctx: ContextDep,
+):
+    return await build_adp_dataset_report(
+        ctx.db,
+    )
+
+
+@router.get(
+    "/adp/discovery/status",
+    response_model=ADPDiscoveryStatusResponse,
+)
+async def adp_discovery_status(
+    ctx: ContextDep,
+    limit: int = Query(default=50, ge=1, le=500),
+):
+    return await get_adp_discovery_status(
+        ctx.db,
+        limit=limit,
+    )
+
+
+@router.post("/adp/discovery/seed")
+async def adp_seed_discovery(
+    ctx: ContextDep,
+    limit: int | None = Query(default=None, ge=1),
+):
+    inserted_count = await seed_existing_leagues_for_adp_discovery(
+        ctx.db,
+        limit=limit,
+    )
+    return {
+        "inserted_count": inserted_count,
+    }
+
+
+@router.post("/adp/discovery/process")
+async def adp_process_discovery(
+    ctx: ContextDep,
+    max_nodes: int | None = Query(default=None, ge=1),
+):
+    return await process_adp_discovery_batch(
+        ctx.db,
+        ctx.sleeper,
+        max_nodes=max_nodes,
+    )
+
+
+@router.post("/adp/discovery/ingest")
+async def adp_ingest_discovered(
+    ctx: ContextDep,
+    max_drafts: int = Query(default=25, ge=1, le=500),
+):
+    results = await ingest_discovered_drafts(
+        ctx.db,
+        ctx.sleeper,
+        max_drafts=max_drafts,
+    )
+    return {
+        "draft_count": len(results),
+        "results": [
+            {
+                "draft_id": result.draft_id,
+                "league_id": result.league_id,
+                "pick_count": result.pick_count,
+                "inserted_pick_count": result.inserted_pick_count,
+                "is_qualified": result.is_qualified,
+                "qualification_code": result.qualification_code,
+            }
+            for result in results
+        ],
+    }
+
+
+@router.post("/adp/validation/existing-leagues")
+async def adp_validate_existing_leagues(
+    ctx: ContextDep,
+    limit: int = Query(default=10, ge=1, le=500),
+):
+    ingestion_result = await ingest_existing_league_drafts(
+        ctx.db,
+        ctx.sleeper,
+        league_limit=limit,
+    )
+    report = await build_adp_dataset_report(
+        ctx.db,
+    )
+    return {
+        "ingestion": {
+            "league_count": ingestion_result.league_count,
+            "draft_count": ingestion_result.draft_count,
+            "qualified_draft_count": ingestion_result.qualified_draft_count,
+            "failed_draft_ids": ingestion_result.failed_draft_ids,
+        },
+        "report": report,
+    }
