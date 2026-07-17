@@ -150,7 +150,7 @@
 .tier-player-exposure {
   display: block;
   margin-top: 5px;
-  color: color-mix(in srgb, var(--color-warning) 78%, var(--color-text-faint));
+  color: color-mix(in srgb, var(--color-warning) 38%, var(--color-text-faint));
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -158,15 +158,27 @@
 }
 
 .tier-player-exposure--success {
-  color: color-mix(in srgb, var(--color-success) 76%, var(--color-text-faint));
+  color: color-mix(
+    in srgb,
+    var(--color-success) 34%,
+    var(--color-text-faint)
+  );
 }
 
 .tier-player-exposure--warning {
-  color: color-mix(in srgb, var(--color-warning) 78%, var(--color-text-faint));
+  color: color-mix(
+    in srgb,
+    var(--color-warning) 38%,
+    var(--color-text-faint)
+  );
 }
 
 .tier-player-exposure--danger {
-  color: color-mix(in srgb, var(--color-danger) 76%, var(--color-text-faint));
+  color: color-mix(
+    in srgb,
+    var(--color-danger) 34%,
+    var(--color-text-faint)
+  );
 }
 
 .tiers-empty-state {
