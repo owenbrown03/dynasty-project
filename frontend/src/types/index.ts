@@ -168,6 +168,48 @@ export interface FinanceProjectionSettings {
   settings: DraftPickProjectionSettings;
 }
 
+export interface ADPFilters {
+  season?: string | null;
+  draft_kind?: string | null;
+  qb_format?: string | null;
+  te_premium?: string | null;
+  team_count?: number | null;
+  scoring_format?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  minimum_draft_count?: number;
+  limit?: number;
+}
+
+export interface ADPSample {
+  draft_count: number;
+  pick_count: number;
+  earliest_draft_at: string | null;
+  latest_draft_at: string | null;
+  generated_at: string;
+}
+
+export interface ADPPlayerRow {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  overall_adp: number;
+  median_pick: number;
+  min_pick: number;
+  max_pick: number;
+  standard_deviation: number | null;
+  pick_count: number;
+  draft_count: number;
+  selection_rate: number;
+}
+
+export interface ADPResponse {
+  filters: ADPFilters;
+  sample: ADPSample;
+  players: ADPPlayerRow[];
+}
+
 export interface LeagueOverview {
   league_id: string;
   league_name: string;

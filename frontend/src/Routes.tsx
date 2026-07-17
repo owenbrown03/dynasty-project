@@ -10,6 +10,7 @@ import { FinancePage } from './pages/finance/FinancePage';
 import { MyValuesPage } from './pages/my-values/MyValuesPage';
 import { RemindersPage } from './pages/reminders/RemindersPage';
 import { AuctionDraftPage } from './pages/auction/AuctionDraftPage';
+import { AdpPage } from './pages/adp/AdpPage';
 
 export const AppRoutes = () => {
   return (
@@ -20,6 +21,7 @@ export const AppRoutes = () => {
         <Route path="/trades" element={<TradesPage />} />
         <Route path="/waivers" element={<WaiversPage />} />
         <Route path="/tiers" element={<TiersPage />} />
+        <Route path="/adp" element={<AdpPage />} />
         <Route path="/my-values" element={<MyValuesPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/reminders" element={<RemindersPage />} />
