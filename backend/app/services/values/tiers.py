@@ -318,7 +318,7 @@ async def get_player_tier_board(
     )
 
     ranked_players = []
-    exposure_by_player_id, _ = await build_player_exposure_by_player_id(
+    exposure_by_player_id, exposure_denominator = await build_player_exposure_by_player_id(
         ctx=ctx,
     )
 
@@ -374,7 +374,11 @@ async def get_player_tier_board(
         owned_leagues, total_leagues, exposure_pct = (
             exposure_by_player_id.get(
                 player.player_id,
-                (0, 0, 0.0),
+                (
+                    0,
+                    exposure_denominator,
+                    0.0,
+                ),
             )
         )
 
@@ -390,17 +394,17 @@ async def get_player_tier_board(
                 selected_value=selected_value,
                 exposure_pct=(
                     exposure_pct
-                    if total_leagues > 0
+                    if exposure_denominator > 0
                     else None
                 ),
                 exposure_owned_leagues=(
                     owned_leagues
-                    if total_leagues > 0
+                    if exposure_denominator > 0
                     else None
                 ),
                 exposure_total_leagues=(
                     total_leagues
-                    if total_leagues > 0
+                    if exposure_denominator > 0
                     else None
                 ),
             )
