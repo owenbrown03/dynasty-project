@@ -167,6 +167,7 @@ ROSTER_STAT_RANK_CONFIG = (
     ("open_roster_spots", True),
     ("faab_remaining", True),
     ("waiver_position", False),
+    ("total_moves", True),
     ("total_trades", True),
 )
 
@@ -221,6 +222,18 @@ def assign_roster_stat_ranks(
                 previous_value = value
 
             roster.stat_ranks[metric_name] = current_rank
+
+
+def build_standings_sort_key(
+    roster: LeagueRoster,
+) -> tuple[float, float, float, float, int]:
+    return (
+        -roster.wins,
+        roster.losses,
+        -roster.ties,
+        -roster.actual_points_for,
+        roster.roster_id,
+    )
 
 
 def build_direct_starter_minimums(
@@ -1097,6 +1110,7 @@ class LeagueDetails:
                     ),
                     faab_remaining=roster.faab_remaining(league),
                     waiver_position=roster.waiver_position,
+                    total_moves=roster.total_moves,
                     total_trades=trade_counts_by_roster_id.get(
                         roster.roster_id,
                         0,
@@ -1139,12 +1153,7 @@ class LeagueDetails:
             )
 
         rosters.sort(
-            key=lambda roster: (
-                roster.total_asset_ktc_value,
-                roster.total_asset_fc_value,
-                roster.total_dynasty_roster_war,
-            ),
-            reverse=True,
+            key=build_standings_sort_key,
         )
 
         for rank, roster in enumerate(rosters, start=1):

@@ -1081,3 +1081,4 @@ export interface TradeCalculatorPickValueResponse {
   fc_value: number | null;
   rookie_war_value: number | null;
 }
+  total_moves: number;

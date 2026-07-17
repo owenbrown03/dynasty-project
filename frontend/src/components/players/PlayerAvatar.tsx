@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 
-import { getPlayerInitials, getSleeperPlayerHeadshotUrl } from '@/utils/players';
+import {
+  getPlayerInitials,
+  getSleeperPlayerHeadshotUrl,
+} from '@/utils/players';
 
 
 interface PlayerAvatarProps {

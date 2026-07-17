@@ -1,14 +1,32 @@
 import './PlayerTable.css';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
-import type { LeaguePlayer } from '@/types';
+import type {
+  LeaguePlayer,
+  ValueBasis,
+  WarValueSettings,
+} from '@/types';
 import { formatNumber } from '@/utils/format';
 import { getPositionColor } from '@/utils/positions';
+import {
+  getLeaguePlayerSelectedValue,
+  getValueBasisLabel,
+} from '@/utils/valueBasis';
 
 interface Props {
   players: LeaguePlayer[];
+  valueBasis: ValueBasis;
+  warValueSettings: WarValueSettings;
 }
 
-export function PlayerTable({ players }: Props) {
+export function PlayerTable({
+  players,
+  valueBasis,
+  warValueSettings,
+}: Props) {
+  const valueLabel = getValueBasisLabel(
+    valueBasis,
+  );
+
   return (
     <table className="player-table">
       <thead>
@@ -17,18 +35,8 @@ export function PlayerTable({ players }: Props) {
           <th>Pos</th>
           <th>Team</th>
           <th>Proj</th>
-          <th>KTC</th>
-          <th>FC</th>
-          <th>30d</th>
           <th>UD</th>
-          <th>R St</th>
-          <th>R Ro</th>
-          <th>D St</th>
-          <th>D Ro</th>
-          <th>My R St</th>
-          <th>My R Ro</th>
-          <th>My D St</th>
-          <th>My D Ro</th>
+          <th>{valueLabel}</th>
         </tr>
       </thead>
 
@@ -65,18 +73,25 @@ export function PlayerTable({ players }: Props) {
             </td>
             <td>{player.team ?? '-'}</td>
             <td>{formatNumber(player.projected_points)}</td>
-            <td>{formatNumber(player.ktc_value)}</td>
-            <td>{formatNumber(player.fc_value)}</td>
-            <td>{formatNumber(player.fc_trend_30_day)}</td>
             <td>{player.underdog_position_rank ?? '-'}</td>
-            <td>{formatNumber(player.redraft_starter_war)}</td>
-            <td>{formatNumber(player.redraft_roster_war)}</td>
-            <td>{formatNumber(player.dynasty_starter_war)}</td>
-            <td>{formatNumber(player.dynasty_roster_war)}</td>
-            <td>{formatNumber(player.my_redraft_starter_war)}</td>
-            <td>{formatNumber(player.my_redraft_roster_war)}</td>
-            <td>{formatNumber(player.my_dynasty_starter_war)}</td>
-            <td>{formatNumber(player.my_dynasty_roster_war)}</td>
+            <td>
+              {
+                formatNumber(
+                  getLeaguePlayerSelectedValue(
+                    player,
+                    valueBasis,
+                    warValueSettings,
+                  ),
+                  (
+                    valueBasis === 'ktc'
+                    || valueBasis === 'fantasycalc'
+                    || valueBasis === 'adp'
+                  )
+                    ? 0
+                    : 2,
+                )
+              }
+            </td>
           </tr>
         ))}
       </tbody>

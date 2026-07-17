@@ -1,7 +1,7 @@
 .roster-card {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 10px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
 }
@@ -11,7 +11,7 @@
   align-items: end;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -62,21 +62,30 @@
 
 .roster-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 6px;
 }
 
 .roster-summary-stat {
   display: grid;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: 2px;
+  min-height: 74px;
+  padding: 6px 8px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
 }
 
 .roster-summary-stat strong {
   color: var(--color-text-strong);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.roster-summary-stat small,
+.roster-summary-hero small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .roster-card-actions {

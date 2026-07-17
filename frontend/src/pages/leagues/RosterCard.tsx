@@ -7,6 +7,8 @@ import type {
   LeaguePick,
   LeagueRoster,
   LeagueRosterConstructionTarget,
+  ValueBasis,
+  WarValueSettings,
 } from '@/types';
 import { PlayerTable } from './PlayerTable';
 import { formatNumber } from '@/utils/format';
@@ -15,6 +17,17 @@ import {
   getDraftPickColor,
   getPositionColor,
 } from '@/utils/positions';
+import {
+  getPickSelectedValue,
+  getPickValueLabel,
+  getRosterSelectedAssetRank,
+  getRosterSelectedAssetValue,
+  getRosterSelectedPickRank,
+  getRosterSelectedPickValue,
+  getRosterSelectedPlayerRank,
+  getRosterSelectedPlayerValue,
+  getValueBasisLabel,
+} from '@/utils/valueBasis';
 
 
 interface Props {
@@ -22,6 +35,8 @@ interface Props {
   displayRank: number;
   rosterConstructionTargets: LeagueRosterConstructionTarget[];
   draftPickProjectionSummary?: string | null;
+  valueBasis: ValueBasis;
+  warValueSettings: WarValueSettings;
 }
 
 function StatValue({
@@ -48,9 +63,11 @@ function StatValue({
 function PickList({
   picks,
   draftPickProjectionSummary,
+  valueBasis,
 }: {
   picks: LeaguePick[];
   draftPickProjectionSummary?: string | null;
+  valueBasis: ValueBasis;
 }) {
   if (picks.length === 0) {
     return (
@@ -86,9 +103,24 @@ function PickList({
             </div>
 
             <div className="league-pick-values">
-              <span>KTC {formatNumber(pick.ktc_value)}</span>
-              <span>FC {formatNumber(pick.fc_value)}</span>
-              <span>Rookie WAR {formatNumber(pick.rookie_war_value)}</span>
+              <span>
+                {getPickValueLabel(valueBasis)}
+                {' '}
+                {
+                  formatNumber(
+                    getPickSelectedValue(
+                      pick,
+                      valueBasis,
+                    ),
+                    (
+                      valueBasis === 'ktc'
+                      || valueBasis === 'fantasycalc'
+                    )
+                      ? 0
+                      : 2,
+                  )
+                }
+              </span>
             </div>
           </div>
         ))
@@ -101,11 +133,30 @@ export function RosterCard({
   displayRank,
   rosterConstructionTargets,
   draftPickProjectionSummary,
+  valueBasis,
+  warValueSettings,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const constructionRows = buildRosterConstructionRows(
     roster,
     rosterConstructionTargets,
+  );
+  const selectedValueLabel = getValueBasisLabel(
+    valueBasis,
+  );
+  const selectedAssetValue = getRosterSelectedAssetValue(
+    roster,
+    valueBasis,
+    warValueSettings,
+  );
+  const selectedPlayerValue = getRosterSelectedPlayerValue(
+    roster,
+    valueBasis,
+    warValueSettings,
+  );
+  const selectedPickValue = getRosterSelectedPickValue(
+    roster,
+    valueBasis,
   );
 
   return (
@@ -130,10 +181,24 @@ export function RosterCard({
         </div>
 
         <div className="roster-summary-hero">
-          <span>Asset KTC</span>
+          <span>{selectedValueLabel}</span>
           <StatValue
-            value={formatNumber(roster.total_asset_ktc_value)}
-            rank={roster.stat_ranks.total_asset_ktc_value}
+            value={
+              formatNumber(
+                selectedAssetValue,
+                (
+                  valueBasis === 'ktc'
+                  || valueBasis === 'fantasycalc'
+                )
+                  ? 0
+                  : 2,
+              )
+            }
+            rank={getRosterSelectedAssetRank(
+              roster,
+              valueBasis,
+              warValueSettings,
+            )}
           />
         </div>
       </header>
@@ -147,73 +212,44 @@ export function RosterCard({
           />
         </div>
         <div className="roster-summary-stat">
-          <span>Asset FC</span>
+          <span>{selectedValueLabel} players</span>
           <StatValue
-            value={formatNumber(roster.total_asset_fc_value)}
-            rank={roster.stat_ranks.total_asset_fc_value}
+            value={
+              formatNumber(
+                selectedPlayerValue,
+                (
+                  valueBasis === 'ktc'
+                  || valueBasis === 'fantasycalc'
+                )
+                  ? 0
+                  : 2,
+              )
+            }
+            rank={getRosterSelectedPlayerRank(
+              roster,
+              valueBasis,
+              warValueSettings,
+            )}
           />
         </div>
         <div className="roster-summary-stat">
-          <span>Player KTC</span>
+          <span>{getPickValueLabel(valueBasis)}</span>
           <StatValue
-            value={formatNumber(roster.total_ktc_value)}
-            rank={roster.stat_ranks.total_ktc_value}
-          />
-        </div>
-        <div className="roster-summary-stat">
-          <span>Pick KTC</span>
-          <StatValue
-            value={formatNumber(roster.total_pick_ktc_value)}
-            rank={roster.stat_ranks.total_pick_ktc_value}
-          />
-        </div>
-        <div className="roster-summary-stat">
-          <span>Player FC</span>
-          <StatValue
-            value={formatNumber(roster.total_fc_value)}
-            rank={roster.stat_ranks.total_fc_value}
-          />
-        </div>
-        <div className="roster-summary-stat">
-          <span>Pick FC</span>
-          <StatValue
-            value={formatNumber(roster.total_pick_fc_value)}
-            rank={roster.stat_ranks.total_pick_fc_value}
-          />
-        </div>
-        <div className="roster-summary-stat">
-          <span>Pick WAR</span>
-          <StatValue
-            value={formatNumber(roster.total_pick_rookie_war_value)}
-            rank={roster.stat_ranks.total_pick_rookie_war_value}
-          />
-        </div>
-        <div className="roster-summary-stat">
-          <span>R St WAR</span>
-          <StatValue
-            value={formatNumber(roster.total_redraft_starter_war)}
-            rank={roster.stat_ranks.total_redraft_starter_war}
-          />
-        </div>
-        <div className="roster-summary-stat">
-          <span>R Ro WAR</span>
-          <StatValue
-            value={formatNumber(roster.total_redraft_roster_war)}
-            rank={roster.stat_ranks.total_redraft_roster_war}
-          />
-        </div>
-        <div className="roster-summary-stat">
-          <span>D St WAR</span>
-          <StatValue
-            value={formatNumber(roster.total_dynasty_starter_war)}
-            rank={roster.stat_ranks.total_dynasty_starter_war}
-          />
-        </div>
-        <div className="roster-summary-stat">
-          <span>D Ro WAR</span>
-          <StatValue
-            value={formatNumber(roster.total_dynasty_roster_war)}
-            rank={roster.stat_ranks.total_dynasty_roster_war}
+            value={
+              formatNumber(
+                selectedPickValue,
+                (
+                  valueBasis === 'ktc'
+                  || valueBasis === 'fantasycalc'
+                )
+                  ? 0
+                  : 2,
+              )
+            }
+            rank={getRosterSelectedPickRank(
+              roster,
+              valueBasis,
+            )}
           />
         </div>
         <div className="roster-summary-stat">
@@ -238,10 +274,10 @@ export function RosterCard({
           />
         </div>
         <div className="roster-summary-stat">
-          <span>Waiver</span>
+          <span>Waiver moves</span>
           <StatValue
-            value={roster.waiver_position}
-            rank={roster.stat_ranks.waiver_position}
+            value={roster.total_moves}
+            rank={roster.stat_ranks.total_moves}
           />
         </div>
         <div className="roster-summary-stat">
@@ -323,7 +359,11 @@ export function RosterCard({
                   <p>Roster table</p>
                 </div>
 
-                <PlayerTable players={roster.players} />
+                <PlayerTable
+                  players={roster.players}
+                  valueBasis={valueBasis}
+                  warValueSettings={warValueSettings}
+                />
               </section>
 
               <section className="league-detail-section">
@@ -334,6 +374,7 @@ export function RosterCard({
                 <PickList
                   picks={roster.picks}
                   draftPickProjectionSummary={draftPickProjectionSummary}
+                  valueBasis={valueBasis}
                 />
               </section>
             </div>

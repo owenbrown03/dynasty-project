@@ -1,6 +1,11 @@
-import { useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { useValuePreference } from '@/context/useValuePreference';
 import {
   fetchTradeCalculatorPickValue,
   useBulkTradePlayerSearch,
@@ -154,7 +159,12 @@ export function TradeCalculatorTab({
     seed: TradeCalculatorBulkOfferSeed,
   ) => void;
 }) {
-  const [valueBasis, setValueBasis] = useState<CalculatorBasis>('ktc');
+  const valuePreference = useValuePreference();
+  const valueBasis: CalculatorBasis = (
+    valuePreference.preference === 'fantasycalc'
+      ? 'fantasycalc'
+      : 'ktc'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [teamAReceives, setTeamAReceives] = useState<CalculatorAsset[]>([]);
   const [teamBReceives, setTeamBReceives] = useState<CalculatorAsset[]>([]);
@@ -166,12 +176,24 @@ export function TradeCalculatorTab({
   const [totalRosters, setTotalRosters] = useState(12);
   const [numQbs, setNumQbs] = useState(2);
   const [ppr, setPpr] = useState(1);
-  const [waiverValue, setWaiverValue] = useState(250);
+  const [waiverValue, setWaiverValue] = useState(
+    valueBasis === 'ktc'
+      ? 250
+      : 200,
+  );
   const [addingPick, setAddingPick] = useState(false);
 
   const playerSearch = useBulkTradePlayerSearch(
     searchQuery,
   );
+
+  useEffect(() => {
+    setWaiverValue(
+      valueBasis === 'ktc'
+        ? 250
+        : 200,
+    );
+  }, [valueBasis]);
 
   const addAssetToSide = (
     side: CalculatorSide,
@@ -292,22 +314,14 @@ export function TradeCalculatorTab({
         <div className="trade-calculator-controls">
           <label>
             <span>Value basis</span>
-            <select
-              value={valueBasis}
-              onChange={(event) => {
-                setValueBasis(
-                  event.target.value as CalculatorBasis,
-                );
-                setWaiverValue(
-                  event.target.value === 'ktc'
-                    ? 250
-                    : 200,
-                );
-              }}
-            >
-              <option value="ktc">KTC</option>
-              <option value="fantasycalc">FantasyCalc</option>
-            </select>
+            <input
+              value={
+                valueBasis === 'ktc'
+                  ? 'KTC'
+                  : 'FantasyCalc'
+              }
+              readOnly
+            />
           </label>
 
           <label>
