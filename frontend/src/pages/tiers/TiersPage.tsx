@@ -330,41 +330,48 @@ export const TiersPage = () => {
                                     className="tier-player-avatar"
                                   />
 
-                                  <div className="tier-player-name">
-                                    <strong>{player.name}</strong>
-                                    <span>
-                                      {
-                                        [player.position, player.team]
-                                          .filter(Boolean)
-                                          .join(' · ') || '—'
-                                      }
-                                    </span>
-                                  </div>
+                                  <div className="tier-player-copy">
+                                    <div className="tier-player-topline">
+                                      <div className="tier-player-name">
+                                        <strong>{player.name}</strong>
+                                      </div>
 
-                                  <div className="tier-player-value">
-                                    <strong>
-                                      {
-                                        formatSelectedValue(
-                                          player,
-                                          tierBoard.value_basis,
-                                        )
-                                      }
-                                    </strong>
-                                  </div>
-
-                                  {
-                                    formatExposure(player)
-                                      ? (
-                                        <small
-                                          className={
-                                            `tier-player-exposure tier-player-exposure--${getExposureTone(player)}`
+                                      <div className="tier-player-value">
+                                        <strong>
+                                          {
+                                            formatSelectedValue(
+                                              player,
+                                              tierBoard.value_basis,
+                                            )
                                           }
-                                        >
-                                          Exposure {formatExposure(player)}
-                                        </small>
-                                      )
-                                      : null
-                                  }
+                                        </strong>
+                                      </div>
+                                    </div>
+
+                                    <div className="tier-player-subline">
+                                      <span className="tier-player-meta">
+                                        {
+                                          [player.position, player.team]
+                                            .filter(Boolean)
+                                            .join(' · ') || '—'
+                                        }
+                                      </span>
+
+                                      {
+                                        formatExposure(player)
+                                          ? (
+                                            <small
+                                              className={
+                                                `tier-player-exposure tier-player-exposure--${getExposureTone(player)}`
+                                              }
+                                            >
+                                              Exposure {formatExposure(player)}
+                                            </small>
+                                          )
+                                          : null
+                                      }
+                                    </div>
+                                  </div>
                                 </article>
                               ))
                             : (
