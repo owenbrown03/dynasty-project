@@ -102,6 +102,54 @@ def get_suggested_drop(
     )
 
 
+def normalize_positive_swap(
+    *,
+    suggested_add: PlayerValue | None,
+    suggested_add_value: float | None,
+    suggested_drop: PlayerValue | None,
+    suggested_drop_value: float | None,
+) -> tuple[
+    PlayerValue | None,
+    float | None,
+    PlayerValue | None,
+    float | None,
+    float | None,
+]:
+    if (
+        suggested_add_value is None
+        or suggested_drop_value is None
+    ):
+        return (
+            suggested_add,
+            suggested_add_value,
+            suggested_drop,
+            suggested_drop_value,
+            None,
+        )
+
+    value_gain = round(
+        suggested_add_value - suggested_drop_value,
+        3,
+    )
+
+    if value_gain <= 0:
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+    return (
+        suggested_add,
+        suggested_add_value,
+        suggested_drop,
+        suggested_drop_value,
+        value_gain,
+    )
+
+
 async def get_waiver_overview(
     *,
     db: AsyncSession,
@@ -398,16 +446,18 @@ async def get_waiver_overview(
             )
         )
 
-        value_gain: float | None = None
-
-        if (
-            suggested_add_value is not None
-            and suggested_drop_value is not None
-        ):
-            value_gain = round(
-                suggested_add_value - suggested_drop_value,
-                3,
-            )
+        (
+            suggested_add,
+            suggested_add_value,
+            suggested_drop,
+            suggested_drop_value,
+            value_gain,
+        ) = normalize_positive_swap(
+            suggested_add=suggested_add,
+            suggested_add_value=suggested_add_value,
+            suggested_drop=suggested_drop,
+            suggested_drop_value=suggested_drop_value,
+        )
 
         faab_budget = league.waiver_budget
         faab_remaining = roster.faab_remaining(league)

@@ -107,6 +107,7 @@ export function useRecentlyDroppedPlayers(
   valueBasis: ValueBasis,
   page: number,
   pageSize: number,
+  sortBy: 'value' | 'recency',
 ) {
   const {
     username,
@@ -119,6 +120,7 @@ export function useRecentlyDroppedPlayers(
       valueBasis,
       page,
       pageSize,
+      sortBy,
     ),
 
     queryFn: async () => {
@@ -127,6 +129,7 @@ export function useRecentlyDroppedPlayers(
           valueBasis,
           page,
           pageSize,
+          sortBy,
         )
         .then((res) => res.data);
     },

@@ -1,6 +1,8 @@
 import {
   ArrowRight,
   CircleDollarSign,
+  DoorOpen,
+  Search,
   Users,
 } from 'lucide-react';
 
@@ -41,6 +43,8 @@ export const WaiverLeagueCard = ({
           )
         } players over capacity. Remove players before claiming.`
       )
+      : league.value_gain === null
+        ? 'No positive waiver swap available right now.'
       : undefined
   );
 
@@ -54,7 +58,7 @@ export const WaiverLeagueCard = ({
             size="md"
           />
 
-            <div>
+          <div>
             <button
               type="button"
               className="waiver-league-link-button"
@@ -69,15 +73,15 @@ export const WaiverLeagueCard = ({
               </h2>
             </button>
 
-            <p>
-              {league.value_label}
+            <p className="waiver-league-basis">
+              Evaluated by {league.value_label}
             </p>
           </div>
         </div>
 
         <div className="waiver-gain">
           <span>
-            Value Gain
+            Net gain
           </span>
 
           <strong>
@@ -107,6 +111,8 @@ export const WaiverLeagueCard = ({
         </div>
 
         <div className="waiver-stat">
+          <DoorOpen size={15} />
+
           <span>
             Open Spots
           </span>
@@ -139,6 +145,8 @@ export const WaiverLeagueCard = ({
         </div>
 
         <div className="waiver-stat">
+          <Search size={15} />
+
           <span>
             Available
           </span>
@@ -156,6 +164,7 @@ export const WaiverLeagueCard = ({
           selectedValue={league.suggested_add_value}
           valueBasis={league.value_basis}
           variant="add"
+          emptyMessage="No positive add recommended right now."
         />
 
         <div className="waiver-swap-arrow">
@@ -168,6 +177,7 @@ export const WaiverLeagueCard = ({
           selectedValue={league.suggested_drop_value}
           valueBasis={league.value_basis}
           variant="drop"
+          emptyMessage="No drop needed for a positive swap right now."
         />
       </div>
 

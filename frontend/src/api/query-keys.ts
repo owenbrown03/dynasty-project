@@ -87,6 +87,7 @@ export const queryKeys = {
       valueBasis: ValueBasis,
       page: number,
       pageSize: number,
+      sortBy: 'value' | 'recency',
     ) =>
       [
         'waiver-recent-drops',
@@ -94,6 +95,7 @@ export const queryKeys = {
         valueBasis,
         page,
         pageSize,
+        sortBy,
       ] as const,
     recentDropsRoot: ['waiver-recent-drops'] as const,
     leagues: (
