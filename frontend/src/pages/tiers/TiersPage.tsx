@@ -323,28 +323,25 @@ export const TiersPage = () => {
                                     ),
                                   }}
                                 >
-                                  <div className="tier-player-main">
-                                    <div className="player-with-avatar">
-                                      <PlayerAvatar
-                                        playerId={player.player_id}
-                                        name={player.name}
-                                        size="md"
-                                      />
+                                  <PlayerAvatar
+                                    playerId={player.player_id}
+                                    name={player.name}
+                                    size="md"
+                                    className="tier-player-avatar"
+                                  />
 
-                                      <div className="player-with-avatar-copy">
-                                        <strong>{player.name}</strong>
-                                        <span>
-                                          {
-                                            [player.position, player.team]
-                                              .filter(Boolean)
-                                              .join(' · ') || '—'
-                                          }
-                                        </span>
-                                      </div>
-                                    </div>
+                                  <div className="tier-player-name">
+                                    <strong>{player.name}</strong>
+                                    <span>
+                                      {
+                                        [player.position, player.team]
+                                          .filter(Boolean)
+                                          .join(' · ') || '—'
+                                      }
+                                    </span>
                                   </div>
 
-                                  <div className="tier-player-metrics">
+                                  <div className="tier-player-value">
                                     <strong>
                                       {
                                         formatSelectedValue(
@@ -353,20 +350,21 @@ export const TiersPage = () => {
                                         )
                                       }
                                     </strong>
-                                    {
-                                      formatExposure(player)
-                                        ? (
-                                          <small
-                                            className={
-                                              `tier-player-exposure tier-player-exposure--${getExposureTone(player)}`
-                                            }
-                                          >
-                                            Exposure {formatExposure(player)}
-                                          </small>
-                                        )
-                                        : null
-                                    }
                                   </div>
+
+                                  {
+                                    formatExposure(player)
+                                      ? (
+                                        <small
+                                          className={
+                                            `tier-player-exposure tier-player-exposure--${getExposureTone(player)}`
+                                          }
+                                        >
+                                          Exposure {formatExposure(player)}
+                                        </small>
+                                      )
+                                      : null
+                                  }
                                 </article>
                               ))
                             : (

@@ -101,40 +101,40 @@
 .tier-player {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'avatar name value'
+    'avatar meta exposure';
   align-items: center;
-  gap: 10px;
+  column-gap: 10px;
+  row-gap: 4px;
   padding: 10px 12px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
 }
 
-.tier-player-main {
-  min-width: 0;
-  flex: 1;
+.tier-player-avatar {
+  grid-area: avatar;
 }
 
-.tier-player-metrics {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  text-align: right;
+.tier-player-name {
+  grid-area: name;
   min-width: 0;
 }
 
-.tier-player-metrics strong {
+.tier-player-value {
+  grid-area: value;
+  min-width: 0;
+  justify-self: end;
+}
+
+.tier-player-value strong {
   color: var(--color-text-strong);
   font-size: 13px;
   white-space: nowrap;
-  align-self: flex-end;
 }
 
-.tier-player .player-with-avatar {
-  gap: 9px;
-}
-
-.tier-player .player-with-avatar-copy strong {
+.tier-player-name strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -142,9 +142,9 @@
   font-size: 13px;
 }
 
-.tier-player .player-with-avatar-copy span {
+.tier-player-name span {
+  grid-area: meta;
   display: block;
-  margin-top: 3px;
   color: var(--color-text-muted);
   font-size: 11px;
   overflow: hidden;
@@ -153,14 +153,14 @@
 }
 
 .tier-player-exposure {
+  grid-area: exposure;
   display: block;
+  justify-self: end;
   color: color-mix(in srgb, var(--color-warning) 38%, var(--color-text-faint));
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  max-width: 72px;
-  line-height: 1.2;
-  text-wrap: balance;
+  white-space: nowrap;
   text-transform: uppercase;
 }
 
@@ -226,21 +226,17 @@
   }
 
   .tier-player {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: flex-start;
+    grid-template-columns: 32px minmax(0, 1fr);
+    grid-template-areas:
+      'avatar name'
+      'avatar meta'
+      'value value'
+      'exposure exposure';
+    align-items: start;
   }
 
-  .tier-player-metrics {
-    align-items: flex-start;
-    text-align: left;
-  }
-
-  .tier-player-metrics strong,
+  .tier-player-value,
   .tier-player-exposure {
-    align-self: flex-start;
-  }
-
-  .tier-player-exposure {
-    max-width: none;
+    justify-self: start;
   }
 }
