@@ -49,6 +49,26 @@ function formatExposure(
   return `${player.exposure_pct.toFixed(1)}% · ${player.exposure_owned_leagues}/${player.exposure_total_leagues}`;
 }
 
+function getExposureTone(
+  player: TierBoardPlayer,
+) {
+  const exposurePct = player.exposure_pct;
+
+  if (exposurePct == null) {
+    return null;
+  }
+
+  if (exposurePct === 0 || exposurePct >= 25) {
+    return 'danger';
+  }
+
+  if (exposurePct >= 6 && exposurePct <= 10) {
+    return 'success';
+  }
+
+  return 'warning';
+}
+
 
 export const TiersPage = () => {
   const valuePreference = useValuePreference();
@@ -323,7 +343,11 @@ export const TiersPage = () => {
                                         {
                                           formatExposure(player)
                                             ? (
-                                              <small className="tier-player-exposure">
+                                              <small
+                                                className={
+                                                  `tier-player-exposure tier-player-exposure--${getExposureTone(player)}`
+                                                }
+                                              >
                                                 Exposure {formatExposure(player)}
                                               </small>
                                             )
