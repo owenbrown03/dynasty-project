@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import dataclass
 
 from fastapi import HTTPException, status
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -322,14 +323,27 @@ async def get_auction_draft_center(
             ),
         )
 
-    raw_draft, raw_picks = await asyncio.gather(
-        sleeper.transport.get(
-            f"draft/{draft_id}",
-        ),
-        sleeper.read.get_draft_picks(
-            draft_id,
-        ),
-    )
+    try:
+        raw_draft, raw_picks = await asyncio.gather(
+            sleeper.transport.get(
+                f"draft/{draft_id}",
+            ),
+            sleeper.read.get_draft_picks(
+                draft_id,
+            ),
+        )
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    "Sleeper could not find that draft id. "
+                    "Use the numeric Sleeper draft id from the draft URL, "
+                    "not a room code or invite code."
+                ),
+            ) from exc
+
+        raise
 
     if not isinstance(raw_draft, dict):
         raise HTTPException(
