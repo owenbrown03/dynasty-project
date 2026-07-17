@@ -53,6 +53,9 @@ export const RecentlyDroppedTab = ({
 }: RecentlyDroppedTabProps) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const [sortBy, setSortBy] = useState<'value' | 'recency'>(
+    'recency',
+  );
   const [claimPlayer, setClaimPlayer] = useState<WaiverRecentlyDroppedPlayer | null>(
     null,
   );
@@ -60,6 +63,7 @@ export const RecentlyDroppedTab = ({
     valueBasis,
     page,
     pageSize,
+    sortBy,
   );
   const {
     canWrite,
@@ -70,6 +74,7 @@ export const RecentlyDroppedTab = ({
   }, [
     valueBasis,
     pageSize,
+    sortBy,
   ]);
 
   const modalLeague = useMemo<WaiverLeagueOption | null>(
@@ -169,12 +174,32 @@ export const RecentlyDroppedTab = ({
           </span>
 
           <span>
-            Ranked by {data.value_label}
+            {
+              sortBy === 'value'
+                ? `Ranked by ${data.value_label}`
+                : 'Ranked by most recent drop'
+            }
           </span>
         </div>
       </div>
 
       <div className="available-pagination-toolbar">
+        <label className="available-page-size-selector">
+          <span>Sort</span>
+
+          <select
+            value={sortBy}
+            onChange={(event) => {
+              setSortBy(
+                event.target.value as 'value' | 'recency',
+              );
+            }}
+          >
+            <option value="value">Value</option>
+            <option value="recency">Recency</option>
+          </select>
+        </label>
+
         <label className="available-page-size-selector">
           <span>Rows</span>
 
@@ -269,18 +294,6 @@ export const RecentlyDroppedTab = ({
                         </span>
                       </div>
                     </div>
-
-                    <div className="recent-drop-value">
-                      <span>{data.value_label}</span>
-                      <strong>
-                        {
-                          formatSelectedValue(
-                            player.selected_value,
-                            valueBasis,
-                          )
-                        }
-                      </strong>
-                    </div>
                   </div>
 
                   <div className="recent-drop-meta-row">
@@ -299,11 +312,6 @@ export const RecentlyDroppedTab = ({
                           {player.faab_percent_remaining.toFixed(1)}% left
                         </span>
                       </div>
-                    </div>
-
-                    <div className="recent-drop-time">
-                      <Clock3 size={14} />
-                      <span>{formatDroppedAt(player.dropped_at_ms)}</span>
                     </div>
                   </div>
 
@@ -324,17 +332,36 @@ export const RecentlyDroppedTab = ({
                   </div>
                 </div>
 
-                <div className="recent-drop-actions">
-                  <button
-                    type="button"
-                    className="button-secondary waiver-claim-button"
-                    disabled={!!claimDisabledReason}
-                    onClick={() => {
-                      setClaimPlayer(player);
-                    }}
-                  >
-                    Claim player
-                  </button>
+                <div className="recent-drop-side">
+                  <div className="recent-drop-value">
+                    <span>{data.value_label}</span>
+                    <strong>
+                      {
+                        formatSelectedValue(
+                          player.selected_value,
+                          valueBasis,
+                        )
+                      }
+                    </strong>
+                  </div>
+
+                  <div className="recent-drop-time">
+                    <Clock3 size={14} />
+                    <span>{formatDroppedAt(player.dropped_at_ms)}</span>
+                  </div>
+
+                  <div className="recent-drop-actions">
+                    <button
+                      type="button"
+                      className="button-secondary available-claim-button recent-drop-claim-button"
+                      disabled={!!claimDisabledReason}
+                      onClick={() => {
+                        setClaimPlayer(player);
+                      }}
+                    >
+                      Claim player
+                    </button>
+                  </div>
                 </div>
               </article>
             );

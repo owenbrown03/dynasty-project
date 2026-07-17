@@ -474,6 +474,7 @@ th {
   display: block;
   flex-shrink: 0;
   object-fit: cover;
+  font-size: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);

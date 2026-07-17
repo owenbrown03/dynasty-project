@@ -14,6 +14,7 @@ from app.models.db.auth import (
 from app.schemas.auth import Login
 from app.crud.auth.session import get_session_by_token
 from app.services.draft.projection import (
+    normalize_finance_projection_settings,
     normalize_draft_pick_projection_settings,
 )
 from app.services.values.basis import (
@@ -285,6 +286,21 @@ def get_draft_pick_projection_settings(
     )
 
 
+def get_finance_projection_settings(
+    user: SiteUser | None,
+) -> dict[str, object]:
+    if not user:
+        return normalize_finance_projection_settings(
+            None,
+        )
+
+    return normalize_finance_projection_settings(
+        (user.settings or {}).get(
+            "finance_projection_settings",
+        )
+    )
+
+
 def get_war_value_settings(
     user: SiteUser | None,
 ) -> dict[str, object]:
@@ -356,6 +372,29 @@ async def set_draft_pick_projection_settings(
     settings["draft_pick_projection_settings"] = (
         normalize_draft_pick_projection_settings(
             draft_pick_projection_settings,
+        )
+    )
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def set_finance_projection_settings(
+    *,
+    user: SiteUser,
+    finance_projection_settings: dict[str, object],
+    db: AsyncSession,
+) -> SiteUser:
+    settings = dict(
+        user.settings or {}
+    )
+
+    settings["finance_projection_settings"] = (
+        normalize_finance_projection_settings(
+            finance_projection_settings,
         )
     )
     user.settings = settings
@@ -449,6 +488,40 @@ async def reconcile_session_draft_pick_projection_settings(
     )
     settings["draft_pick_projection_settings"] = (
         normalize_draft_pick_projection_settings(
+            session_settings,
+        )
+    )
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def reconcile_session_finance_projection_settings(
+    *,
+    user: SiteUser,
+    session: UserSession | None,
+    db: AsyncSession,
+) -> SiteUser:
+    if not session:
+        return user
+
+    session_settings = (
+        (session.settings or {}).get(
+            "finance_projection_settings",
+        )
+    )
+
+    if session_settings is None:
+        return user
+
+    settings = dict(
+        user.settings or {}
+    )
+    settings["finance_projection_settings"] = (
+        normalize_finance_projection_settings(
             session_settings,
         )
     )

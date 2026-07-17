@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { useBootstrap } from '@/hooks/useBootstrap';
 import { useValuePreference } from '@/context/useValuePreference';
@@ -45,19 +45,9 @@ export function LeagueDashboard({
   const bootstrap = useBootstrap();
   const valuePreference = useValuePreference();
   const [activeTab, setActiveTab] = useState<LeagueDashboardTab>('overview');
-  const [rosterSortBasis, setRosterSortBasis] = useState<ValueBasis>(
-    normalizeLeagueSortBasis(
-      valuePreference.preference,
-    ),
+  const rosterSortBasis = normalizeLeagueSortBasis(
+    valuePreference.preference,
   );
-
-  useEffect(() => {
-    setRosterSortBasis(
-      normalizeLeagueSortBasis(
-        valuePreference.preference,
-      ),
-    );
-  }, [valuePreference.preference]);
 
   return (
     <div className="league-dashboard">
@@ -92,28 +82,6 @@ export function LeagueDashboard({
           </button>
         </div>
 
-        <label className="league-dashboard-sort-control">
-          <span>Roster rank</span>
-          <select
-            value={rosterSortBasis}
-            onChange={(event) => {
-              setRosterSortBasis(
-                event.target.value as ValueBasis,
-              );
-            }}
-          >
-            <option value="ktc">KTC</option>
-            <option value="fantasycalc">FantasyCalc</option>
-            <option value="sleeper_war">Sleeper WAR</option>
-            {
-              bootstrap.data?.authenticated
-                ? (
-                  <option value="my_war">My WAR</option>
-                )
-                : null
-            }
-          </select>
-        </label>
       </div>
 
       {

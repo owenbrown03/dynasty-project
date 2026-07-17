@@ -13,8 +13,18 @@ from app.crud.value import (
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
 )
+from app.services.personal_values import (
+    hydrate_personal_player_values,
+)
 from app.services.war.shared import (
     build_cached_dynasty_projections_by_player_id,
+)
+from app.services.finance import (
+    build_dashboard_finance_metrics_by_league_id,
+)
+from app.services.leagues.details import (
+    LeagueDetails,
+    build_cached_league_roster_construction_targets,
 )
 
 from .cards import (
@@ -199,6 +209,7 @@ async def build_player_maps_by_league(
     *,
     db,
     redis,
+    site_user_id,
     leagues,
     all_rosters,
     war_results_by_league_id,
@@ -263,6 +274,13 @@ async def build_player_maps_by_league(
             dynasty_war_by_player_id=(
                 dynasty_war_by_player_id
             ),
+        )
+        league_player_values = await hydrate_personal_player_values(
+            db=db,
+            site_user_id=site_user_id,
+            league=leagues[league_id]["league"],
+            player_values=league_player_values,
+            redis=redis,
         )
 
         player_maps_by_league_id[league_id] = {
@@ -367,11 +385,57 @@ async def get_user_dashboard(
         await build_player_maps_by_league(
             db=db,
             redis=redis,
+            site_user_id=site_user_id,
             leagues=leagues,
             all_rosters=all_rosters,
             war_results_by_league_id=(
                 war_results_by_league_id
             ),
+        )
+    )
+    roster_construction_service = LeagueDetails()
+    roster_construction_targets_by_league_id = {}
+
+    for league_id, league_data in leagues.items():
+        league = league_data["league"]
+        league_rosters = all_rosters.get(
+            league_id,
+            [],
+        )
+        current_shared = shared_by_season[
+            get_league_season(
+                league,
+            )
+        ]
+        seasonal_results = (
+            await roster_construction_service.build_roster_construction_seasonal_results(
+                db=db,
+                league=league,
+                players=current_shared.players,
+                current_shared=current_shared,
+            )
+        )
+        roster_construction_targets_by_league_id[
+            league_id
+        ] = await build_cached_league_roster_construction_targets(
+            redis=redis,
+            league=league,
+            roster_rows=league_rosters,
+            seasonal_results=seasonal_results,
+        )
+
+    finance_metrics_by_league_id = (
+        await build_dashboard_finance_metrics_by_league_id(
+            db=db,
+            redis=redis,
+            site_user_id=site_user_id,
+            owned_rows=[
+                (
+                    row.roster,
+                    row.league,
+                )
+                for row in selected_rows
+            ],
         )
     )
 
@@ -380,6 +444,12 @@ async def get_user_dashboard(
         all_rosters=all_rosters,
         player_maps_by_league_id=(
             player_maps_by_league_id
+        ),
+        roster_construction_targets_by_league_id=(
+            roster_construction_targets_by_league_id
+        ),
+        finance_metrics_by_league_id=(
+            finance_metrics_by_league_id
         ),
         user_id=user_id,
     )

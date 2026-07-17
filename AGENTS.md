@@ -507,6 +507,12 @@ Examples:
 - New DB-backed Sleeper view: extend normalized models and sync pipeline first
 - New frontend server interaction: add endpoint wrapper, add hook, compose in page/component
 
+## Commit hygiene
+
+- Commit after each discrete fix or feature change instead of batching multiple unrelated fixes together.
+- Keep commits scoped so each commit maps cleanly to one user-requested fix, behavior change, or issue.
+- Before committing, make sure the staged diff only contains the intended change for that fix.
+
 ## Things to avoid
 
 - Don’t put business logic directly in FastAPI routers.

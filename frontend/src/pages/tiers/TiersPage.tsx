@@ -35,6 +35,40 @@ function formatSelectedValue(
   return player.selected_value.toFixed(2);
 }
 
+function formatExposure(
+  player: TierBoardPlayer,
+) {
+  if (
+    player.exposure_pct == null
+    || player.exposure_owned_leagues == null
+    || player.exposure_total_leagues == null
+  ) {
+    return null;
+  }
+
+  return `${player.exposure_pct.toFixed(1)}% · ${player.exposure_owned_leagues}/${player.exposure_total_leagues}`;
+}
+
+function getExposureTone(
+  player: TierBoardPlayer,
+) {
+  const exposurePct = player.exposure_pct;
+
+  if (exposurePct == null) {
+    return null;
+  }
+
+  if (exposurePct === 0 || exposurePct >= 25) {
+    return 'danger';
+  }
+
+  if (exposurePct >= 6 && exposurePct <= 10) {
+    return 'success';
+  }
+
+  return 'warning';
+}
+
 
 export const TiersPage = () => {
   const valuePreference = useValuePreference();
@@ -289,37 +323,54 @@ export const TiersPage = () => {
                                     ),
                                   }}
                                 >
-                                  <div className="tier-player-main">
-                                    <div className="player-with-avatar">
-                                      <PlayerAvatar
-                                        playerId={player.player_id}
-                                        name={player.name}
-                                        size="sm"
-                                      />
+                                  <PlayerAvatar
+                                    playerId={player.player_id}
+                                    name={player.name}
+                                    size="md"
+                                    className="tier-player-avatar"
+                                  />
 
-                                      <div className="player-with-avatar-copy">
+                                  <div className="tier-player-copy">
+                                    <div className="tier-player-topline">
+                                      <div className="tier-player-name">
                                         <strong>{player.name}</strong>
-                                        <span>
+                                      </div>
+
+                                      <div className="tier-player-value">
+                                        <strong>
                                           {
-                                            [player.position, player.team]
-                                              .filter(Boolean)
-                                              .join(' · ') || '—'
+                                            formatSelectedValue(
+                                              player,
+                                              tierBoard.value_basis,
+                                            )
                                           }
-                                        </span>
+                                        </strong>
                                       </div>
                                     </div>
-                                  </div>
 
-                                  <div className="tier-player-metrics">
-                                    <span>#{player.rank}</span>
-                                    <strong>
+                                    <div className="tier-player-subline">
+                                      <span className="tier-player-meta">
+                                        {
+                                          [player.position, player.team]
+                                            .filter(Boolean)
+                                            .join(' · ') || '—'
+                                        }
+                                      </span>
+
                                       {
-                                        formatSelectedValue(
-                                          player,
-                                          tierBoard.value_basis,
-                                        )
+                                        formatExposure(player)
+                                          ? (
+                                            <small
+                                              className={
+                                                `tier-player-exposure tier-player-exposure--${getExposureTone(player)}`
+                                              }
+                                            >
+                                              Exposure {formatExposure(player)}
+                                            </small>
+                                          )
+                                          : null
                                       }
-                                    </strong>
+                                    </div>
                                   </div>
                                 </article>
                               ))

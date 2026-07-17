@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import Literal
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,13 +55,40 @@ RECENT_DROP_TRANSACTION_TYPES = {
     "free_agent",
     "commissioner",
 }
+RecentDropsSortBy = Literal["value", "recency"]
 
 
 def sort_recent_drop_items(
     *,
     items: list[tuple[str, int, str, Player]],
     selected_value_by_key: dict[tuple[str, str], float | None],
+    sort_by: RecentDropsSortBy = "value",
 ) -> list[tuple[str, int, str, Player]]:
+    if sort_by == "recency":
+        return sorted(
+            items,
+            key=lambda item: (
+                -item[1],
+                selected_value_by_key.get(
+                    (
+                        item[2],
+                        item[3].player_id,
+                    )
+                )
+                is None,
+                -(
+                    selected_value_by_key.get(
+                        (
+                            item[2],
+                            item[3].player_id,
+                        )
+                    )
+                    or 0.0
+                ),
+                item[3].search_name,
+            ),
+        )
+
     return sorted(
         items,
         key=lambda item: (
@@ -142,6 +170,7 @@ async def get_recently_dropped_players(
     sync_requested: bool = False,
     page: int = 1,
     page_size: int = 50,
+    sort_by: RecentDropsSortBy = "value",
 ) -> WaiverRecentlyDroppedResponse:
     if not connection.sleeper_user_id:
         return WaiverRecentlyDroppedResponse(
@@ -389,6 +418,7 @@ async def get_recently_dropped_players(
         candidate_items = sort_recent_drop_items(
             items=valid_drop_items,
             selected_value_by_key=selected_value_by_key,
+            sort_by=sort_by,
         )[:candidate_count]
         candidate_keys_by_league: dict[
             str,
@@ -445,6 +475,7 @@ async def get_recently_dropped_players(
     sorted_items = sort_recent_drop_items(
         items=valid_drop_items,
         selected_value_by_key=selected_value_by_key,
+        sort_by=sort_by,
     )
     total_players = len(
         sorted_items,

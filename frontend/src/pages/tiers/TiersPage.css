@@ -102,37 +102,48 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
 }
 
-.tier-player-main {
+.tier-player-avatar {
+  flex-shrink: 0;
+}
+
+.tier-player-copy {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 4px;
+}
+
+.tier-player-topline,
+.tier-player-subline {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tier-player-name {
   min-width: 0;
   flex: 1;
 }
 
-.tier-player-metrics {
-  display: grid;
-  justify-items: end;
-  gap: 3px;
+.tier-player-value {
   flex-shrink: 0;
 }
 
-.tier-player-metrics span {
-  color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.tier-player-metrics strong {
+.tier-player-value strong {
   color: var(--color-text-strong);
   font-size: 13px;
+  white-space: nowrap;
 }
 
-.tier-player .player-with-avatar-copy strong {
+.tier-player-name strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -140,11 +151,50 @@
   font-size: 13px;
 }
 
-.tier-player .player-with-avatar-copy span {
+.tier-player-meta {
   display: block;
-  margin-top: 3px;
+  min-width: 0;
+  flex: 1;
   color: var(--color-text-muted);
   font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tier-player-exposure {
+  display: block;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--color-warning) 38%, var(--color-text-faint));
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.tier-player-exposure--success {
+  color: color-mix(
+    in srgb,
+    var(--color-success) 34%,
+    var(--color-text-faint)
+  );
+}
+
+.tier-player-exposure--warning {
+  color: color-mix(
+    in srgb,
+    var(--color-warning) 38%,
+    var(--color-text-faint)
+  );
+}
+
+.tier-player-exposure--danger {
+  color: color-mix(
+    in srgb,
+    var(--color-danger) 34%,
+    var(--color-text-faint)
+  );
 }
 
 .tiers-empty-state {
@@ -182,5 +232,14 @@
 
   .tier-row-players {
     grid-template-columns: 1fr;
+  }
+
+  .tier-player {
+    align-items: flex-start;
+  }
+
+  .tier-player-topline,
+  .tier-player-subline {
+    gap: 8px;
   }
 }

@@ -10,7 +10,6 @@ import type {
 
 import {
   formatAge,
-  formatMarketValue,
 } from './waiver.formatters';
 
 
@@ -121,16 +120,6 @@ export const BulkPlayerSearch = ({
                           Age {formatAge(player.age)}
                         </span>
                       </div>
-                    </div>
-
-                    <div className="bulk-search-market-values">
-                      <span>
-                        KTC {formatMarketValue(player.ktc_value)}
-                      </span>
-
-                      <span>
-                        FC {formatMarketValue(player.fc_value)}
-                      </span>
                     </div>
                   </button>
                 ))

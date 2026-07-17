@@ -41,6 +41,7 @@ from app.services.values.basis import (
 from app.services.waivers.overview import get_waiver_overview
 from app.services.waivers.claims import submit_claim
 from app.services.waivers.recent_drops import (
+    RecentDropsSortBy,
     get_recent_drops_sync_required,
     get_recently_dropped_players,
     sync_recent_drop_activity,
@@ -225,6 +226,10 @@ async def recent_waiver_drops(
         le=150,
         description="Number of recently dropped players to return per page.",
     ),
+    sort_by: RecentDropsSortBy = Query(
+        default="recency",
+        description="Sort by player value or by drop recency.",
+    ),
 ) -> WaiverRecentlyDroppedResponse:
     require_sleeper_connection(
         ctx,
@@ -260,6 +265,7 @@ async def recent_waiver_drops(
         sync_requested=sync_requested,
         page=page,
         page_size=page_size,
+        sort_by=sort_by,
     )
 
 

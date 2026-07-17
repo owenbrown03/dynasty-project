@@ -111,6 +111,7 @@ export interface Bootstrap {
   value_preference: ValueBasis | null;
   war_value_settings: WarValueSettings;
   draft_pick_projection_settings: DraftPickProjectionSettings;
+  finance_projection_settings: FinanceProjectionSettings;
 }
 
 export type ThemePreference =
@@ -160,6 +161,11 @@ export interface DraftPickProjectionSettings {
   switch_week: number;
   before_week_method: DraftPickProjectionPhaseMethod;
   from_week_method: DraftPickProjectionMethod;
+}
+
+export interface FinanceProjectionSettings {
+  same_as_draft_pick_projection: boolean;
+  settings: DraftPickProjectionSettings;
 }
 
 export interface LeagueOverview {
@@ -270,6 +276,7 @@ export interface LeagueRoster {
   projected_points: number;
   faab_remaining: number;
   waiver_position: number;
+  total_moves: number;
   total_trades: number;
   open_roster_spots: number;
   average_age: number | null;
@@ -323,6 +330,14 @@ export interface DashboardLeague {
   wins: number;
   losses: number;
   ties: number;
+  standings_rank: number;
+  points_for: number;
+  points_for_rank: number;
+  projected_payout: number | null;
+  projected_seed: number | null;
+  buy_in_amount: number | null;
+  roster_construction_alignment_pct: number | null;
+  roster_construction_moves_needed: number | null;
 
   ktc_value: number;
   ktc_rank: number;
@@ -341,6 +356,18 @@ export interface DashboardLeague {
 
   redraft_roster_war: number;
   redraft_roster_war_rank: number;
+
+  my_dynasty_starter_war?: number | null;
+  my_dynasty_starter_war_rank?: number | null;
+
+  my_dynasty_roster_war?: number | null;
+  my_dynasty_roster_war_rank?: number | null;
+
+  my_redraft_starter_war?: number | null;
+  my_redraft_starter_war_rank?: number | null;
+
+  my_redraft_roster_war?: number | null;
+  my_redraft_roster_war_rank?: number | null;
 
   average_age: number | null;
   age_rank: number;
@@ -374,6 +401,9 @@ export interface TierBoardPlayer {
   rank: number;
   tier: string;
   selected_value: number;
+  exposure_pct: number | null;
+  exposure_owned_leagues: number | null;
+  exposure_total_leagues: number | null;
 }
 
 export interface TierBoardGroup {
@@ -476,6 +506,95 @@ export interface PersonalProjectionSeasonUpdate {
 
 export interface PersonalValueUpdateRequest {
   seasons: PersonalProjectionSeasonUpdate[];
+}
+
+export interface AuctionDraftPositionSummary {
+  position: string;
+  target_count: number;
+  drafted_count: number;
+  spent_amount: number;
+  spent_budget_pct: number;
+  selected_value_total: number;
+}
+
+export interface AuctionDraftPlayerAsset {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  underdog_position_rank: string | null;
+  selected_value: number | null;
+  amount_paid: number;
+  budget_pct: number;
+  value_per_dollar: number | null;
+}
+
+export interface AuctionAvailablePlayerAsset {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  underdog_position_rank: string | null;
+  selected_value: number | null;
+  fair_market_price: number;
+  suggested_max_bid: number;
+  need_multiplier: number;
+}
+
+export interface AuctionDraftTeamSummary {
+  roster_id: number;
+  owner_name: string;
+  owner_avatar: string | null;
+  players_drafted: number;
+  roster_spots_left: number;
+  spent_amount: number;
+  spent_budget_pct: number;
+  remaining_budget: number;
+  max_bid: number;
+  acquired_value: number;
+  value_per_dollar: number | null;
+}
+
+export interface AuctionDraftMyTeam {
+  roster_id: number;
+  owner_name: string;
+  owner_avatar: string | null;
+  spent_amount: number;
+  spent_budget_pct: number;
+  remaining_budget: number;
+  max_bid: number;
+  roster_size_target: number;
+  players_drafted: number;
+  roster_spots_left: number;
+  acquired_value: number;
+  drafted_players: AuctionDraftPlayerAsset[];
+  position_summaries: AuctionDraftPositionSummary[];
+}
+
+export interface AuctionDraftCenter {
+  draft_id: string;
+  league_id: string;
+  league_name: string;
+  league_avatar: string | null;
+  season: string;
+  draft_status: string | null;
+  draft_type: string | null;
+  auction_budget: number;
+  total_budget: number;
+  spent_budget: number;
+  remaining_budget: number;
+  value_basis: ValueBasis;
+  value_label: string;
+  search: string | null;
+  page: number;
+  page_size: number;
+  total_available_players: number;
+  my_team: AuctionDraftMyTeam;
+  league_targets: AuctionDraftPositionSummary[];
+  team_summaries: AuctionDraftTeamSummary[];
+  available_players: AuctionAvailablePlayerAsset[];
 }
 
 export interface CommissionerPlayerAsset {

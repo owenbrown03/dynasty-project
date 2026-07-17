@@ -108,3 +108,18 @@ class DraftPickProjectionSettingsUpdate(Base):
 
 class DraftPickProjectionSettingsResponse(Base):
     settings: DraftPickProjectionSettings
+
+
+class FinanceProjectionSettings(Base):
+    same_as_draft_pick_projection: bool = True
+    settings: DraftPickProjectionSettings = Field(
+        default_factory=DraftPickProjectionSettings,
+    )
+
+
+class FinanceProjectionSettingsUpdate(Base):
+    settings: FinanceProjectionSettings
+
+
+class FinanceProjectionSettingsResponse(Base):
+    settings: FinanceProjectionSettings

@@ -15,9 +15,7 @@ import type {
 
 import {
   formatAge,
-  formatMarketValue,
   formatSelectedValue,
-  formatWar,
 } from './waiver.formatters';
 
 
@@ -171,22 +169,6 @@ const AvailablePlayersRow = ({
         </td>
 
         <td>
-          {formatMarketValue(player.ktc_value)}
-        </td>
-
-        <td>
-          {formatMarketValue(player.fc_value)}
-        </td>
-
-        <td>
-          {formatWar(player.dynasty_roster_war)}
-        </td>
-
-        <td>
-          {formatWar(player.redraft_roster_war)}
-        </td>
-
-        <td>
           {
             isAllLeagues
               ? (
@@ -234,7 +216,11 @@ const AvailablePlayersRow = ({
           ? (
             <tr className="available-player-detail-row">
               <td
-                colSpan={11}
+                colSpan={
+                  isAllLeagues
+                    ? 7
+                    : 6
+                }
                 className="available-player-detail-cell"
               >
                 <div className="available-player-detail-list">
@@ -342,10 +328,6 @@ export const AvailablePlayersTable = ({
             }
             <th>Age</th>
             <th>{data.value_label}</th>
-            <th>KTC</th>
-            <th>FC</th>
-            <th>Dynasty WAR</th>
-            <th>Redraft WAR</th>
             <th />
           </tr>
         </thead>

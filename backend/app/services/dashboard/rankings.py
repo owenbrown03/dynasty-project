@@ -56,6 +56,26 @@ def add_rank(
 def rank_league_teams(
     teams: list[dict],
 ) -> list[dict]:
+    standings_ranked = sorted(
+        teams,
+        key=lambda item: (
+            int(item.get("wins", 0)),
+            -int(item.get("losses", 0)),
+            get_sortable_value(
+                item,
+                "points_for",
+            ),
+            -int(item.get("roster_id", 0)),
+        ),
+        reverse=True,
+    )
+
+    for index, item in enumerate(
+        standings_ranked,
+        start=1,
+    ):
+        item["standings_rank"] = index
+
     add_rank(
         teams,
         "ktc_value",
@@ -94,9 +114,39 @@ def rank_league_teams(
 
     add_rank(
         teams,
+        "my_dynasty_starter_war",
+        "my_dynasty_starter_war_rank",
+    )
+
+    add_rank(
+        teams,
+        "my_dynasty_roster_war",
+        "my_dynasty_roster_war_rank",
+    )
+
+    add_rank(
+        teams,
+        "my_redraft_starter_war",
+        "my_redraft_starter_war_rank",
+    )
+
+    add_rank(
+        teams,
+        "my_redraft_roster_war",
+        "my_redraft_roster_war_rank",
+    )
+
+    add_rank(
+        teams,
         "average_age",
         "age_rank",
         reverse=False,
+    )
+
+    add_rank(
+        teams,
+        "points_for",
+        "points_for_rank",
     )
 
     return teams

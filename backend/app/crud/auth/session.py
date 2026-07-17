@@ -5,6 +5,7 @@ from sqlmodel import select, delete
 
 from app.models.db.auth import UserSession
 from app.services.draft.projection import (
+    normalize_finance_projection_settings,
     normalize_draft_pick_projection_settings,
 )
 from app.services.values.basis import ValueBasis
@@ -182,6 +183,21 @@ def get_session_draft_pick_projection_settings(
     )
 
 
+def get_session_finance_projection_settings(
+    session: UserSession | None,
+) -> dict[str, object]:
+    if not session:
+        return normalize_finance_projection_settings(
+            None,
+        )
+
+    return normalize_finance_projection_settings(
+        (session.settings or {}).get(
+            "finance_projection_settings",
+        )
+    )
+
+
 def get_session_war_value_settings(
     session: UserSession | None,
 ) -> dict[str, object]:
@@ -233,6 +249,29 @@ async def set_session_draft_pick_projection_settings(
     settings["draft_pick_projection_settings"] = (
         normalize_draft_pick_projection_settings(
             draft_pick_projection_settings,
+        )
+    )
+    session.settings = settings
+
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+async def set_session_finance_projection_settings(
+    *,
+    session: UserSession,
+    finance_projection_settings: dict[str, object],
+    db: AsyncSession,
+) -> UserSession:
+    settings = dict(
+        session.settings or {}
+    )
+
+    settings["finance_projection_settings"] = (
+        normalize_finance_projection_settings(
+            finance_projection_settings,
         )
     )
     session.settings = settings

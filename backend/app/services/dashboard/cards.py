@@ -3,6 +3,9 @@ from __future__ import annotations
 import logging
 from statistics import mean
 
+from app.services.leagues.details import (
+    ROSTER_CONSTRUCTION_POSITIONS,
+)
 from .rankings import (
     rank_league_teams,
 )
@@ -55,9 +58,11 @@ def build_team_metrics(
 
     return {
         "owner_id": roster.owner_id,
+        "roster_id": roster.roster_id,
         "wins": roster.wins,
         "losses": roster.losses,
         "ties": roster.ties,
+        "points_for": roster.fpts,
 
         "player_count": len(players),
 
@@ -91,6 +96,26 @@ def build_team_metrics(
             "redraft_roster_war",
         ),
 
+        "my_dynasty_starter_war": sum_player_metric(
+            players,
+            "my_dynasty_starter_war",
+        ),
+
+        "my_dynasty_roster_war": sum_player_metric(
+            players,
+            "my_dynasty_roster_war",
+        ),
+
+        "my_redraft_starter_war": sum_player_metric(
+            players,
+            "my_redraft_starter_war",
+        ),
+
+        "my_redraft_roster_war": sum_player_metric(
+            players,
+            "my_redraft_roster_war",
+        ),
+
         "average_age": (
             mean(ages)
             if ages
@@ -99,11 +124,72 @@ def build_team_metrics(
     }
 
 
+def build_roster_construction_summary(
+    *,
+    roster,
+    player_map,
+    roster_construction_targets,
+) -> dict[str, float | int] | None:
+    if not roster_construction_targets:
+        return None
+
+    current_counts = {
+        position: 0
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    }
+
+    for player_id in roster.players or []:
+        player = player_map.get(
+            player_id,
+        )
+        position = getattr(
+            player,
+            "position",
+            None,
+        )
+
+        if position in current_counts:
+            current_counts[position] += 1
+
+    targets_by_position = {
+        target.position: target.target_count
+        for target in roster_construction_targets
+    }
+    total_target_slots = sum(
+        targets_by_position.values()
+    )
+
+    if total_target_slots <= 0:
+        return None
+
+    moves_needed = sum(
+        max(
+            (targets_by_position.get(position, 0) - current_counts[position]),
+            0,
+        )
+        for position in ROSTER_CONSTRUCTION_POSITIONS
+    )
+    alignment_pct = max(
+        0.0,
+        round(
+            (1 - (moves_needed / total_target_slots)) * 100,
+            1,
+        ),
+    )
+
+    return {
+        "alignment_pct": alignment_pct,
+        "moves_needed": moves_needed,
+    }
+
+
 def build_league_cards(
     *,
     leagues,
     all_rosters,
     player_maps_by_league_id,
+    roster_construction_targets_by_league_id,
+    finance_metrics_by_league_id,
     user_id,
 ):
     """
@@ -166,6 +252,27 @@ def build_league_cards(
             )
             continue
 
+        roster_construction_summary = (
+            build_roster_construction_summary(
+                roster=next(
+                    roster
+                    for roster in league_rosters
+                    if roster.owner_id == user_id
+                ),
+                player_map=player_map,
+                roster_construction_targets=(
+                    roster_construction_targets_by_league_id.get(
+                        league_id,
+                        [],
+                    )
+                ),
+            )
+        )
+        finance_metrics = finance_metrics_by_league_id.get(
+            league_id,
+            {},
+        )
+
         output.append(
             {
                 "league_id": league_id,
@@ -176,6 +283,9 @@ def build_league_cards(
                 "wins": mine["wins"],
                 "losses": mine["losses"],
                 "ties": mine["ties"],
+                "standings_rank": mine["standings_rank"],
+                "points_for": mine["points_for"],
+                "points_for_rank": mine["points_for_rank"],
 
                 "ktc_value": mine["ktc_value"],
                 "ktc_rank": mine["ktc_rank"],
@@ -211,8 +321,55 @@ def build_league_cards(
                     mine["redraft_roster_war_rank"]
                 ),
 
+                "my_dynasty_starter_war": (
+                    mine["my_dynasty_starter_war"]
+                ),
+                "my_dynasty_starter_war_rank": (
+                    mine["my_dynasty_starter_war_rank"]
+                ),
+
+                "my_dynasty_roster_war": (
+                    mine["my_dynasty_roster_war"]
+                ),
+                "my_dynasty_roster_war_rank": (
+                    mine["my_dynasty_roster_war_rank"]
+                ),
+
+                "my_redraft_starter_war": (
+                    mine["my_redraft_starter_war"]
+                ),
+                "my_redraft_starter_war_rank": (
+                    mine["my_redraft_starter_war_rank"]
+                ),
+
+                "my_redraft_roster_war": (
+                    mine["my_redraft_roster_war"]
+                ),
+                "my_redraft_roster_war_rank": (
+                    mine["my_redraft_roster_war_rank"]
+                ),
+
                 "average_age": mine["average_age"],
                 "age_rank": mine["age_rank"],
+                "projected_payout": finance_metrics.get(
+                    "projected_payout",
+                ),
+                "projected_seed": finance_metrics.get(
+                    "projected_seed",
+                ),
+                "buy_in_amount": finance_metrics.get(
+                    "buy_in_amount",
+                ),
+                "roster_construction_alignment_pct": (
+                    roster_construction_summary["alignment_pct"]
+                    if roster_construction_summary is not None
+                    else None
+                ),
+                "roster_construction_moves_needed": (
+                    roster_construction_summary["moves_needed"]
+                    if roster_construction_summary is not None
+                    else None
+                ),
             }
         )
 

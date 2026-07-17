@@ -160,6 +160,10 @@ export function LeagueCard({
   const sortedRosters = useMemo(
     () => (
       [...league.rosters].sort((left, right) => {
+        if (left.rank !== right.rank) {
+          return left.rank - right.rank;
+        }
+
         const leftValue = getRosterSortValue(
           left,
           {
@@ -218,7 +222,7 @@ export function LeagueCard({
               {league.season} · {league.total_rosters} teams
             </p>
             <p className="league-subtitle">
-              Roster ranking by {getLeagueSortLabel(rosterSortBasis)}
+              Ordered by current standings · value ranks by {getLeagueSortLabel(rosterSortBasis)}
             </p>
           </div>
         </div>
@@ -230,19 +234,6 @@ export function LeagueCard({
         </div>
 
         <div className="league-overview-content">
-          <div className="league-badge-row">
-            {
-              league.settings_badges.map((badge) => (
-                <span
-                  key={`${league.league_id}-${badge}`}
-                  className="league-badge"
-                >
-                  {badge}
-                </span>
-              ))
-            }
-          </div>
-
           <div className="league-settings-grid">
             {
               league.settings_details.map((detail) => (
@@ -291,14 +282,16 @@ export function LeagueCard({
       </section>
 
       <div className="rosters">
-        {sortedRosters.map((roster, index) => (
-          <RosterCard
-            key={roster.roster_id}
-            roster={roster}
-            displayRank={index + 1}
-            rosterConstructionTargets={league.roster_construction_targets}
-            draftPickProjectionSummary={league.draft_pick_projection_summary}
-          />
+        {sortedRosters.map((roster) => (
+              <RosterCard
+                key={roster.roster_id}
+                roster={roster}
+                displayRank={roster.rank}
+                rosterConstructionTargets={league.roster_construction_targets}
+                draftPickProjectionSummary={league.draft_pick_projection_summary}
+                valueBasis={rosterSortBasis}
+                warValueSettings={warValueSettings}
+              />
         ))}
       </div>
     </div>

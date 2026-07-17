@@ -27,18 +27,6 @@ interface BulkTradePlayerSearchProps {
   ) => void;
 }
 
-
-function formatMarketValue(
-  value: number | null,
-): string {
-  if (value === null) {
-    return '—';
-  }
-
-  return value.toLocaleString();
-}
-
-
 export const BulkTradePlayerSearch = ({
   label = 'Players',
   placeholder = 'Search a player...',
@@ -147,25 +135,6 @@ export const BulkTradePlayerSearch = ({
                         </span>
                       </div>
                     </div>
-
-                    <div className="bulk-trade-selected-values">
-                      <span>
-                        KTC {
-                          formatMarketValue(
-                            player.ktc_value,
-                          )
-                        }
-                      </span>
-
-                      <span>
-                        FC {
-                          formatMarketValue(
-                            player.fc_value,
-                          )
-                        }
-                      </span>
-                    </div>
-
                     <button
                       className="button-secondary"
                       onClick={() => {
@@ -244,23 +213,6 @@ export const BulkTradePlayerSearch = ({
                       </div>
                     </div>
 
-                    <div>
-                      <span>
-                        KTC {
-                          formatMarketValue(
-                            player.ktc_value,
-                          )
-                        }
-                      </span>
-
-                      <span>
-                        FC {
-                          formatMarketValue(
-                            player.fc_value,
-                          )
-                        }
-                      </span>
-                    </div>
                   </button>
                 ))
               }

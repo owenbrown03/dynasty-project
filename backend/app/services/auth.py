@@ -10,6 +10,8 @@ from app.schemas.auth import (
     AuthSessionResponse,
     DraftPickProjectionSettingsResponse,
     DraftPickProjectionSettingsUpdate,
+    FinanceProjectionSettingsResponse,
+    FinanceProjectionSettingsUpdate,
     EmailVerificationConfirmRequest,
     EmailVerificationRequestResponse,
     EmailVerificationStatusResponse,
@@ -28,6 +30,7 @@ from app.crud.auth.user import (
     get_accent_color,
     get_draft_pick_projection_settings,
     get_email_verification_by_token,
+    get_finance_projection_settings,
     get_theme_preference,
     get_value_preference,
     get_war_value_settings,
@@ -37,10 +40,12 @@ from app.crud.auth.user import (
     reconcile_session_accent_color,
     reconcile_session_theme_preference,
     reconcile_session_draft_pick_projection_settings,
+    reconcile_session_finance_projection_settings,
     reconcile_session_value_preference,
     reconcile_session_war_value_settings,
     set_accent_color,
     set_draft_pick_projection_settings,
+    set_finance_projection_settings,
     set_theme_preference,
     set_value_preference,
     set_war_value_settings,
@@ -49,6 +54,7 @@ from app.crud.auth.session import (
     create_session_by_userid,
     get_session_accent_color,
     get_session_draft_pick_projection_settings,
+    get_session_finance_projection_settings,
     get_session_theme_preference,
     get_session_value_preference,
     get_session_war_value_settings,
@@ -56,6 +62,7 @@ from app.crud.auth.session import (
     delete_session,
     set_session_accent_color,
     set_session_draft_pick_projection_settings,
+    set_session_finance_projection_settings,
     set_session_theme_preference,
     set_session_value_preference,
     set_session_war_value_settings,
@@ -121,6 +128,11 @@ async def login(
         session=session,
         db=ctx.db,
     )
+    await reconcile_session_finance_projection_settings(
+        user=db_user,
+        session=session,
+        db=ctx.db,
+    )
     await reconcile_session_value_preference(
         user=db_user,
         session=session,
@@ -180,6 +192,14 @@ async def logout(
             ctx.site_user,
         )
     )
+    finance_projection_settings = (
+        get_session_finance_projection_settings(
+            ctx.session,
+        )
+        or get_finance_projection_settings(
+            ctx.site_user,
+        )
+    )
     accent_color = (
         get_session_accent_color(
             ctx.session,
@@ -215,6 +235,13 @@ async def logout(
         session=new_session,
         draft_pick_projection_settings=(
             draft_pick_projection_settings
+        ),
+        db=ctx.db,
+    )
+    await set_session_finance_projection_settings(
+        session=new_session,
+        finance_projection_settings=(
+            finance_projection_settings
         ),
         db=ctx.db,
     )
@@ -347,6 +374,39 @@ async def update_draft_pick_projection_settings(
 
     return DraftPickProjectionSettingsResponse(
         settings=get_session_draft_pick_projection_settings(
+            session,
+        ),
+    )
+
+
+async def update_finance_projection_settings(
+    body: FinanceProjectionSettingsUpdate,
+    ctx: Context,
+) -> FinanceProjectionSettingsResponse:
+    session = await set_session_finance_projection_settings(
+        session=ctx.session,
+        finance_projection_settings=(
+            body.settings.model_dump()
+        ),
+        db=ctx.db,
+    )
+
+    if ctx.site_user:
+        user = await set_finance_projection_settings(
+            user=ctx.site_user,
+            finance_projection_settings=(
+                body.settings.model_dump()
+            ),
+            db=ctx.db,
+        )
+        return FinanceProjectionSettingsResponse(
+            settings=get_finance_projection_settings(
+                user,
+            ),
+        )
+
+    return FinanceProjectionSettingsResponse(
+        settings=get_session_finance_projection_settings(
             session,
         ),
     )

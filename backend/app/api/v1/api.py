@@ -3,6 +3,7 @@ from app.api.v1.endpoints import auth, bootstrap, sync, test
 from app.api.v1.endpoints.sleeper import auth as sleeper_auth
 from app.api.v1.endpoints.sleeper import (
     connection,
+    drafts,
     leagues,
     personal_values,
     players,
@@ -19,6 +20,7 @@ api_router.include_router(bootstrap.router, prefix="/bootstrap", tags=["bootstra
 api_router.include_router(sync.router, prefix="/sync", tags=["sync"])
 api_router.include_router(sleeper_auth.router, prefix="/sleeper/auth", tags=["sleeper auth"])
 api_router.include_router(connection.router, prefix="/sleeper/connection", tags=["connection"])
+api_router.include_router(drafts.router, prefix="/sleeper/drafts", tags=["drafts"])
 api_router.include_router(leagues.router, prefix="/sleeper/leagues", tags=["leagues"])
 api_router.include_router(personal_values.router, prefix="/sleeper/personal-values", tags=["personal values"])
 api_router.include_router(players.router, prefix="/sleeper/players", tags=["players"])

@@ -37,6 +37,7 @@ export const waiversEndpoints = (
     valueBasis: ValueBasis,
     page: number,
     pageSize: number,
+    sortBy: 'value' | 'recency',
   ) => {
     return client.get<WaiverRecentlyDroppedResponse>(
       `${basePath}/recent-drops`,
@@ -45,6 +46,7 @@ export const waiversEndpoints = (
           value_basis: valueBasis,
           page,
           page_size: pageSize,
+          sort_by: sortBy,
         },
       },
     );

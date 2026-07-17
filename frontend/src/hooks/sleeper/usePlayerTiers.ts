@@ -6,6 +6,8 @@ import type {
   TierBoard,
   ValueBasis,
 } from '@/types';
+import { useBootstrap } from '@/hooks/useBootstrap';
+import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
 
 export function usePlayerTiers(
@@ -13,10 +15,19 @@ export function usePlayerTiers(
   leagueId?: string,
   enabled: boolean = true,
 ) {
+  const bootstrap = useBootstrap();
+  const connection = useSleeperConnection();
+  const viewerKey = JSON.stringify({
+    authenticated: bootstrap.data?.authenticated ?? false,
+    siteUserId: bootstrap.data?.site_user?.id ?? null,
+    sleeperUserId: connection.connection?.sleeper_user_id ?? null,
+  });
+
   const query = useQuery<TierBoard>({
     queryKey: queryKeys.players.tiers(
       valueBasis,
       leagueId,
+      viewerKey,
     ),
     queryFn: async () => {
       return api.players

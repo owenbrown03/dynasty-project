@@ -58,6 +58,7 @@ const league: LeagueDetails = {
       projected_points: 210.4,
       faab_remaining: 75,
       waiver_position: 3,
+      total_moves: 14,
       total_trades: 10,
       open_roster_spots: 1,
       average_age: 25.6,
@@ -110,7 +111,7 @@ describe('LeagueCard', () => {
       screen.getByRole('heading', { name: /alpha/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Best Ball'),
+      screen.getByText('Superflex'),
     ).toBeInTheDocument();
   });
 });

@@ -21,6 +21,7 @@ interface PlayerRecommendationProps {
   selectedValue: number | null;
   valueBasis: ValueBasis;
   variant: 'add' | 'drop';
+  emptyMessage?: string;
 }
 
 
@@ -30,6 +31,7 @@ export const PlayerRecommendation = ({
   selectedValue,
   valueBasis,
   variant,
+  emptyMessage,
 }: PlayerRecommendationProps) => {
   const isAdd = variant === 'add';
 
@@ -99,29 +101,11 @@ export const PlayerRecommendation = ({
                   </div>
                 </div>
               </div>
-
-              <div className="waiver-player-secondary-values">
-                <span>
-                  KTC {
-                    player.ktc_value !== null
-                      ? player.ktc_value.toLocaleString()
-                      : '—'
-                  }
-                </span>
-
-                <span>
-                  FC {
-                    player.fc_value !== null
-                      ? player.fc_value.toLocaleString()
-                      : '—'
-                  }
-                </span>
-              </div>
             </>
           )
           : (
             <div className="waiver-player-empty">
-              No player found for this value basis.
+              {emptyMessage ?? 'No player found for this value basis.'}
             </div>
           )
       }

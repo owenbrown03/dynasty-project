@@ -51,6 +51,24 @@ export const queryKeys = {
       ['league-dashboard', username ?? null] as const,
   },
 
+  drafts: {
+    auctionCenter: (
+      draftId: string | null | undefined,
+      valueBasis: ValueBasis,
+      search: string,
+      page: number,
+      pageSize: number,
+    ) =>
+      [
+        'auction-draft-center',
+        draftId ?? null,
+        valueBasis,
+        search,
+        page,
+        pageSize,
+      ] as const,
+  },
+
   trades: {
     signals: (
       username: string | null | undefined,
@@ -87,6 +105,7 @@ export const queryKeys = {
       valueBasis: ValueBasis,
       page: number,
       pageSize: number,
+      sortBy: 'value' | 'recency',
     ) =>
       [
         'waiver-recent-drops',
@@ -94,6 +113,7 @@ export const queryKeys = {
         valueBasis,
         page,
         pageSize,
+        sortBy,
       ] as const,
     recentDropsRoot: ['waiver-recent-drops'] as const,
     leagues: (
@@ -154,11 +174,13 @@ export const queryKeys = {
     tiers: (
       valueBasis: ValueBasis,
       leagueId?: string,
+      viewerKey?: string | null,
     ) =>
       [
         'player-tiers',
         valueBasis,
         leagueId ?? null,
+        viewerKey ?? null,
       ] as const,
     personalSearch: (query: string) =>
       ['personal-values-search', query] as const,

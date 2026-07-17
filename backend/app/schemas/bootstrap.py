@@ -4,6 +4,7 @@ from typing import Literal, Optional
 from app.schemas.base import Base
 from app.schemas.auth import (
     DraftPickProjectionSettings,
+    FinanceProjectionSettings,
     WarValueSettings,
 )
 from app.services.values.basis import ValueBasis
@@ -34,3 +35,4 @@ class BootstrapResponse(Base):
     value_preference: ValueBasis | None = None
     war_value_settings: WarValueSettings
     draft_pick_projection_settings: DraftPickProjectionSettings
+    finance_projection_settings: FinanceProjectionSettings

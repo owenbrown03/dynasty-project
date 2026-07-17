@@ -60,6 +60,7 @@ class LeagueRoster(BaseModel):
     projected_points: float
     faab_remaining: int
     waiver_position: int
+    total_moves: int
     total_trades: int
     open_roster_spots: int
     average_age: float | None = None

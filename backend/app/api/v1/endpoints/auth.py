@@ -7,6 +7,8 @@ from app.schemas.auth import (
     AuthSessionResponse,
     DraftPickProjectionSettingsResponse,
     DraftPickProjectionSettingsUpdate,
+    FinanceProjectionSettingsResponse,
+    FinanceProjectionSettingsUpdate,
     EmailVerificationConfirmRequest,
     EmailVerificationRequestResponse,
     EmailVerificationStatusResponse,
@@ -26,6 +28,7 @@ from app.services.auth import (
     update_accent_color,
     update_theme,
     update_draft_pick_projection_settings,
+    update_finance_projection_settings,
     update_value_preference,
     update_war_value_settings,
     verify_email,
@@ -139,6 +142,20 @@ async def update_draft_pick_projection_settings_endpoint(
     ctx: ContextDep,
 ):
     return await update_draft_pick_projection_settings(
+        body,
+        ctx,
+    )
+
+
+@router.post(
+    "/finance-projection",
+    response_model=FinanceProjectionSettingsResponse,
+)
+async def update_finance_projection_settings_endpoint(
+    body: FinanceProjectionSettingsUpdate,
+    ctx: ContextDep,
+):
+    return await update_finance_projection_settings(
         body,
         ctx,
     )

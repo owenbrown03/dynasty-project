@@ -48,7 +48,7 @@
 
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .waiver-league-card:hover {
@@ -97,13 +97,20 @@
   font-size: 12px;
 }
 
+.waiver-league-basis {
+  margin-top: 6px;
+  color: var(--color-text-faint);
+  font-size: 11px;
+}
+
 .waiver-gain {
-  min-width: 84px;
+  min-width: 120px;
 
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 3px;
+  gap: 4px;
+  text-align: right;
 }
 
 .waiver-gain span {
@@ -134,16 +141,24 @@
 
   padding: 9px;
 
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-areas:
+    'icon label'
+    'icon value';
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: start;
 }
 
 .waiver-stat svg {
+  grid-area: icon;
+  margin-top: 1px;
   color: var(--color-text-faint);
 }
 
 .waiver-stat span {
+  grid-area: label;
   color: var(--color-text-muted);
   font-size: 10px;
   font-weight: 700;
@@ -152,6 +167,7 @@
 }
 
 .waiver-stat strong {
+  grid-area: value;
   color: var(--color-text-strong);
   font-size: 13px;
 }
@@ -212,6 +228,8 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .waiver-player-identity {
@@ -219,7 +237,7 @@
   align-items: flex-start;
   gap: 10px;
   min-width: 0;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .waiver-player-copy {
@@ -273,23 +291,12 @@
   font-size: 11px;
 }
 
-.waiver-player-secondary-values {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-border);
-  color: var(--color-text-faint);
-  font-size: 10px;
-}
-
 .waiver-player-empty {
-  margin-top: 12px;
+  margin-top: 14px;
 
   color: var(--color-text-faint);
   font-size: 12px;
+  line-height: 1.45;
 }
 
 .waiver-league-footer {
@@ -676,14 +683,14 @@
   min-width: 180px;
 }
 
-.available-player-name-cell strong {
+.available-player-name-cell .player-with-avatar-copy strong {
   display: block;
 
   color: var(--color-text-strong);
   font-size: 13px;
 }
 
-.available-player-name-cell span {
+.available-player-name-cell .player-with-avatar-copy span {
   display: block;
 
   margin-top: 3px;
@@ -784,9 +791,9 @@
 
 .recent-drop-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  align-items: start;
+  gap: 20px;
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   padding: 18px 20px;
@@ -794,16 +801,15 @@
 
 .recent-drop-main {
   display: grid;
+  grid-template-rows: auto auto 1fr;
+  align-content: start;
   gap: 14px;
   min-width: 0;
 }
 
 .recent-drop-card-header,
 .recent-drop-meta-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 16px;
+  display: block;
 }
 
 .recent-drop-card-header .player-with-avatar,
@@ -816,7 +822,11 @@
 .recent-drop-time {
   display: grid;
   gap: 4px;
+}
+
+.recent-drop-value {
   justify-items: end;
+  text-align: right;
 }
 
 .recent-drop-value span,
@@ -834,6 +844,16 @@
 
 .recent-drop-value strong {
   font-size: 18px;
+}
+
+.recent-drop-side {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  justify-items: end;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+  min-height: 100%;
 }
 
 .recent-drop-league {
@@ -874,22 +894,33 @@
 }
 
 .recent-drop-time {
-  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  justify-self: end;
 }
 
 .recent-drop-actions {
   display: flex;
-  align-items: center;
+  align-self: end;
   justify-content: flex-end;
+  width: 100%;
 }
 
 .recent-drop-actions .waiver-claim-button {
-  min-width: 132px;
+  width: 100%;
   min-height: 44px;
   font-size: 12px;
+}
+
+.recent-drop-claim-button {
+  justify-content: center;
+  min-width: 148px;
+}
+
+.recent-drop-claim-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 @media (max-width: 760px) {
@@ -931,21 +962,28 @@
     padding: 16px;
   }
 
-  .recent-drop-card-header,
-  .recent-drop-meta-row {
-    grid-template-columns: 1fr;
+  .recent-drop-side {
+    grid-template-rows: auto auto auto;
+    justify-items: start;
+    gap: 12px;
   }
 
   .recent-drop-value,
   .recent-drop-time {
+    justify-self: start;
+  }
+
+  .recent-drop-value {
     justify-items: start;
+    text-align: left;
   }
 
   .recent-drop-actions {
+    align-self: start;
     justify-content: stretch;
   }
 
-  .recent-drop-actions .waiver-claim-button {
+  .recent-drop-actions .recent-drop-claim-button {
     width: 100%;
   }
 }

@@ -9,6 +9,7 @@ import { CommissionerPage } from './pages/commissioner/CommissionerPage';
 import { FinancePage } from './pages/finance/FinancePage';
 import { MyValuesPage } from './pages/my-values/MyValuesPage';
 import { RemindersPage } from './pages/reminders/RemindersPage';
+import { AuctionDraftPage } from './pages/auction/AuctionDraftPage';
 
 export const AppRoutes = () => {
   return (
@@ -22,6 +23,7 @@ export const AppRoutes = () => {
         <Route path="/my-values" element={<MyValuesPage />} />
         <Route path="/finance" element={<FinancePage />} />
         <Route path="/reminders" element={<RemindersPage />} />
+        <Route path="/auction" element={<AuctionDraftPage />} />
         <Route path="/commissioner" element={<CommissionerPage />} />
         <Route path="/commissioner/:username" element={<CommissionerPage />} />
         <Route path="/orphans" element={<CommissionerPage />} />
