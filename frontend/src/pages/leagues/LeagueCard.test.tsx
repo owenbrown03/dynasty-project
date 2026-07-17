@@ -111,7 +111,7 @@ describe('LeagueCard', () => {
       screen.getByRole('heading', { name: /alpha/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Best Ball'),
+      screen.getByText('Superflex'),
     ).toBeInTheDocument();
   });
 });
