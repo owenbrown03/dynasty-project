@@ -114,6 +114,30 @@ def rank_league_teams(
 
     add_rank(
         teams,
+        "my_dynasty_starter_war",
+        "my_dynasty_starter_war_rank",
+    )
+
+    add_rank(
+        teams,
+        "my_dynasty_roster_war",
+        "my_dynasty_roster_war_rank",
+    )
+
+    add_rank(
+        teams,
+        "my_redraft_starter_war",
+        "my_redraft_starter_war_rank",
+    )
+
+    add_rank(
+        teams,
+        "my_redraft_roster_war",
+        "my_redraft_roster_war_rank",
+    )
+
+    add_rank(
+        teams,
         "average_age",
         "age_rank",
         reverse=False,

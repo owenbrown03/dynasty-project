@@ -1,5 +1,6 @@
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { useValuePreference } from '@/context/useValuePreference';
+import { useBootstrapContext } from '@/context/useBootstrapContext';
 import type { DashboardLeague } from '@/types';
 import { useNavigate } from 'react-router';
 import {
@@ -66,6 +67,7 @@ export function DashboardLeagues({
 }: Props) {
   const navigate = useNavigate();
   const valuePreference = useValuePreference();
+  const { bootstrap } = useBootstrapContext();
   const selectedLabel = getValueBasisLabel(
     valuePreference.preference,
   );
@@ -170,6 +172,7 @@ export function DashboardLeagues({
                     getDashboardLeagueSelectedValue(
                       league,
                       valuePreference.preference,
+                      bootstrap?.war_value_settings,
                     )?.toLocaleString(undefined, {
                       maximumFractionDigits: (
                         valuePreference.preference === 'ktc'
@@ -195,6 +198,7 @@ export function DashboardLeagues({
                       ? `#${getDashboardLeagueSelectedRank(
                         league,
                         valuePreference.preference,
+                        bootstrap?.war_value_settings,
                       )}`
                       : '—'
                   }

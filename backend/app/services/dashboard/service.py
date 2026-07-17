@@ -13,6 +13,9 @@ from app.crud.value import (
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
 )
+from app.services.personal_values import (
+    hydrate_personal_player_values,
+)
 from app.services.war.shared import (
     build_cached_dynasty_projections_by_player_id,
 )
@@ -206,6 +209,7 @@ async def build_player_maps_by_league(
     *,
     db,
     redis,
+    site_user_id,
     leagues,
     all_rosters,
     war_results_by_league_id,
@@ -270,6 +274,13 @@ async def build_player_maps_by_league(
             dynasty_war_by_player_id=(
                 dynasty_war_by_player_id
             ),
+        )
+        league_player_values = await hydrate_personal_player_values(
+            db=db,
+            site_user_id=site_user_id,
+            league=leagues[league_id]["league"],
+            player_values=league_player_values,
+            redis=redis,
         )
 
         player_maps_by_league_id[league_id] = {
@@ -374,6 +385,7 @@ async def get_user_dashboard(
         await build_player_maps_by_league(
             db=db,
             redis=redis,
+            site_user_id=site_user_id,
             leagues=leagues,
             all_rosters=all_rosters,
             war_results_by_league_id=(

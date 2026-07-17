@@ -96,6 +96,26 @@ def build_team_metrics(
             "redraft_roster_war",
         ),
 
+        "my_dynasty_starter_war": sum_player_metric(
+            players,
+            "my_dynasty_starter_war",
+        ),
+
+        "my_dynasty_roster_war": sum_player_metric(
+            players,
+            "my_dynasty_roster_war",
+        ),
+
+        "my_redraft_starter_war": sum_player_metric(
+            players,
+            "my_redraft_starter_war",
+        ),
+
+        "my_redraft_roster_war": sum_player_metric(
+            players,
+            "my_redraft_roster_war",
+        ),
+
         "average_age": (
             mean(ages)
             if ages
@@ -299,6 +319,34 @@ def build_league_cards(
                 ),
                 "redraft_roster_war_rank": (
                     mine["redraft_roster_war_rank"]
+                ),
+
+                "my_dynasty_starter_war": (
+                    mine["my_dynasty_starter_war"]
+                ),
+                "my_dynasty_starter_war_rank": (
+                    mine["my_dynasty_starter_war_rank"]
+                ),
+
+                "my_dynasty_roster_war": (
+                    mine["my_dynasty_roster_war"]
+                ),
+                "my_dynasty_roster_war_rank": (
+                    mine["my_dynasty_roster_war_rank"]
+                ),
+
+                "my_redraft_starter_war": (
+                    mine["my_redraft_starter_war"]
+                ),
+                "my_redraft_starter_war_rank": (
+                    mine["my_redraft_starter_war_rank"]
+                ),
+
+                "my_redraft_roster_war": (
+                    mine["my_redraft_roster_war"]
+                ),
+                "my_redraft_roster_war_rank": (
+                    mine["my_redraft_roster_war_rank"]
                 ),
 
                 "average_age": mine["average_age"],

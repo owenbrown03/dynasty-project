@@ -351,6 +351,18 @@ export interface DashboardLeague {
   redraft_roster_war: number;
   redraft_roster_war_rank: number;
 
+  my_dynasty_starter_war?: number | null;
+  my_dynasty_starter_war_rank?: number | null;
+
+  my_dynasty_roster_war?: number | null;
+  my_dynasty_roster_war_rank?: number | null;
+
+  my_redraft_starter_war?: number | null;
+  my_redraft_starter_war_rank?: number | null;
+
+  my_redraft_roster_war?: number | null;
+  my_redraft_roster_war_rank?: number | null;
+
   average_age: number | null;
   age_rank: number;
 }

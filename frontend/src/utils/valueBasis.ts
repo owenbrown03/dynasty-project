@@ -333,7 +333,10 @@ export function getPickValueLabel(
 export function getDashboardLeagueSelectedValue(
   league: DashboardLeague,
   valueBasis: ValueBasis,
+  warValueSettings?: WarValueSettings,
 ): number | null {
+  const mySettings = warValueSettings?.my;
+
   switch (valueBasis) {
     case 'ktc':
       return league.ktc_value;
@@ -349,7 +352,15 @@ export function getDashboardLeagueSelectedValue(
     case 'sleeper_war':
       return league.dynasty_roster_war;
     case 'my_war':
-      return null;
+      if (mySettings?.timeframe === 'redraft') {
+        return mySettings.scope === 'starter'
+          ? league.my_redraft_starter_war ?? null
+          : league.my_redraft_roster_war ?? null;
+      }
+
+      return mySettings?.scope === 'starter'
+        ? league.my_dynasty_starter_war ?? null
+        : league.my_dynasty_roster_war ?? null;
     default:
       return league.ktc_value;
   }
@@ -358,7 +369,10 @@ export function getDashboardLeagueSelectedValue(
 export function getDashboardLeagueSelectedRank(
   league: DashboardLeague,
   valueBasis: ValueBasis,
+  warValueSettings?: WarValueSettings,
 ): number | null {
+  const mySettings = warValueSettings?.my;
+
   switch (valueBasis) {
     case 'ktc':
       return league.ktc_rank;
@@ -374,7 +388,15 @@ export function getDashboardLeagueSelectedRank(
     case 'sleeper_war':
       return league.dynasty_roster_war_rank;
     case 'my_war':
-      return null;
+      if (mySettings?.timeframe === 'redraft') {
+        return mySettings.scope === 'starter'
+          ? league.my_redraft_starter_war_rank ?? null
+          : league.my_redraft_roster_war_rank ?? null;
+      }
+
+      return mySettings?.scope === 'starter'
+        ? league.my_dynasty_starter_war_rank ?? null
+        : league.my_dynasty_roster_war_rank ?? null;
     default:
       return league.ktc_rank;
   }
