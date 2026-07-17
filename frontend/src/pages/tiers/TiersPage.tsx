@@ -328,7 +328,7 @@ export const TiersPage = () => {
                                       <PlayerAvatar
                                         playerId={player.player_id}
                                         name={player.name}
-                                        size="sm"
+                                        size="md"
                                       />
 
                                       <div className="player-with-avatar-copy">
