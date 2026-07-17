@@ -51,6 +51,24 @@ export const queryKeys = {
       ['league-dashboard', username ?? null] as const,
   },
 
+  drafts: {
+    auctionCenter: (
+      draftId: string | null | undefined,
+      valueBasis: ValueBasis,
+      search: string,
+      page: number,
+      pageSize: number,
+    ) =>
+      [
+        'auction-draft-center',
+        draftId ?? null,
+        valueBasis,
+        search,
+        page,
+        pageSize,
+      ] as const,
+  },
+
   trades: {
     signals: (
       username: string | null | undefined,

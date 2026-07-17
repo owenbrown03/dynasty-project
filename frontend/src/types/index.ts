@@ -490,6 +490,95 @@ export interface PersonalValueUpdateRequest {
   seasons: PersonalProjectionSeasonUpdate[];
 }
 
+export interface AuctionDraftPositionSummary {
+  position: string;
+  target_count: number;
+  drafted_count: number;
+  spent_amount: number;
+  spent_budget_pct: number;
+  selected_value_total: number;
+}
+
+export interface AuctionDraftPlayerAsset {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  underdog_position_rank: string | null;
+  selected_value: number | null;
+  amount_paid: number;
+  budget_pct: number;
+  value_per_dollar: number | null;
+}
+
+export interface AuctionAvailablePlayerAsset {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  underdog_position_rank: string | null;
+  selected_value: number | null;
+  fair_market_price: number;
+  suggested_max_bid: number;
+  need_multiplier: number;
+}
+
+export interface AuctionDraftTeamSummary {
+  roster_id: number;
+  owner_name: string;
+  owner_avatar: string | null;
+  players_drafted: number;
+  roster_spots_left: number;
+  spent_amount: number;
+  spent_budget_pct: number;
+  remaining_budget: number;
+  max_bid: number;
+  acquired_value: number;
+  value_per_dollar: number | null;
+}
+
+export interface AuctionDraftMyTeam {
+  roster_id: number;
+  owner_name: string;
+  owner_avatar: string | null;
+  spent_amount: number;
+  spent_budget_pct: number;
+  remaining_budget: number;
+  max_bid: number;
+  roster_size_target: number;
+  players_drafted: number;
+  roster_spots_left: number;
+  acquired_value: number;
+  drafted_players: AuctionDraftPlayerAsset[];
+  position_summaries: AuctionDraftPositionSummary[];
+}
+
+export interface AuctionDraftCenter {
+  draft_id: string;
+  league_id: string;
+  league_name: string;
+  league_avatar: string | null;
+  season: string;
+  draft_status: string | null;
+  draft_type: string | null;
+  auction_budget: number;
+  total_budget: number;
+  spent_budget: number;
+  remaining_budget: number;
+  value_basis: ValueBasis;
+  value_label: string;
+  search: string | null;
+  page: number;
+  page_size: number;
+  total_available_players: number;
+  my_team: AuctionDraftMyTeam;
+  league_targets: AuctionDraftPositionSummary[];
+  team_summaries: AuctionDraftTeamSummary[];
+  available_players: AuctionAvailablePlayerAsset[];
+}
+
 export interface CommissionerPlayerAsset {
   player_id: string;
   name: string;

@@ -8,6 +8,8 @@ import type {
   LeagueVisibilityUpdate,
   UserLeagueNoteUpdate,
   UserLeagueNoteResponse,
+  AuctionDraftCenter,
+  ValueBasis,
 } from '@/types';
 
 export const leaguesEndpoints = (
@@ -58,5 +60,24 @@ export const leaguesEndpoints = (
     client.post<UserLeagueNoteResponse>(
       `${prefix}/note`,
       payload,
+    ),
+  getAuctionCenter: (
+    draftId: string,
+    valueBasis: ValueBasis,
+    search: string,
+    page: number,
+    pageSize: number,
+  ) =>
+    client.get<AuctionDraftCenter>(
+      `/sleeper/drafts/auction-center`,
+      {
+        params: {
+          draft_id: draftId,
+          value_basis: valueBasis,
+          search: search || undefined,
+          page,
+          page_size: pageSize,
+        },
+      },
     ),
 });
