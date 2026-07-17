@@ -167,7 +167,7 @@
   flex-shrink: 0;
   color: color-mix(in srgb, var(--color-warning) 38%, var(--color-text-faint));
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   white-space: nowrap;
   text-transform: uppercase;
