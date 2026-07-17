@@ -101,7 +101,7 @@
 .tier-player {
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
@@ -117,19 +117,15 @@
 .tier-player-metrics {
   display: grid;
   justify-items: end;
-  gap: 3px;
+  align-self: center;
+  gap: 6px;
   flex-shrink: 0;
-}
-
-.tier-player-metrics span {
-  color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 700;
+  text-align: right;
 }
 
 .tier-player-metrics strong {
   color: var(--color-text-strong);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .tier-player .player-with-avatar-copy strong {
@@ -149,7 +145,6 @@
 
 .tier-player-exposure {
   display: block;
-  margin-top: 5px;
   color: color-mix(in srgb, var(--color-warning) 38%, var(--color-text-faint));
   font-size: 10px;
   font-weight: 700;
@@ -216,5 +211,9 @@
 
   .tier-row-players {
     grid-template-columns: 1fr;
+  }
+
+  .tier-player {
+    align-items: center;
   }
 }

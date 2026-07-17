@@ -340,25 +340,11 @@ export const TiersPage = () => {
                                               .join(' · ') || '—'
                                           }
                                         </span>
-                                        {
-                                          formatExposure(player)
-                                            ? (
-                                              <small
-                                                className={
-                                                  `tier-player-exposure tier-player-exposure--${getExposureTone(player)}`
-                                                }
-                                              >
-                                                Exposure {formatExposure(player)}
-                                              </small>
-                                            )
-                                            : null
-                                        }
                                       </div>
                                     </div>
                                   </div>
 
                                   <div className="tier-player-metrics">
-                                    <span>#{player.rank}</span>
                                     <strong>
                                       {
                                         formatSelectedValue(
@@ -367,6 +353,19 @@ export const TiersPage = () => {
                                         )
                                       }
                                     </strong>
+                                    {
+                                      formatExposure(player)
+                                        ? (
+                                          <small
+                                            className={
+                                              `tier-player-exposure tier-player-exposure--${getExposureTone(player)}`
+                                            }
+                                          >
+                                            Exposure {formatExposure(player)}
+                                          </small>
+                                        )
+                                        : null
+                                    }
                                   </div>
                                 </article>
                               ))
