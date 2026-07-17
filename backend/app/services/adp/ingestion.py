@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud import adp as adp_crud
 from app.integrations.sleeper.client import SleeperClient
 from app.models.db.adp import ADPDraftQualification
+from app.models.db.sleeper.api import League
 from app.services.adp.classification import classify_draft
 from app.services.sleeper import transformers
 
@@ -158,6 +159,52 @@ async def ingest_draft(
     )
 
 
+async def ingest_draft_by_id(
+    db: AsyncSession,
+    sleeper: SleeperClient,
+    *,
+    draft_id: str,
+) -> DraftIngestionResult:
+    draft = await sleeper.read.get_draft(
+        draft_id,
+    )
+
+    leagues_by_id = await adp_crud.get_leagues_by_ids(
+        db,
+        [draft.league_id],
+    )
+    league = leagues_by_id.get(
+        draft.league_id,
+    )
+
+    if league is None:
+        raw_league = await sleeper.read.get_league(
+            draft.league_id,
+        )
+        await adp_crud.upsert_leagues(
+            db,
+            [
+                transformers.league_to_db(
+                    raw_league,
+                    return_dict=True,
+                )
+            ],
+        )
+        league = League(
+            **transformers.league_to_db(
+                raw_league,
+                return_dict=True,
+            )
+        )
+
+    return await ingest_draft(
+        db,
+        sleeper,
+        league=league,
+        draft=draft,
+    )
+
+
 async def ingest_existing_league_drafts(
     db: AsyncSession,
     sleeper: SleeperClient,
@@ -210,3 +257,27 @@ async def ingest_existing_league_drafts(
         qualified_draft_count=qualified_draft_count,
         failed_draft_ids=failed_draft_ids,
     )
+
+
+async def ingest_discovered_drafts(
+    db: AsyncSession,
+    sleeper: SleeperClient,
+    *,
+    max_drafts: int,
+) -> list[DraftIngestionResult]:
+    seeds = await adp_crud.get_ready_discovered_draft_ids(
+        db,
+        limit=max_drafts,
+    )
+    results: list[DraftIngestionResult] = []
+
+    for seed in seeds:
+        result = await ingest_draft_by_id(
+            db,
+            sleeper,
+            draft_id=seed.draft_id,
+        )
+        results.append(result)
+
+    await db.commit()
+    return results

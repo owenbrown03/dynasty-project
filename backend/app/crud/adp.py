@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 from sqlmodel import select
 
 from app.crud.base import _bulk_upsert
-from app.models.db.adp import ADPDraftQualification
+from app.models.db.adp import ADPDraftQualification, ADPDiscoveryNode
 from app.models.db.sleeper.api import Draft, DraftSelection, League, Player
 
 
@@ -36,6 +37,34 @@ class ADPSampleSummary:
     pick_count: int
     earliest_draft_at: datetime | None
     latest_draft_at: datetime | None
+
+
+@dataclass(frozen=True)
+class ADPDraftIngestionSeed:
+    draft_id: str
+    source_type: str | None
+    source_value: str | None
+
+
+DISCOVERY_STATUS_PENDING = "pending"
+DISCOVERY_STATUS_PROCESSING = "processing"
+DISCOVERY_STATUS_PROCESSED = "processed"
+DISCOVERY_STATUS_FAILED = "failed"
+
+
+def _dedupe_discovery_rows(
+    rows: list[dict],
+) -> list[dict]:
+    deduped: dict[tuple[str, str], dict] = {}
+    for row in rows:
+        node_type = str(row["node_type"])
+        node_value = str(row["node_value"])
+        deduped[(node_type, node_value)] = {
+            **row,
+            "node_type": node_type,
+            "node_value": node_value,
+        }
+    return list(deduped.values())
 
 
 async def get_existing_adp_seed_leagues(
@@ -105,6 +134,18 @@ async def upsert_drafts(
     )
 
 
+async def upsert_leagues(
+    db: AsyncSession,
+    league_rows: list[dict],
+) -> None:
+    await _bulk_upsert(
+        db,
+        League,
+        league_rows,
+        "league_id",
+    )
+
+
 async def replace_draft_selections(
     db: AsyncSession,
     *,
@@ -133,6 +174,231 @@ async def upsert_draft_qualifications(
         rows,
         "draft_id",
     )
+
+
+async def enqueue_discovery_nodes(
+    db: AsyncSession,
+    rows: list[dict],
+) -> int:
+    if not rows:
+        return 0
+
+    deduped = _dedupe_discovery_rows(rows)
+
+    statement = (
+        insert(ADPDiscoveryNode)
+        .values(deduped)
+        .on_conflict_do_nothing(
+            index_elements=["node_type", "node_value"]
+        )
+        .returning(ADPDiscoveryNode.id)
+    )
+    result = await db.execute(statement)
+    return len(result.all())
+
+
+async def seed_existing_league_discovery_nodes(
+    db: AsyncSession,
+    *,
+    limit: int | None = None,
+) -> int:
+    leagues = await get_existing_adp_seed_leagues(
+        db,
+        limit=limit,
+    )
+    inserted = await enqueue_discovery_nodes(
+        db,
+        [
+            {
+                "node_type": "league_id",
+                "node_value": league.league_id,
+                "source_type": "existing_db",
+                "source_value": league.league_id,
+                "discovery_depth": 0,
+                "status": DISCOVERY_STATUS_PENDING,
+                "attempt_count": 0,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+            for league in leagues
+        ],
+    )
+    await db.commit()
+    return inserted
+
+
+async def reset_stale_processing_nodes(
+    db: AsyncSession,
+    *,
+    processing_timeout_seconds: int,
+    now: datetime | None = None,
+) -> int:
+    current = now or datetime.now(UTC)
+    cutoff = current - timedelta(
+        seconds=processing_timeout_seconds,
+    )
+    result = await db.execute(
+        select(ADPDiscoveryNode).where(
+            ADPDiscoveryNode.status == DISCOVERY_STATUS_PROCESSING,
+            ADPDiscoveryNode.last_checked_at.is_not(None),
+            ADPDiscoveryNode.last_checked_at
+            < cutoff.replace(tzinfo=None),
+        )
+    )
+    stale_nodes = result.scalars().all()
+
+    for node in stale_nodes:
+        node.status = DISCOVERY_STATUS_PENDING
+        node.updated_at = current.replace(tzinfo=None)
+
+    return len(stale_nodes)
+
+
+async def claim_discovery_nodes(
+    db: AsyncSession,
+    *,
+    limit: int,
+    processing_timeout_seconds: int,
+    now: datetime | None = None,
+) -> list[ADPDiscoveryNode]:
+    current = now or datetime.now(UTC)
+    await reset_stale_processing_nodes(
+        db,
+        processing_timeout_seconds=processing_timeout_seconds,
+        now=current,
+    )
+
+    statement = (
+        select(ADPDiscoveryNode)
+        .where(
+            ADPDiscoveryNode.status.in_(
+                [
+                    DISCOVERY_STATUS_PENDING,
+                    DISCOVERY_STATUS_FAILED,
+                ]
+            ),
+            (
+                ADPDiscoveryNode.next_retry_at.is_(None)
+            )
+            | (
+                ADPDiscoveryNode.next_retry_at
+                <= current.replace(tzinfo=None)
+            ),
+        )
+        .order_by(
+            ADPDiscoveryNode.discovery_depth.asc(),
+            ADPDiscoveryNode.created_at.asc(),
+        )
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+    )
+    result = await db.execute(statement)
+    nodes = result.scalars().all()
+
+    for node in nodes:
+        node.status = DISCOVERY_STATUS_PROCESSING
+        node.attempt_count += 1
+        node.last_checked_at = current.replace(tzinfo=None)
+        node.updated_at = current.replace(tzinfo=None)
+
+    await db.flush()
+    return nodes
+
+
+async def mark_discovery_node_processed(
+    db: AsyncSession,
+    *,
+    node_id: str,
+) -> None:
+    result = await db.execute(
+        select(ADPDiscoveryNode).where(
+            ADPDiscoveryNode.id == node_id
+        )
+    )
+    node = result.scalar_one()
+    node.status = DISCOVERY_STATUS_PROCESSED
+    node.failure_reason = None
+    node.next_retry_at = None
+    node.updated_at = datetime.utcnow()
+
+
+async def mark_discovery_node_failed(
+    db: AsyncSession,
+    *,
+    node_id: str,
+    failure_reason: str,
+    retry_delay_seconds: int,
+) -> None:
+    result = await db.execute(
+        select(ADPDiscoveryNode).where(
+            ADPDiscoveryNode.id == node_id
+        )
+    )
+    node = result.scalar_one()
+    node.status = DISCOVERY_STATUS_FAILED
+    node.failure_reason = failure_reason
+    node.next_retry_at = datetime.utcnow() + timedelta(
+        seconds=retry_delay_seconds,
+    )
+    node.updated_at = datetime.utcnow()
+
+
+async def release_discovery_nodes(
+    db: AsyncSession,
+    *,
+    node_ids: Sequence[str],
+) -> None:
+    if not node_ids:
+        return
+
+    result = await db.execute(
+        select(ADPDiscoveryNode).where(
+            ADPDiscoveryNode.id.in_(list(node_ids))
+        )
+    )
+    nodes = result.scalars().all()
+
+    for node in nodes:
+        node.status = DISCOVERY_STATUS_PENDING
+        node.updated_at = datetime.utcnow()
+
+
+async def get_ready_discovered_draft_ids(
+    db: AsyncSession,
+    *,
+    limit: int,
+) -> list[ADPDraftIngestionSeed]:
+    qualification = aliased(ADPDraftQualification)
+    result = await db.execute(
+        select(
+            ADPDiscoveryNode.node_value,
+            ADPDiscoveryNode.source_type,
+            ADPDiscoveryNode.source_value,
+        )
+        .select_from(ADPDiscoveryNode)
+        .outerjoin(
+            qualification,
+            qualification.draft_id == ADPDiscoveryNode.node_value,
+        )
+        .where(
+            ADPDiscoveryNode.node_type == "draft_id",
+            ADPDiscoveryNode.status == DISCOVERY_STATUS_PROCESSED,
+            qualification.draft_id.is_(None),
+        )
+        .order_by(
+            ADPDiscoveryNode.updated_at.asc(),
+            ADPDiscoveryNode.created_at.asc(),
+        )
+        .limit(limit)
+    )
+    return [
+        ADPDraftIngestionSeed(
+            draft_id=str(draft_id),
+            source_type=source_type,
+            source_value=source_value,
+        )
+        for draft_id, source_type, source_value in result.all()
+    ]
 
 
 def apply_adp_filters(
