@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_USE_TLS: bool = True
+    ADP_CRAWL_ENABLED: bool = False
+    ADP_CACHE_TTL_SECONDS: int = 3600
+    ADP_MIN_PLAYER_DRAFT_COUNT: int = 5
 
     model_config = SettingsConfigDict(
         env_file=".env",
