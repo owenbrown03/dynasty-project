@@ -111,6 +111,7 @@ export interface Bootstrap {
   value_preference: ValueBasis | null;
   war_value_settings: WarValueSettings;
   draft_pick_projection_settings: DraftPickProjectionSettings;
+  finance_projection_settings: FinanceProjectionSettings;
 }
 
 export type ThemePreference =
@@ -160,6 +161,11 @@ export interface DraftPickProjectionSettings {
   switch_week: number;
   before_week_method: DraftPickProjectionPhaseMethod;
   from_week_method: DraftPickProjectionMethod;
+}
+
+export interface FinanceProjectionSettings {
+  same_as_draft_pick_projection: boolean;
+  settings: DraftPickProjectionSettings;
 }
 
 export interface LeagueOverview {

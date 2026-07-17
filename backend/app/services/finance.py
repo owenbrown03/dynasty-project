@@ -8,8 +8,13 @@ from fastapi import HTTPException, Response, status
 from sqlalchemy import select
 
 from app.core.context import Context
+from app.crud.auth.session import (
+    get_session_draft_pick_projection_settings,
+    get_session_finance_projection_settings,
+)
 from app.crud.auth.user import (
     get_draft_pick_projection_settings,
+    get_finance_projection_settings,
 )
 from app.crud.sleeper.personal import (
     delete_finance_entry,
@@ -45,6 +50,7 @@ from app.models.db.sleeper.api import League, Roster
 from app.models.db.auth import SiteUser
 from app.services.draft.projection import (
     build_cached_projected_pick_slots_by_roster_id,
+    resolve_finance_projection_settings,
 )
 from app.services.leagues.models import LeaguePlayer
 from app.services.leagues.details import (
@@ -278,6 +284,7 @@ def _build_finance_projected_seed_cache_key(
     ctx: Context,
     leagues_by_id: dict[str, League],
     rosters_by_league_id: dict[str, list[Roster]],
+    effective_projection_settings: dict[str, object],
 ) -> str:
     digest = hashlib.sha256()
     digest.update(
@@ -289,9 +296,7 @@ def _build_finance_projected_seed_cache_key(
                     else None
                 ),
                 "projection_settings": (
-                    get_draft_pick_projection_settings(
-                        ctx.site_user,
-                    )
+                    effective_projection_settings
                 ),
                 "leagues": {
                     league_id: {
@@ -346,10 +351,44 @@ async def build_finance_projected_seed_by_league_roster(
     leagues_by_id: dict[str, League],
     rosters_by_league_id: dict[str, list[Roster]],
 ) -> dict[tuple[str, int], int]:
+    draft_pick_projection_settings = (
+        get_draft_pick_projection_settings(
+            ctx.site_user,
+        )
+        if ctx.site_user is not None
+        else get_session_draft_pick_projection_settings(
+            ctx.session,
+        )
+    )
+    finance_projection_settings = (
+        get_finance_projection_settings(
+            ctx.site_user,
+        )
+        if ctx.site_user is not None
+        else get_session_finance_projection_settings(
+            ctx.session,
+        )
+    )
+    effective_projection_settings = (
+        resolve_finance_projection_settings(
+            finance_settings=finance_projection_settings,
+            draft_pick_projection_settings=(
+                draft_pick_projection_settings
+            ),
+            authenticated=ctx.site_user is not None,
+        )
+    )
+
+    if effective_projection_settings["enabled"] is not True:
+        return {}
+
     cache_key = _build_finance_projected_seed_cache_key(
         ctx=ctx,
         leagues_by_id=leagues_by_id,
         rosters_by_league_id=rosters_by_league_id,
+        effective_projection_settings=(
+            effective_projection_settings
+        ),
     )
 
     if ctx.redis is not None:
@@ -375,10 +414,6 @@ async def build_finance_projected_seed_by_league_roster(
         ctx.db,
         list(leagues_by_id.keys()),
     )
-    settings = get_draft_pick_projection_settings(
-        ctx.site_user,
-    )
-
     projected_seed_by_key: dict[
         tuple[str, int],
         int,
@@ -506,11 +541,11 @@ async def build_finance_projected_seed_by_league_roster(
             redraft_roster_war_by_roster_id=(
                 redraft_roster_war_by_roster_id
             ),
-        settings=settings,
-    )
+            settings=effective_projection_settings,
+        )
 
-    for roster_id, draft_slot in projection.slots_by_roster_id.items():
-        projected_seed_by_key[
+        for roster_id, draft_slot in projection.slots_by_roster_id.items():
+            projected_seed_by_key[
                 (
                     league_id,
                     roster_id,
@@ -1538,6 +1573,11 @@ async def build_dashboard_finance_metrics_by_league_id(
 
         if expected_winnings_amount is not None:
             projected_winnings_amount = expected_winnings_amount
+        elif (
+            league.status in {"in_season", "post_season"}
+            and projected_finish_place is None
+        ):
+            projected_winnings_amount = 0.0
         elif configured_winnings_amount is not None:
             projected_winnings_amount = round(
                 configured_winnings_amount,

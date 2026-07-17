@@ -29,6 +29,12 @@ DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS = {
     "before_week_method": "none",
     "from_week_method": "max_pf",
 }
+DEFAULT_FINANCE_PROJECTION_SETTINGS = {
+    "same_as_draft_pick_projection": True,
+    "settings": dict(
+        DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS,
+    ),
+}
 MIN_DRAFT_PICK_PROJECTION_WEEK = 1
 MAX_DRAFT_PICK_PROJECTION_WEEK = 18
 
@@ -107,6 +113,77 @@ def normalize_draft_pick_projection_settings(
         "before_week_method": before_week_method,
         "from_week_method": from_week_method,
     }
+
+
+def normalize_finance_projection_settings(
+    raw_settings: dict | None,
+) -> dict[str, object]:
+    raw_settings = raw_settings or {}
+
+    same_as_draft_pick_projection = raw_settings.get(
+        "same_as_draft_pick_projection",
+        raw_settings.get(
+            "same_as_future_pick_projection",
+            DEFAULT_FINANCE_PROJECTION_SETTINGS[
+                "same_as_draft_pick_projection"
+            ],
+        ),
+    )
+
+    if not isinstance(
+        same_as_draft_pick_projection,
+        bool,
+    ):
+        same_as_draft_pick_projection = DEFAULT_FINANCE_PROJECTION_SETTINGS[
+            "same_as_draft_pick_projection"
+        ]
+
+    return {
+        "same_as_draft_pick_projection": (
+            same_as_draft_pick_projection
+        ),
+        "settings": normalize_draft_pick_projection_settings(
+            raw_settings.get("settings"),
+        ),
+    }
+
+
+def resolve_finance_projection_settings(
+    *,
+    finance_settings: dict[str, object] | None,
+    draft_pick_projection_settings: dict[str, object] | None,
+    authenticated: bool,
+) -> dict[str, object]:
+    if not authenticated:
+        return normalize_draft_pick_projection_settings(
+            {
+                "enabled": False,
+                "switch_week": DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS[
+                    "switch_week"
+                ],
+                "before_week_method": "none",
+                "from_week_method": DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS[
+                    "from_week_method"
+                ],
+            }
+        )
+
+    normalized_finance_settings = (
+        normalize_finance_projection_settings(
+            finance_settings,
+        )
+    )
+
+    if normalized_finance_settings[
+        "same_as_draft_pick_projection"
+    ]:
+        return normalize_draft_pick_projection_settings(
+            draft_pick_projection_settings,
+        )
+
+    return normalize_draft_pick_projection_settings(
+        normalized_finance_settings["settings"],
+    )
 
 
 def resolve_draft_pick_projection_method(

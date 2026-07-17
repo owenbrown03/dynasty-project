@@ -5,6 +5,7 @@ import type {
   DraftPickProjectionSettings,
   EmailVerificationConfirmRequest,
   EmailVerificationRequestResponse,
+  FinanceProjectionSettings,
   Login,
   ThemePreference,
   ValueBasis,
@@ -49,6 +50,12 @@ export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
     settings: DraftPickProjectionSettings,
   ) => client.post(
     `${prefix}/draft-pick-projection`,
+    { settings },
+  ),
+  updateFinanceProjectionSettings: (
+    settings: FinanceProjectionSettings,
+  ) => client.post(
+    `${prefix}/finance-projection`,
     { settings },
   ),
 });
