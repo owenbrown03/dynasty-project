@@ -147,6 +147,16 @@
   font-size: 11px;
 }
 
+.tier-player-exposure {
+  display: block;
+  margin-top: 5px;
+  color: var(--color-text-faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .tiers-empty-state {
   padding: 42px 24px;
   border: 1px dashed var(--color-border-strong);

@@ -35,6 +35,20 @@ function formatSelectedValue(
   return player.selected_value.toFixed(2);
 }
 
+function formatExposure(
+  player: TierBoardPlayer,
+) {
+  if (
+    player.exposure_pct == null
+    || player.exposure_owned_leagues == null
+    || player.exposure_total_leagues == null
+  ) {
+    return null;
+  }
+
+  return `${player.exposure_pct.toFixed(1)}% · ${player.exposure_owned_leagues}/${player.exposure_total_leagues}`;
+}
+
 
 export const TiersPage = () => {
   const valuePreference = useValuePreference();
@@ -306,6 +320,15 @@ export const TiersPage = () => {
                                               .join(' · ') || '—'
                                           }
                                         </span>
+                                        {
+                                          formatExposure(player)
+                                            ? (
+                                              <small className="tier-player-exposure">
+                                                Exposure {formatExposure(player)}
+                                              </small>
+                                            )
+                                            : null
+                                        }
                                       </div>
                                     </div>
                                   </div>

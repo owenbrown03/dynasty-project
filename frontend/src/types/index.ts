@@ -383,6 +383,9 @@ export interface TierBoardPlayer {
   rank: number;
   tier: string;
   selected_value: number;
+  exposure_pct: number | null;
+  exposure_owned_leagues: number | null;
+  exposure_total_leagues: number | null;
 }
 
 export interface TierBoardGroup {

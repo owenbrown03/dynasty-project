@@ -12,6 +12,9 @@ from app.crud.sleeper.player import (
     get_supported_player_ids,
 )
 from app.crud.sleeper.roster import get_owned_roster_rows
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_sleeper_user_id,
+)
 from app.crud.value import get_player_values
 from app.schemas.player import PlayerValue
 from app.schemas.player_tiers import (
@@ -199,6 +202,58 @@ async def resolve_league_war_context(
     )
 
 
+async def build_player_exposure_by_player_id(
+    *,
+    ctx: Context,
+) -> tuple[dict[str, tuple[int, int, float]], int]:
+    if (
+        ctx.connection is None
+        or not ctx.connection.sleeper_user_id
+    ):
+        return {}, 0
+
+    visible_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
+        db=ctx.db,
+        sleeper_user_id=ctx.connection.sleeper_user_id,
+        site_user_id=(
+            ctx.site_user.id
+            if ctx.site_user is not None
+            else None
+        ),
+    )
+
+    denominator = len(
+        visible_rows,
+    )
+
+    if denominator <= 0:
+        return {}, 0
+
+    counts_by_player_id: dict[str, int] = {}
+
+    for row in visible_rows:
+        for player_id in set(
+            row.roster.players or []
+        ):
+            counts_by_player_id[player_id] = (
+                counts_by_player_id.get(player_id, 0) + 1
+            )
+
+    exposure_by_player_id = {
+        player_id: (
+            owned_count,
+            denominator,
+            round(
+                (owned_count / denominator) * 100,
+                1,
+            ),
+        )
+        for player_id, owned_count in counts_by_player_id.items()
+    }
+
+    return exposure_by_player_id, denominator
+
+
 async def get_player_tier_board(
     *,
     ctx: Context,
@@ -263,6 +318,9 @@ async def get_player_tier_board(
     )
 
     ranked_players = []
+    exposure_by_player_id, _ = await build_player_exposure_by_player_id(
+        ctx=ctx,
+    )
 
     for player in player_values:
         selected_value = get_player_value(
@@ -313,6 +371,13 @@ async def get_player_tier_board(
             max_value=max_value,
         )
 
+        owned_leagues, total_leagues, exposure_pct = (
+            exposure_by_player_id.get(
+                player.player_id,
+                (0, 0, 0.0),
+            )
+        )
+
         tier_groups[tier_label].players.append(
             TierPlayer(
                 player_id=player.player_id,
@@ -323,6 +388,21 @@ async def get_player_tier_board(
                 rank=index,
                 tier=tier_label,
                 selected_value=selected_value,
+                exposure_pct=(
+                    exposure_pct
+                    if total_leagues > 0
+                    else None
+                ),
+                exposure_owned_leagues=(
+                    owned_leagues
+                    if total_leagues > 0
+                    else None
+                ),
+                exposure_total_leagues=(
+                    total_leagues
+                    if total_leagues > 0
+                    else None
+                ),
             )
         )
 

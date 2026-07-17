@@ -156,11 +156,13 @@ export const queryKeys = {
     tiers: (
       valueBasis: ValueBasis,
       leagueId?: string,
+      viewerKey?: string | null,
     ) =>
       [
         'player-tiers',
         valueBasis,
         leagueId ?? null,
+        viewerKey ?? null,
       ] as const,
     personalSearch: (query: string) =>
       ['personal-values-search', query] as const,
