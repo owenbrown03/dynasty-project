@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Any, Mapping, Sequence
 
 
-SUPPORTED_TEAM_COUNTS = {10, 12}
+SUPPORTED_TEAM_COUNTS = {8, 10, 12, 14}
 QUALIFIED = "qualified"
 UNKNOWN_FORMAT = "unknown_format"
 UNSUPPORTED_TEAM_COUNT = "unsupported_team_count"

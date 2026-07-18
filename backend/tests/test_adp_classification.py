@@ -158,6 +158,32 @@ def test_classify_unsupported_team_count_is_excluded():
             "round": ((pick_no - 1) // 14) + 1,
             "player_id": str(pick_no),
         }
+        for pick_no in range(1, 481)
+    ]
+
+    result = classify_draft(
+        draft,
+        picks,
+        _build_dynasty_league(total_rosters=16),
+    )
+
+    assert result.is_qualified is False
+    assert result.qualification_code == UNSUPPORTED_TEAM_COUNT
+
+
+def test_classify_fourteen_team_draft_is_qualified():
+    draft = {
+        "draft_id": "draft-14",
+        "league_id": "league-14",
+        "season": "2026",
+        "settings": {"rounds": 30},
+    }
+    picks = [
+        {
+            "pick_no": pick_no,
+            "round": ((pick_no - 1) // 14) + 1,
+            "player_id": str(pick_no),
+        }
         for pick_no in range(1, 421)
     ]
 
@@ -167,8 +193,38 @@ def test_classify_unsupported_team_count_is_excluded():
         _build_dynasty_league(total_rosters=14),
     )
 
-    assert result.is_qualified is False
-    assert result.qualification_code == UNSUPPORTED_TEAM_COUNT
+    assert result.team_count == 14
+    assert result.is_complete is True
+    assert result.is_qualified is True
+    assert result.qualification_code == QUALIFIED
+
+
+def test_classify_eight_team_draft_is_qualified():
+    draft = {
+        "draft_id": "draft-8",
+        "league_id": "league-8",
+        "season": "2026",
+        "settings": {"rounds": 30},
+    }
+    picks = [
+        {
+            "pick_no": pick_no,
+            "round": ((pick_no - 1) // 8) + 1,
+            "player_id": str(pick_no),
+        }
+        for pick_no in range(1, 241)
+    ]
+
+    result = classify_draft(
+        draft,
+        picks,
+        _build_dynasty_league(total_rosters=8),
+    )
+
+    assert result.team_count == 8
+    assert result.is_complete is True
+    assert result.is_qualified is True
+    assert result.qualification_code == QUALIFIED
 
 
 def test_classify_incomplete_draft_is_excluded():
