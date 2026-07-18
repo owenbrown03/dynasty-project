@@ -124,6 +124,33 @@ function formatPercent(
 }
 
 
+function getSampleStrengthMessage(
+  draftCount: number,
+) {
+  if (draftCount < 10) {
+    return {
+      tone: 'thin',
+      title: 'Thin sample',
+      body: 'This filter slice is built from fewer than 10 qualified drafts. Treat the rankings as directional only.',
+    };
+  }
+
+  if (draftCount < 25) {
+    return {
+      tone: 'limited',
+      title: 'Limited sample',
+      body: 'This slice has some signal, but the draft count is still light enough that outliers can move player prices meaningfully.',
+    };
+  }
+
+  return {
+    tone: 'healthy',
+    title: 'Healthy sample',
+    body: 'This filter slice has enough qualified drafts that the board should be materially more stable.',
+  };
+}
+
+
 function formatDataSource(
   value: string | null | undefined,
 ) {
@@ -553,6 +580,13 @@ export const AdpPage = () => {
     metadataQuery.data?.te_premium_options,
   ]);
 
+  const sampleStrength = useMemo(
+    () => getSampleStrengthMessage(
+      query.data?.sample.draft_count ?? 0,
+    ),
+    [query.data?.sample.draft_count],
+  );
+
   const corpusHealthCards = useMemo(() => {
     const report = reportQuery.data;
     if (!report) {
@@ -920,6 +954,12 @@ export const AdpPage = () => {
               This board reflects drafts discovered through your Sleeper graph, not a random sample of all Sleeper drafts.
               Use the draft count, pick count, and date window to judge how representative each filter slice is.
             </p>
+          </section>
+
+          <section className={`adp-sample-health adp-sample-health-${sampleStrength.tone}`}>
+            <span className="adp-section-kicker">Sample strength</span>
+            <strong>{sampleStrength.title}</strong>
+            <p>{sampleStrength.body}</p>
           </section>
 
           <section className="adp-composition-card">
