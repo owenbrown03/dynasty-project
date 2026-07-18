@@ -1,4 +1,5 @@
 from app.core.broker import broker
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.integrations.sleeper.singleton import get_worker_sleeper_client
 from app.services.adp.discovery import (
@@ -9,6 +10,9 @@ from app.crud import adp as adp_crud
 from app.services.adp.ingestion import (
     ingest_discovered_drafts,
     ingest_existing_league_drafts,
+)
+from app.services.adp.snapshots import (
+    build_default_adp_snapshot_requests,
 )
 
 
@@ -135,4 +139,49 @@ async def refresh_adp_snapshot_task(
             "generated_at": snapshot.sample.generated_at.isoformat()
             if snapshot.sample.generated_at
             else None,
+        }
+
+
+@broker.task
+async def refresh_default_adp_snapshots_task(
+    seasons: list[str] | None = None,
+    minimum_draft_count: int | None = None,
+):
+    async with AsyncSessionLocal() as db:
+        requests = build_default_adp_snapshot_requests(
+            seasons=seasons or settings.adp_crawl_seasons,
+            minimum_draft_count=(
+                minimum_draft_count
+                or settings.ADP_MIN_PLAYER_DRAFT_COUNT
+            ),
+        )
+        results: list[dict[str, object]] = []
+
+        for request in requests:
+            snapshot = await adp_crud.create_adp_snapshot(
+                db,
+                season=request.season,
+                draft_kind=request.draft_kind,
+                qb_format=request.qb_format,
+                te_premium=request.te_premium,
+                team_count=request.team_count,
+                minimum_draft_count=request.minimum_draft_count,
+            )
+            await db.commit()
+            results.append(
+                {
+                    "snapshot_id": snapshot.snapshot_id,
+                    "season": request.season,
+                    "draft_kind": request.draft_kind,
+                    "qb_format": request.qb_format,
+                    "te_premium": request.te_premium,
+                    "team_count": request.team_count,
+                    "draft_count": snapshot.sample.draft_count,
+                    "player_count": len(snapshot.players),
+                }
+            )
+
+        return {
+            "snapshot_count": len(results),
+            "results": results,
         }

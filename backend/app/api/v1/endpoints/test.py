@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 
 from app.analytics.war.redraft.service import WARService
 from app.api.deps import ContextDep
+from app.core.config import settings
 from app.crud import adp as adp_crud
 from app.crud.fc.sync import sync_fantasycalc_values
 from app.crud.ktc.sync import sync_ktc_values
@@ -20,6 +21,9 @@ from app.services.adp.ingestion import (
 from app.services.adp.report import (
     build_adp_dataset_report,
     get_adp_discovery_status,
+)
+from app.services.adp.snapshots import (
+    build_default_adp_snapshot_requests,
 )
 from app.schemas.adp import ADPDatasetReport, ADPDiscoveryStatusResponse
 from app.schemas.league import LeagueOverviewItem
@@ -363,4 +367,55 @@ async def adp_refresh_snapshot(
         "pick_count": snapshot.sample.pick_count,
         "player_count": len(snapshot.players),
         "generated_at": snapshot.sample.generated_at,
+    }
+
+
+@router.post("/adp/snapshots/refresh-defaults")
+async def adp_refresh_default_snapshots(
+    ctx: ContextDep,
+    seasons: str | None = Query(default=None),
+    minimum_draft_count: int = Query(default=5, ge=1, le=500),
+):
+    requested_seasons = (
+        [
+            season.strip()
+            for season in seasons.split(",")
+            if season.strip()
+        ]
+        if seasons
+        else settings.adp_crawl_seasons
+    )
+    requests = build_default_adp_snapshot_requests(
+        seasons=requested_seasons,
+        minimum_draft_count=minimum_draft_count,
+    )
+    results: list[dict[str, object]] = []
+
+    for request in requests:
+        snapshot = await adp_crud.create_adp_snapshot(
+            ctx.db,
+            season=request.season,
+            draft_kind=request.draft_kind,
+            qb_format=request.qb_format,
+            te_premium=request.te_premium,
+            team_count=request.team_count,
+            minimum_draft_count=request.minimum_draft_count,
+        )
+        await ctx.db.commit()
+        results.append(
+            {
+                "snapshot_id": snapshot.snapshot_id,
+                "season": request.season,
+                "draft_kind": request.draft_kind,
+                "qb_format": request.qb_format,
+                "te_premium": request.te_premium,
+                "team_count": request.team_count,
+                "draft_count": snapshot.sample.draft_count,
+                "player_count": len(snapshot.players),
+            }
+        )
+
+    return {
+        "snapshot_count": len(results),
+        "results": results,
     }
