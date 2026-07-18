@@ -593,6 +593,16 @@ async def get_adp_distribution(
             .group_by(key_column)
             .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
         )
+    elif source == "scoring_format":
+        key_column = ADPDraftQualification.scoring_format
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDraftQualification.draft_id),
+            )
+            .group_by(key_column)
+            .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
+        )
     elif source == "team_count":
         key_column = ADPDraftQualification.team_count
         statement = (

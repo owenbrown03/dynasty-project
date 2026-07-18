@@ -93,6 +93,7 @@ def test_build_adp_dataset_report(monkeypatch):
     assert report.excluded_draft_count == 5
     assert report.unique_league_count == 9
     assert report.qualification_code_distribution[0].key == "qualification_code-a"
+    assert report.scoring_format_distribution[0].key == "scoring_format-a"
     assert report.discovery_status_distribution[1].key == "discovery_status-b"
 
 

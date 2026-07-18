@@ -74,6 +74,9 @@ class ADPDatasetReport(Base):
     te_premium_distribution: list[ADPDistributionItem] = Field(
         default_factory=list,
     )
+    scoring_format_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
     team_count_distribution: list[ADPDistributionItem] = Field(
         default_factory=list,
     )

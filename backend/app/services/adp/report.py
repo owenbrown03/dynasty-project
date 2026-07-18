@@ -45,6 +45,10 @@ async def build_adp_dataset_report(
         db,
         source="te_premium",
     )
+    scoring_format_distribution = await adp_crud.get_adp_distribution(
+        db,
+        source="scoring_format",
+    )
     team_count_distribution = await adp_crud.get_adp_distribution(
         db,
         source="team_count",
@@ -76,6 +80,9 @@ async def build_adp_dataset_report(
         ),
         te_premium_distribution=_to_distribution_items(
             te_premium_distribution,
+        ),
+        scoring_format_distribution=_to_distribution_items(
+            scoring_format_distribution,
         ),
         team_count_distribution=_to_distribution_items(
             team_count_distribution,
