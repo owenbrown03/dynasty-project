@@ -112,6 +112,21 @@ function compareRows(
 }
 
 
+function getSortIndicator(
+  activeColumn: SortColumn,
+  activeDirection: SortDirection,
+  column: SortColumn,
+) {
+  if (activeColumn !== column) {
+    return null;
+  }
+
+  return activeDirection === 'asc'
+    ? ' ↑'
+    : ' ↓';
+}
+
+
 export const AdpPage = () => {
   const [filters, setFilters] = useState<ADPFilters>({
     season: '2026',
@@ -150,6 +165,17 @@ export const AdpPage = () => {
     sortColumn,
     sortDirection,
   ]);
+
+  const updateSort = (
+    column: SortColumn,
+  ) => {
+    setSortColumn(column);
+    setSortDirection((current) => (
+      sortColumn === column && current === 'asc'
+        ? 'desc'
+        : 'asc'
+    ));
+  };
 
   return (
     <div className="adp-page">
@@ -412,38 +438,42 @@ export const AdpPage = () => {
                 <thead>
                   <tr>
                     <th>
-                      <button type="button" onClick={() => {
-                        setSortColumn('overall_adp');
-                        setSortDirection((current) => (
-                          sortColumn === 'overall_adp' && current === 'asc'
-                            ? 'desc'
-                            : 'asc'
-                        ));
-                      }}
-                      >
-                        ADP
+                      <button type="button" onClick={() => updateSort('overall_adp')}>
+                        ADP{getSortIndicator(sortColumn, sortDirection, 'overall_adp')}
                       </button>
                     </th>
                     <th>
-                      <button type="button" onClick={() => {
-                        setSortColumn('name');
-                        setSortDirection((current) => (
-                          sortColumn === 'name' && current === 'asc'
-                            ? 'desc'
-                            : 'asc'
-                        ));
-                      }}
-                      >
-                        Player
+                      <button type="button" onClick={() => updateSort('name')}>
+                        Player{getSortIndicator(sortColumn, sortDirection, 'name')}
                       </button>
                     </th>
-                    <th>Pos</th>
-                    <th>Team</th>
-                    <th>Median</th>
+                    <th>
+                      <button type="button" onClick={() => updateSort('position')}>
+                        Pos{getSortIndicator(sortColumn, sortDirection, 'position')}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" onClick={() => updateSort('team')}>
+                        Team{getSortIndicator(sortColumn, sortDirection, 'team')}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" onClick={() => updateSort('median_pick')}>
+                        Median{getSortIndicator(sortColumn, sortDirection, 'median_pick')}
+                      </button>
+                    </th>
                     <th>Range</th>
                     <th>Std Dev</th>
-                    <th>Drafts</th>
-                    <th>Selection rate</th>
+                    <th>
+                      <button type="button" onClick={() => updateSort('draft_count')}>
+                        Drafts{getSortIndicator(sortColumn, sortDirection, 'draft_count')}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" onClick={() => updateSort('selection_rate')}>
+                        Selection rate{getSortIndicator(sortColumn, sortDirection, 'selection_rate')}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
