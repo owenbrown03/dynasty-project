@@ -33,6 +33,10 @@ async def build_adp_dataset_report(
         db,
         source="qualification_code",
     )
+    season_distribution = await adp_crud.get_adp_distribution(
+        db,
+        source="season",
+    )
     draft_kind_distribution = await adp_crud.get_adp_distribution(
         db,
         source="draft_kind",
@@ -53,6 +57,10 @@ async def build_adp_dataset_report(
         db,
         source="team_count",
     )
+    discovery_source_distribution = await adp_crud.get_adp_distribution(
+        db,
+        source="discovery_source",
+    )
     discovery_depth_distribution = await adp_crud.get_adp_distribution(
         db,
         source="discovery_depth",
@@ -72,6 +80,9 @@ async def build_adp_dataset_report(
         qualification_code_distribution=_to_distribution_items(
             qualification_code_distribution,
         ),
+        season_distribution=_to_distribution_items(
+            season_distribution,
+        ),
         draft_kind_distribution=_to_distribution_items(
             draft_kind_distribution,
         ),
@@ -86,6 +97,9 @@ async def build_adp_dataset_report(
         ),
         team_count_distribution=_to_distribution_items(
             team_count_distribution,
+        ),
+        discovery_source_distribution=_to_distribution_items(
+            discovery_source_distribution,
         ),
         discovery_depth_distribution=_to_distribution_items(
             discovery_depth_distribution,

@@ -563,6 +563,18 @@ async def get_adp_distribution(
             .group_by(key_column)
             .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
         )
+    elif source == "season":
+        key_column = Draft.season
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDraftQualification.draft_id),
+            )
+            .select_from(ADPDraftQualification)
+            .join(Draft, Draft.draft_id == ADPDraftQualification.draft_id)
+            .group_by(key_column)
+            .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
+        )
     elif source == "draft_kind":
         key_column = ADPDraftQualification.draft_kind
         statement = (
@@ -612,6 +624,16 @@ async def get_adp_distribution(
             )
             .group_by(key_column)
             .order_by(func.count(ADPDraftQualification.draft_id).desc(), key_column.asc())
+        )
+    elif source == "discovery_source":
+        key_column = ADPDiscoveryNode.source_type
+        statement = (
+            select(
+                key_column,
+                func.count(ADPDiscoveryNode.id),
+            )
+            .group_by(key_column)
+            .order_by(func.count(ADPDiscoveryNode.id).desc(), key_column.asc())
         )
     elif source == "discovery_depth":
         key_column = ADPDiscoveryNode.discovery_depth

@@ -65,6 +65,9 @@ class ADPDatasetReport(Base):
     qualification_code_distribution: list[ADPDistributionItem] = Field(
         default_factory=list,
     )
+    season_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
     draft_kind_distribution: list[ADPDistributionItem] = Field(
         default_factory=list,
     )
@@ -78,6 +81,9 @@ class ADPDatasetReport(Base):
         default_factory=list,
     )
     team_count_distribution: list[ADPDistributionItem] = Field(
+        default_factory=list,
+    )
+    discovery_source_distribution: list[ADPDistributionItem] = Field(
         default_factory=list,
     )
     discovery_depth_distribution: list[ADPDistributionItem] = Field(
