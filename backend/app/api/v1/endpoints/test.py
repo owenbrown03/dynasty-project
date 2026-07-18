@@ -264,7 +264,7 @@ async def adp_validate_existing_leagues(
     ingestion_result = await ingest_existing_league_drafts(
         ctx.db,
         ctx.sleeper,
-        league_limit=limit,
+        max_leagues=limit,
     )
     report = await build_adp_dataset_report(
         ctx.db,
