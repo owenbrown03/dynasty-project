@@ -54,6 +54,34 @@ const SCORING_LABELS: Record<string, string> = {
   custom: 'Custom',
 };
 
+const QUALIFICATION_LABELS: Record<string, string> = {
+  qualified: 'Qualified',
+  missing_picks: 'Missing picks',
+  incomplete: 'Incomplete',
+  mock: 'Mock',
+  auction: 'Auction',
+  keeper_draft: 'Keeper draft',
+  unsupported_team_count: 'Unsupported team count',
+  unsupported_round_count: 'Unsupported round count',
+  missing_player_ids: 'Missing player IDs',
+  unknown_format: 'Unknown format',
+};
+
+const DISCOVERY_SOURCE_LABELS: Record<string, string> = {
+  existing_db: 'Existing DB seeds',
+  user_id: 'User expansion',
+  league_id: 'League expansion',
+  draft_id: 'Direct draft seed',
+};
+
+const DISCOVERY_STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  processing: 'Processing',
+  processed: 'Processed',
+  failed: 'Failed',
+  ignored: 'Ignored',
+};
+
 function formatDateTime(
   value: string | null,
 ) {
@@ -362,18 +390,31 @@ export const AdpPage = () => {
       {
         label: 'Exclusion reasons',
         rows: report.qualification_code_distribution.filter((row) => row.key !== 'qualified'),
+        render: (row: ADPDistributionItem) => renderDistributionLabel(
+          row,
+          QUALIFICATION_LABELS,
+        ),
       },
       {
         label: 'Discovery sources',
         rows: report.discovery_source_distribution,
+        render: (row: ADPDistributionItem) => renderDistributionLabel(
+          row,
+          DISCOVERY_SOURCE_LABELS,
+        ),
       },
       {
         label: 'Discovery depth',
         rows: report.discovery_depth_distribution,
+        render: (row: ADPDistributionItem) => `Depth ${row.key}`,
       },
       {
         label: 'Node statuses',
         rows: report.discovery_status_distribution,
+        render: (row: ADPDistributionItem) => renderDistributionLabel(
+          row,
+          DISCOVERY_STATUS_LABELS,
+        ),
       },
     ];
   }, [reportQuery.data]);
@@ -650,7 +691,7 @@ export const AdpPage = () => {
                   <div className="adp-composition-list">
                     {group.rows.length ? group.rows.slice(0, 8).map((row) => (
                       <div key={`${group.label}-${row.key}`} className="adp-composition-pill">
-                        <strong>{row.key}</strong>
+                        <strong>{group.render(row)}</strong>
                         <small>{row.count.toLocaleString()} drafts</small>
                       </div>
                     )) : (
