@@ -587,6 +587,53 @@ export const AdpPage = () => {
     [query.data?.sample.draft_count],
   );
 
+  const activeFilterPills = useMemo(() => {
+    const pills: string[] = [];
+
+    if (filters.season) {
+      pills.push(filters.season);
+    }
+    if (filters.draft_kind) {
+      pills.push(DRAFT_KIND_LABELS[filters.draft_kind] ?? filters.draft_kind);
+    }
+    if (filters.qb_format) {
+      pills.push(QB_FORMAT_LABELS[filters.qb_format] ?? filters.qb_format);
+    }
+    if (filters.te_premium) {
+      pills.push(TEP_LABELS[filters.te_premium] ?? filters.te_premium);
+    }
+    if (filters.scoring_format) {
+      pills.push(SCORING_LABELS[filters.scoring_format] ?? filters.scoring_format);
+    }
+    if (filters.team_count != null) {
+      pills.push(`${filters.team_count} teams`);
+    }
+    if (filters.start_date || filters.end_date) {
+      pills.push(
+        `${filters.start_date ?? 'start'} to ${filters.end_date ?? 'today'}`,
+      );
+    }
+    if (positionFilter) {
+      pills.push(`Pos ${positionFilter}`);
+    }
+    if (playerSearch.trim()) {
+      pills.push(`Search: ${playerSearch.trim()}`);
+    }
+
+    return pills;
+  }, [
+    filters.draft_kind,
+    filters.end_date,
+    filters.qb_format,
+    filters.scoring_format,
+    filters.season,
+    filters.start_date,
+    filters.team_count,
+    filters.te_premium,
+    playerSearch,
+    positionFilter,
+  ]);
+
   const corpusHealthCards = useMemo(() => {
     const report = reportQuery.data;
     if (!report) {
@@ -960,6 +1007,17 @@ export const AdpPage = () => {
             <span className="adp-section-kicker">Sample strength</span>
             <strong>{sampleStrength.title}</strong>
             <p>{sampleStrength.body}</p>
+          </section>
+
+          <section className="adp-active-filters">
+            <span className="adp-section-kicker">Current slice</span>
+            <div className="adp-active-filter-list">
+              {activeFilterPills.map((pill) => (
+                <span key={pill} className="adp-active-filter-pill">
+                  {pill}
+                </span>
+              ))}
+            </div>
           </section>
 
           <section className="adp-composition-card">
