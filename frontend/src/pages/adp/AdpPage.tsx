@@ -261,9 +261,41 @@ function readNumberParam(
 }
 
 
-export const AdpPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [filters, setFilters] = useState<ADPFilters>({
+function readSortColumnParam(
+  value: string | null,
+): SortColumn {
+  if (
+    value === 'overall_adp'
+    || value === 'median_pick'
+    || value === 'min_pick'
+    || value === 'max_pick'
+    || value === 'standard_deviation'
+    || value === 'name'
+    || value === 'position'
+    || value === 'team'
+    || value === 'draft_count'
+    || value === 'selection_rate'
+  ) {
+    return value;
+  }
+
+  return 'overall_adp';
+}
+
+
+function readSortDirectionParam(
+  value: string | null,
+): SortDirection {
+  return value === 'desc'
+    ? 'desc'
+    : 'asc';
+}
+
+
+function readFiltersFromSearchParams(
+  searchParams: URLSearchParams,
+): ADPFilters {
+  return {
     season: searchParams.get('season') ?? DEFAULT_ADP_FILTERS.season,
     draft_kind: searchParams.get('draft_kind') ?? DEFAULT_ADP_FILTERS.draft_kind,
     qb_format: searchParams.get('qb_format') ?? DEFAULT_ADP_FILTERS.qb_format,
@@ -283,42 +315,85 @@ export const AdpPage = () => {
     ),
     start_date: searchParams.get('start_date'),
     end_date: searchParams.get('end_date'),
-  });
+  };
+}
+
+
+function areFiltersEqual(
+  left: ADPFilters,
+  right: ADPFilters,
+) {
+  return (
+    left.season === right.season
+    && left.draft_kind === right.draft_kind
+    && left.qb_format === right.qb_format
+    && left.te_premium === right.te_premium
+    && left.scoring_format === right.scoring_format
+    && left.team_count === right.team_count
+    && left.minimum_draft_count === right.minimum_draft_count
+    && left.limit === right.limit
+    && left.start_date === right.start_date
+    && left.end_date === right.end_date
+  );
+}
+
+
+export const AdpPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState<ADPFilters>(
+    () => readFiltersFromSearchParams(searchParams),
+  );
   const [playerSearch, setPlayerSearch] = useState(
     searchParams.get('player_search') ?? '',
   );
   const [positionFilter, setPositionFilter] = useState(
     searchParams.get('position') ?? '',
   );
-  const [sortColumn, setSortColumn] = useState<SortColumn>(() => {
-    const value = searchParams.get('sort');
-    if (
-      value === 'overall_adp'
-      || value === 'median_pick'
-      || value === 'min_pick'
-      || value === 'max_pick'
-      || value === 'standard_deviation'
-      || value === 'name'
-      || value === 'position'
-      || value === 'team'
-      || value === 'draft_count'
-      || value === 'selection_rate'
-    ) {
-      return value;
-    }
-
-    return 'overall_adp';
-  });
-  const [sortDirection, setSortDirection] = useState<SortDirection>(() => (
-    searchParams.get('direction') === 'desc'
-      ? 'desc'
-      : 'asc'
-  ));
+  const [sortColumn, setSortColumn] = useState<SortColumn>(
+    () => readSortColumnParam(searchParams.get('sort')),
+  );
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    () => readSortDirectionParam(searchParams.get('direction')),
+  );
   const deferredFilters = useDeferredValue(filters);
   const deferredPlayerSearch = useDeferredValue(playerSearch);
   const query = useAdp(deferredFilters);
   const metadataQuery = useAdpMetadata(deferredFilters);
   const reportQuery = useAdpReport();
+
+  useEffect(() => {
+    const nextFilters = readFiltersFromSearchParams(searchParams);
+    const nextPlayerSearch = searchParams.get('player_search') ?? '';
+    const nextPositionFilter = searchParams.get('position') ?? '';
+    const nextSortColumn = readSortColumnParam(searchParams.get('sort'));
+    const nextSortDirection = readSortDirectionParam(searchParams.get('direction'));
+
+    setFilters((current) => (
+      areFiltersEqual(current, nextFilters)
+        ? current
+        : nextFilters
+    ));
+    setPlayerSearch((current) => (
+      current === nextPlayerSearch
+        ? current
+        : nextPlayerSearch
+    ));
+    setPositionFilter((current) => (
+      current === nextPositionFilter
+        ? current
+        : nextPositionFilter
+    ));
+    setSortColumn((current) => (
+      current === nextSortColumn
+        ? current
+        : nextSortColumn
+    ));
+    setSortDirection((current) => (
+      current === nextSortDirection
+        ? current
+        : nextSortDirection
+    ));
+  }, [searchParams]);
 
   useEffect(() => {
     const next = new URLSearchParams();
