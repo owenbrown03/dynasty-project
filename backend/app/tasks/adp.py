@@ -177,6 +177,7 @@ async def refresh_default_adp_snapshots_task(
             ),
         )
         results: list[dict[str, object]] = []
+        skipped_count = 0
 
         for request in requests:
             filters = ADPFilters(
@@ -195,7 +196,11 @@ async def refresh_default_adp_snapshots_task(
                 te_premium=filters.te_premium,
                 team_count=filters.team_count,
                 minimum_draft_count=filters.minimum_draft_count,
+                skip_empty=True,
             )
+            if snapshot is None:
+                skipped_count += 1
+                continue
             await db.commit()
             await invalidate_adp_cache(
                 redis,
@@ -216,5 +221,6 @@ async def refresh_default_adp_snapshots_task(
 
         return {
             "snapshot_count": len(results),
+            "skipped_count": skipped_count,
             "results": results,
         }

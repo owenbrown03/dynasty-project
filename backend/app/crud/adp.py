@@ -994,7 +994,8 @@ async def create_adp_snapshot(
     minimum_draft_count: int = 5,
     calculation_version: str = "v1",
     row_limit: int = 5000,
-) -> ADPSnapshotResult:
+    skip_empty: bool = False,
+) -> ADPSnapshotResult | None:
     sample_summary = await get_adp_sample_summary(
         db,
         season=season,
@@ -1006,6 +1007,10 @@ async def create_adp_snapshot(
         start_date=start_date,
         end_date=end_date,
     )
+
+    if skip_empty and sample_summary.draft_count == 0:
+        return None
+
     player_rows = await get_player_adp_aggregates(
         db,
         season=season,
