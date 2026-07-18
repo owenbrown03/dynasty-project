@@ -1,7 +1,8 @@
 import './AdpPage.css';
 
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Database, Filter } from 'lucide-react';
+import { useSearchParams } from 'react-router';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useAdp } from '@/hooks/useAdp';
@@ -194,26 +195,138 @@ function getSortIndicator(
 }
 
 
+function readNumberParam(
+  value: string | null,
+  fallback: number,
+) {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed)
+    ? parsed
+    : fallback;
+}
+
+
 export const AdpPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<ADPFilters>({
-    season: '2026',
-    draft_kind: 'startup',
-    qb_format: 'superflex',
-    te_premium: '',
-    scoring_format: '',
-    team_count: 12,
-    minimum_draft_count: 1,
-    limit: 300,
+    season: searchParams.get('season') ?? '2026',
+    draft_kind: searchParams.get('draft_kind') ?? 'startup',
+    qb_format: searchParams.get('qb_format') ?? 'superflex',
+    te_premium: searchParams.get('te_premium') ?? '',
+    scoring_format: searchParams.get('scoring_format') ?? '',
+    team_count: readNumberParam(
+      searchParams.get('team_count'),
+      12,
+    ),
+    minimum_draft_count: readNumberParam(
+      searchParams.get('minimum_draft_count'),
+      1,
+    ),
+    limit: readNumberParam(
+      searchParams.get('limit'),
+      300,
+    ),
+    start_date: searchParams.get('start_date'),
+    end_date: searchParams.get('end_date'),
   });
-  const [playerSearch, setPlayerSearch] = useState('');
-  const [positionFilter, setPositionFilter] = useState('');
-  const [sortColumn, setSortColumn] = useState<SortColumn>('overall_adp');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [playerSearch, setPlayerSearch] = useState(
+    searchParams.get('player_search') ?? '',
+  );
+  const [positionFilter, setPositionFilter] = useState(
+    searchParams.get('position') ?? '',
+  );
+  const [sortColumn, setSortColumn] = useState<SortColumn>(() => {
+    const value = searchParams.get('sort');
+    if (
+      value === 'overall_adp'
+      || value === 'median_pick'
+      || value === 'min_pick'
+      || value === 'max_pick'
+      || value === 'standard_deviation'
+      || value === 'name'
+      || value === 'position'
+      || value === 'team'
+      || value === 'draft_count'
+      || value === 'selection_rate'
+    ) {
+      return value;
+    }
+
+    return 'overall_adp';
+  });
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => (
+    searchParams.get('direction') === 'desc'
+      ? 'desc'
+      : 'asc'
+  ));
   const deferredFilters = useDeferredValue(filters);
   const deferredPlayerSearch = useDeferredValue(playerSearch);
   const query = useAdp(deferredFilters);
   const metadataQuery = useAdpMetadata(deferredFilters);
   const reportQuery = useAdpReport();
+
+  useEffect(() => {
+    const next = new URLSearchParams();
+
+    if (filters.season) {
+      next.set('season', filters.season);
+    }
+    if (filters.draft_kind) {
+      next.set('draft_kind', filters.draft_kind);
+    }
+    if (filters.qb_format) {
+      next.set('qb_format', filters.qb_format);
+    }
+    if (filters.te_premium) {
+      next.set('te_premium', filters.te_premium);
+    }
+    if (filters.scoring_format) {
+      next.set('scoring_format', filters.scoring_format);
+    }
+    if (filters.team_count != null) {
+      next.set('team_count', String(filters.team_count));
+    }
+    if (filters.minimum_draft_count != null) {
+      next.set('minimum_draft_count', String(filters.minimum_draft_count));
+    }
+    if (filters.limit != null) {
+      next.set('limit', String(filters.limit));
+    }
+    if (filters.start_date) {
+      next.set('start_date', filters.start_date);
+    }
+    if (filters.end_date) {
+      next.set('end_date', filters.end_date);
+    }
+    if (playerSearch.trim()) {
+      next.set('player_search', playerSearch.trim());
+    }
+    if (positionFilter) {
+      next.set('position', positionFilter);
+    }
+    if (sortColumn !== 'overall_adp') {
+      next.set('sort', sortColumn);
+    }
+    if (sortDirection !== 'asc') {
+      next.set('direction', sortDirection);
+    }
+
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [
+    filters,
+    playerSearch,
+    positionFilter,
+    searchParams,
+    setSearchParams,
+    sortColumn,
+    sortDirection,
+  ]);
 
   const sortedPlayers = useMemo(() => {
     const normalizedSearch = deferredPlayerSearch.trim().toLowerCase();
