@@ -86,6 +86,72 @@ async def seed_existing_leagues_for_adp_discovery(
     )
 
 
+async def seed_manual_adp_discovery(
+    db: AsyncSession,
+    sleeper: SleeperClient,
+    *,
+    username: str | None = None,
+    user_id: str | None = None,
+    league_id: str | None = None,
+    draft_id: str | None = None,
+) -> dict[str, str | int | None]:
+    rows: list[dict] = []
+    resolved_user_id = user_id
+
+    if username:
+        user = await sleeper.read.get_user_details_by_username(
+            username,
+        )
+        resolved_user_id = user.user_id
+
+    if resolved_user_id:
+        rows.extend(
+            _build_node_rows(
+                node_type=DISCOVERY_NODE_USER,
+                values=[str(resolved_user_id)],
+                source_type="manual_seed",
+                source_value=username or str(resolved_user_id),
+                discovery_depth=0,
+            )
+        )
+
+    if league_id:
+        rows.extend(
+            _build_node_rows(
+                node_type=DISCOVERY_NODE_LEAGUE,
+                values=[str(league_id)],
+                source_type="manual_seed",
+                source_value=str(league_id),
+                discovery_depth=0,
+            )
+        )
+
+    if draft_id:
+        rows.extend(
+            _build_node_rows(
+                node_type=DISCOVERY_NODE_DRAFT,
+                values=[str(draft_id)],
+                source_type="manual_seed",
+                source_value=str(draft_id),
+                discovery_depth=0,
+            )
+        )
+
+    if not rows:
+        raise ValueError(
+            "Provide at least one of username, user_id, league_id, or draft_id.",
+        )
+
+    inserted_count = await adp_crud.enqueue_discovery_nodes(
+        db,
+        rows,
+    )
+    return {
+        "inserted_count": inserted_count,
+        "resolved_user_id": resolved_user_id,
+    }
+
+
 async def _handle_user_node(
     *,
     db: AsyncSession,

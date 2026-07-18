@@ -216,6 +216,82 @@ def test_process_discovery_batch_user_node_honors_league_budget(
     assert captured_rows[0]["source_type"] == "user_id"
 
 
+def test_seed_manual_adp_discovery_resolves_username(monkeypatch):
+    captured_rows: list[dict] = []
+
+    async def fake_enqueue_discovery_nodes(db, rows):
+        captured_rows.extend(rows)
+        return len(rows)
+
+    sleeper = FakeSleeperClient()
+
+    async def fake_get_user_details_by_username(username):
+        return SimpleNamespace(user_id="resolved-user-1")
+
+    sleeper.read.get_user_details_by_username = fake_get_user_details_by_username
+
+    monkeypatch.setattr(
+        adp_crud,
+        "enqueue_discovery_nodes",
+        fake_enqueue_discovery_nodes,
+    )
+
+    result = asyncio.run(
+        discovery_service.seed_manual_adp_discovery(
+            FakeDB(),
+            sleeper,
+            username="browntown333",
+        )
+    )
+
+    assert result == {
+        "inserted_count": 1,
+        "resolved_user_id": "resolved-user-1",
+    }
+    assert len(captured_rows) == 1
+    assert captured_rows[0]["node_type"] == "user_id"
+    assert captured_rows[0]["node_value"] == "resolved-user-1"
+    assert captured_rows[0]["source_type"] == "manual_seed"
+    assert captured_rows[0]["source_value"] == "browntown333"
+
+
+def test_seed_manual_adp_discovery_supports_direct_nodes(monkeypatch):
+    captured_rows: list[dict] = []
+
+    async def fake_enqueue_discovery_nodes(db, rows):
+        captured_rows.extend(rows)
+        return len(rows)
+
+    monkeypatch.setattr(
+        adp_crud,
+        "enqueue_discovery_nodes",
+        fake_enqueue_discovery_nodes,
+    )
+
+    result = asyncio.run(
+        discovery_service.seed_manual_adp_discovery(
+            FakeDB(),
+            FakeSleeperClient(),
+            user_id="user-1",
+            league_id="league-1",
+            draft_id="draft-1",
+        )
+    )
+
+    assert result == {
+        "inserted_count": 3,
+        "resolved_user_id": "user-1",
+    }
+    assert [
+        (row["node_type"], row["node_value"])
+        for row in captured_rows
+    ] == [
+        ("user_id", "user-1"),
+        ("league_id", "league-1"),
+        ("draft_id", "draft-1"),
+    ]
+
+
 def test_process_discovery_batch_releases_unprocessed_nodes_on_budget_stop(
     monkeypatch,
 ):

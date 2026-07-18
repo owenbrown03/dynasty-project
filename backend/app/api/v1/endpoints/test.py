@@ -12,6 +12,7 @@ from app.integrations.sleeper.schemas.api import Projection
 from app.services.dashboard.service import get_user_dashboard
 from app.services.adp.discovery import (
     process_adp_discovery_batch,
+    seed_manual_adp_discovery,
     seed_existing_leagues_for_adp_discovery,
 )
 from app.services.adp.ingestion import (
@@ -216,7 +217,21 @@ async def adp_discovery_status(
 async def adp_seed_discovery(
     ctx: ContextDep,
     limit: int | None = Query(default=None, ge=1),
+    username: str | None = Query(default=None),
+    user_id: str | None = Query(default=None),
+    league_id: str | None = Query(default=None),
+    draft_id: str | None = Query(default=None),
 ):
+    if username or user_id or league_id or draft_id:
+        return await seed_manual_adp_discovery(
+            ctx.db,
+            ctx.sleeper,
+            username=username,
+            user_id=user_id,
+            league_id=league_id,
+            draft_id=draft_id,
+        )
+
     inserted_count = await seed_existing_leagues_for_adp_discovery(
         ctx.db,
         limit=limit,
