@@ -5,13 +5,45 @@ from datetime import UTC, datetime
 
 from app.core.config import settings
 from app.crud import adp as adp_crud
+from app.infrastructure.redis.client import RedisClient
 from app.schemas.adp import ADPFilters, ADPPlayerRow, ADPResponse, ADPSample
 
+ADP_CACHE_ROW_LIMIT = 5000
 
-def _build_adp_cache_key(filters: ADPFilters) -> str:
+
+def build_adp_cache_key(filters: ADPFilters) -> str:
+    payload = filters.model_dump(mode="json")
+    payload.pop("limit", None)
+
     return "adp:" + json.dumps(
-        filters.model_dump(mode="json"),
+        payload,
         sort_keys=True,
+    )
+
+
+def _slice_adp_response(
+    response: ADPResponse,
+    *,
+    filters: ADPFilters,
+) -> ADPResponse:
+    limit = filters.limit or len(response.players)
+    return ADPResponse(
+        filters=filters,
+        sample=response.sample,
+        players=response.players[:limit],
+    )
+
+
+async def invalidate_adp_cache(
+    redis: RedisClient | None,
+    *,
+    filters: ADPFilters,
+) -> None:
+    if redis is None:
+        return
+
+    await redis.delete(
+        build_adp_cache_key(filters),
     )
 
 
@@ -21,13 +53,17 @@ async def get_adp(
     redis,
     filters: ADPFilters,
 ) -> ADPResponse:
-    cache_key = _build_adp_cache_key(filters)
+    cache_key = build_adp_cache_key(filters)
 
     if redis is not None:
         cached_payload = await redis.get(cache_key)
         if cached_payload:
-            return ADPResponse.model_validate_json(
+            cached_response = ADPResponse.model_validate_json(
                 cached_payload,
+            )
+            return _slice_adp_response(
+                cached_response,
+                filters=filters,
             )
 
     snapshot = await adp_crud.get_latest_adp_snapshot(
@@ -70,10 +106,10 @@ async def get_adp(
             start_date=filters.start_date,
             end_date=filters.end_date,
             minimum_draft_count=filters.minimum_draft_count,
-            limit=filters.limit,
+            limit=ADP_CACHE_ROW_LIMIT,
         )
 
-    response = ADPResponse(
+    cached_response = ADPResponse(
         filters=filters,
         sample=ADPSample(
             draft_count=sample_summary.draft_count,
@@ -105,8 +141,11 @@ async def get_adp(
     if redis is not None:
         await redis.set(
             cache_key,
-            response.model_dump_json(),
+            cached_response.model_dump_json(),
             ttl_seconds=settings.ADP_CACHE_TTL_SECONDS,
         )
 
-    return response
+    return _slice_adp_response(
+        cached_response,
+        filters=filters,
+    )

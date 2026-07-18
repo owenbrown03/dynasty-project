@@ -2,6 +2,9 @@ from app.core.broker import broker
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.integrations.sleeper.singleton import get_worker_sleeper_client
+from app.infrastructure.redis.client import RedisClient
+from app.infrastructure.redis.manager import RedisManager
+from app.schemas.adp import ADPFilters
 from app.services.adp.discovery import (
     process_adp_discovery_batch,
     seed_existing_leagues_for_adp_discovery,
@@ -11,6 +14,7 @@ from app.services.adp.ingestion import (
     ingest_discovered_drafts,
     ingest_existing_league_drafts,
 )
+from app.services.adp.service import invalidate_adp_cache
 from app.services.adp.snapshots import (
     build_default_adp_snapshot_requests,
 )
@@ -110,8 +114,8 @@ async def refresh_adp_snapshot_task(
     from datetime import datetime
 
     async with AsyncSessionLocal() as db:
-        snapshot = await adp_crud.create_adp_snapshot(
-            db,
+        redis = RedisClient(await RedisManager.get())
+        filters = ADPFilters(
             season=season,
             draft_kind=draft_kind,
             qb_format=qb_format,
@@ -130,7 +134,23 @@ async def refresh_adp_snapshot_task(
             ),
             minimum_draft_count=minimum_draft_count,
         )
+        snapshot = await adp_crud.create_adp_snapshot(
+            db,
+            season=filters.season,
+            draft_kind=filters.draft_kind,
+            qb_format=filters.qb_format,
+            te_premium=filters.te_premium,
+            team_count=filters.team_count,
+            scoring_format=filters.scoring_format,
+            start_date=filters.start_date,
+            end_date=filters.end_date,
+            minimum_draft_count=filters.minimum_draft_count,
+        )
         await db.commit()
+        await invalidate_adp_cache(
+            redis,
+            filters=filters,
+        )
         return {
             "snapshot_id": snapshot.snapshot_id,
             "draft_count": snapshot.sample.draft_count,
@@ -148,6 +168,7 @@ async def refresh_default_adp_snapshots_task(
     minimum_draft_count: int | None = None,
 ):
     async with AsyncSessionLocal() as db:
+        redis = RedisClient(await RedisManager.get())
         requests = build_default_adp_snapshot_requests(
             seasons=seasons or settings.adp_crawl_seasons,
             minimum_draft_count=(
@@ -158,8 +179,7 @@ async def refresh_default_adp_snapshots_task(
         results: list[dict[str, object]] = []
 
         for request in requests:
-            snapshot = await adp_crud.create_adp_snapshot(
-                db,
+            filters = ADPFilters(
                 season=request.season,
                 draft_kind=request.draft_kind,
                 qb_format=request.qb_format,
@@ -167,7 +187,20 @@ async def refresh_default_adp_snapshots_task(
                 team_count=request.team_count,
                 minimum_draft_count=request.minimum_draft_count,
             )
+            snapshot = await adp_crud.create_adp_snapshot(
+                db,
+                season=filters.season,
+                draft_kind=filters.draft_kind,
+                qb_format=filters.qb_format,
+                te_premium=filters.te_premium,
+                team_count=filters.team_count,
+                minimum_draft_count=filters.minimum_draft_count,
+            )
             await db.commit()
+            await invalidate_adp_cache(
+                redis,
+                filters=filters,
+            )
             results.append(
                 {
                     "snapshot_id": snapshot.snapshot_id,

@@ -22,9 +22,11 @@ from app.services.adp.report import (
     build_adp_dataset_report,
     get_adp_discovery_status,
 )
+from app.services.adp.service import invalidate_adp_cache
 from app.services.adp.snapshots import (
     build_default_adp_snapshot_requests,
 )
+from app.schemas.adp import ADPFilters
 from app.schemas.adp import ADPDatasetReport, ADPDiscoveryStatusResponse
 from app.schemas.league import LeagueOverviewItem
 from app.services.leagues.details import LeagueDetails
@@ -350,8 +352,7 @@ async def adp_refresh_snapshot(
     scoring_format: str | None = Query(default=None),
     minimum_draft_count: int = Query(default=5, ge=1, le=500),
 ):
-    snapshot = await adp_crud.create_adp_snapshot(
-        ctx.db,
+    filters = ADPFilters(
         season=season,
         draft_kind=draft_kind,
         qb_format=qb_format,
@@ -360,7 +361,21 @@ async def adp_refresh_snapshot(
         scoring_format=scoring_format,
         minimum_draft_count=minimum_draft_count,
     )
+    snapshot = await adp_crud.create_adp_snapshot(
+        ctx.db,
+        season=filters.season,
+        draft_kind=filters.draft_kind,
+        qb_format=filters.qb_format,
+        te_premium=filters.te_premium,
+        team_count=filters.team_count,
+        scoring_format=filters.scoring_format,
+        minimum_draft_count=filters.minimum_draft_count,
+    )
     await ctx.db.commit()
+    await invalidate_adp_cache(
+        ctx.redis,
+        filters=filters,
+    )
     return {
         "snapshot_id": snapshot.snapshot_id,
         "draft_count": snapshot.sample.draft_count,
@@ -392,8 +407,7 @@ async def adp_refresh_default_snapshots(
     results: list[dict[str, object]] = []
 
     for request in requests:
-        snapshot = await adp_crud.create_adp_snapshot(
-            ctx.db,
+        filters = ADPFilters(
             season=request.season,
             draft_kind=request.draft_kind,
             qb_format=request.qb_format,
@@ -401,7 +415,20 @@ async def adp_refresh_default_snapshots(
             team_count=request.team_count,
             minimum_draft_count=request.minimum_draft_count,
         )
+        snapshot = await adp_crud.create_adp_snapshot(
+            ctx.db,
+            season=filters.season,
+            draft_kind=filters.draft_kind,
+            qb_format=filters.qb_format,
+            te_premium=filters.te_premium,
+            team_count=filters.team_count,
+            minimum_draft_count=filters.minimum_draft_count,
+        )
         await ctx.db.commit()
+        await invalidate_adp_cache(
+            ctx.redis,
+            filters=filters,
+        )
         results.append(
             {
                 "snapshot_id": snapshot.snapshot_id,

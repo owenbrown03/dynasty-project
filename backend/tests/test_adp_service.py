@@ -157,3 +157,100 @@ def test_get_adp_falls_back_to_live(monkeypatch):
     assert response.sample.data_source == "live"
     assert response.players[0].name == "Live Player"
     assert redis.store
+
+
+def test_get_adp_cache_ignores_limit(monkeypatch):
+    redis = FakeRedis()
+    aggregate_calls = 0
+
+    async def fake_get_latest_adp_snapshot(*args, **kwargs):
+        return None
+
+    async def fake_summary(*args, **kwargs):
+        return adp_crud.ADPSampleSummary(
+            draft_count=5,
+            pick_count=60,
+            earliest_draft_at=datetime(2026, 2, 1, tzinfo=UTC),
+            latest_draft_at=datetime(2026, 3, 1, tzinfo=UTC),
+        )
+
+    async def fake_aggregates(*args, **kwargs):
+        nonlocal aggregate_calls
+        aggregate_calls += 1
+        return [
+            adp_crud.ADPPlayerAggregateRow(
+                player_id="2",
+                name="Live Player",
+                position="QB",
+                team="BUF",
+                overall_adp=1.5,
+                median_pick=1.0,
+                min_pick=1,
+                max_pick=4,
+                standard_deviation=1.0,
+                pick_count=5,
+                draft_count=5,
+                selection_rate=1.0,
+            ),
+            adp_crud.ADPPlayerAggregateRow(
+                player_id="3",
+                name="Second Player",
+                position="RB",
+                team="ATL",
+                overall_adp=2.5,
+                median_pick=2.0,
+                min_pick=2,
+                max_pick=5,
+                standard_deviation=1.0,
+                pick_count=5,
+                draft_count=5,
+                selection_rate=1.0,
+            ),
+        ]
+
+    monkeypatch.setattr(
+        adp_crud,
+        "get_latest_adp_snapshot",
+        fake_get_latest_adp_snapshot,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "get_adp_sample_summary",
+        fake_summary,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "get_player_adp_aggregates",
+        fake_aggregates,
+    )
+
+    first_response = asyncio.run(
+        get_adp(
+            db=FakeDB(),
+            redis=redis,
+            filters=ADPFilters(
+                season="2026",
+                draft_kind="startup",
+                qb_format="superflex",
+                minimum_draft_count=1,
+                limit=1,
+            ),
+        )
+    )
+    second_response = asyncio.run(
+        get_adp(
+            db=FakeDB(),
+            redis=redis,
+            filters=ADPFilters(
+                season="2026",
+                draft_kind="startup",
+                qb_format="superflex",
+                minimum_draft_count=1,
+                limit=2,
+            ),
+        )
+    )
+
+    assert aggregate_calls == 1
+    assert len(first_response.players) == 1
+    assert len(second_response.players) == 2
