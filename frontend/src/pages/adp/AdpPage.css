@@ -213,6 +213,48 @@
   gap: 4px;
 }
 
+.adp-table-tools {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.6fr) minmax(180px, 0.8fr) minmax(140px, auto);
+  gap: 12px;
+  margin: 18px 0 16px;
+  align-items: end;
+}
+
+.adp-table-tools label {
+  display: grid;
+  gap: 8px;
+}
+
+.adp-table-tools label span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-table-tools-summary {
+  display: grid;
+  gap: 4px;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.adp-table-tools-summary span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-table-tools-summary strong {
+  font-size: 22px;
+}
+
 .adp-table-wrap {
   margin-top: 16px;
   overflow-x: auto;
@@ -267,5 +309,13 @@
   .adp-composition-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .adp-table-meta {
+    justify-items: start;
+  }
+
+  .adp-table-tools {
+    grid-template-columns: 1fr;
   }
 }

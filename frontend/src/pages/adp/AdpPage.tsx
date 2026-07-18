@@ -205,15 +205,40 @@ export const AdpPage = () => {
     minimum_draft_count: 1,
     limit: 300,
   });
+  const [playerSearch, setPlayerSearch] = useState('');
+  const [positionFilter, setPositionFilter] = useState('');
   const [sortColumn, setSortColumn] = useState<SortColumn>('overall_adp');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const deferredFilters = useDeferredValue(filters);
+  const deferredPlayerSearch = useDeferredValue(playerSearch);
   const query = useAdp(deferredFilters);
   const metadataQuery = useAdpMetadata(deferredFilters);
   const reportQuery = useAdpReport();
 
   const sortedPlayers = useMemo(() => {
-    const players = [...(query.data?.players ?? [])];
+    const normalizedSearch = deferredPlayerSearch.trim().toLowerCase();
+    const players = [...(query.data?.players ?? [])].filter((player) => {
+      if (
+        positionFilter
+        && (player.position ?? '') !== positionFilter
+      ) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const haystack = [
+        player.name,
+        player.position ?? '',
+        player.team ?? '',
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(normalizedSearch);
+    });
+
     players.sort((left, right) => {
       const value = compareRows(
         left,
@@ -230,10 +255,23 @@ export const AdpPage = () => {
     });
     return players;
   }, [
+    deferredPlayerSearch,
+    positionFilter,
     query.data?.players,
     sortColumn,
     sortDirection,
   ]);
+
+  const positionOptions = useMemo(() => {
+    const positions = new Set<string>();
+    for (const player of query.data?.players ?? []) {
+      if (player.position) {
+        positions.add(player.position);
+      }
+    }
+
+    return Array.from(positions).sort();
+  }, [query.data?.players]);
 
   const updateSort = (
     column: SortColumn,
@@ -746,6 +784,42 @@ export const AdpPage = () => {
                 <small>
                   Generated {formatDateTime(query.data?.sample.generated_at ?? null)}
                 </small>
+              </div>
+            </div>
+
+            <div className="adp-table-tools">
+              <label>
+                <span>Search players</span>
+                <input
+                  type="search"
+                  value={playerSearch}
+                  placeholder="Search by player, team, or position"
+                  onChange={(event) => {
+                    setPlayerSearch(event.target.value);
+                  }}
+                />
+              </label>
+
+              <label>
+                <span>Position</span>
+                <select
+                  value={positionFilter}
+                  onChange={(event) => {
+                    setPositionFilter(event.target.value);
+                  }}
+                >
+                  <option value="">All positions</option>
+                  {positionOptions.map((position) => (
+                    <option key={position} value={position}>
+                      {position}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="adp-table-tools-summary">
+                <span>Visible rows</span>
+                <strong>{sortedPlayers.length.toLocaleString()}</strong>
               </div>
             </div>
 
