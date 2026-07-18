@@ -338,6 +338,18 @@ function areFiltersEqual(
 }
 
 
+function hasDistributionValue(
+  rows: ADPDistributionItem[] | undefined,
+  value: string | null | undefined,
+) {
+  if (!value) {
+    return true;
+  }
+
+  return (rows ?? []).some((row) => row.key === value);
+}
+
+
 export const AdpPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<ADPFilters>(
@@ -394,6 +406,53 @@ export const AdpPage = () => {
         : nextSortDirection
     ));
   }, [searchParams]);
+
+  useEffect(() => {
+    const metadata = metadataQuery.data;
+    if (!metadata) {
+      return;
+    }
+
+    setFilters((current) => {
+      const next: ADPFilters = { ...current };
+      let changed = false;
+
+      if (!hasDistributionValue(metadata.season_options, current.season)) {
+        next.season = null;
+        changed = true;
+      }
+      if (!hasDistributionValue(metadata.draft_kind_options, current.draft_kind)) {
+        next.draft_kind = null;
+        changed = true;
+      }
+      if (!hasDistributionValue(metadata.qb_format_options, current.qb_format)) {
+        next.qb_format = null;
+        changed = true;
+      }
+      if (!hasDistributionValue(metadata.te_premium_options, current.te_premium)) {
+        next.te_premium = null;
+        changed = true;
+      }
+      if (!hasDistributionValue(metadata.scoring_format_options, current.scoring_format)) {
+        next.scoring_format = null;
+        changed = true;
+      }
+      if (
+        current.team_count != null
+        && !hasDistributionValue(
+          metadata.team_count_options,
+          String(current.team_count),
+        )
+      ) {
+        next.team_count = null;
+        changed = true;
+      }
+
+      return changed
+        ? next
+        : current;
+    });
+  }, [metadataQuery.data]);
 
   useEffect(() => {
     const next = new URLSearchParams();
