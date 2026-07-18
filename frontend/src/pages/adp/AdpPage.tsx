@@ -76,6 +76,17 @@ function formatPercent(
 }
 
 
+function formatDataSource(
+  value: string | null | undefined,
+) {
+  if (value === 'snapshot') {
+    return 'Stored snapshot';
+  }
+
+  return 'Live aggregate';
+}
+
+
 function compareRows(
   left: ADPPlayerRow,
   right: ADPPlayerRow,
@@ -364,6 +375,10 @@ export const AdpPage = () => {
               <span>Latest draft</span>
               <strong>{formatDateTime(query.data?.sample.latest_draft_at ?? null)}</strong>
             </article>
+            <article className="adp-summary-card">
+              <span>Board source</span>
+              <strong>{formatDataSource(query.data?.sample.data_source)}</strong>
+            </article>
           </section>
 
           <section className="adp-bias-note">
@@ -380,9 +395,14 @@ export const AdpPage = () => {
                 <span className="adp-section-kicker">Board</span>
                 <h2>Player ADP table</h2>
               </div>
-              <small>
-                Generated {formatDateTime(query.data?.sample.generated_at ?? null)}
-              </small>
+              <div className="adp-table-meta">
+                <small>
+                  {formatDataSource(query.data?.sample.data_source)}
+                </small>
+                <small>
+                  Generated {formatDateTime(query.data?.sample.generated_at ?? null)}
+                </small>
+              </div>
             </div>
 
             <div className="adp-table-wrap">

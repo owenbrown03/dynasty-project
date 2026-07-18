@@ -187,6 +187,7 @@ export interface ADPSample {
   earliest_draft_at: string | null;
   latest_draft_at: string | null;
   generated_at: string;
+  data_source: string;
 }
 
 export interface ADPPlayerRow {

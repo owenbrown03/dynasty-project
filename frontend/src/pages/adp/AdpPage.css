@@ -141,6 +141,12 @@
   font-weight: 600;
 }
 
+.adp-table-meta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
 .adp-table-wrap {
   margin-top: 16px;
   overflow-x: auto;
