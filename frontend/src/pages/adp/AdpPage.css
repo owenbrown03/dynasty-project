@@ -93,12 +93,24 @@
   gap: 6px;
 }
 
-.adp-filters-grid span {
+.adp-filters-grid span,
+.adp-filter-window > span {
   color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.adp-filter-window {
+  display: grid;
+  gap: 8px;
+}
+
+.adp-filter-window-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .adp-summary-grid {

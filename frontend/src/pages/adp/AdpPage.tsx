@@ -107,6 +107,16 @@ function formatDateTime(
 }
 
 
+function formatDateInputValue(
+  value: Date,
+) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+
 function formatPercent(
   value: number,
 ) {
@@ -408,6 +418,29 @@ export const AdpPage = () => {
         ? 'desc'
         : 'asc'
     ));
+  };
+
+  const applyDateWindow = (
+    days: number | null,
+  ) => {
+    if (days == null) {
+      setFilters((current) => ({
+        ...current,
+        start_date: null,
+        end_date: null,
+      }));
+      return;
+    }
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+
+    setFilters((current) => ({
+      ...current,
+      start_date: formatDateInputValue(startDate),
+      end_date: formatDateInputValue(endDate),
+    }));
   };
 
   const resetBoardView = () => {
@@ -790,6 +823,48 @@ export const AdpPage = () => {
               }}
             />
           </label>
+
+          <div className="adp-filter-window">
+            <span>Date presets</span>
+            <div className="adp-filter-window-buttons">
+              <button
+                type="button"
+                className="site-button site-button-secondary"
+                onClick={() => {
+                  applyDateWindow(30);
+                }}
+              >
+                Last 30d
+              </button>
+              <button
+                type="button"
+                className="site-button site-button-secondary"
+                onClick={() => {
+                  applyDateWindow(60);
+                }}
+              >
+                Last 60d
+              </button>
+              <button
+                type="button"
+                className="site-button site-button-secondary"
+                onClick={() => {
+                  applyDateWindow(90);
+                }}
+              >
+                Last 90d
+              </button>
+              <button
+                type="button"
+                className="site-button site-button-secondary"
+                onClick={() => {
+                  applyDateWindow(null);
+                }}
+              >
+                All time
+              </button>
+            </div>
+          </div>
 
           <label>
             <span>Rows</span>
