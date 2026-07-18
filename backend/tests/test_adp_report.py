@@ -92,10 +92,18 @@ def test_build_adp_dataset_report(monkeypatch):
     assert report.qualified_draft_count == 12
     assert report.excluded_draft_count == 5
     assert report.unique_league_count == 9
+    assert report.unique_root_source_count == 4
+    assert report.earliest_draft_at == datetime(2026, 1, 1, tzinfo=UTC)
+    assert report.latest_draft_at == datetime(2026, 7, 1, tzinfo=UTC)
     assert report.qualification_code_distribution[0].key == "qualification_code-a"
     assert report.season_distribution[0].key == "season-a"
+    assert report.draft_kind_distribution[1].key == "draft_kind-b"
+    assert report.qb_format_distribution[0].key == "qb_format-a"
+    assert report.te_premium_distribution[1].key == "te_premium-b"
     assert report.scoring_format_distribution[0].key == "scoring_format-a"
+    assert report.team_count_distribution[1].key == "team_count-b"
     assert report.discovery_source_distribution[0].key == "discovery_source-a"
+    assert report.discovery_depth_distribution[1].key == "discovery_depth-b"
     assert report.discovery_status_distribution[1].key == "discovery_status-b"
 
 
