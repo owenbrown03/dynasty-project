@@ -40,4 +40,6 @@ from .fc.models import(
 from .adp import(
     ADPDiscoveryNode,
     ADPDraftQualification,
+    ADPSnapshot,
+    ADPSnapshotPlayer,
 )

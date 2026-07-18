@@ -30,18 +30,7 @@ async def get_adp(
                 cached_payload,
             )
 
-    sample_summary = await adp_crud.get_adp_sample_summary(
-        db,
-        season=filters.season,
-        draft_kind=filters.draft_kind,
-        qb_format=filters.qb_format,
-        te_premium=filters.te_premium,
-        team_count=filters.team_count,
-        scoring_format=filters.scoring_format,
-        start_date=filters.start_date,
-        end_date=filters.end_date,
-    )
-    player_rows = await adp_crud.get_player_adp_aggregates(
+    snapshot = await adp_crud.get_latest_adp_snapshot(
         db,
         season=filters.season,
         draft_kind=filters.draft_kind,
@@ -55,6 +44,35 @@ async def get_adp(
         limit=filters.limit,
     )
 
+    if snapshot is not None:
+        sample_summary = snapshot.sample
+        player_rows = snapshot.players
+    else:
+        sample_summary = await adp_crud.get_adp_sample_summary(
+            db,
+            season=filters.season,
+            draft_kind=filters.draft_kind,
+            qb_format=filters.qb_format,
+            te_premium=filters.te_premium,
+            team_count=filters.team_count,
+            scoring_format=filters.scoring_format,
+            start_date=filters.start_date,
+            end_date=filters.end_date,
+        )
+        player_rows = await adp_crud.get_player_adp_aggregates(
+            db,
+            season=filters.season,
+            draft_kind=filters.draft_kind,
+            qb_format=filters.qb_format,
+            te_premium=filters.te_premium,
+            team_count=filters.team_count,
+            scoring_format=filters.scoring_format,
+            start_date=filters.start_date,
+            end_date=filters.end_date,
+            minimum_draft_count=filters.minimum_draft_count,
+            limit=filters.limit,
+        )
+
     response = ADPResponse(
         filters=filters,
         sample=ADPSample(
@@ -62,7 +80,8 @@ async def get_adp(
             pick_count=sample_summary.pick_count,
             earliest_draft_at=sample_summary.earliest_draft_at,
             latest_draft_at=sample_summary.latest_draft_at,
-            generated_at=datetime.now(UTC),
+            generated_at=sample_summary.generated_at or datetime.now(UTC),
+            data_source=sample_summary.data_source,
         ),
         players=[
             ADPPlayerRow(

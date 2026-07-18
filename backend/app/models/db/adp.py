@@ -90,3 +90,89 @@ class ADPDraftQualification(SQLModel, table=True):
     )
     classified_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ADPSnapshot(SQLModel, table=True):
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        primary_key=True,
+    )
+    calculation_version: str = Field(default="v1", index=True)
+    season: str | None = Field(default=None, nullable=True, index=True)
+    draft_kind: str | None = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    qb_format: str | None = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    te_premium: str | None = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    team_count: int | None = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    scoring_format: str | None = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    start_date: datetime | None = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    end_date: datetime | None = Field(
+        default=None,
+        nullable=True,
+        index=True,
+    )
+    minimum_draft_count: int = Field(default=5, index=True)
+    draft_count: int = Field(default=0)
+    pick_count: int = Field(default=0)
+    earliest_draft_at: datetime | None = Field(
+        default=None,
+        nullable=True,
+    )
+    latest_draft_at: datetime | None = Field(
+        default=None,
+        nullable=True,
+    )
+    generated_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ADPSnapshotPlayer(SQLModel, table=True):
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        primary_key=True,
+    )
+    snapshot_id: str = Field(
+        foreign_key="adpsnapshot.id",
+        index=True,
+    )
+    player_id: str = Field(index=True)
+    rank: int = Field(index=True)
+    name: str = Field()
+    position: str | None = Field(default=None, nullable=True)
+    team: str | None = Field(default=None, nullable=True)
+    overall_adp: float = Field()
+    median_pick: float = Field()
+    min_pick: int = Field()
+    max_pick: int = Field()
+    standard_deviation: float | None = Field(
+        default=None,
+        nullable=True,
+    )
+    pick_count: int = Field()
+    draft_count: int = Field()
+    selection_rate: float = Field()
+    created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 
 from app.analytics.war.redraft.service import WARService
 from app.api.deps import ContextDep
+from app.crud import adp as adp_crud
 from app.crud.fc.sync import sync_fantasycalc_values
 from app.crud.ktc.sync import sync_ktc_values
 from app.crud.underdog.sync import sync_underdog_adp
@@ -331,4 +332,35 @@ async def adp_validate_one_hop(
             ],
         },
         "report": report,
+    }
+
+
+@router.post("/adp/snapshots/refresh")
+async def adp_refresh_snapshot(
+    ctx: ContextDep,
+    season: str | None = Query(default=None),
+    draft_kind: str | None = Query(default=None),
+    qb_format: str | None = Query(default=None),
+    te_premium: str | None = Query(default=None),
+    team_count: int | None = Query(default=None, ge=1, le=32),
+    scoring_format: str | None = Query(default=None),
+    minimum_draft_count: int = Query(default=5, ge=1, le=500),
+):
+    snapshot = await adp_crud.create_adp_snapshot(
+        ctx.db,
+        season=season,
+        draft_kind=draft_kind,
+        qb_format=qb_format,
+        te_premium=te_premium,
+        team_count=team_count,
+        scoring_format=scoring_format,
+        minimum_draft_count=minimum_draft_count,
+    )
+    await ctx.db.commit()
+    return {
+        "snapshot_id": snapshot.snapshot_id,
+        "draft_count": snapshot.sample.draft_count,
+        "pick_count": snapshot.sample.pick_count,
+        "player_count": len(snapshot.players),
+        "generated_at": snapshot.sample.generated_at,
     }

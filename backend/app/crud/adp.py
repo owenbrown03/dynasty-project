@@ -11,7 +11,12 @@ from sqlalchemy.orm import aliased
 from sqlmodel import select
 
 from app.crud.base import _bulk_upsert
-from app.models.db.adp import ADPDraftQualification, ADPDiscoveryNode
+from app.models.db.adp import (
+    ADPDraftQualification,
+    ADPDiscoveryNode,
+    ADPSnapshot,
+    ADPSnapshotPlayer,
+)
 from app.models.db.sleeper.api import Draft, DraftSelection, League, Player
 
 
@@ -37,6 +42,8 @@ class ADPSampleSummary:
     pick_count: int
     earliest_draft_at: datetime | None
     latest_draft_at: datetime | None
+    generated_at: datetime | None = None
+    data_source: str = "live"
 
 
 @dataclass(frozen=True)
@@ -60,6 +67,13 @@ class ADPDraftIngestionSeed:
     draft_id: str
     source_type: str | None
     source_value: str | None
+
+
+@dataclass(frozen=True)
+class ADPSnapshotResult:
+    snapshot_id: str
+    sample: ADPSampleSummary
+    players: list[ADPPlayerAggregateRow]
 
 
 DISCOVERY_STATUS_PENDING = "pending"
@@ -820,3 +834,248 @@ async def get_player_adp_aggregates(
             draft_count,
         ) in rows
     ]
+
+
+def _apply_snapshot_filters(
+    statement,
+    *,
+    season: str | None = None,
+    draft_kind: str | None = None,
+    qb_format: str | None = None,
+    te_premium: str | None = None,
+    team_count: int | None = None,
+    scoring_format: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    minimum_draft_count: int = 5,
+    calculation_version: str = "v1",
+):
+    conditions = [
+        ADPSnapshot.calculation_version == calculation_version,
+        ADPSnapshot.minimum_draft_count == minimum_draft_count,
+    ]
+
+    if season is None:
+        conditions.append(ADPSnapshot.season.is_(None))
+    else:
+        conditions.append(ADPSnapshot.season == season)
+
+    if draft_kind is None:
+        conditions.append(ADPSnapshot.draft_kind.is_(None))
+    else:
+        conditions.append(ADPSnapshot.draft_kind == draft_kind)
+
+    if qb_format is None:
+        conditions.append(ADPSnapshot.qb_format.is_(None))
+    else:
+        conditions.append(ADPSnapshot.qb_format == qb_format)
+
+    if te_premium is None:
+        conditions.append(ADPSnapshot.te_premium.is_(None))
+    else:
+        conditions.append(ADPSnapshot.te_premium == te_premium)
+
+    if team_count is None:
+        conditions.append(ADPSnapshot.team_count.is_(None))
+    else:
+        conditions.append(ADPSnapshot.team_count == team_count)
+
+    if scoring_format is None:
+        conditions.append(ADPSnapshot.scoring_format.is_(None))
+    else:
+        conditions.append(ADPSnapshot.scoring_format == scoring_format)
+
+    if start_date is None:
+        conditions.append(ADPSnapshot.start_date.is_(None))
+    else:
+        conditions.append(
+            ADPSnapshot.start_date
+            == start_date.replace(tzinfo=None)
+        )
+
+    if end_date is None:
+        conditions.append(ADPSnapshot.end_date.is_(None))
+    else:
+        conditions.append(
+            ADPSnapshot.end_date
+            == end_date.replace(tzinfo=None)
+        )
+
+    return statement.where(and_(*conditions))
+
+
+async def get_latest_adp_snapshot(
+    db: AsyncSession,
+    *,
+    season: str | None = None,
+    draft_kind: str | None = None,
+    qb_format: str | None = None,
+    te_premium: str | None = None,
+    team_count: int | None = None,
+    scoring_format: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    minimum_draft_count: int = 5,
+    calculation_version: str = "v1",
+    limit: int = 300,
+) -> ADPSnapshotResult | None:
+    statement = select(ADPSnapshot)
+    statement = _apply_snapshot_filters(
+        statement,
+        season=season,
+        draft_kind=draft_kind,
+        qb_format=qb_format,
+        te_premium=te_premium,
+        team_count=team_count,
+        scoring_format=scoring_format,
+        start_date=start_date,
+        end_date=end_date,
+        minimum_draft_count=minimum_draft_count,
+        calculation_version=calculation_version,
+    ).order_by(
+        ADPSnapshot.generated_at.desc(),
+        ADPSnapshot.id.desc(),
+    ).limit(1)
+    result = await db.execute(statement)
+    snapshot = result.scalar_one_or_none()
+
+    if snapshot is None:
+        return None
+
+    player_result = await db.execute(
+        select(ADPSnapshotPlayer)
+        .where(ADPSnapshotPlayer.snapshot_id == snapshot.id)
+        .order_by(ADPSnapshotPlayer.rank.asc())
+        .limit(limit)
+    )
+    players = player_result.scalars().all()
+
+    return ADPSnapshotResult(
+        snapshot_id=snapshot.id,
+        sample=ADPSampleSummary(
+            draft_count=snapshot.draft_count,
+            pick_count=snapshot.pick_count,
+            earliest_draft_at=snapshot.earliest_draft_at,
+            latest_draft_at=snapshot.latest_draft_at,
+            generated_at=snapshot.generated_at.replace(tzinfo=UTC),
+            data_source="snapshot",
+        ),
+        players=[
+            ADPPlayerAggregateRow(
+                player_id=player.player_id,
+                name=player.name,
+                position=player.position,
+                team=player.team,
+                overall_adp=player.overall_adp,
+                median_pick=player.median_pick,
+                min_pick=player.min_pick,
+                max_pick=player.max_pick,
+                standard_deviation=player.standard_deviation,
+                pick_count=player.pick_count,
+                draft_count=player.draft_count,
+                selection_rate=player.selection_rate,
+            )
+            for player in players
+        ],
+    )
+
+
+async def create_adp_snapshot(
+    db: AsyncSession,
+    *,
+    season: str | None = None,
+    draft_kind: str | None = None,
+    qb_format: str | None = None,
+    te_premium: str | None = None,
+    team_count: int | None = None,
+    scoring_format: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    minimum_draft_count: int = 5,
+    calculation_version: str = "v1",
+    row_limit: int = 5000,
+) -> ADPSnapshotResult:
+    sample_summary = await get_adp_sample_summary(
+        db,
+        season=season,
+        draft_kind=draft_kind,
+        qb_format=qb_format,
+        te_premium=te_premium,
+        team_count=team_count,
+        scoring_format=scoring_format,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    player_rows = await get_player_adp_aggregates(
+        db,
+        season=season,
+        draft_kind=draft_kind,
+        qb_format=qb_format,
+        te_premium=te_premium,
+        team_count=team_count,
+        scoring_format=scoring_format,
+        start_date=start_date,
+        end_date=end_date,
+        minimum_draft_count=minimum_draft_count,
+        limit=row_limit,
+    )
+
+    current = datetime.now(UTC).replace(tzinfo=None)
+    snapshot = ADPSnapshot(
+        calculation_version=calculation_version,
+        season=season,
+        draft_kind=draft_kind,
+        qb_format=qb_format,
+        te_premium=te_premium,
+        team_count=team_count,
+        scoring_format=scoring_format,
+        start_date=start_date.replace(tzinfo=None) if start_date else None,
+        end_date=end_date.replace(tzinfo=None) if end_date else None,
+        minimum_draft_count=minimum_draft_count,
+        draft_count=sample_summary.draft_count,
+        pick_count=sample_summary.pick_count,
+        earliest_draft_at=sample_summary.earliest_draft_at,
+        latest_draft_at=sample_summary.latest_draft_at,
+        generated_at=current,
+        created_at=current,
+        updated_at=current,
+    )
+    db.add(snapshot)
+    await db.flush()
+
+    snapshot_players = [
+        ADPSnapshotPlayer(
+            snapshot_id=snapshot.id,
+            player_id=row.player_id,
+            rank=index,
+            name=row.name,
+            position=row.position,
+            team=row.team,
+            overall_adp=row.overall_adp,
+            median_pick=row.median_pick,
+            min_pick=row.min_pick,
+            max_pick=row.max_pick,
+            standard_deviation=row.standard_deviation,
+            pick_count=row.pick_count,
+            draft_count=row.draft_count,
+            selection_rate=row.selection_rate,
+            created_at=current,
+        )
+        for index, row in enumerate(player_rows, start=1)
+    ]
+    if snapshot_players:
+        db.add_all(snapshot_players)
+    await db.flush()
+
+    return ADPSnapshotResult(
+        snapshot_id=snapshot.id,
+        sample=ADPSampleSummary(
+            draft_count=sample_summary.draft_count,
+            pick_count=sample_summary.pick_count,
+            earliest_draft_at=sample_summary.earliest_draft_at,
+            latest_draft_at=sample_summary.latest_draft_at,
+            generated_at=snapshot.generated_at.replace(tzinfo=UTC),
+            data_source="snapshot",
+        ),
+        players=player_rows,
+    )

@@ -5,6 +5,7 @@ from app.services.adp.discovery import (
     process_adp_discovery_batch,
     seed_existing_leagues_for_adp_discovery,
 )
+from app.crud import adp as adp_crud
 from app.services.adp.ingestion import (
     ingest_discovered_drafts,
     ingest_existing_league_drafts,
@@ -88,3 +89,50 @@ async def ingest_discovered_adp_drafts_task(
             }
             for result in results
         ]
+
+
+@broker.task
+async def refresh_adp_snapshot_task(
+    season: str | None = None,
+    draft_kind: str | None = None,
+    qb_format: str | None = None,
+    te_premium: str | None = None,
+    team_count: int | None = None,
+    scoring_format: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    minimum_draft_count: int = 5,
+):
+    from datetime import datetime
+
+    async with AsyncSessionLocal() as db:
+        snapshot = await adp_crud.create_adp_snapshot(
+            db,
+            season=season,
+            draft_kind=draft_kind,
+            qb_format=qb_format,
+            te_premium=te_premium,
+            team_count=team_count,
+            scoring_format=scoring_format,
+            start_date=(
+                datetime.fromisoformat(start_date)
+                if start_date
+                else None
+            ),
+            end_date=(
+                datetime.fromisoformat(end_date)
+                if end_date
+                else None
+            ),
+            minimum_draft_count=minimum_draft_count,
+        )
+        await db.commit()
+        return {
+            "snapshot_id": snapshot.snapshot_id,
+            "draft_count": snapshot.sample.draft_count,
+            "pick_count": snapshot.sample.pick_count,
+            "player_count": len(snapshot.players),
+            "generated_at": snapshot.sample.generated_at.isoformat()
+            if snapshot.sample.generated_at
+            else None,
+        }

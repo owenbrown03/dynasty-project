@@ -26,6 +26,7 @@ class ADPSample(Base):
     earliest_draft_at: datetime | None = None
     latest_draft_at: datetime | None = None
     generated_at: datetime
+    data_source: str = "live"
 
 
 class ADPPlayerRow(Base):
