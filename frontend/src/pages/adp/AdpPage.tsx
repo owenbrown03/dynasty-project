@@ -8,6 +8,7 @@ import { LoadingState } from '@/components/feedback/LoadingState';
 import { useAdp } from '@/hooks/useAdp';
 import { useAdpMetadata } from '@/hooks/useAdpMetadata';
 import { useAdpReport } from '@/hooks/useAdpReport';
+import { notify } from '@/utils/notify';
 import type {
   ADPDistributionItem,
   ADPFilters,
@@ -480,6 +481,17 @@ export const AdpPage = () => {
     setSortDirection('asc');
   };
 
+  const copyBoardLink = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        window.location.href,
+      );
+      notify.success('ADP board link copied.');
+    } catch {
+      notify.error('Could not copy the ADP board link.');
+    }
+  };
+
   const seasonOptions = useMemo(() => buildDynamicOptions(
     metadataQuery.data?.season_options,
     {
@@ -734,6 +746,13 @@ export const AdpPage = () => {
               <Filter size={16} />
               <span>Changing filters requeries the cached `/adp` dataset.</span>
             </div>
+            <button
+              type="button"
+              className="site-button site-button-secondary"
+              onClick={copyBoardLink}
+            >
+              Copy link
+            </button>
             <button
               type="button"
               className="site-button site-button-secondary"
