@@ -16,10 +16,12 @@ from app.schemas.adp import (
 
 ADP_REPORT_CACHE_TTL_SECONDS = 5 * 60
 ADP_METADATA_CACHE_TTL_SECONDS = 5 * 60
+ADP_REPORT_CACHE_KEY = "adp:report"
+ADP_METADATA_CACHE_PREFIX = "adp:metadata:"
 
 
 def build_adp_report_cache_key() -> str:
-    return "adp:report"
+    return ADP_REPORT_CACHE_KEY
 
 
 def build_adp_metadata_cache_key(
@@ -27,7 +29,7 @@ def build_adp_metadata_cache_key(
     filters: ADPFilters,
 ) -> str:
     payload = filters.model_dump(mode="json")
-    return "adp:metadata:" + json.dumps(
+    return ADP_METADATA_CACHE_PREFIX + json.dumps(
         payload,
         sort_keys=True,
     )

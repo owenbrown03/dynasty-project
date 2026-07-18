@@ -3,18 +3,30 @@ from datetime import UTC, datetime
 
 from app.crud import adp as adp_crud
 from app.schemas.adp import ADPFilters
-from app.services.adp.service import get_adp
+from app.services.adp.service import get_adp, invalidate_adp_cache
 
 
 class FakeRedis:
     def __init__(self):
         self.store: dict[str, str] = {}
+        self.deleted: list[str] = []
+        self.deleted_prefixes: list[str] = []
 
     async def get(self, key: str):
         return self.store.get(key)
 
     async def set(self, key: str, value: str, ttl_seconds: int):
         self.store[key] = value
+
+    async def delete(self, key: str):
+        self.deleted.append(key)
+        self.store.pop(key, None)
+
+    async def delete_prefix(self, prefix: str):
+        self.deleted_prefixes.append(prefix)
+        for key in list(self.store):
+            if key.startswith(prefix):
+                self.store.pop(key, None)
 
 
 class FakeDB:
@@ -254,3 +266,25 @@ def test_get_adp_cache_ignores_limit(monkeypatch):
     assert aggregate_calls == 1
     assert len(first_response.players) == 1
     assert len(second_response.players) == 2
+
+
+def test_invalidate_adp_cache_clears_related_keys():
+    redis = FakeRedis()
+    filters = ADPFilters(
+        season="2026",
+        draft_kind="startup",
+        qb_format="superflex",
+        minimum_draft_count=1,
+        limit=100,
+    )
+
+    asyncio.run(
+        invalidate_adp_cache(
+            redis,
+            filters=filters,
+        )
+    )
+
+    assert any(key.startswith("adp:{") for key in redis.deleted)
+    assert "adp:report" in redis.deleted
+    assert "adp:metadata:" in redis.deleted_prefixes

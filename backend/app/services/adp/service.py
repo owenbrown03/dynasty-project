@@ -6,6 +6,10 @@ from datetime import UTC, datetime
 from app.core.config import settings
 from app.crud import adp as adp_crud
 from app.infrastructure.redis.client import RedisClient
+from app.services.adp.report import (
+    ADP_METADATA_CACHE_PREFIX,
+    build_adp_report_cache_key,
+)
 from app.schemas.adp import ADPFilters, ADPPlayerRow, ADPResponse, ADPSample
 
 ADP_CACHE_ROW_LIMIT = 5000
@@ -44,6 +48,12 @@ async def invalidate_adp_cache(
 
     await redis.delete(
         build_adp_cache_key(filters),
+    )
+    await redis.delete(
+        build_adp_report_cache_key(),
+    )
+    await redis.delete_prefix(
+        ADP_METADATA_CACHE_PREFIX,
     )
 
 
