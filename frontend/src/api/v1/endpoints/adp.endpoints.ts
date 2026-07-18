@@ -1,6 +1,7 @@
 import { type AxiosInstance } from 'axios';
 
 import type {
+  ADPDatasetReport,
   ADPFilters,
   ADPMetadataResponse,
   ADPResponse,
@@ -28,5 +29,9 @@ export const adpEndpoints = (
       {
         params: filters,
       },
+    ),
+  getReport: () =>
+    client.get<ADPDatasetReport>(
+      `${prefix}/report`,
     ),
 });

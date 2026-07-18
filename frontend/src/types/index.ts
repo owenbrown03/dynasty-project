@@ -225,6 +225,25 @@ export interface ADPDistributionItem {
   count: number;
 }
 
+export interface ADPDatasetReport {
+  qualified_draft_count: number;
+  excluded_draft_count: number;
+  unique_league_count: number;
+  unique_root_source_count: number;
+  earliest_draft_at: string | null;
+  latest_draft_at: string | null;
+  qualification_code_distribution: ADPDistributionItem[];
+  season_distribution: ADPDistributionItem[];
+  draft_kind_distribution: ADPDistributionItem[];
+  qb_format_distribution: ADPDistributionItem[];
+  te_premium_distribution: ADPDistributionItem[];
+  scoring_format_distribution: ADPDistributionItem[];
+  team_count_distribution: ADPDistributionItem[];
+  discovery_source_distribution: ADPDistributionItem[];
+  discovery_depth_distribution: ADPDistributionItem[];
+  discovery_status_distribution: ADPDistributionItem[];
+}
+
 export interface LeagueOverview {
   league_id: string;
   league_name: string;

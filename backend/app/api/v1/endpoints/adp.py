@@ -4,8 +4,13 @@ from fastapi import APIRouter, Query
 
 from app.api.deps import ContextDep
 from app.core.config import settings
-from app.schemas.adp import ADPFilters, ADPMetadataResponse, ADPResponse
-from app.services.adp.report import get_adp_metadata
+from app.schemas.adp import (
+    ADPDatasetReport,
+    ADPFilters,
+    ADPMetadataResponse,
+    ADPResponse,
+)
+from app.services.adp.report import build_adp_dataset_report, get_adp_metadata
 from app.services.adp.service import get_adp
 
 
@@ -77,4 +82,16 @@ async def adp_metadata_endpoint(
             start_date=start_date,
             end_date=end_date,
         ),
+    )
+
+
+@router.get(
+    "/report",
+    response_model=ADPDatasetReport,
+)
+async def adp_report_endpoint(
+    ctx: ContextDep,
+):
+    return await build_adp_dataset_report(
+        ctx.db,
     )

@@ -8,6 +8,7 @@ export const queryKeys = {
       ['adp-results', filters] as const,
     metadata: (filters: Record<string, unknown>) =>
       ['adp-metadata', filters] as const,
+    report: ['adp-report'] as const,
   },
 
   users: {

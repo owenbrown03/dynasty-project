@@ -6,6 +6,7 @@ import { Database, Filter } from 'lucide-react';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useAdp } from '@/hooks/useAdp';
 import { useAdpMetadata } from '@/hooks/useAdpMetadata';
+import { useAdpReport } from '@/hooks/useAdpReport';
 import type {
   ADPDistributionItem,
   ADPFilters,
@@ -181,6 +182,7 @@ export const AdpPage = () => {
   const deferredFilters = useDeferredValue(filters);
   const query = useAdp(deferredFilters);
   const metadataQuery = useAdpMetadata(deferredFilters);
+  const reportQuery = useAdpReport();
 
   const sortedPlayers = useMemo(() => {
     const players = [...(query.data?.players ?? [])];
@@ -315,6 +317,66 @@ export const AdpPage = () => {
     metadataQuery.data?.team_count_options,
     metadataQuery.data?.te_premium_options,
   ]);
+
+  const corpusHealthCards = useMemo(() => {
+    const report = reportQuery.data;
+    if (!report) {
+      return [];
+    }
+
+    return [
+      {
+        label: 'Corpus qualified drafts',
+        value: report.qualified_draft_count.toLocaleString(),
+      },
+      {
+        label: 'Corpus excluded drafts',
+        value: report.excluded_draft_count.toLocaleString(),
+      },
+      {
+        label: 'Unique leagues',
+        value: report.unique_league_count.toLocaleString(),
+      },
+      {
+        label: 'Discovery roots',
+        value: report.unique_root_source_count.toLocaleString(),
+      },
+      {
+        label: 'Corpus earliest draft',
+        value: formatDateTime(report.earliest_draft_at),
+      },
+      {
+        label: 'Corpus latest draft',
+        value: formatDateTime(report.latest_draft_at),
+      },
+    ];
+  }, [reportQuery.data]);
+
+  const reportDistributionGroups = useMemo(() => {
+    const report = reportQuery.data;
+    if (!report) {
+      return [];
+    }
+
+    return [
+      {
+        label: 'Exclusion reasons',
+        rows: report.qualification_code_distribution.filter((row) => row.key !== 'qualified'),
+      },
+      {
+        label: 'Discovery sources',
+        rows: report.discovery_source_distribution,
+      },
+      {
+        label: 'Discovery depth',
+        rows: report.discovery_depth_distribution,
+      },
+      {
+        label: 'Node statuses',
+        rows: report.discovery_status_distribution,
+      },
+    ];
+  }, [reportQuery.data]);
 
   return (
     <div className="adp-page">
@@ -559,6 +621,45 @@ export const AdpPage = () => {
               This board reflects drafts discovered through your Sleeper graph, not a random sample of all Sleeper drafts.
               Use the draft count, pick count, and date window to judge how representative each filter slice is.
             </p>
+          </section>
+
+          <section className="adp-composition-card">
+            <div className="adp-composition-header">
+              <div>
+                <span className="adp-section-kicker">Corpus health</span>
+                <h2>Dataset quality and crawl shape</h2>
+              </div>
+              <small>
+                These counts reflect the whole stored Sleeper corpus, not just the current board filter.
+              </small>
+            </div>
+
+            <div className="adp-summary-grid">
+              {corpusHealthCards.map((card) => (
+                <article key={card.label} className="adp-summary-card">
+                  <span>{card.label}</span>
+                  <strong>{card.value}</strong>
+                </article>
+              ))}
+            </div>
+
+            <div className="adp-composition-grid">
+              {reportDistributionGroups.map((group) => (
+                <article key={group.label} className="adp-composition-group">
+                  <span>{group.label}</span>
+                  <div className="adp-composition-list">
+                    {group.rows.length ? group.rows.slice(0, 8).map((row) => (
+                      <div key={`${group.label}-${row.key}`} className="adp-composition-pill">
+                        <strong>{row.key}</strong>
+                        <small>{row.count.toLocaleString()} drafts</small>
+                      </div>
+                    )) : (
+                      <div className="adp-composition-empty">No tracked rows</div>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
           </section>
 
           <section className="adp-composition-card">
