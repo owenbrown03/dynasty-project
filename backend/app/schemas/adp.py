@@ -85,6 +85,15 @@ class ADPDatasetReport(Base):
     )
 
 
+class ADPMetadataResponse(Base):
+    season_options: list[ADPDistributionItem] = Field(default_factory=list)
+    draft_kind_options: list[ADPDistributionItem] = Field(default_factory=list)
+    qb_format_options: list[ADPDistributionItem] = Field(default_factory=list)
+    te_premium_options: list[ADPDistributionItem] = Field(default_factory=list)
+    team_count_options: list[ADPDistributionItem] = Field(default_factory=list)
+    scoring_format_options: list[ADPDistributionItem] = Field(default_factory=list)
+
+
 class ADPDiscoveryStatus(Base):
     node_type: str
     node_value: str

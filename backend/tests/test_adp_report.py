@@ -4,8 +4,10 @@ from datetime import UTC, datetime
 from app.crud import adp as adp_crud
 from app.services.adp.report import (
     build_adp_dataset_report,
+    get_adp_metadata,
     get_adp_discovery_status,
 )
+from app.schemas.adp import ADPFilters
 
 
 class FakeDB:
@@ -116,3 +118,26 @@ def test_get_adp_discovery_status(monkeypatch):
     assert status.counts_by_status[0].key == "pending"
     assert status.nodes[0].node_value == "draft-1"
     assert status.nodes[0].status == "processed"
+
+
+def test_get_adp_metadata(monkeypatch):
+    monkeypatch.setattr(
+        adp_crud,
+        "get_filtered_adp_distribution",
+        _distribution_stub,
+    )
+
+    metadata = asyncio.run(
+        get_adp_metadata(
+            FakeDB(),
+            filters=ADPFilters(
+                season="2026",
+                draft_kind="startup",
+                qb_format="superflex",
+            ),
+        )
+    )
+
+    assert metadata.season_options[0].key == "season-a"
+    assert metadata.draft_kind_options[0].key == "draft_kind-a"
+    assert metadata.team_count_options[1].key == "team_count-b"

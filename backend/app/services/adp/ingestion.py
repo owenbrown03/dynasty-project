@@ -36,6 +36,14 @@ class ExistingLeagueDraftIngestionResult:
     failed_draft_ids: list[str]
 
 
+@dataclass(frozen=True)
+class StoredDraftRequalificationResult:
+    processed_draft_count: int
+    qualified_draft_count: int
+    reclassified_count: int
+    failed_draft_ids: list[str]
+
+
 def _extract_qualification_timestamps(
     raw_draft: dict[str, Any],
     details: dict[str, Any],
@@ -58,6 +66,96 @@ def _extract_qualification_timestamps(
         start_dt.replace(tzinfo=None) if start_dt is not None else None,
         complete_dt.replace(tzinfo=None) if complete_dt is not None else None,
     )
+
+
+async def _persist_classification(
+    db: AsyncSession,
+    *,
+    draft_id: str,
+    league_id: str,
+    raw_draft: dict[str, Any],
+    classification,
+) -> None:
+    started_at, completed_at = _extract_qualification_timestamps(
+        raw_draft,
+        classification.qualification_details,
+    )
+    await adp_crud.upsert_draft_qualifications(
+        db,
+        [
+            ADPDraftQualification(
+                draft_id=draft_id,
+                league_id=league_id,
+                draft_started_at=started_at,
+                draft_completed_at=completed_at,
+                draft_kind=classification.draft_kind,
+                league_format=classification.league_format,
+                qb_format=classification.qb_format,
+                te_premium=classification.te_premium,
+                scoring_format=classification.scoring_format,
+                team_count=classification.team_count,
+                round_count=classification.round_count,
+                is_mock=classification.is_mock,
+                is_complete=classification.is_complete,
+                is_qualified=classification.is_qualified,
+                qualification_code=classification.qualification_code,
+                qualification_details=classification.qualification_details,
+                classified_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            ).model_dump()
+        ],
+    )
+
+
+def _build_stored_draft_payload(
+    *,
+    draft,
+    league,
+    qualification: ADPDraftQualification | None,
+    picks: list[dict[str, Any]],
+) -> dict[str, Any]:
+    max_round = max(
+        (
+            pick.get("round")
+            for pick in picks
+            if pick.get("round") is not None
+        ),
+        default=None,
+    )
+    payload: dict[str, Any] = {
+        "draft_id": draft.draft_id,
+        "league_id": draft.league_id,
+        "season": draft.season,
+        "draft_order": draft.draft_order or {},
+        "slot_to_roster_id": draft.slot_to_roster_id or {},
+        "settings": {
+            "rounds": (
+                qualification.round_count
+                if qualification and qualification.round_count is not None
+                else max_round
+                or league.settings.get("draft_rounds")
+            ),
+        },
+        "metadata": {},
+    }
+    if qualification is not None:
+        if qualification.draft_started_at is not None:
+            payload["start_time"] = int(
+                qualification.draft_started_at.timestamp() * 1000
+            )
+        if qualification.draft_completed_at is not None:
+            completed_ms = int(
+                qualification.draft_completed_at.timestamp() * 1000
+            )
+            payload["completed_at"] = completed_ms
+            payload["last_picked"] = completed_ms
+        if qualification.league_format == "keeper":
+            payload["settings"]["is_keeper"] = True
+        if qualification.qualification_code == "auction":
+            payload["settings"]["type"] = "auction"
+        if qualification.qualification_code == "mock":
+            payload["status"] = "mock_draft_complete"
+    return payload
 
 
 async def ingest_draft(
@@ -119,34 +217,12 @@ async def ingest_draft(
         league,
         players_by_id=players_by_id,
     )
-    started_at, completed_at = _extract_qualification_timestamps(
-        raw_draft,
-        classification.qualification_details,
-    )
-    await adp_crud.upsert_draft_qualifications(
+    await _persist_classification(
         db,
-        [
-            ADPDraftQualification(
-                draft_id=draft.draft_id,
-                league_id=league.league_id,
-                draft_started_at=started_at,
-                draft_completed_at=completed_at,
-                draft_kind=classification.draft_kind,
-                league_format=classification.league_format,
-                qb_format=classification.qb_format,
-                te_premium=classification.te_premium,
-                scoring_format=classification.scoring_format,
-                team_count=classification.team_count,
-                round_count=classification.round_count,
-                is_mock=classification.is_mock,
-                is_complete=classification.is_complete,
-                is_qualified=classification.is_qualified,
-                qualification_code=classification.qualification_code,
-                qualification_details=classification.qualification_details,
-                classified_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            ).model_dump()
-        ],
+        draft_id=draft.draft_id,
+        league_id=league.league_id,
+        raw_draft=raw_draft,
+        classification=classification,
     )
 
     return DraftIngestionResult(
@@ -281,3 +357,96 @@ async def ingest_discovered_drafts(
 
     await db.commit()
     return results
+
+
+async def requalify_stored_drafts(
+    db: AsyncSession,
+    *,
+    limit: int,
+    season: str | None = None,
+) -> StoredDraftRequalificationResult:
+    rows = await adp_crud.get_stored_drafts_for_requalification(
+        db,
+        limit=limit,
+        season=season,
+    )
+    selections_by_draft_id = await adp_crud.get_draft_selections_by_draft_ids(
+        db,
+        [row.draft.draft_id for row in rows],
+    )
+    player_ids = [
+        selection.player_id
+        for selections in selections_by_draft_id.values()
+        for selection in selections
+        if selection.player_id
+    ]
+    players_by_id = await adp_crud.get_players_by_ids(
+        db,
+        player_ids,
+    )
+
+    processed_draft_count = 0
+    qualified_draft_count = 0
+    reclassified_count = 0
+    failed_draft_ids: list[str] = []
+
+    for row in rows:
+        try:
+            selection_rows = selections_by_draft_id.get(
+                row.draft.draft_id,
+                [],
+            )
+            raw_picks = [
+                {
+                    "round": selection.round,
+                    "pick_no": selection.pick_no,
+                    "round_slot": selection.round_slot,
+                    "roster_id": selection.roster_id,
+                    "player_id": selection.player_id,
+                    "is_keeper": selection.is_keeper,
+                }
+                for selection in selection_rows
+            ]
+            raw_draft = _build_stored_draft_payload(
+                draft=row.draft,
+                league=row.league,
+                qualification=row.qualification,
+                picks=raw_picks,
+            )
+            classification = classify_draft(
+                raw_draft,
+                raw_picks,
+                row.league,
+                players_by_id=players_by_id,
+            )
+            previous_code = (
+                row.qualification.qualification_code
+                if row.qualification is not None
+                else None
+            )
+            await _persist_classification(
+                db,
+                draft_id=row.draft.draft_id,
+                league_id=row.league.league_id,
+                raw_draft=raw_draft,
+                classification=classification,
+            )
+            processed_draft_count += 1
+            qualified_draft_count += int(classification.is_qualified)
+            reclassified_count += int(
+                previous_code != classification.qualification_code
+            )
+        except Exception:
+            logger.exception(
+                "ADP draft requalification failed for draft %s",
+                row.draft.draft_id,
+            )
+            failed_draft_ids.append(row.draft.draft_id)
+
+    await db.commit()
+    return StoredDraftRequalificationResult(
+        processed_draft_count=processed_draft_count,
+        qualified_draft_count=qualified_draft_count,
+        reclassified_count=reclassified_count,
+        failed_draft_ids=failed_draft_ids,
+    )

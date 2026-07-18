@@ -17,6 +17,7 @@ from app.services.adp.discovery import (
 from app.services.adp.ingestion import (
     ingest_discovered_drafts,
     ingest_existing_league_drafts,
+    requalify_stored_drafts,
 )
 from app.services.adp.report import (
     build_adp_dataset_report,
@@ -286,6 +287,25 @@ async def adp_validate_existing_leagues(
             "failed_draft_ids": ingestion_result.failed_draft_ids,
         },
         "report": report,
+    }
+
+
+@router.post("/adp/requalify")
+async def adp_requalify_stored(
+    ctx: ContextDep,
+    limit: int = Query(default=100, ge=1, le=5000),
+    season: str | None = Query(default=None),
+):
+    result = await requalify_stored_drafts(
+        ctx.db,
+        limit=limit,
+        season=season,
+    )
+    return {
+        "processed_draft_count": result.processed_draft_count,
+        "qualified_draft_count": result.qualified_draft_count,
+        "reclassified_count": result.reclassified_count,
+        "failed_draft_ids": result.failed_draft_ids,
     }
 
 

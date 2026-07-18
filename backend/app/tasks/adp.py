@@ -13,6 +13,7 @@ from app.crud import adp as adp_crud
 from app.services.adp.ingestion import (
     ingest_discovered_drafts,
     ingest_existing_league_drafts,
+    requalify_stored_drafts,
 )
 from app.services.adp.service import invalidate_adp_cache
 from app.services.adp.snapshots import (
@@ -97,6 +98,25 @@ async def ingest_discovered_adp_drafts_task(
             }
             for result in results
         ]
+
+
+@broker.task
+async def requalify_stored_adp_drafts_task(
+    limit: int = 100,
+    season: str | None = None,
+):
+    async with AsyncSessionLocal() as db:
+        result = await requalify_stored_drafts(
+            db,
+            limit=limit,
+            season=season,
+        )
+        return {
+            "processed_draft_count": result.processed_draft_count,
+            "qualified_draft_count": result.qualified_draft_count,
+            "reclassified_count": result.reclassified_count,
+            "failed_draft_ids": result.failed_draft_ids,
+        }
 
 
 @broker.task

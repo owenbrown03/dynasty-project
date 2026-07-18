@@ -6,6 +6,8 @@ from app.schemas.adp import (
     ADPDiscoveryStatus,
     ADPDiscoveryStatusResponse,
     ADPDistributionItem,
+    ADPFilters,
+    ADPMetadataResponse,
 )
 
 
@@ -119,4 +121,97 @@ async def get_adp_discovery_status(
             )
             for node in nodes
         ],
+    )
+
+
+async def get_adp_metadata(
+    db,
+    *,
+    filters: ADPFilters,
+) -> ADPMetadataResponse:
+    return ADPMetadataResponse(
+        season_options=_to_distribution_items(
+            await adp_crud.get_filtered_adp_distribution(
+                db,
+                source="season",
+                season=filters.season,
+                draft_kind=filters.draft_kind,
+                qb_format=filters.qb_format,
+                te_premium=filters.te_premium,
+                team_count=filters.team_count,
+                scoring_format=filters.scoring_format,
+                start_date=filters.start_date,
+                end_date=filters.end_date,
+            )
+        ),
+        draft_kind_options=_to_distribution_items(
+            await adp_crud.get_filtered_adp_distribution(
+                db,
+                source="draft_kind",
+                season=filters.season,
+                draft_kind=filters.draft_kind,
+                qb_format=filters.qb_format,
+                te_premium=filters.te_premium,
+                team_count=filters.team_count,
+                scoring_format=filters.scoring_format,
+                start_date=filters.start_date,
+                end_date=filters.end_date,
+            )
+        ),
+        qb_format_options=_to_distribution_items(
+            await adp_crud.get_filtered_adp_distribution(
+                db,
+                source="qb_format",
+                season=filters.season,
+                draft_kind=filters.draft_kind,
+                qb_format=filters.qb_format,
+                te_premium=filters.te_premium,
+                team_count=filters.team_count,
+                scoring_format=filters.scoring_format,
+                start_date=filters.start_date,
+                end_date=filters.end_date,
+            )
+        ),
+        te_premium_options=_to_distribution_items(
+            await adp_crud.get_filtered_adp_distribution(
+                db,
+                source="te_premium",
+                season=filters.season,
+                draft_kind=filters.draft_kind,
+                qb_format=filters.qb_format,
+                te_premium=filters.te_premium,
+                team_count=filters.team_count,
+                scoring_format=filters.scoring_format,
+                start_date=filters.start_date,
+                end_date=filters.end_date,
+            )
+        ),
+        team_count_options=_to_distribution_items(
+            await adp_crud.get_filtered_adp_distribution(
+                db,
+                source="team_count",
+                season=filters.season,
+                draft_kind=filters.draft_kind,
+                qb_format=filters.qb_format,
+                te_premium=filters.te_premium,
+                team_count=filters.team_count,
+                scoring_format=filters.scoring_format,
+                start_date=filters.start_date,
+                end_date=filters.end_date,
+            )
+        ),
+        scoring_format_options=_to_distribution_items(
+            await adp_crud.get_filtered_adp_distribution(
+                db,
+                source="scoring_format",
+                season=filters.season,
+                draft_kind=filters.draft_kind,
+                qb_format=filters.qb_format,
+                te_premium=filters.te_premium,
+                team_count=filters.team_count,
+                scoring_format=filters.scoring_format,
+                start_date=filters.start_date,
+                end_date=filters.end_date,
+            )
+        ),
     )

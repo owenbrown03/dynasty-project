@@ -167,3 +167,122 @@ def test_ingest_discovered_drafts_batches_ready_seeds(monkeypatch):
     assert db.commits == 1
     assert len(results) == 2
     assert results[0].qualification_code == "qualified"
+
+
+def test_requalify_stored_drafts_updates_existing_qualifications(monkeypatch):
+    db = FakeDB()
+    persisted_codes: list[str] = []
+
+    draft = SimpleNamespace(
+        draft_id="draft-1",
+        league_id="league-1",
+        season="2026",
+        draft_order={},
+        slot_to_roster_id={},
+    )
+    league = SimpleNamespace(
+        league_id="league-1",
+        season="2026",
+        total_rosters=14,
+        previous_league_id=None,
+        settings={
+            "type": 2,
+            "draft_rounds": 30,
+        },
+        scoring_settings={
+            "rec": 1.0,
+            "bonus_rec_te": 1.0,
+        },
+        roster_positions=[
+            "QB",
+            "RB",
+            "RB",
+            "WR",
+            "WR",
+            "TE",
+            "FLEX",
+            "SUPER_FLEX",
+            "BN",
+        ],
+    )
+    qualification = SimpleNamespace(
+        qualification_code="unsupported_team_count",
+        round_count=30,
+        league_format="dynasty",
+        draft_started_at=None,
+        draft_completed_at=None,
+    )
+
+    async def fake_get_stored_drafts_for_requalification(*args, **kwargs):
+        return [
+            adp_crud.ADPStoredDraftRequalificationRow(
+                draft=draft,
+                league=league,
+                qualification=qualification,
+            ),
+        ]
+
+    async def fake_get_draft_selections_by_draft_ids(*args, **kwargs):
+        return {
+            "draft-1": [
+                SimpleNamespace(
+                    draft_id="draft-1",
+                    round=((pick_no - 1) // 14) + 1,
+                    pick_no=pick_no,
+                    round_slot=((pick_no - 1) % 14) + 1,
+                    roster_id=((pick_no - 1) % 14) + 1,
+                    player_id=str(pick_no),
+                    is_keeper=False,
+                )
+                for pick_no in range(1, 421)
+            ],
+        }
+
+    async def fake_get_players_by_ids(*args, **kwargs):
+        return {
+            str(player_id): SimpleNamespace(
+                years_exp=3,
+            )
+            for player_id in kwargs.get("player_ids", args[1] if len(args) > 1 else [])
+        }
+
+    async def fake_persist_classification(db, **kwargs):
+        persisted_codes.append(
+            kwargs["classification"].qualification_code,
+        )
+
+    monkeypatch.setattr(
+        adp_crud,
+        "get_stored_drafts_for_requalification",
+        fake_get_stored_drafts_for_requalification,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "get_draft_selections_by_draft_ids",
+        fake_get_draft_selections_by_draft_ids,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "get_players_by_ids",
+        fake_get_players_by_ids,
+    )
+    monkeypatch.setattr(
+        ingestion_service,
+        "_persist_classification",
+        fake_persist_classification,
+    )
+
+    result = asyncio.run(
+        ingestion_service.requalify_stored_drafts(
+            db,
+            limit=10,
+            season="2026",
+        )
+    )
+
+    assert db.commits == 1
+    assert result.processed_draft_count == 1
+    assert result.qualified_draft_count == 1
+    assert result.reclassified_count == 1
+    assert result.failed_draft_ids == []
+    assert persisted_codes == ["qualified"]

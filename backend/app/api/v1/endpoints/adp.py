@@ -4,7 +4,8 @@ from fastapi import APIRouter, Query
 
 from app.api.deps import ContextDep
 from app.core.config import settings
-from app.schemas.adp import ADPFilters, ADPResponse
+from app.schemas.adp import ADPFilters, ADPMetadataResponse, ADPResponse
+from app.services.adp.report import get_adp_metadata
 from app.services.adp.service import get_adp
 
 
@@ -45,5 +46,35 @@ async def adp_endpoint(
             end_date=end_date,
             minimum_draft_count=minimum_draft_count,
             limit=limit,
+        ),
+    )
+
+
+@router.get(
+    "/metadata",
+    response_model=ADPMetadataResponse,
+)
+async def adp_metadata_endpoint(
+    ctx: ContextDep,
+    season: str | None = Query(default=None),
+    draft_kind: str | None = Query(default=None),
+    qb_format: str | None = Query(default=None),
+    te_premium: str | None = Query(default=None),
+    team_count: int | None = Query(default=None),
+    scoring_format: str | None = Query(default=None),
+    start_date: datetime | None = Query(default=None),
+    end_date: datetime | None = Query(default=None),
+):
+    return await get_adp_metadata(
+        ctx.db,
+        filters=ADPFilters(
+            season=season,
+            draft_kind=draft_kind,
+            qb_format=qb_format,
+            te_premium=te_premium,
+            team_count=team_count,
+            scoring_format=scoring_format,
+            start_date=start_date,
+            end_date=end_date,
         ),
     )

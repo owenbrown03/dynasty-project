@@ -76,6 +76,13 @@ class ADPSnapshotResult:
     players: list[ADPPlayerAggregateRow]
 
 
+@dataclass(frozen=True)
+class ADPStoredDraftRequalificationRow:
+    draft: Draft
+    league: League
+    qualification: ADPDraftQualification | None
+
+
 DISCOVERY_STATUS_PENDING = "pending"
 DISCOVERY_STATUS_PROCESSING = "processing"
 DISCOVERY_STATUS_PROCESSED = "processed"
@@ -629,6 +636,69 @@ async def get_adp_distribution(
     ]
 
 
+async def get_filtered_adp_distribution(
+    db: AsyncSession,
+    *,
+    source: str,
+    season: str | None = None,
+    draft_kind: str | None = None,
+    qb_format: str | None = None,
+    te_premium: str | None = None,
+    team_count: int | None = None,
+    scoring_format: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> list[ADPDistributionCount]:
+    if source == "season":
+        key_column = Draft.season
+    elif source == "draft_kind":
+        key_column = ADPDraftQualification.draft_kind
+    elif source == "qb_format":
+        key_column = ADPDraftQualification.qb_format
+    elif source == "te_premium":
+        key_column = ADPDraftQualification.te_premium
+    elif source == "team_count":
+        key_column = ADPDraftQualification.team_count
+    elif source == "scoring_format":
+        key_column = ADPDraftQualification.scoring_format
+    else:
+        raise ValueError(f"Unsupported filtered ADP distribution source: {source}")
+
+    statement = (
+        select(
+            key_column,
+            func.count(ADPDraftQualification.draft_id),
+        )
+        .select_from(ADPDraftQualification)
+        .join(Draft, Draft.draft_id == ADPDraftQualification.draft_id)
+        .group_by(key_column)
+        .order_by(
+            func.count(ADPDraftQualification.draft_id).desc(),
+            key_column.asc(),
+        )
+    )
+    statement = apply_adp_filters(
+        statement,
+        season=None if source == "season" else season,
+        draft_kind=None if source == "draft_kind" else draft_kind,
+        qb_format=None if source == "qb_format" else qb_format,
+        te_premium=None if source == "te_premium" else te_premium,
+        team_count=None if source == "team_count" else team_count,
+        scoring_format=None if source == "scoring_format" else scoring_format,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    result = await db.execute(statement)
+    return [
+        ADPDistributionCount(
+            key=str(key if key is not None else "unknown"),
+            count=int(count),
+        )
+        for key, count in result.all()
+    ]
+
+
 def apply_adp_filters(
     statement,
     *,
@@ -839,6 +909,69 @@ async def get_player_adp_aggregates(
             draft_count,
         ) in rows
     ]
+
+
+async def get_stored_drafts_for_requalification(
+    db: AsyncSession,
+    *,
+    limit: int,
+    season: str | None = None,
+) -> list[ADPStoredDraftRequalificationRow]:
+    statement = (
+        select(
+            Draft,
+            League,
+            ADPDraftQualification,
+        )
+        .select_from(Draft)
+        .join(League, League.league_id == Draft.league_id)
+        .outerjoin(
+            ADPDraftQualification,
+            ADPDraftQualification.draft_id == Draft.draft_id,
+        )
+        .order_by(
+            Draft.season.desc(),
+            Draft.draft_id.asc(),
+        )
+        .limit(limit)
+    )
+
+    if season is not None:
+        statement = statement.where(Draft.season == season)
+
+    result = await db.execute(statement)
+    return [
+        ADPStoredDraftRequalificationRow(
+            draft=draft,
+            league=league,
+            qualification=qualification,
+        )
+        for draft, league, qualification in result.all()
+    ]
+
+
+async def get_draft_selections_by_draft_ids(
+    db: AsyncSession,
+    draft_ids: Sequence[str],
+) -> dict[str, list[DraftSelection]]:
+    if not draft_ids:
+        return {}
+
+    result = await db.execute(
+        select(DraftSelection)
+        .where(DraftSelection.draft_id.in_(list(draft_ids)))
+        .order_by(
+            DraftSelection.draft_id.asc(),
+            DraftSelection.pick_no.asc(),
+        )
+    )
+    grouped: dict[str, list[DraftSelection]] = {}
+    for selection in result.scalars().all():
+        grouped.setdefault(
+            selection.draft_id,
+            [],
+        ).append(selection)
+    return grouped
 
 
 def _apply_snapshot_filters(
