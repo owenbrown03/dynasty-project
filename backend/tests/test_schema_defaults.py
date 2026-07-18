@@ -65,6 +65,23 @@ def test_sleeper_api_models_use_isolated_collection_defaults():
     assert second_draft.draft_order == {}
 
 
+def test_draft_schema_allows_null_slot_to_roster_entries():
+    draft = Draft(
+        draft_id="draft-3",
+        league_id="league-3",
+        season="2029",
+        slot_to_roster_id={
+            "1": None,
+            "2": 7,
+        },
+    )
+
+    assert draft.slot_to_roster_id == {
+        "1": None,
+        "2": 7,
+    }
+
+
 def test_display_models_use_isolated_list_defaults():
     first = User(
         display_name="One",

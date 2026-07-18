@@ -412,7 +412,12 @@ async def get_ready_discovered_draft_ids(
         )
         .where(
             ADPDiscoveryNode.node_type == "draft_id",
-            ADPDiscoveryNode.status == DISCOVERY_STATUS_PROCESSED,
+            ADPDiscoveryNode.status.in_(
+                [
+                    DISCOVERY_STATUS_PENDING,
+                    DISCOVERY_STATUS_PROCESSED,
+                ]
+            ),
             qualification.draft_id.is_(None),
         )
         .order_by(

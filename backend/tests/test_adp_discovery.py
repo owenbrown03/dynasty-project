@@ -294,3 +294,94 @@ def test_process_discovery_batch_releases_unprocessed_nodes_on_budget_stop(
     assert result.processed_node_count == 1
     assert result.stopped_reason == "request_budget_reached"
     assert released_ids == ["league-node-2"]
+
+
+def test_process_discovery_batch_stays_disabled_by_default(monkeypatch):
+    monkeypatch.setattr(discovery_service.settings, "ADP_CRAWL_ENABLED", False)
+
+    result = asyncio.run(
+        discovery_service.process_adp_discovery_batch(
+            FakeDB(),
+            FakeSleeperClient(),
+        )
+    )
+
+    assert result.claimed_node_count == 0
+    assert result.processed_node_count == 0
+    assert result.stopped_reason == "crawl_disabled"
+
+
+def test_process_discovery_batch_can_override_disabled_crawl(
+    monkeypatch,
+):
+    processed_ids: list[str] = []
+
+    async def fake_claim_discovery_nodes(*args, **kwargs):
+        return [
+            SimpleNamespace(
+                id="league-node-1",
+                node_type="league_id",
+                node_value="league-1",
+                discovery_depth=0,
+            )
+        ]
+
+    async def fake_enqueue_discovery_nodes(*args, **kwargs):
+        return 0
+
+    async def fake_mark_processed(db, *, node_id):
+        processed_ids.append(node_id)
+
+    async def fake_mark_failed(*args, **kwargs):
+        return None
+
+    async def fake_release_nodes(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(
+        adp_crud,
+        "claim_discovery_nodes",
+        fake_claim_discovery_nodes,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "enqueue_discovery_nodes",
+        fake_enqueue_discovery_nodes,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "mark_discovery_node_processed",
+        fake_mark_processed,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "mark_discovery_node_failed",
+        fake_mark_failed,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "release_discovery_nodes",
+        fake_release_nodes,
+    )
+    monkeypatch.setattr(discovery_service.settings, "ADP_CRAWL_ENABLED", False)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_REQUESTS_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_NEW_USERS_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_NEW_DRAFTS_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_NEW_LEAGUES_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_DISCOVERY_DEPTH", 2)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_NODES_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_RUNTIME_SECONDS", 300)
+    monkeypatch.setattr(discovery_service.settings, "ADP_PROCESSING_TIMEOUT_SECONDS", 900)
+
+    result = asyncio.run(
+        discovery_service.process_adp_discovery_batch(
+            FakeDB(),
+            FakeSleeperClient(),
+            allow_when_disabled=True,
+        )
+    )
+
+    assert result.claimed_node_count == 1
+    assert result.processed_node_count == 1
+    assert result.stopped_reason is None
+    assert processed_ids == ["league-node-1"]

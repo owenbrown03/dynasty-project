@@ -223,8 +223,9 @@ async def process_adp_discovery_batch(
     sleeper: SleeperClient,
     *,
     max_nodes: int | None = None,
+    allow_when_disabled: bool = False,
 ) -> ADPDiscoveryBatchResult:
-    if not settings.ADP_CRAWL_ENABLED:
+    if not settings.ADP_CRAWL_ENABLED and not allow_when_disabled:
         return ADPDiscoveryBatchResult(
             claimed_node_count=0,
             processed_node_count=0,

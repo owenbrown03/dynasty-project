@@ -229,11 +229,13 @@ async def adp_seed_discovery(
 async def adp_process_discovery(
     ctx: ContextDep,
     max_nodes: int | None = Query(default=None, ge=1),
+    allow_when_disabled: bool = Query(default=True),
 ):
     return await process_adp_discovery_batch(
         ctx.db,
         ctx.sleeper,
         max_nodes=max_nodes,
+        allow_when_disabled=allow_when_disabled,
     )
 
 
@@ -302,6 +304,7 @@ async def adp_validate_one_hop(
         ctx.db,
         ctx.sleeper,
         max_nodes=max_nodes,
+        allow_when_disabled=True,
     )
     ingested = await ingest_discovered_drafts(
         ctx.db,
