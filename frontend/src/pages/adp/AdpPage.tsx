@@ -5,7 +5,9 @@ import { Database, Filter } from 'lucide-react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useAdp } from '@/hooks/useAdp';
+import { useAdpMetadata } from '@/hooks/useAdpMetadata';
 import type {
+  ADPDistributionItem,
   ADPFilters,
   ADPPlayerRow,
 } from '@/types';
@@ -27,41 +29,29 @@ type SortDirection =
   | 'asc'
   | 'desc';
 
-const DRAFT_KIND_OPTIONS = [
-  { value: '', label: 'All drafts' },
-  { value: 'startup', label: 'Startup' },
-  { value: 'rookie', label: 'Rookie' },
-  { value: 'supplemental', label: 'Supplemental' },
-];
+const DRAFT_KIND_LABELS: Record<string, string> = {
+  startup: 'Startup',
+  rookie: 'Rookie',
+  supplemental: 'Supplemental',
+};
 
-const QB_FORMAT_OPTIONS = [
-  { value: '', label: 'All QB formats' },
-  { value: 'one_qb', label: '1QB' },
-  { value: 'superflex', label: 'Superflex' },
-  { value: 'two_qb', label: '2QB' },
-];
+const QB_FORMAT_LABELS: Record<string, string> = {
+  one_qb: '1QB',
+  superflex: 'Superflex',
+  two_qb: '2QB',
+};
 
-const TEP_OPTIONS = [
-  { value: '', label: 'All TE formats' },
-  { value: 'none', label: 'Non-TEP' },
-  { value: 'premium', label: 'TE premium' },
-];
+const TEP_LABELS: Record<string, string> = {
+  none: 'Non-TEP',
+  premium: 'TE premium',
+};
 
-const SCORING_OPTIONS = [
-  { value: '', label: 'All scoring' },
-  { value: 'standard', label: 'Standard' },
-  { value: 'half_ppr', label: 'Half PPR' },
-  { value: 'ppr', label: 'PPR' },
-  { value: 'custom', label: 'Custom' },
-];
-
-const TEAM_COUNT_OPTIONS = [
-  { value: '', label: 'Any team count' },
-  { value: '8', label: '8 teams' },
-  { value: '10', label: '10 teams' },
-  { value: '12', label: '12 teams' },
-  { value: '14', label: '14 teams' },
-];
+const SCORING_LABELS: Record<string, string> = {
+  standard: 'Standard',
+  half_ppr: 'Half PPR',
+  ppr: 'PPR',
+  custom: 'Custom',
+};
 
 function formatDateTime(
   value: string | null,
@@ -89,6 +79,43 @@ function formatDataSource(
   }
 
   return 'Live aggregate';
+}
+
+
+function buildDynamicOptions(
+  rows: ADPDistributionItem[] | undefined,
+  {
+    allLabel,
+    labelMap = {},
+    formatLabel,
+  }: {
+    allLabel: string;
+    labelMap?: Record<string, string>;
+    formatLabel?: (row: ADPDistributionItem) => string;
+  },
+) {
+  const options = [
+    {
+      value: '',
+      label: allLabel,
+    },
+  ];
+
+  for (const row of rows ?? []) {
+    if (!row.key || row.key === 'unknown') {
+      continue;
+    }
+
+    const label = formatLabel
+      ? formatLabel(row)
+      : `${labelMap[row.key] ?? row.key} (${row.count})`;
+    options.push({
+      value: row.key,
+      label,
+    });
+  }
+
+  return options;
 }
 
 
@@ -145,6 +172,7 @@ export const AdpPage = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const deferredFilters = useDeferredValue(filters);
   const query = useAdp(deferredFilters);
+  const metadataQuery = useAdpMetadata(deferredFilters);
 
   const sortedPlayers = useMemo(() => {
     const players = [...(query.data?.players ?? [])];
@@ -180,6 +208,54 @@ export const AdpPage = () => {
     ));
   };
 
+  const seasonOptions = useMemo(() => buildDynamicOptions(
+    metadataQuery.data?.season_options,
+    {
+      allLabel: 'All seasons',
+      formatLabel: (row) => `${row.key} (${row.count})`,
+    },
+  ), [metadataQuery.data?.season_options]);
+
+  const draftKindOptions = useMemo(() => buildDynamicOptions(
+    metadataQuery.data?.draft_kind_options,
+    {
+      allLabel: 'All drafts',
+      labelMap: DRAFT_KIND_LABELS,
+    },
+  ), [metadataQuery.data?.draft_kind_options]);
+
+  const qbFormatOptions = useMemo(() => buildDynamicOptions(
+    metadataQuery.data?.qb_format_options,
+    {
+      allLabel: 'All QB formats',
+      labelMap: QB_FORMAT_LABELS,
+    },
+  ), [metadataQuery.data?.qb_format_options]);
+
+  const tepOptions = useMemo(() => buildDynamicOptions(
+    metadataQuery.data?.te_premium_options,
+    {
+      allLabel: 'All TE formats',
+      labelMap: TEP_LABELS,
+    },
+  ), [metadataQuery.data?.te_premium_options]);
+
+  const scoringOptions = useMemo(() => buildDynamicOptions(
+    metadataQuery.data?.scoring_format_options,
+    {
+      allLabel: 'All scoring',
+      labelMap: SCORING_LABELS,
+    },
+  ), [metadataQuery.data?.scoring_format_options]);
+
+  const teamCountOptions = useMemo(() => buildDynamicOptions(
+    metadataQuery.data?.team_count_options,
+    {
+      allLabel: 'Any team count',
+      formatLabel: (row) => `${row.key} teams (${row.count})`,
+    },
+  ), [metadataQuery.data?.team_count_options]);
+
   return (
     <div className="adp-page">
       <section className="page-hero adp-hero">
@@ -211,7 +287,7 @@ export const AdpPage = () => {
         <div className="adp-filters-grid">
           <label>
             <span>Season</span>
-            <input
+            <select
               value={filters.season ?? ''}
               onChange={(event) => {
                 setFilters((current) => ({
@@ -219,8 +295,13 @@ export const AdpPage = () => {
                   season: event.target.value.trim() || null,
                 }));
               }}
-              placeholder="2026"
-            />
+            >
+              {seasonOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
@@ -234,7 +315,7 @@ export const AdpPage = () => {
                 }));
               }}
             >
-              {DRAFT_KIND_OPTIONS.map((option) => (
+              {draftKindOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -253,7 +334,7 @@ export const AdpPage = () => {
                 }));
               }}
             >
-              {QB_FORMAT_OPTIONS.map((option) => (
+              {qbFormatOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -272,7 +353,7 @@ export const AdpPage = () => {
                 }));
               }}
             >
-              {TEP_OPTIONS.map((option) => (
+              {tepOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -291,7 +372,7 @@ export const AdpPage = () => {
                 }));
               }}
             >
-              {SCORING_OPTIONS.map((option) => (
+              {scoringOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -312,7 +393,7 @@ export const AdpPage = () => {
                 }));
               }}
             >
-              {TEAM_COUNT_OPTIONS.map((option) => (
+              {teamCountOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

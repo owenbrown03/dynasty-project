@@ -211,6 +211,20 @@ export interface ADPResponse {
   players: ADPPlayerRow[];
 }
 
+export interface ADPMetadataResponse {
+  season_options: ADPDistributionItem[];
+  draft_kind_options: ADPDistributionItem[];
+  qb_format_options: ADPDistributionItem[];
+  te_premium_options: ADPDistributionItem[];
+  team_count_options: ADPDistributionItem[];
+  scoring_format_options: ADPDistributionItem[];
+}
+
+export interface ADPDistributionItem {
+  key: string;
+  count: number;
+}
+
 export interface LeagueOverview {
   league_id: string;
   league_name: string;

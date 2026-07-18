@@ -6,6 +6,8 @@ export const queryKeys = {
   adp: {
     results: (filters: Record<string, unknown>) =>
       ['adp-results', filters] as const,
+    metadata: (filters: Record<string, unknown>) =>
+      ['adp-metadata', filters] as const,
   },
 
   users: {

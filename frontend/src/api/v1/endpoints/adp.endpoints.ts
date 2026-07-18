@@ -2,6 +2,7 @@ import { type AxiosInstance } from 'axios';
 
 import type {
   ADPFilters,
+  ADPMetadataResponse,
   ADPResponse,
 } from '@/types';
 
@@ -15,6 +16,15 @@ export const adpEndpoints = (
   ) =>
     client.get<ADPResponse>(
       `${prefix}`,
+      {
+        params: filters,
+      },
+    ),
+  getMetadata: (
+    filters: ADPFilters,
+  ) =>
+    client.get<ADPMetadataResponse>(
+      `${prefix}/metadata`,
       {
         params: filters,
       },
