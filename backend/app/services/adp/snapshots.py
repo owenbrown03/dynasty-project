@@ -24,7 +24,7 @@ def build_default_adp_snapshot_requests(
         for draft_kind in ("startup", "rookie"):
             for qb_format in ("one_qb", "superflex"):
                 for te_premium in ("none", "premium"):
-                    for team_count in (10, 12):
+                    for team_count in (8, 10, 12, 14):
                         requests.append(
                             ADPSnapshotRequest(
                                 season=season,

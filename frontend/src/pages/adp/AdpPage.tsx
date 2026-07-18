@@ -54,8 +54,10 @@ const SCORING_OPTIONS = [
 
 const TEAM_COUNT_OPTIONS = [
   { value: '', label: 'Any team count' },
+  { value: '8', label: '8 teams' },
   { value: '10', label: '10 teams' },
   { value: '12', label: '12 teams' },
+  { value: '14', label: '14 teams' },
 ];
 
 function formatDateTime(
