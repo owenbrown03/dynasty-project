@@ -82,6 +82,14 @@ function formatDataSource(
 }
 
 
+function renderDistributionLabel(
+  row: ADPDistributionItem,
+  labelMap: Record<string, string> = {},
+) {
+  return labelMap[row.key] ?? row.key;
+}
+
+
 function buildDynamicOptions(
   rows: ADPDistributionItem[] | undefined,
   {
@@ -255,6 +263,58 @@ export const AdpPage = () => {
       formatLabel: (row) => `${row.key} teams (${row.count})`,
     },
   ), [metadataQuery.data?.team_count_options]);
+
+  const sampleCompositionGroups = useMemo(() => ([
+    {
+      label: 'Seasons in corpus',
+      rows: metadataQuery.data?.season_options ?? [],
+      render: (row: ADPDistributionItem) => row.key,
+    },
+    {
+      label: 'Draft kinds',
+      rows: metadataQuery.data?.draft_kind_options ?? [],
+      render: (row: ADPDistributionItem) => renderDistributionLabel(
+        row,
+        DRAFT_KIND_LABELS,
+      ),
+    },
+    {
+      label: 'QB formats',
+      rows: metadataQuery.data?.qb_format_options ?? [],
+      render: (row: ADPDistributionItem) => renderDistributionLabel(
+        row,
+        QB_FORMAT_LABELS,
+      ),
+    },
+    {
+      label: 'TE formats',
+      rows: metadataQuery.data?.te_premium_options ?? [],
+      render: (row: ADPDistributionItem) => renderDistributionLabel(
+        row,
+        TEP_LABELS,
+      ),
+    },
+    {
+      label: 'Scoring formats',
+      rows: metadataQuery.data?.scoring_format_options ?? [],
+      render: (row: ADPDistributionItem) => renderDistributionLabel(
+        row,
+        SCORING_LABELS,
+      ),
+    },
+    {
+      label: 'Team counts',
+      rows: metadataQuery.data?.team_count_options ?? [],
+      render: (row: ADPDistributionItem) => `${row.key} teams`,
+    },
+  ]), [
+    metadataQuery.data?.draft_kind_options,
+    metadataQuery.data?.qb_format_options,
+    metadataQuery.data?.scoring_format_options,
+    metadataQuery.data?.season_options,
+    metadataQuery.data?.team_count_options,
+    metadataQuery.data?.te_premium_options,
+  ]);
 
   return (
     <div className="adp-page">
@@ -499,6 +559,36 @@ export const AdpPage = () => {
               This board reflects drafts discovered through your Sleeper graph, not a random sample of all Sleeper drafts.
               Use the draft count, pick count, and date window to judge how representative each filter slice is.
             </p>
+          </section>
+
+          <section className="adp-composition-card">
+            <div className="adp-composition-header">
+              <div>
+                <span className="adp-section-kicker">Composition</span>
+                <h2>Current sample makeup</h2>
+              </div>
+              <small>
+                Counts reflect the discovered corpus available around this filter slice.
+              </small>
+            </div>
+
+            <div className="adp-composition-grid">
+              {sampleCompositionGroups.map((group) => (
+                <article key={group.label} className="adp-composition-group">
+                  <span>{group.label}</span>
+                  <div className="adp-composition-list">
+                    {group.rows.length ? group.rows.map((row) => (
+                      <div key={`${group.label}-${row.key}`} className="adp-composition-pill">
+                        <strong>{group.render(row)}</strong>
+                        <small>{row.count.toLocaleString()} drafts</small>
+                      </div>
+                    )) : (
+                      <div className="adp-composition-empty">No matching sample</div>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
           </section>
 
           <section className="adp-table-card">
