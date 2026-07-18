@@ -17,6 +17,7 @@ from app.services.adp.discovery import (
 )
 from app.services.adp.ingestion import (
     ingest_discovered_drafts,
+    ingest_draft_by_id,
     ingest_existing_league_drafts,
     requalify_stored_drafts,
 )
@@ -278,6 +279,26 @@ async def adp_ingest_discovered(
             }
             for result in results
         ],
+    }
+
+
+@router.post("/adp/drafts/{draft_id}/ingest")
+async def adp_ingest_draft(
+    ctx: ContextDep,
+    draft_id: str,
+):
+    result = await ingest_draft_by_id(
+        ctx.db,
+        ctx.sleeper,
+        draft_id=draft_id,
+    )
+    return {
+        "draft_id": result.draft_id,
+        "league_id": result.league_id,
+        "pick_count": result.pick_count,
+        "inserted_pick_count": result.inserted_pick_count,
+        "is_qualified": result.is_qualified,
+        "qualification_code": result.qualification_code,
     }
 
 
