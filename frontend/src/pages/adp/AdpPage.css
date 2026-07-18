@@ -57,6 +57,14 @@
   font-weight: 600;
 }
 
+.adp-filters-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .adp-section-kicker {
   display: block;
   color: var(--color-text-muted);
@@ -309,6 +317,10 @@
   .adp-composition-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .adp-filters-actions {
+    justify-content: stretch;
   }
 
   .adp-table-meta {

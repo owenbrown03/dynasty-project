@@ -83,6 +83,19 @@ const DISCOVERY_STATUS_LABELS: Record<string, string> = {
   ignored: 'Ignored',
 };
 
+const DEFAULT_ADP_FILTERS: ADPFilters = {
+  season: '2026',
+  draft_kind: 'startup',
+  qb_format: 'superflex',
+  te_premium: '',
+  scoring_format: '',
+  team_count: 12,
+  minimum_draft_count: 1,
+  limit: 300,
+  start_date: null,
+  end_date: null,
+};
+
 function formatDateTime(
   value: string | null,
 ) {
@@ -213,22 +226,22 @@ function readNumberParam(
 export const AdpPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<ADPFilters>({
-    season: searchParams.get('season') ?? '2026',
-    draft_kind: searchParams.get('draft_kind') ?? 'startup',
-    qb_format: searchParams.get('qb_format') ?? 'superflex',
+    season: searchParams.get('season') ?? DEFAULT_ADP_FILTERS.season,
+    draft_kind: searchParams.get('draft_kind') ?? DEFAULT_ADP_FILTERS.draft_kind,
+    qb_format: searchParams.get('qb_format') ?? DEFAULT_ADP_FILTERS.qb_format,
     te_premium: searchParams.get('te_premium') ?? '',
     scoring_format: searchParams.get('scoring_format') ?? '',
     team_count: readNumberParam(
       searchParams.get('team_count'),
-      12,
+      DEFAULT_ADP_FILTERS.team_count ?? 12,
     ),
     minimum_draft_count: readNumberParam(
       searchParams.get('minimum_draft_count'),
-      1,
+      DEFAULT_ADP_FILTERS.minimum_draft_count ?? 1,
     ),
     limit: readNumberParam(
       searchParams.get('limit'),
-      300,
+      DEFAULT_ADP_FILTERS.limit ?? 300,
     ),
     start_date: searchParams.get('start_date'),
     end_date: searchParams.get('end_date'),
@@ -395,6 +408,16 @@ export const AdpPage = () => {
         ? 'desc'
         : 'asc'
     ));
+  };
+
+  const resetBoardView = () => {
+    setFilters({
+      ...DEFAULT_ADP_FILTERS,
+    });
+    setPlayerSearch('');
+    setPositionFilter('');
+    setSortColumn('overall_adp');
+    setSortDirection('asc');
   };
 
   const seasonOptions = useMemo(() => buildDynamicOptions(
@@ -592,9 +615,18 @@ export const AdpPage = () => {
             <span className="adp-section-kicker">Filters</span>
             <h2>Draft sample controls</h2>
           </div>
-          <div className="adp-filters-note">
-            <Filter size={16} />
-            <span>Changing filters requeries the cached `/adp` dataset.</span>
+          <div className="adp-filters-actions">
+            <div className="adp-filters-note">
+              <Filter size={16} />
+              <span>Changing filters requeries the cached `/adp` dataset.</span>
+            </div>
+            <button
+              type="button"
+              className="site-button site-button-secondary"
+              onClick={resetBoardView}
+            >
+              Reset board
+            </button>
           </div>
         </div>
 
