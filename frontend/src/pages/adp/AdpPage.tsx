@@ -44,6 +44,14 @@ const TEP_OPTIONS = [
   { value: 'premium', label: 'TE premium' },
 ];
 
+const SCORING_OPTIONS = [
+  { value: '', label: 'All scoring' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'half_ppr', label: 'Half PPR' },
+  { value: 'ppr', label: 'PPR' },
+  { value: 'custom', label: 'Custom' },
+];
+
 const TEAM_COUNT_OPTIONS = [
   { value: '', label: 'Any team count' },
   { value: '10', label: '10 teams' },
@@ -97,6 +105,7 @@ export const AdpPage = () => {
     draft_kind: 'startup',
     qb_format: 'superflex',
     te_premium: '',
+    scoring_format: '',
     team_count: 12,
     minimum_draft_count: 1,
     limit: 300,
@@ -230,6 +239,25 @@ export const AdpPage = () => {
           </label>
 
           <label>
+            <span>Scoring</span>
+            <select
+              value={filters.scoring_format ?? ''}
+              onChange={(event) => {
+                setFilters((current) => ({
+                  ...current,
+                  scoring_format: event.target.value || null,
+                }));
+              }}
+            >
+              {SCORING_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
             <span>Team count</span>
             <select
               value={filters.team_count?.toString() ?? ''}
@@ -261,6 +289,34 @@ export const AdpPage = () => {
                 setFilters((current) => ({
                   ...current,
                   minimum_draft_count: Number(event.target.value),
+                }));
+              }}
+            />
+          </label>
+
+          <label>
+            <span>Start date</span>
+            <input
+              type="date"
+              value={filters.start_date ?? ''}
+              onChange={(event) => {
+                setFilters((current) => ({
+                  ...current,
+                  start_date: event.target.value || null,
+                }));
+              }}
+            />
+          </label>
+
+          <label>
+            <span>End date</span>
+            <input
+              type="date"
+              value={filters.end_date ?? ''}
+              onChange={(event) => {
+                setFilters((current) => ({
+                  ...current,
+                  end_date: event.target.value || null,
                 }));
               }}
             />
@@ -308,6 +364,14 @@ export const AdpPage = () => {
               <span>Latest draft</span>
               <strong>{formatDateTime(query.data?.sample.latest_draft_at ?? null)}</strong>
             </article>
+          </section>
+
+          <section className="adp-bias-note">
+            <span className="adp-section-kicker">Sample note</span>
+            <p>
+              This board reflects drafts discovered through your Sleeper graph, not a random sample of all Sleeper drafts.
+              Use the draft count, pick count, and date window to judge how representative each filter slice is.
+            </p>
           </section>
 
           <section className="adp-table-card">

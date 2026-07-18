@@ -271,10 +271,64 @@ async def adp_validate_existing_leagues(
     )
     return {
         "ingestion": {
-            "league_count": ingestion_result.league_count,
-            "draft_count": ingestion_result.draft_count,
+            "processed_league_count": ingestion_result.processed_league_count,
+            "processed_draft_count": ingestion_result.processed_draft_count,
             "qualified_draft_count": ingestion_result.qualified_draft_count,
             "failed_draft_ids": ingestion_result.failed_draft_ids,
+        },
+        "report": report,
+    }
+
+
+@router.post("/adp/validation/one-hop")
+async def adp_validate_one_hop(
+    ctx: ContextDep,
+    seed_limit: int = Query(default=100, ge=1, le=5000),
+    max_nodes: int = Query(default=100, ge=1, le=5000),
+    max_drafts: int = Query(default=100, ge=1, le=5000),
+):
+    seeded = await seed_existing_leagues_for_adp_discovery(
+        ctx.db,
+        limit=seed_limit,
+    )
+    discovery = await process_adp_discovery_batch(
+        ctx.db,
+        ctx.sleeper,
+        max_nodes=max_nodes,
+    )
+    ingested = await ingest_discovered_drafts(
+        ctx.db,
+        ctx.sleeper,
+        max_drafts=max_drafts,
+    )
+    report = await build_adp_dataset_report(
+        ctx.db,
+    )
+    return {
+        "seeded_count": seeded,
+        "discovery": {
+            "claimed_node_count": discovery.claimed_node_count,
+            "processed_node_count": discovery.processed_node_count,
+            "discovered_user_count": discovery.discovered_user_count,
+            "discovered_league_count": discovery.discovered_league_count,
+            "discovered_draft_count": discovery.discovered_draft_count,
+            "request_count": discovery.request_count,
+            "stopped_reason": discovery.stopped_reason,
+        },
+        "ingestion": {
+            "draft_count": len(ingested),
+            "qualified_draft_count": sum(
+                1 for result in ingested if result.is_qualified
+            ),
+            "results": [
+                {
+                    "draft_id": result.draft_id,
+                    "league_id": result.league_id,
+                    "qualification_code": result.qualification_code,
+                    "is_qualified": result.is_qualified,
+                }
+                for result in ingested
+            ],
         },
         "report": report,
     }
