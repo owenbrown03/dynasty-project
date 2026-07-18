@@ -14,6 +14,9 @@ import type {
 type SortColumn =
   | 'overall_adp'
   | 'median_pick'
+  | 'min_pick'
+  | 'max_pick'
+  | 'standard_deviation'
   | 'name'
   | 'position'
   | 'team'
@@ -462,8 +465,16 @@ export const AdpPage = () => {
                         Median{getSortIndicator(sortColumn, sortDirection, 'median_pick')}
                       </button>
                     </th>
-                    <th>Range</th>
-                    <th>Std Dev</th>
+                    <th>
+                      <button type="button" onClick={() => updateSort('min_pick')}>
+                        Range{getSortIndicator(sortColumn, sortDirection, 'min_pick')}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" onClick={() => updateSort('standard_deviation')}>
+                        Std Dev{getSortIndicator(sortColumn, sortDirection, 'standard_deviation')}
+                      </button>
+                    </th>
                     <th>
                       <button type="button" onClick={() => updateSort('draft_count')}>
                         Drafts{getSortIndicator(sortColumn, sortDirection, 'draft_count')}
