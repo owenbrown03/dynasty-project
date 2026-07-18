@@ -21,6 +21,7 @@ export function useAdp(
       );
       return response.data;
     },
+    placeholderData: (previousData) => previousData,
     staleTime: 5 * 60 * 1000,
   });
 }

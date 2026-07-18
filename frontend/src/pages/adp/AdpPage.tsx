@@ -1170,28 +1170,10 @@ export const AdpPage = () => {
             </div>
           </div>
 
-          <label>
-            <span>Rows</span>
-            <select
-              value={filters.limit?.toString() ?? '300'}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  limit: Number(event.target.value),
-                }));
-              }}
-            >
-              {[100, 300, 500, 1000].map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
       </section>
 
-      {query.isLoading ? (
+      {query.isLoading && !query.data ? (
         <LoadingState label="Loading ADP board" />
       ) : (
         <>
