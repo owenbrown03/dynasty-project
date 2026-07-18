@@ -164,9 +164,47 @@ If you change worker-imported code, restart the worker before treating the chang
 - Anonymous sessions are first-class for low-friction browsing, but the long-term identity model is the registered site user linked to a Sleeper account.
 - Postgres-backed reads are preferred over live Sleeper reads whenever normalized data already exists.
 - Draft picks are modeled separately from players. Sleeper ownership comes from drafts and traded picks, while external pick values are stored in source-specific tables.
+- Sleeper ADP discovery and ingestion are separated. Discovery only queues league, user, and draft IDs with bounded depth and crawl budgets; ingestion fetches and persists completed draft metadata and picks before classification.
+- The ADP board is read-only and database-backed. Normal `/api/v1/adp` requests read qualified draft aggregates from Postgres and cache the result; they do not fetch Sleeper data live.
 - Theme preference is persisted in session settings for anonymous users and user settings for authenticated users.
 - Commissioner/orphan views, leagues, waivers, and trade tooling all read from the same normalized roster and valuation layers.
 - Internal `/api/v1/test/*` routes are available only in debug or non-production environments.
+
+## ADP pipeline
+
+The project now includes a Sleeper ADP MVP that:
+
+- reuses normalized Sleeper league, draft, pick, and player tables where possible
+- stores ADP-specific discovery state and qualification metadata separately
+- classifies drafts into useful dynasty slices such as startup vs rookie, 1QB vs Superflex, and TE premium vs non-TE premium
+- excludes incomplete, mock, auction, and unsupported drafts with machine-readable qualification codes
+- exposes a read-only ADP board at `/api/v1/adp`
+
+Primary backend modules:
+
+- [backend/app/services/adp/classification.py](/Users/owen/Code/dynasty/project/backend/app/services/adp/classification.py)
+- [backend/app/services/adp/ingestion.py](/Users/owen/Code/dynasty/project/backend/app/services/adp/ingestion.py)
+- [backend/app/services/adp/discovery.py](/Users/owen/Code/dynasty/project/backend/app/services/adp/discovery.py)
+- [backend/app/services/adp/report.py](/Users/owen/Code/dynasty/project/backend/app/services/adp/report.py)
+- [backend/app/api/v1/endpoints/adp.py](/Users/owen/Code/dynasty/project/backend/app/api/v1/endpoints/adp.py)
+- [frontend/src/pages/adp/AdpPage.tsx](/Users/owen/Code/dynasty/project/frontend/src/pages/adp/AdpPage.tsx)
+
+Debug and validation routes:
+
+- `GET /api/v1/test/adp/report`
+- `GET /api/v1/test/adp/discovery/status`
+- `POST /api/v1/test/adp/discovery/seed`
+- `POST /api/v1/test/adp/discovery/process`
+- `POST /api/v1/test/adp/discovery/ingest`
+- `POST /api/v1/test/adp/validation/existing-leagues`
+- `POST /api/v1/test/adp/validation/one-hop`
+
+Important defaults:
+
+- `ADP_CRAWL_ENABLED=false`
+- existing synced leagues are the initial seed source
+- discovery depth and crawl budgets are bounded by config
+- persistent snapshots are intentionally deferred until the dataset shape is proven useful
 
 ## Repository guide
 
