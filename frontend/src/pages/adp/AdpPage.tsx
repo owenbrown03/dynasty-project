@@ -492,6 +492,46 @@ export const AdpPage = () => {
     }
   };
 
+  const downloadCurrentBoardCsv = () => {
+    const header = [
+      'adp',
+      'player',
+      'position',
+      'team',
+      'median_pick',
+      'min_pick',
+      'max_pick',
+      'standard_deviation',
+      'draft_count',
+      'selection_rate',
+    ];
+    const rows = sortedPlayers.map((player) => ([
+      player.overall_adp.toFixed(2),
+      player.name,
+      player.position ?? '',
+      player.team ?? '',
+      player.median_pick.toFixed(1),
+      String(player.min_pick),
+      String(player.max_pick),
+      player.standard_deviation?.toFixed(2) ?? '',
+      String(player.draft_count),
+      formatPercent(player.selection_rate),
+    ]));
+    const csv = [
+      header,
+      ...rows,
+    ]
+      .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'adp-board.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const seasonOptions = useMemo(() => buildDynamicOptions(
     metadataQuery.data?.season_options,
     {
@@ -1115,6 +1155,13 @@ export const AdpPage = () => {
                 <h2>Player ADP table</h2>
               </div>
               <div className="adp-table-meta">
+                <button
+                  type="button"
+                  className="site-button site-button-secondary"
+                  onClick={downloadCurrentBoardCsv}
+                >
+                  Export CSV
+                </button>
                 <small>
                   {formatDataSource(query.data?.sample.data_source)}
                 </small>
