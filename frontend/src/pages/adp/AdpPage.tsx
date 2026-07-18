@@ -97,6 +97,13 @@ const DEFAULT_ADP_FILTERS: ADPFilters = {
   end_date: null,
 };
 
+const ADP_LIMIT_OPTIONS = [
+  100,
+  300,
+  500,
+  1000,
+];
+
 function formatDateTime(
   value: string | null,
 ) {
@@ -799,6 +806,9 @@ export const AdpPage = () => {
         `${filters.start_date ?? 'start'} to ${filters.end_date ?? 'today'}`,
       );
     }
+    if (filters.limit != null) {
+      pills.push(`Top ${filters.limit}`);
+    }
     if (positionFilter) {
       pills.push(`Pos ${positionFilter}`);
     }
@@ -816,6 +826,7 @@ export const AdpPage = () => {
     filters.start_date,
     filters.team_count,
     filters.te_premium,
+    filters.limit,
     playerSearch,
     positionFilter,
   ]);
@@ -1068,6 +1079,25 @@ export const AdpPage = () => {
                 }));
               }}
             />
+          </label>
+
+          <label>
+            <span>Row limit</span>
+            <select
+              value={String(filters.limit ?? DEFAULT_ADP_FILTERS.limit ?? 300)}
+              onChange={(event) => {
+                setFilters((current) => ({
+                  ...current,
+                  limit: Number(event.target.value),
+                }));
+              }}
+            >
+              {ADP_LIMIT_OPTIONS.map((limit) => (
+                <option key={limit} value={limit}>
+                  Top {limit}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
@@ -1336,8 +1366,12 @@ export const AdpPage = () => {
               </label>
 
               <div className="adp-table-tools-summary">
-                <span>Visible rows</span>
-                <strong>{sortedPlayers.length.toLocaleString()}</strong>
+                <span>Visible / fetched rows</span>
+                <strong>
+                  {sortedPlayers.length.toLocaleString()}
+                  {' / '}
+                  {(query.data?.players.length ?? 0).toLocaleString()}
+                </strong>
               </div>
             </div>
 
