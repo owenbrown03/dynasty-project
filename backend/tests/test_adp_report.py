@@ -3,7 +3,9 @@ from datetime import UTC, datetime
 
 from app.crud import adp as adp_crud
 from app.services.adp.report import (
+    build_adp_metadata_cache_key,
     build_adp_dataset_report,
+    build_adp_report_cache_key,
     get_adp_metadata,
     get_adp_discovery_status,
 )
@@ -12,6 +14,24 @@ from app.schemas.adp import ADPFilters
 
 class FakeDB:
     pass
+
+
+class FakeRedis:
+    def __init__(self):
+        self.values: dict[str, str] = {}
+        self.writes: list[tuple[str, str, int | None]] = []
+
+    async def get(self, key: str):
+        return self.values.get(key)
+
+    async def set(
+        self,
+        key: str,
+        value: str,
+        ttl_seconds: int | None = None,
+    ):
+        self.values[key] = value
+        self.writes.append((key, value, ttl_seconds))
 
 
 async def _summary_stub(*args, **kwargs):
@@ -107,6 +127,40 @@ def test_build_adp_dataset_report(monkeypatch):
     assert report.discovery_status_distribution[1].key == "discovery_status-b"
 
 
+def test_build_adp_dataset_report_uses_cache(monkeypatch):
+    async def _fail_summary(*args, **kwargs):
+        raise AssertionError("summary should not be called when cache exists")
+
+    monkeypatch.setattr(
+        adp_crud,
+        "get_adp_dataset_report_row",
+        _fail_summary,
+    )
+
+    cached_report = build_adp_dataset_report
+    redis = FakeRedis()
+    redis.values[build_adp_report_cache_key()] = (
+        '{"qualified_draft_count":7,"excluded_draft_count":2,'
+        '"unique_league_count":5,"unique_root_source_count":3,'
+        '"earliest_draft_at":null,"latest_draft_at":null,'
+        '"qualification_code_distribution":[],"season_distribution":[],'
+        '"draft_kind_distribution":[],"qb_format_distribution":[],'
+        '"te_premium_distribution":[],"scoring_format_distribution":[],'
+        '"team_count_distribution":[],"discovery_source_distribution":[],'
+        '"discovery_depth_distribution":[],"discovery_status_distribution":[]}'
+    )
+
+    report = asyncio.run(
+        cached_report(
+            FakeDB(),
+            redis=redis,
+        )
+    )
+
+    assert report.qualified_draft_count == 7
+    assert report.unique_root_source_count == 3
+
+
 def test_get_adp_discovery_status(monkeypatch):
     monkeypatch.setattr(
         adp_crud,
@@ -152,3 +206,36 @@ def test_get_adp_metadata(monkeypatch):
     assert metadata.season_options[0].key == "season-a"
     assert metadata.draft_kind_options[0].key == "draft_kind-a"
     assert metadata.team_count_options[1].key == "team_count-b"
+
+
+def test_get_adp_metadata_uses_cache(monkeypatch):
+    async def _fail_distribution(*args, **kwargs):
+        raise AssertionError("distribution query should not be called when cache exists")
+
+    monkeypatch.setattr(
+        adp_crud,
+        "get_filtered_adp_distribution",
+        _fail_distribution,
+    )
+
+    filters = ADPFilters(
+        season="2026",
+        draft_kind="startup",
+        qb_format="superflex",
+    )
+    redis = FakeRedis()
+    redis.values[build_adp_metadata_cache_key(filters=filters)] = (
+        '{"season_options":[{"key":"2026","count":4}],"draft_kind_options":[],'
+        '"qb_format_options":[],"te_premium_options":[],'
+        '"team_count_options":[],"scoring_format_options":[]}'
+    )
+
+    metadata = asyncio.run(
+        get_adp_metadata(
+            FakeDB(),
+            filters=filters,
+            redis=redis,
+        )
+    )
+
+    assert metadata.season_options[0].key == "2026"

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+
+from app.core.config import settings
 from app.crud import adp as adp_crud
+from app.infrastructure.redis.client import RedisClient
 from app.schemas.adp import (
     ADPDatasetReport,
     ADPDiscoveryStatus,
@@ -9,6 +13,24 @@ from app.schemas.adp import (
     ADPFilters,
     ADPMetadataResponse,
 )
+
+ADP_REPORT_CACHE_TTL_SECONDS = 5 * 60
+ADP_METADATA_CACHE_TTL_SECONDS = 5 * 60
+
+
+def build_adp_report_cache_key() -> str:
+    return "adp:report"
+
+
+def build_adp_metadata_cache_key(
+    *,
+    filters: ADPFilters,
+) -> str:
+    payload = filters.model_dump(mode="json")
+    return "adp:metadata:" + json.dumps(
+        payload,
+        sort_keys=True,
+    )
 
 
 def _to_distribution_items(
@@ -25,7 +47,17 @@ def _to_distribution_items(
 
 async def build_adp_dataset_report(
     db,
+    redis: RedisClient | None = None,
 ) -> ADPDatasetReport:
+    if redis is not None:
+        cached_payload = await redis.get(
+            build_adp_report_cache_key(),
+        )
+        if cached_payload:
+            return ADPDatasetReport.model_validate_json(
+                cached_payload,
+            )
+
     summary = await adp_crud.get_adp_dataset_report_row(
         db,
     )
@@ -70,7 +102,7 @@ async def build_adp_dataset_report(
         source="discovery_status",
     )
 
-    return ADPDatasetReport(
+    report = ADPDatasetReport(
         qualified_draft_count=summary.qualified_draft_count,
         excluded_draft_count=summary.excluded_draft_count,
         unique_league_count=summary.unique_league_count,
@@ -108,6 +140,18 @@ async def build_adp_dataset_report(
             discovery_status_distribution,
         ),
     )
+
+    if redis is not None:
+        await redis.set(
+            build_adp_report_cache_key(),
+            report.model_dump_json(),
+            ttl_seconds=min(
+                settings.ADP_CACHE_TTL_SECONDS,
+                ADP_REPORT_CACHE_TTL_SECONDS,
+            ),
+        )
+
+    return report
 
 
 async def get_adp_discovery_status(
@@ -149,8 +193,20 @@ async def get_adp_metadata(
     db,
     *,
     filters: ADPFilters,
+    redis: RedisClient | None = None,
 ) -> ADPMetadataResponse:
-    return ADPMetadataResponse(
+    if redis is not None:
+        cached_payload = await redis.get(
+            build_adp_metadata_cache_key(
+                filters=filters,
+            ),
+        )
+        if cached_payload:
+            return ADPMetadataResponse.model_validate_json(
+                cached_payload,
+            )
+
+    metadata = ADPMetadataResponse(
         season_options=_to_distribution_items(
             await adp_crud.get_filtered_adp_distribution(
                 db,
@@ -236,3 +292,17 @@ async def get_adp_metadata(
             )
         ),
     )
+
+    if redis is not None:
+        await redis.set(
+            build_adp_metadata_cache_key(
+                filters=filters,
+            ),
+            metadata.model_dump_json(),
+            ttl_seconds=min(
+                settings.ADP_CACHE_TTL_SECONDS,
+                ADP_METADATA_CACHE_TTL_SECONDS,
+            ),
+        )
+
+    return metadata

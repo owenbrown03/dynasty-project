@@ -82,6 +82,7 @@ async def adp_metadata_endpoint(
             start_date=start_date,
             end_date=end_date,
         ),
+        redis=ctx.redis,
     )
 
 
@@ -94,4 +95,5 @@ async def adp_report_endpoint(
 ):
     return await build_adp_dataset_report(
         ctx.db,
+        redis=ctx.redis,
     )
