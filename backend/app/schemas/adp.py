@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.schemas.base import Base
 
@@ -18,6 +18,25 @@ class ADPFilters(Base):
     end_date: datetime | None = None
     minimum_draft_count: int = 5
     limit: int = 300
+
+    @field_validator(
+        "season",
+        "draft_kind",
+        "qb_format",
+        "te_premium",
+        "scoring_format",
+        mode="before",
+    )
+    @classmethod
+    def normalize_blank_strings(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return None
+        return value
 
 
 class ADPSample(Base):

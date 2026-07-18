@@ -208,6 +208,20 @@ def test_get_adp_metadata(monkeypatch):
     assert metadata.team_count_options[1].key == "team_count-b"
 
 
+def test_adp_filters_normalize_blank_strings():
+    filters = ADPFilters(
+        season=" 2026 ",
+        draft_kind="startup",
+        qb_format="superflex",
+        te_premium="",
+        scoring_format="   ",
+    )
+
+    assert filters.season == "2026"
+    assert filters.te_premium is None
+    assert filters.scoring_format is None
+
+
 def test_get_adp_metadata_uses_cache(monkeypatch):
     async def _fail_distribution(*args, **kwargs):
         raise AssertionError("distribution query should not be called when cache exists")
