@@ -9,6 +9,10 @@ import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { useAdp } from '@/hooks/useAdp';
 import { useAdpMetadata } from '@/hooks/useAdpMetadata';
 import { useAdpReport } from '@/hooks/useAdpReport';
+import {
+  CORE_FANTASY_POSITIONS,
+  isCoreFantasyPosition,
+} from '@/utils/positions';
 import { notify } from '@/utils/notify';
 import type {
   ADPDistributionItem,
@@ -36,6 +40,11 @@ type SortDirection =
 type ViewMode =
   | 'board'
   | 'table';
+
+type DraftOrderMode =
+  | 'snake'
+  | 'linear'
+  | 'third_round_reversal';
 
 const DRAFT_KIND_LABELS: Record<string, string> = {
   startup: 'Startup',
@@ -128,6 +137,12 @@ const POSITION_THEME_CLASS: Record<string, string> = {
   WR: 'adp-player-card-wr',
   TE: 'adp-player-card-te',
   PICK: 'adp-player-card-pick',
+};
+
+const DRAFT_ORDER_LABELS: Record<DraftOrderMode, string> = {
+  snake: 'Snake',
+  linear: 'Linear',
+  third_round_reversal: '3RR',
 };
 
 function formatDateTime(
@@ -319,6 +334,31 @@ function readViewModeParam(
 }
 
 
+function getDefaultDraftOrderMode(
+  draftKind: string | null | undefined,
+): DraftOrderMode {
+  return draftKind === 'rookie'
+    ? 'linear'
+    : 'snake';
+}
+
+
+function readDraftOrderModeParam(
+  value: string | null,
+  draftKind: string | null | undefined,
+): DraftOrderMode {
+  if (
+    value === 'snake'
+    || value === 'linear'
+    || value === 'third_round_reversal'
+  ) {
+    return value;
+  }
+
+  return getDefaultDraftOrderMode(draftKind);
+}
+
+
 function readFiltersFromSearchParams(
   searchParams: URLSearchParams,
 ): ADPFilters {
@@ -412,6 +452,72 @@ function buildBoardRounds(
 }
 
 
+function getDisplaySlotForColumn(
+  round: number,
+  columnIndex: number,
+  boardSize: number,
+  draftOrderMode: DraftOrderMode,
+) {
+  const ascending = columnIndex + 1;
+  const descending = boardSize - columnIndex;
+
+  if (draftOrderMode === 'linear') {
+    return ascending;
+  }
+
+  if (draftOrderMode === 'snake') {
+    return round % 2 === 1
+      ? ascending
+      : descending;
+  }
+
+  if (round === 1) {
+    return ascending;
+  }
+
+  if (round === 2 || round === 3) {
+    return descending;
+  }
+
+  return round % 2 === 0
+    ? ascending
+    : descending;
+}
+
+
+function buildBoardDisplayRows(
+  rounds: ReturnType<typeof buildBoardRounds>,
+  boardSize: number,
+  draftOrderMode: DraftOrderMode,
+) {
+  return rounds.map((roundRow) => {
+    const cells = Array.from({ length: boardSize }, (_, columnIndex) => {
+      const displaySlot = getDisplaySlotForColumn(
+        roundRow.round,
+        columnIndex,
+        boardSize,
+        draftOrderMode,
+      );
+      const playerIndex = displaySlot - 1;
+      const entry = roundRow.players[playerIndex] ?? null;
+      const overallPick = ((roundRow.round - 1) * boardSize) + displaySlot;
+
+      return {
+        columnIndex,
+        displaySlot,
+        overallPick,
+        entry,
+      };
+    });
+
+    return {
+      round: roundRow.round,
+      cells,
+    };
+  });
+}
+
+
 export const AdpPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<ADPFilters>(
@@ -432,6 +538,12 @@ export const AdpPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>(
     () => readViewModeParam(searchParams.get('layout')),
   );
+  const [draftOrderMode, setDraftOrderMode] = useState<DraftOrderMode>(
+    () => readDraftOrderModeParam(
+      searchParams.get('draft_order'),
+      searchParams.get('draft_kind') ?? DEFAULT_ADP_FILTERS.draft_kind,
+    ),
+  );
   const deferredFilters = useDeferredValue(filters);
   const deferredPlayerSearch = useDeferredValue(playerSearch);
   const query = useAdp(deferredFilters);
@@ -445,6 +557,10 @@ export const AdpPage = () => {
     const nextSortColumn = readSortColumnParam(searchParams.get('sort'));
     const nextSortDirection = readSortDirectionParam(searchParams.get('direction'));
     const nextViewMode = readViewModeParam(searchParams.get('layout'));
+    const nextDraftOrderMode = readDraftOrderModeParam(
+      searchParams.get('draft_order'),
+      nextFilters.draft_kind,
+    );
 
     setFilters((current) => (
       areFiltersEqual(current, nextFilters)
@@ -475,6 +591,11 @@ export const AdpPage = () => {
       current === nextViewMode
         ? current
         : nextViewMode
+    ));
+    setDraftOrderMode((current) => (
+      current === nextDraftOrderMode
+        ? current
+        : nextDraftOrderMode
     ));
   }, [searchParams]);
 
@@ -573,6 +694,9 @@ export const AdpPage = () => {
     if (viewMode !== 'board') {
       next.set('layout', viewMode);
     }
+    if (draftOrderMode !== getDefaultDraftOrderMode(filters.draft_kind)) {
+      next.set('draft_order', draftOrderMode);
+    }
 
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true });
@@ -586,11 +710,16 @@ export const AdpPage = () => {
     sortColumn,
     sortDirection,
     viewMode,
+    draftOrderMode,
   ]);
 
   const sortedPlayers = useMemo(() => {
     const normalizedSearch = deferredPlayerSearch.trim().toLowerCase();
     const players = [...(query.data?.players ?? [])].filter((player) => {
+      if (!isCoreFantasyPosition(player.position)) {
+        return false;
+      }
+
       if (
         positionFilter
         && (player.position ?? '') !== positionFilter
@@ -636,19 +765,18 @@ export const AdpPage = () => {
   ]);
 
   const positionOptions = useMemo(() => {
-    const positions = new Set<string>();
-    for (const player of query.data?.players ?? []) {
-      if (player.position) {
-        positions.add(player.position);
-      }
-    }
-
-    return Array.from(positions).sort();
+    return CORE_FANTASY_POSITIONS.filter((position) => (
+      (query.data?.players ?? []).some((player) => player.position === position)
+    ));
   }, [query.data?.players]);
 
   const boardPlayers = useMemo(() => {
     const normalizedSearch = deferredPlayerSearch.trim().toLowerCase();
     const players = [...(query.data?.players ?? [])].filter((player) => {
+      if (!isCoreFantasyPosition(player.position)) {
+        return false;
+      }
+
       if (
         positionFilter
         && (player.position ?? '') !== positionFilter
@@ -690,6 +818,10 @@ export const AdpPage = () => {
     () => buildBoardRounds(boardPlayers, boardSize),
     [boardPlayers, boardSize],
   );
+  const boardDisplayRows = useMemo(
+    () => buildBoardDisplayRows(boardRounds, boardSize, draftOrderMode),
+    [boardRounds, boardSize, draftOrderMode],
+  );
 
   const applyDateWindow = (
     days: number | null,
@@ -723,6 +855,7 @@ export const AdpPage = () => {
     setSortColumn('overall_adp');
     setSortDirection('asc');
     setViewMode('board');
+    setDraftOrderMode(getDefaultDraftOrderMode(DEFAULT_ADP_FILTERS.draft_kind));
   };
 
   const copyBoardLink = async () => {
@@ -1464,6 +1597,22 @@ export const AdpPage = () => {
               </label>
 
               <label>
+                <span>Draft order</span>
+                <select
+                  value={draftOrderMode}
+                  onChange={(event) => {
+                    setDraftOrderMode(event.target.value as DraftOrderMode);
+                  }}
+                >
+                  {Object.entries(DRAFT_ORDER_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
                 <span>Board order</span>
                 <select
                   value={sortColumn}
@@ -1518,37 +1667,56 @@ export const AdpPage = () => {
                     {boardSize}
                     {' '}
                     picks per round. Scroll horizontally to read the full room.
+                    {' '}
+                    Visual draft order is set to
+                    {' '}
+                    {DRAFT_ORDER_LABELS[draftOrderMode]}.
                   </p>
                 </div>
 
                 <div className="adp-board">
                   <div className="adp-board-table-wrap">
                     <table className="adp-board-table">
-                      <tbody>
-                        {boardRounds.map((roundRow) => (
-                          <tr key={`round-${roundRow.round}`} className="adp-board-table-row">
-                            <th scope="row" className="adp-board-round-cell">
-                              <span className="adp-board-round-label">
-                                Round
-                                {' '}
-                                {roundRow.round}
-                              </span>
-                              <span className="adp-board-round-meta">
-                                {(roundRow.round - 1) * boardSize + 1}
-                                {' - '}
-                                {((roundRow.round - 1) * boardSize) + roundRow.players.length}
-                              </span>
+                      <thead>
+                        <tr>
+                          {Array.from({ length: boardSize }, (_, index) => (
+                            <th key={`team-${index + 1}`} className="adp-board-team-header">
+                              Team
+                              {' '}
+                              {index + 1}
                             </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {boardDisplayRows.map((roundRow) => (
+                          <tr key={`round-${roundRow.round}`} className="adp-board-table-row">
+                            {roundRow.cells.map((cell) => {
+                              const player = cell.entry?.player;
+                              const themeClass = POSITION_THEME_CLASS[player?.position ?? ''] ?? '';
 
-                            {roundRow.players.map((entry, index) => {
-                              const player = entry.player;
-                              const slot = index + 1;
-                              const overallPick = ((roundRow.round - 1) * boardSize) + slot;
-                              const themeClass = POSITION_THEME_CLASS[player.position ?? ''] ?? '';
+                              if (!cell.entry || !player) {
+                                return (
+                                  <td
+                                    key={`${roundRow.round}-empty-${cell.columnIndex}`}
+                                    className="adp-board-player-cell"
+                                  >
+                                    <article className="adp-player-card adp-player-card-empty">
+                                      <div className="adp-player-card-topline">
+                                        <span className="adp-player-slot">
+                                          {roundRow.round}
+                                          .
+                                          {String(cell.displaySlot).padStart(2, '0')}
+                                        </span>
+                                      </div>
+                                    </article>
+                                  </td>
+                                );
+                              }
 
                               return (
                                 <td
-                                  key={`${roundRow.round}-${player.player_id}-${overallPick}`}
+                                  key={`${roundRow.round}-${player.player_id}-${cell.overallPick}`}
                                   className="adp-board-player-cell"
                                 >
                                   <article className={`adp-player-card ${themeClass}`}>
@@ -1556,9 +1724,9 @@ export const AdpPage = () => {
                                       <span className="adp-player-slot">
                                         {roundRow.round}
                                         .
-                                        {String(slot).padStart(2, '0')}
+                                        {String(cell.displaySlot).padStart(2, '0')}
                                       </span>
-                                      <span className="adp-player-rank">{entry.positionRankLabel}</span>
+                                      <span className="adp-player-rank">{cell.entry.positionRankLabel}</span>
                                       <span className="adp-player-average">{player.overall_adp.toFixed(1)}</span>
                                     </div>
 

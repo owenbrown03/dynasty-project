@@ -1,8 +1,12 @@
+export const CORE_FANTASY_POSITIONS = [
+  'QB',
+  'RB',
+  'WR',
+  'TE',
+] as const;
+
 export type FantasyPosition =
-  | 'QB'
-  | 'RB'
-  | 'WR'
-  | 'TE';
+  (typeof CORE_FANTASY_POSITIONS)[number];
 
 const POSITION_COLOR_BY_KEY = {
   QB: 'var(--position-qb-color)',
@@ -14,16 +18,20 @@ const POSITION_COLOR_BY_KEY = {
 export function getPositionColor(
   position: string | null | undefined,
 ) {
-  if (
-    position === 'QB'
-    || position === 'RB'
-    || position === 'WR'
-    || position === 'TE'
-  ) {
+  if (isCoreFantasyPosition(position)) {
     return POSITION_COLOR_BY_KEY[position];
   }
 
   return 'var(--color-border-strong)';
+}
+
+
+export function isCoreFantasyPosition(
+  position: string | null | undefined,
+): position is FantasyPosition {
+  return CORE_FANTASY_POSITIONS.includes(
+    position as FantasyPosition,
+  );
 }
 
 

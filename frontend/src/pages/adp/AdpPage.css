@@ -414,43 +414,31 @@
   border-spacing: 0;
 }
 
+.adp-board-table thead th {
+  padding: 0 0 8px;
+  color: var(--color-text-strong);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .adp-board-table-row > th,
 .adp-board-table-row > td {
   padding: 0;
   vertical-align: top;
 }
 
-.adp-board-round-cell {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  min-width: 116px;
-  padding: 12px;
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-surface-raised);
-  text-align: left;
-}
-
-.adp-board-round-label {
-  display: block;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.adp-board-round-meta {
-  display: block;
-  margin-top: 6px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.adp-board-team-header {
+  width: 152px;
+  min-width: 152px;
+  padding-left: 8px;
 }
 
 .adp-board-player-cell {
   width: 152px;
   min-width: 152px;
   padding-left: 8px;
+  padding-bottom: 8px;
 }
 
 .adp-player-card {
@@ -495,6 +483,12 @@
 
 .adp-player-card-pick {
   --adp-position-color: #d946ef;
+}
+
+.adp-player-card-empty {
+  min-height: 96px;
+  border-style: dashed;
+  opacity: 0.35;
 }
 
 .adp-player-card-topline {
@@ -592,11 +586,7 @@
     grid-template-columns: 1fr;
   }
 
-  .adp-board-round-cell {
-    min-width: 92px;
-    padding: 10px;
-  }
-
+  .adp-board-team-header,
   .adp-board-player-cell {
     width: 142px;
     min-width: 142px;
