@@ -1522,72 +1522,74 @@ export const AdpPage = () => {
                 </div>
 
                 <div className="adp-board">
-                  {boardRounds.map((roundRow) => (
-                    <section key={`round-${roundRow.round}`} className="adp-board-round">
-                      <div className="adp-board-round-header">
-                        <span className="adp-board-round-label">
-                          Round
-                          {' '}
-                          {roundRow.round}
-                        </span>
-                        <span className="adp-board-round-meta">
-                          Picks
-                          {' '}
-                          {(roundRow.round - 1) * boardSize + 1}
-                          {' - '}
-                          {((roundRow.round - 1) * boardSize) + roundRow.players.length}
-                        </span>
-                      </div>
+                  <div className="adp-board-table-wrap">
+                    <table className="adp-board-table">
+                      <tbody>
+                        {boardRounds.map((roundRow) => (
+                          <tr key={`round-${roundRow.round}`} className="adp-board-table-row">
+                            <th scope="row" className="adp-board-round-cell">
+                              <span className="adp-board-round-label">
+                                Round
+                                {' '}
+                                {roundRow.round}
+                              </span>
+                              <span className="adp-board-round-meta">
+                                {(roundRow.round - 1) * boardSize + 1}
+                                {' - '}
+                                {((roundRow.round - 1) * boardSize) + roundRow.players.length}
+                              </span>
+                            </th>
 
-                      <div className="adp-board-row-wrap">
-                        <div className="adp-board-row">
-                          {roundRow.players.map((entry, index) => {
-                            const player = entry.player;
-                            const slot = index + 1;
-                            const overallPick = ((roundRow.round - 1) * boardSize) + slot;
-                            const themeClass = POSITION_THEME_CLASS[player.position ?? ''] ?? '';
+                            {roundRow.players.map((entry, index) => {
+                              const player = entry.player;
+                              const slot = index + 1;
+                              const overallPick = ((roundRow.round - 1) * boardSize) + slot;
+                              const themeClass = POSITION_THEME_CLASS[player.position ?? ''] ?? '';
 
-                            return (
-                              <article
-                                key={`${roundRow.round}-${player.player_id}-${overallPick}`}
-                                className={`adp-player-card ${themeClass}`}
-                              >
-                                <div className="adp-player-card-topline">
-                                  <span className="adp-player-slot">
-                                    {roundRow.round}
-                                    .
-                                    {String(slot).padStart(2, '0')}
-                                  </span>
-                                  <span className="adp-player-rank">{entry.positionRankLabel}</span>
-                                  <span className="adp-player-average">{player.overall_adp.toFixed(1)}</span>
-                                </div>
+                              return (
+                                <td
+                                  key={`${roundRow.round}-${player.player_id}-${overallPick}`}
+                                  className="adp-board-player-cell"
+                                >
+                                  <article className={`adp-player-card ${themeClass}`}>
+                                    <div className="adp-player-card-topline">
+                                      <span className="adp-player-slot">
+                                        {roundRow.round}
+                                        .
+                                        {String(slot).padStart(2, '0')}
+                                      </span>
+                                      <span className="adp-player-rank">{entry.positionRankLabel}</span>
+                                      <span className="adp-player-average">{player.overall_adp.toFixed(1)}</span>
+                                    </div>
 
-                                <div className="adp-player-main">
-                                  <div className="adp-player-copy">
-                                    <strong className="adp-player-name">{player.name}</strong>
-                                    <span className="adp-player-meta-compact">
-                                      {player.position ?? '—'}
-                                      {' '}
-                                      ·
-                                      {' '}
-                                      {player.team ?? '—'}
-                                    </span>
-                                  </div>
+                                    <div className="adp-player-main">
+                                      <div className="adp-player-copy">
+                                        <strong className="adp-player-name">{player.name}</strong>
+                                        <span className="adp-player-meta-compact">
+                                          {player.position ?? '—'}
+                                          {' '}
+                                          ·
+                                          {' '}
+                                          {player.team ?? '—'}
+                                        </span>
+                                      </div>
 
-                                  <PlayerAvatar
-                                    playerId={player.player_id}
-                                    name={player.name}
-                                    size="md"
-                                    className="adp-player-avatar"
-                                  />
-                                </div>
-                              </article>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </section>
-                  ))}
+                                      <PlayerAvatar
+                                        playerId={player.player_id}
+                                        name={player.name}
+                                        size="md"
+                                        className="adp-player-avatar"
+                                      />
+                                    </div>
+                                  </article>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </>
             ) : (
