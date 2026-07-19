@@ -409,9 +409,11 @@
 }
 
 .adp-board-table {
-  width: max-content;
+  width: 100%;
+  min-width: calc(var(--adp-board-columns, 12) * 152px);
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: fixed;
 }
 
 .adp-board-table thead th {
@@ -429,13 +431,13 @@
 }
 
 .adp-board-team-header {
-  width: 152px;
+  width: calc(100% / var(--adp-board-columns, 12));
   min-width: 152px;
   padding-left: 8px;
 }
 
 .adp-board-player-cell {
-  width: 152px;
+  width: calc(100% / var(--adp-board-columns, 12));
   min-width: 152px;
   padding-left: 8px;
   padding-bottom: 8px;
@@ -588,7 +590,7 @@
 
   .adp-board-team-header,
   .adp-board-player-cell {
-    width: 142px;
+    width: calc(100% / var(--adp-board-columns, 12));
     min-width: 142px;
   }
 }

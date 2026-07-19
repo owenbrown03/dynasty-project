@@ -1675,7 +1675,14 @@ export const AdpPage = () => {
                 </div>
 
                 <div className="adp-board">
-                  <div className="adp-board-table-wrap">
+                  <div
+                    className="adp-board-table-wrap"
+                    style={
+                      {
+                        '--adp-board-columns': String(boardSize),
+                      } as React.CSSProperties
+                    }
+                  >
                     <table className="adp-board-table">
                       <thead>
                         <tr>
