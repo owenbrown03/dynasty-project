@@ -225,6 +225,7 @@ async def _handle_league_node(
     sleeper: SleeperClient,
     node,
     budget: DiscoveryBudgetState,
+    discover_users: bool,
 ) -> None:
     next_depth = node.discovery_depth + 1
     draft_rows: list[dict] = []
@@ -252,8 +253,11 @@ async def _handle_league_node(
             )
 
     if (
+        discover_users
+        and (
         node.discovery_depth < settings.ADP_MAX_DISCOVERY_DEPTH
         and budget.request_count < settings.ADP_MAX_REQUESTS_PER_RUN
+        )
     ):
         users = await sleeper.read.get_users(
             str(node.node_value),
@@ -301,6 +305,7 @@ async def process_adp_discovery_batch(
     *,
     max_nodes: int | None = None,
     allow_when_disabled: bool = False,
+    discover_users: bool = True,
 ) -> ADPDiscoveryBatchResult:
     if not settings.ADP_CRAWL_ENABLED and not allow_when_disabled:
         return ADPDiscoveryBatchResult(
@@ -359,6 +364,7 @@ async def process_adp_discovery_batch(
                     sleeper=sleeper,
                     node=node,
                     budget=budget,
+                    discover_users=discover_users,
                 )
             elif node.node_type == DISCOVERY_NODE_DRAFT:
                 await _handle_draft_node(
@@ -369,6 +375,7 @@ async def process_adp_discovery_batch(
                 db,
                 node_id=node.id,
             )
+            await db.commit()
             processed_node_count += 1
         except Exception as exc:
             logger.exception(
@@ -377,20 +384,21 @@ async def process_adp_discovery_batch(
                 node.node_value,
                 node.discovery_depth,
             )
+            await db.rollback()
             await adp_crud.mark_discovery_node_failed(
                 db,
                 node_id=node.id,
                 failure_reason=str(exc),
                 retry_delay_seconds=settings.ADP_PROCESSING_TIMEOUT_SECONDS,
             )
+            await db.commit()
 
     if released_node_ids:
         await adp_crud.release_discovery_nodes(
             db,
             node_ids=released_node_ids,
         )
-
-    await db.commit()
+        await db.commit()
 
     return ADPDiscoveryBatchResult(
         claimed_node_count=len(nodes),

@@ -137,6 +137,84 @@ def test_process_discovery_batch_league_node_enqueues_users_and_drafts(
     assert all(row["discovery_depth"] == 1 for row in captured_rows)
 
 
+def test_process_discovery_batch_can_skip_user_fanout(
+    monkeypatch,
+):
+    captured_rows: list[dict] = []
+
+    async def fake_claim_discovery_nodes(*args, **kwargs):
+        return [
+            SimpleNamespace(
+                id="node-1",
+                node_type="league_id",
+                node_value="league-1",
+                discovery_depth=0,
+            )
+        ]
+
+    async def fake_enqueue_discovery_nodes(db, rows):
+        captured_rows.extend(rows)
+        return len(rows)
+
+    async def fake_mark_processed(*args, **kwargs):
+        return None
+
+    async def fake_mark_failed(*args, **kwargs):
+        return None
+
+    async def fake_release_nodes(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(
+        adp_crud,
+        "claim_discovery_nodes",
+        fake_claim_discovery_nodes,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "enqueue_discovery_nodes",
+        fake_enqueue_discovery_nodes,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "mark_discovery_node_processed",
+        fake_mark_processed,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "mark_discovery_node_failed",
+        fake_mark_failed,
+    )
+    monkeypatch.setattr(
+        adp_crud,
+        "release_discovery_nodes",
+        fake_release_nodes,
+    )
+    monkeypatch.setattr(discovery_service.settings, "ADP_CRAWL_ENABLED", True)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_REQUESTS_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_NEW_USERS_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_NEW_DRAFTS_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_NEW_LEAGUES_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_DISCOVERY_DEPTH", 2)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_NODES_PER_RUN", 10)
+    monkeypatch.setattr(discovery_service.settings, "ADP_MAX_RUNTIME_SECONDS", 300)
+    monkeypatch.setattr(discovery_service.settings, "ADP_PROCESSING_TIMEOUT_SECONDS", 900)
+
+    result = asyncio.run(
+        discovery_service.process_adp_discovery_batch(
+            FakeDB(),
+            FakeSleeperClient(),
+            discover_users=False,
+        )
+    )
+
+    assert result.processed_node_count == 1
+    assert result.discovered_draft_count == 2
+    assert result.discovered_user_count == 0
+    assert result.request_count == 1
+    assert {row["node_type"] for row in captured_rows} == {"draft_id"}
+
+
 def test_process_discovery_batch_user_node_honors_league_budget(
     monkeypatch,
 ):
