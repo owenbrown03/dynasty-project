@@ -172,6 +172,7 @@ def test_ingest_discovered_drafts_batches_ready_seeds(monkeypatch):
 def test_requalify_stored_drafts_updates_existing_qualifications(monkeypatch):
     db = FakeDB()
     persisted_codes: list[str] = []
+    captured_offsets: list[int] = []
 
     draft = SimpleNamespace(
         draft_id="draft-1",
@@ -214,6 +215,7 @@ def test_requalify_stored_drafts_updates_existing_qualifications(monkeypatch):
     )
 
     async def fake_get_stored_drafts_for_requalification(*args, **kwargs):
+        captured_offsets.append(kwargs.get("offset", 0))
         return [
             adp_crud.ADPStoredDraftRequalificationRow(
                 draft=draft,
@@ -276,6 +278,7 @@ def test_requalify_stored_drafts_updates_existing_qualifications(monkeypatch):
         ingestion_service.requalify_stored_drafts(
             db,
             limit=10,
+            offset=25,
             season="2026",
         )
     )
@@ -286,3 +289,4 @@ def test_requalify_stored_drafts_updates_existing_qualifications(monkeypatch):
     assert result.reclassified_count == 1
     assert result.failed_draft_ids == []
     assert persisted_codes == ["qualified"]
+    assert captured_offsets == [25]

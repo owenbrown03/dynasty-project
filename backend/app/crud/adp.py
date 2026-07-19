@@ -947,6 +947,7 @@ async def get_stored_drafts_for_requalification(
     db: AsyncSession,
     *,
     limit: int,
+    offset: int = 0,
     season: str | None = None,
 ) -> list[ADPStoredDraftRequalificationRow]:
     statement = (
@@ -965,6 +966,7 @@ async def get_stored_drafts_for_requalification(
             Draft.season.desc(),
             Draft.draft_id.asc(),
         )
+        .offset(offset)
         .limit(limit)
     )
 

@@ -330,11 +330,13 @@ async def adp_validate_existing_leagues(
 async def adp_requalify_stored(
     ctx: ContextDep,
     limit: int = Query(default=100, ge=1, le=5000),
+    offset: int = Query(default=0, ge=0),
     season: str | None = Query(default=None),
 ):
     result = await requalify_stored_drafts(
         ctx.db,
         limit=limit,
+        offset=offset,
         season=season,
     )
     return {

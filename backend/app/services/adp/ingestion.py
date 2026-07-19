@@ -363,11 +363,13 @@ async def requalify_stored_drafts(
     db: AsyncSession,
     *,
     limit: int,
+    offset: int = 0,
     season: str | None = None,
 ) -> StoredDraftRequalificationResult:
     rows = await adp_crud.get_stored_drafts_for_requalification(
         db,
         limit=limit,
+        offset=offset,
         season=season,
     )
     selections_by_draft_id = await adp_crud.get_draft_selections_by_draft_ids(
