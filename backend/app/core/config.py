@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     ADP_INGEST_CONCURRENCY: int = 5
     ADP_REQUEST_DELAY_MS: int = 100
     ADP_PROCESSING_TIMEOUT_SECONDS: int = 900
+    ADP_SNAPSHOT_MAX_AGE_SECONDS: int = 21600
 
     model_config = SettingsConfigDict(
         env_file=".env",

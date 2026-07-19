@@ -3,8 +3,8 @@
   flex-direction: column;
   gap: 18px;
   width: 100%;
-  max-width: var(--page-max-width);
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 .adp-hero {
@@ -402,17 +402,18 @@
 
 .adp-board {
   margin-top: 16px;
+  width: 100%;
 }
 
 .adp-board-table-wrap {
+  width: 100%;
   overflow-x: auto;
 }
 
 .adp-board-table {
-  width: 100%;
-  min-width: calc(var(--adp-board-columns, 12) * 152px);
+  width: max(100%, calc(var(--adp-board-columns, 12) * 158px));
   border-collapse: separate;
-  border-spacing: 0;
+  border-spacing: 10px 10px;
   table-layout: fixed;
 }
 
@@ -432,15 +433,14 @@
 
 .adp-board-team-header {
   width: calc(100% / var(--adp-board-columns, 12));
-  min-width: 152px;
-  padding-left: 8px;
+  min-width: 158px;
+  padding: 0;
 }
 
 .adp-board-player-cell {
   width: calc(100% / var(--adp-board-columns, 12));
-  min-width: 152px;
-  padding-left: 8px;
-  padding-bottom: 8px;
+  min-width: 158px;
+  padding: 0;
 }
 
 .adp-player-card {
@@ -591,6 +591,6 @@
   .adp-board-team-header,
   .adp-board-player-cell {
     width: calc(100% / var(--adp-board-columns, 12));
-    min-width: 142px;
+    min-width: 148px;
   }
 }

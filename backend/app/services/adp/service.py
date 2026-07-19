@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from app.core.config import settings
 from app.crud import adp as adp_crud
@@ -13,13 +13,14 @@ from app.services.adp.report import (
 from app.schemas.adp import ADPFilters, ADPPlayerRow, ADPResponse, ADPSample
 
 ADP_CACHE_ROW_LIMIT = 5000
+ADP_CACHE_VERSION = "v2"
 
 
 def build_adp_cache_key(filters: ADPFilters) -> str:
     payload = filters.model_dump(mode="json")
     payload.pop("limit", None)
 
-    return "adp:" + json.dumps(
+    return f"adp:{ADP_CACHE_VERSION}:" + json.dumps(
         payload,
         sort_keys=True,
     )
@@ -89,6 +90,17 @@ async def get_adp(
         minimum_draft_count=filters.minimum_draft_count,
         limit=filters.limit,
     )
+
+    if snapshot is not None:
+        snapshot_age_limit = timedelta(
+            seconds=settings.ADP_SNAPSHOT_MAX_AGE_SECONDS,
+        )
+        snapshot_cutoff = datetime.now(
+            UTC,
+        ) - snapshot_age_limit
+
+        if snapshot.sample.generated_at < snapshot_cutoff:
+            snapshot = None
 
     if snapshot is not None:
         sample_summary = snapshot.sample
