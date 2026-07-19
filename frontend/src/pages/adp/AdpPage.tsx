@@ -5,6 +5,7 @@ import { Database, Filter } from 'lucide-react';
 import { useSearchParams } from 'react-router';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { useAdp } from '@/hooks/useAdp';
 import { useAdpMetadata } from '@/hooks/useAdpMetadata';
 import { useAdpReport } from '@/hooks/useAdpReport';
@@ -103,6 +104,27 @@ const ADP_LIMIT_OPTIONS = [
   500,
   1000,
 ];
+
+const BOARD_SORT_OPTIONS: Array<{
+  value: SortColumn;
+  label: string;
+}> = [
+  { value: 'overall_adp', label: 'ADP' },
+  { value: 'median_pick', label: 'Median pick' },
+  { value: 'name', label: 'Player name' },
+  { value: 'position', label: 'Position' },
+  { value: 'team', label: 'NFL team' },
+  { value: 'draft_count', label: 'Draft count' },
+  { value: 'selection_rate', label: 'Selection rate' },
+];
+
+const POSITION_THEME_CLASS: Record<string, string> = {
+  QB: 'adp-player-card-qb',
+  RB: 'adp-player-card-rb',
+  WR: 'adp-player-card-wr',
+  TE: 'adp-player-card-te',
+  PICK: 'adp-player-card-pick',
+};
 
 function formatDateTime(
   value: string | null,
@@ -238,21 +260,6 @@ function compareRows(
 }
 
 
-function getSortIndicator(
-  activeColumn: SortColumn,
-  activeDirection: SortDirection,
-  column: SortColumn,
-) {
-  if (activeColumn !== column) {
-    return null;
-  }
-
-  return activeDirection === 'asc'
-    ? ' ↑'
-    : ' ↓';
-}
-
-
 function readNumberParam(
   value: string | null,
   fallback: number,
@@ -354,6 +361,28 @@ function hasDistributionValue(
   }
 
   return (rows ?? []).some((row) => row.key === value);
+}
+
+
+function buildBoardRounds(
+  players: ADPPlayerRow[],
+  boardSize: number,
+) {
+  const rounds = new Map<number, ADPPlayerRow[]>();
+
+  for (const player of players) {
+    const round = Math.max(1, Math.ceil(player.overall_adp / boardSize));
+    const current = rounds.get(round) ?? [];
+    current.push(player);
+    rounds.set(round, current);
+  }
+
+  return Array.from(rounds.entries())
+    .sort((left, right) => left[0] - right[0])
+    .map(([round, roundPlayers]) => ({
+      round,
+      players: roundPlayers.slice(0, boardSize),
+    }));
 }
 
 
@@ -577,17 +606,11 @@ export const AdpPage = () => {
 
     return Array.from(positions).sort();
   }, [query.data?.players]);
-
-  const updateSort = (
-    column: SortColumn,
-  ) => {
-    setSortColumn(column);
-    setSortDirection((current) => (
-      sortColumn === column && current === 'asc'
-        ? 'desc'
-        : 'asc'
-    ));
-  };
+  const boardSize = Math.max(filters.team_count ?? 12, 8);
+  const boardRounds = useMemo(
+    () => buildBoardRounds(sortedPlayers, boardSize),
+    [boardSize, sortedPlayers],
+  );
 
   const applyDateWindow = (
     days: number | null,
@@ -1298,7 +1321,7 @@ export const AdpPage = () => {
             <div className="adp-table-header">
               <div>
                 <span className="adp-section-kicker">Board</span>
-                <h2>Player ADP table</h2>
+                <h2>Startup draft board</h2>
               </div>
               <div className="adp-table-meta">
                 <button
@@ -1347,83 +1370,148 @@ export const AdpPage = () => {
                 </select>
               </label>
 
+              <label>
+                <span>Board order</span>
+                <select
+                  value={sortColumn}
+                  onChange={(event) => {
+                    setSortColumn(event.target.value as SortColumn);
+                  }}
+                >
+                  {BOARD_SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Direction</span>
+                <select
+                  value={sortDirection}
+                  onChange={(event) => {
+                    setSortDirection(event.target.value as SortDirection);
+                  }}
+                >
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </select>
+              </label>
+
               <div className="adp-table-tools-summary">
-                <span>Visible / fetched rows</span>
+                <span>Visible players / board size</span>
                 <strong>
                   {sortedPlayers.length.toLocaleString()}
-                  {' / '}
-                  {(query.data?.players.length ?? 0).toLocaleString()}
+                   {' / '}
+                  {boardSize.toLocaleString()}
                 </strong>
               </div>
             </div>
 
-            <div className="adp-table-wrap">
-              <table className="adp-table">
-                <thead>
-                  <tr>
-                    <th>
-                      <button type="button" onClick={() => updateSort('overall_adp')}>
-                        ADP{getSortIndicator(sortColumn, sortDirection, 'overall_adp')}
-                      </button>
-                    </th>
-                    <th>
-                      <button type="button" onClick={() => updateSort('name')}>
-                        Player{getSortIndicator(sortColumn, sortDirection, 'name')}
-                      </button>
-                    </th>
-                    <th>
-                      <button type="button" onClick={() => updateSort('position')}>
-                        Pos{getSortIndicator(sortColumn, sortDirection, 'position')}
-                      </button>
-                    </th>
-                    <th>
-                      <button type="button" onClick={() => updateSort('team')}>
-                        Team{getSortIndicator(sortColumn, sortDirection, 'team')}
-                      </button>
-                    </th>
-                    <th>
-                      <button type="button" onClick={() => updateSort('median_pick')}>
-                        Median{getSortIndicator(sortColumn, sortDirection, 'median_pick')}
-                      </button>
-                    </th>
-                    <th>
-                      <button type="button" onClick={() => updateSort('min_pick')}>
-                        Range{getSortIndicator(sortColumn, sortDirection, 'min_pick')}
-                      </button>
-                    </th>
-                    <th>
-                      <button type="button" onClick={() => updateSort('standard_deviation')}>
-                        Std Dev{getSortIndicator(sortColumn, sortDirection, 'standard_deviation')}
-                      </button>
-                    </th>
-                    <th>
-                      <button type="button" onClick={() => updateSort('draft_count')}>
-                        Drafts{getSortIndicator(sortColumn, sortDirection, 'draft_count')}
-                      </button>
-                    </th>
-                    <th>
-                      <button type="button" onClick={() => updateSort('selection_rate')}>
-                        Selection rate{getSortIndicator(sortColumn, sortDirection, 'selection_rate')}
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedPlayers.map((player) => (
-                    <tr key={player.player_id}>
-                      <td>{player.overall_adp.toFixed(2)}</td>
-                      <td>{player.name}</td>
-                      <td>{player.position ?? '—'}</td>
-                      <td>{player.team ?? '—'}</td>
-                      <td>{player.median_pick.toFixed(1)}</td>
-                      <td>{player.min_pick} - {player.max_pick}</td>
-                      <td>{player.standard_deviation?.toFixed(2) ?? '—'}</td>
-                      <td>{player.draft_count.toLocaleString()}</td>
-                      <td>{formatPercent(player.selection_rate)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="adp-board-note">
+              <span className="adp-section-kicker">Board style</span>
+              <p>
+                Sleeper-style draft board grouped into
+                {' '}
+                {boardSize}
+                {' '}
+                slots per round, using your current filters and board order.
+              </p>
+            </div>
+
+            <div className="adp-board">
+              {boardRounds.map((roundRow) => (
+                <section key={`round-${roundRow.round}`} className="adp-board-round">
+                  <div className="adp-board-round-header">
+                    <span className="adp-board-round-label">
+                      Round
+                      {' '}
+                      {roundRow.round}
+                    </span>
+                    <span className="adp-board-round-meta">
+                      Picks
+                      {' '}
+                      {(roundRow.round - 1) * boardSize + 1}
+                      {' - '}
+                      {((roundRow.round - 1) * boardSize) + roundRow.players.length}
+                    </span>
+                  </div>
+
+                  <div className="adp-board-grid">
+                    {roundRow.players.map((player, index) => {
+                      const slot = index + 1;
+                      const overallPick = ((roundRow.round - 1) * boardSize) + slot;
+                      const themeClass = POSITION_THEME_CLASS[player.position ?? ''] ?? '';
+
+                      return (
+                        <article
+                          key={`${roundRow.round}-${player.player_id}-${overallPick}`}
+                          className={`adp-player-card ${themeClass}`}
+                        >
+                          <div className="adp-player-card-topline">
+                            <span className="adp-player-slot">
+                              {roundRow.round}
+                              .
+                              {String(slot).padStart(2, '0')}
+                            </span>
+                            <span className="adp-player-overall">
+                              #
+                              {overallPick}
+                            </span>
+                          </div>
+
+                          <div className="adp-player-main">
+                            <PlayerAvatar
+                              playerId={player.player_id}
+                              name={player.name}
+                              size="lg"
+                              className="adp-player-avatar"
+                            />
+
+                            <div className="adp-player-copy">
+                              <div className="adp-player-name-row">
+                                <strong className="adp-player-name">{player.name}</strong>
+                                <span className="adp-player-adp">
+                                  ADP
+                                  {' '}
+                                  {player.overall_adp.toFixed(1)}
+                                </span>
+                              </div>
+
+                              <div className="adp-player-meta-row">
+                                <span className="adp-player-position">{player.position ?? '—'}</span>
+                                <span>{player.team ?? '—'}</span>
+                                <span>
+                                  Median
+                                  {' '}
+                                  {player.median_pick.toFixed(1)}
+                                </span>
+                              </div>
+
+                              <div className="adp-player-meta-row adp-player-meta-row-secondary">
+                                <span>
+                                  Range
+                                  {' '}
+                                  {player.min_pick}
+                                  -
+                                  {player.max_pick}
+                                </span>
+                                <span>
+                                  {player.draft_count.toLocaleString()}
+                                  {' '}
+                                  drafts
+                                </span>
+                                <span>{formatPercent(player.selection_rate)} selected</span>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
 
             {!sortedPlayers.length ? (

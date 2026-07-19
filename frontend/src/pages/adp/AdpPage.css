@@ -308,7 +308,7 @@
 
 .adp-table-tools {
   display: grid;
-  grid-template-columns: minmax(260px, 1.6fr) minmax(180px, 0.8fr) minmax(140px, auto);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin: 18px 0 16px;
   align-items: end;
@@ -348,25 +348,116 @@
   font-size: 22px;
 }
 
-.adp-table-wrap {
+.adp-board-note {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-accent-soft) 35%, transparent),
+      transparent 72%
+    ),
+    var(--color-surface-raised);
+}
+
+.adp-board-note p {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.adp-board {
+  display: grid;
+  gap: 14px;
   margin-top: 16px;
-  overflow-x: auto;
 }
 
-.adp-table {
-  width: 100%;
-  border-collapse: collapse;
+.adp-board-round {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-raised);
 }
 
-.adp-table th,
-.adp-table td {
-  padding: 12px 10px;
-  border-bottom: 1px solid var(--color-border);
-  text-align: left;
-  white-space: nowrap;
+.adp-board-round-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.adp-table th {
+.adp-board-round-label {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.adp-board-round-meta {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.adp-board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.adp-player-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 14px 14px 18px;
+  border: 1px solid var(--color-border-strong);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-surface) 90%, transparent),
+      var(--color-surface)
+    );
+}
+
+.adp-player-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--adp-position-color, var(--color-border-strong));
+}
+
+.adp-player-card-qb {
+  --adp-position-color: #ff6b6b;
+}
+
+.adp-player-card-rb {
+  --adp-position-color: #22c55e;
+}
+
+.adp-player-card-wr {
+  --adp-position-color: #3b82f6;
+}
+
+.adp-player-card-te {
+  --adp-position-color: #facc15;
+}
+
+.adp-player-card-pick {
+  --adp-position-color: #d946ef;
+}
+
+.adp-player-card-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
   color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 700;
@@ -374,18 +465,59 @@
   text-transform: uppercase;
 }
 
-.adp-table th button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
+.adp-player-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
 }
 
-.adp-table tbody tr:hover {
-  background: var(--color-surface-raised);
+.adp-player-avatar.player-avatar-lg {
+  width: 56px;
+  height: 56px;
+}
+
+.adp-player-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.adp-player-name-row,
+.adp-player-meta-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.adp-player-name {
+  min-width: 0;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.adp-player-adp {
+  flex-shrink: 0;
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.adp-player-meta-row {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.adp-player-meta-row-secondary {
+  font-size: 11px;
+}
+
+.adp-player-position {
+  color: var(--adp-position-color, var(--color-text-strong));
+  font-weight: 700;
 }
 
 .adp-empty-state {
@@ -414,5 +546,16 @@
 
   .adp-table-tools {
     grid-template-columns: 1fr;
+  }
+
+  .adp-board-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .adp-player-name-row,
+  .adp-player-meta-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
