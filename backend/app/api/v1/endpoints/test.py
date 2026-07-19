@@ -22,6 +22,7 @@ from app.services.adp.ingestion import (
     ingest_existing_league_drafts,
     requalify_stored_drafts,
 )
+from app.services.adp.maintenance import run_adp_maintenance
 from app.services.adp.report import (
     build_adp_dataset_report,
     get_adp_discovery_status,
@@ -31,7 +32,11 @@ from app.services.adp.snapshots import (
     build_default_adp_snapshot_requests,
 )
 from app.schemas.adp import ADPFilters
-from app.schemas.adp import ADPDatasetReport, ADPDiscoveryStatusResponse
+from app.schemas.adp import (
+    ADPDatasetReport,
+    ADPDiscoveryStatusResponse,
+    ADPMaintenanceRunResponse,
+)
 from app.schemas.league import LeagueOverviewItem
 from app.services.leagues.details import LeagueDetails
 from app.services.leagues.overview import get_league_overview
@@ -300,6 +305,63 @@ async def adp_ingest_discovered(
             for result in results
         ],
     }
+
+
+@router.post(
+    "/adp/sync-pending",
+    response_model=ADPMaintenanceRunResponse,
+)
+async def adp_sync_pending(
+    ctx: ContextDep,
+    seed_source: str = Query(default="none"),
+    seed_limit: int | None = Query(default=None, ge=1),
+    cycles: int = Query(default=3, ge=1, le=20),
+    max_nodes_per_cycle: int = Query(default=50, ge=1, le=200),
+    max_drafts_per_cycle: int = Query(default=200, ge=1, le=500),
+    allow_when_disabled: bool = Query(default=True),
+    discover_users: bool = Query(default=False),
+):
+    result = await run_adp_maintenance(
+        ctx.db,
+        ctx.sleeper,
+        seed_source=seed_source,
+        seed_limit=seed_limit,
+        cycles=cycles,
+        max_nodes_per_cycle=max_nodes_per_cycle,
+        max_drafts_per_cycle=max_drafts_per_cycle,
+        allow_when_disabled=allow_when_disabled,
+        discover_users=discover_users,
+    )
+    return ADPMaintenanceRunResponse(
+        seeded_count=result.seeded_count,
+        completed_cycles=result.completed_cycles,
+        total_processed_nodes=result.total_processed_nodes,
+        total_discovered_users=result.total_discovered_users,
+        total_discovered_leagues=result.total_discovered_leagues,
+        total_discovered_drafts=result.total_discovered_drafts,
+        total_requests=result.total_requests,
+        total_ingested_drafts=result.total_ingested_drafts,
+        total_qualified_drafts=result.total_qualified_drafts,
+        stopped_reason=result.stopped_reason,
+        cycles=[
+            {
+                "claimed_node_count": cycle.discovery.claimed_node_count,
+                "processed_node_count": cycle.discovery.processed_node_count,
+                "discovered_user_count": cycle.discovery.discovered_user_count,
+                "discovered_league_count": cycle.discovery.discovered_league_count,
+                "discovered_draft_count": cycle.discovery.discovered_draft_count,
+                "request_count": cycle.discovery.request_count,
+                "stopped_reason": cycle.discovery.stopped_reason,
+                "ingested_draft_count": len(cycle.ingested_drafts),
+                "qualified_draft_count": sum(
+                    1
+                    for item in cycle.ingested_drafts
+                    if item.is_qualified
+                ),
+            }
+            for cycle in result.cycle_results
+        ],
+    )
 
 
 @router.post("/adp/drafts/{draft_id}/ingest")

@@ -139,3 +139,29 @@ class ADPDiscoveryStatus(Base):
 class ADPDiscoveryStatusResponse(Base):
     counts_by_status: list[ADPDistributionItem] = Field(default_factory=list)
     nodes: list[ADPDiscoveryStatus] = Field(default_factory=list)
+
+
+class ADPMaintenanceCycleSummary(Base):
+    claimed_node_count: int
+    processed_node_count: int
+    discovered_user_count: int
+    discovered_league_count: int
+    discovered_draft_count: int
+    request_count: int
+    stopped_reason: str | None = None
+    ingested_draft_count: int
+    qualified_draft_count: int
+
+
+class ADPMaintenanceRunResponse(Base):
+    seeded_count: int
+    completed_cycles: int
+    total_processed_nodes: int
+    total_discovered_users: int
+    total_discovered_leagues: int
+    total_discovered_drafts: int
+    total_requests: int
+    total_ingested_drafts: int
+    total_qualified_drafts: int
+    stopped_reason: str | None = None
+    cycles: list[ADPMaintenanceCycleSummary] = Field(default_factory=list)
