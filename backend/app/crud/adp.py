@@ -17,7 +17,13 @@ from app.models.db.adp import (
     ADPSnapshot,
     ADPSnapshotPlayer,
 )
-from app.models.db.sleeper.api import Draft, DraftSelection, League, Player
+from app.models.db.sleeper.api import (
+    Draft,
+    DraftSelection,
+    League,
+    Player,
+    Roster,
+)
 
 
 @dataclass(frozen=True)
@@ -128,6 +134,37 @@ async def get_existing_adp_seed_leagues(
         return dynasty_leagues[:limit]
 
     return dynasty_leagues
+
+
+async def get_existing_adp_seed_user_ids(
+    db: AsyncSession,
+    *,
+    limit: int | None = None,
+) -> list[str]:
+    statement = (
+        select(Roster.owner_id)
+        .join(
+            League,
+            League.league_id == Roster.league_id,
+        )
+        .where(
+            Roster.owner_id.is_not(None),
+        )
+        .distinct()
+        .order_by(
+            Roster.owner_id.asc(),
+        )
+    )
+
+    if limit is not None:
+        statement = statement.limit(limit)
+
+    result = await db.execute(statement)
+    return [
+        owner_id
+        for owner_id in result.scalars().all()
+        if owner_id
+    ]
 
 
 async def get_leagues_by_ids(
@@ -258,6 +295,36 @@ async def seed_existing_league_discovery_nodes(
                 "updated_at": datetime.utcnow(),
             }
             for league in leagues
+        ],
+    )
+    await db.commit()
+    return inserted
+
+
+async def seed_existing_user_discovery_nodes(
+    db: AsyncSession,
+    *,
+    limit: int | None = None,
+) -> int:
+    user_ids = await get_existing_adp_seed_user_ids(
+        db,
+        limit=limit,
+    )
+    inserted = await enqueue_discovery_nodes(
+        db,
+        [
+            {
+                "node_type": "user_id",
+                "node_value": user_id,
+                "source_type": "existing_db_user",
+                "source_value": user_id,
+                "discovery_depth": 0,
+                "status": DISCOVERY_STATUS_PENDING,
+                "attempt_count": 0,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+            for user_id in user_ids
         ],
     )
     await db.commit()

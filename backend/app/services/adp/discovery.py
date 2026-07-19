@@ -86,6 +86,17 @@ async def seed_existing_leagues_for_adp_discovery(
     )
 
 
+async def seed_existing_users_for_adp_discovery(
+    db: AsyncSession,
+    *,
+    limit: int | None = None,
+) -> int:
+    return await adp_crud.seed_existing_user_discovery_nodes(
+        db,
+        limit=limit,
+    )
+
+
 async def seed_manual_adp_discovery(
     db: AsyncSession,
     sleeper: SleeperClient,

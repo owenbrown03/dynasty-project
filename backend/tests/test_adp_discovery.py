@@ -292,6 +292,31 @@ def test_seed_manual_adp_discovery_supports_direct_nodes(monkeypatch):
     ]
 
 
+def test_seed_existing_users_for_adp_discovery(monkeypatch):
+    async def fake_seed_existing_user_discovery_nodes(
+        db,
+        *,
+        limit=None,
+    ):
+        assert limit == 25
+        return 17
+
+    monkeypatch.setattr(
+        adp_crud,
+        "seed_existing_user_discovery_nodes",
+        fake_seed_existing_user_discovery_nodes,
+    )
+
+    inserted_count = asyncio.run(
+        discovery_service.seed_existing_users_for_adp_discovery(
+            FakeDB(),
+            limit=25,
+        )
+    )
+
+    assert inserted_count == 17
+
+
 def test_process_discovery_batch_releases_unprocessed_nodes_on_budget_stop(
     monkeypatch,
 ):

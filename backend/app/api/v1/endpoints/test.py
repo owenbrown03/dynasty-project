@@ -14,6 +14,7 @@ from app.services.adp.discovery import (
     process_adp_discovery_batch,
     seed_manual_adp_discovery,
     seed_existing_leagues_for_adp_discovery,
+    seed_existing_users_for_adp_discovery,
 )
 from app.services.adp.ingestion import (
     ingest_discovered_drafts,
@@ -218,6 +219,7 @@ async def adp_discovery_status(
 async def adp_seed_discovery(
     ctx: ContextDep,
     limit: int | None = Query(default=None, ge=1),
+    source: str = Query(default="leagues"),
     username: str | None = Query(default=None),
     user_id: str | None = Query(default=None),
     league_id: str | None = Query(default=None),
@@ -233,10 +235,26 @@ async def adp_seed_discovery(
             draft_id=draft_id,
         )
 
-    inserted_count = await seed_existing_leagues_for_adp_discovery(
-        ctx.db,
-        limit=limit,
-    )
+    if source == "users":
+        inserted_count = await seed_existing_users_for_adp_discovery(
+            ctx.db,
+            limit=limit,
+        )
+    elif source == "both":
+        league_inserted_count = await seed_existing_leagues_for_adp_discovery(
+            ctx.db,
+            limit=limit,
+        )
+        user_inserted_count = await seed_existing_users_for_adp_discovery(
+            ctx.db,
+            limit=limit,
+        )
+        inserted_count = league_inserted_count + user_inserted_count
+    else:
+        inserted_count = await seed_existing_leagues_for_adp_discovery(
+            ctx.db,
+            limit=limit,
+        )
     return {
         "inserted_count": inserted_count,
     }
