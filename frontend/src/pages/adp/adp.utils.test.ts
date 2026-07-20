@@ -5,6 +5,7 @@ import {
   buildBoardRounds,
   buildDynamicOptions,
   compareRows,
+  filterCoreAdpPlayers,
   getDefaultDraftOrderMode,
   getDisplaySlotForColumn,
   readDraftOrderModeParam,
@@ -121,5 +122,35 @@ describe('ADP utilities', () => {
     expect(compareRows(alpha, beta, 'overall_adp', 'asc')).toBeGreaterThan(0);
     expect(compareRows(alpha, beta, 'overall_adp', 'desc')).toBeLessThan(0);
     expect(compareRows(alpha, beta, 'name', 'asc')).toBeLessThan(0);
+  });
+
+  it('filters ADP rows to core positions by position and search text', () => {
+    expect(
+      filterCoreAdpPlayers(
+        [
+          player('1', 'Josh Allen', 'QB', 1),
+          player('2', 'Bijan Robinson', 'RB', 2),
+          player('3', 'Justin Tucker', 'K', 3),
+        ],
+        {
+          positionFilter: 'QB',
+          playerSearch: 'josh',
+        },
+      ).map((row) => row.name),
+    ).toEqual(['Josh Allen']);
+
+    expect(
+      filterCoreAdpPlayers(
+        [
+          player('1', 'Josh Allen', 'QB', 1),
+          player('2', 'Bijan Robinson', 'RB', 2),
+          player('3', 'Justin Tucker', 'K', 3),
+        ],
+        {
+          positionFilter: '',
+          playerSearch: '',
+        },
+      ).map((row) => row.name),
+    ).toEqual(['Josh Allen', 'Bijan Robinson']);
   });
 });

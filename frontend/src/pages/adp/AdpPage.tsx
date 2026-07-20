@@ -8,10 +8,7 @@ import { LoadingState } from '@/components/feedback/LoadingState';
 import { useAdp } from '@/hooks/useAdp';
 import { useAdpMetadata } from '@/hooks/useAdpMetadata';
 import { useAdpReport } from '@/hooks/useAdpReport';
-import {
-  CORE_FANTASY_POSITIONS,
-  isCoreFantasyPosition,
-} from '@/utils/positions';
+import { CORE_FANTASY_POSITIONS } from '@/utils/positions';
 import { notify } from '@/utils/notify';
 import type {
   ADPDistributionItem,
@@ -31,6 +28,7 @@ import {
   buildBoardRounds,
   buildDynamicOptions,
   compareRows,
+  filterCoreAdpPlayers,
   formatDateInputValue,
   formatDateTime,
   formatPercent,
@@ -247,34 +245,20 @@ export const AdpPage = () => {
     draftOrderMode,
   ]);
 
+  const filteredPlayers = useMemo(() => filterCoreAdpPlayers(
+    query.data?.players ?? [],
+    {
+      positionFilter,
+      playerSearch: deferredPlayerSearch,
+    },
+  ), [
+    deferredPlayerSearch,
+    positionFilter,
+    query.data?.players,
+  ]);
+
   const sortedPlayers = useMemo(() => {
-    const normalizedSearch = deferredPlayerSearch.trim().toLowerCase();
-    const players = [...(query.data?.players ?? [])].filter((player) => {
-      if (!isCoreFantasyPosition(player.position)) {
-        return false;
-      }
-
-      if (
-        positionFilter
-        && (player.position ?? '') !== positionFilter
-      ) {
-        return false;
-      }
-
-      if (!normalizedSearch) {
-        return true;
-      }
-
-      const haystack = [
-        player.name,
-        player.position ?? '',
-        player.team ?? '',
-      ]
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(normalizedSearch);
-    });
-
+    const players = [...filteredPlayers];
     players.sort((left, right) => {
       const value = compareRows(
         left,
@@ -291,9 +275,7 @@ export const AdpPage = () => {
     });
     return players;
   }, [
-    deferredPlayerSearch,
-    positionFilter,
-    query.data?.players,
+    filteredPlayers,
     sortColumn,
     sortDirection,
   ]);
@@ -305,33 +287,7 @@ export const AdpPage = () => {
   }, [query.data?.players]);
 
   const boardPlayers = useMemo(() => {
-    const normalizedSearch = deferredPlayerSearch.trim().toLowerCase();
-    const players = [...(query.data?.players ?? [])].filter((player) => {
-      if (!isCoreFantasyPosition(player.position)) {
-        return false;
-      }
-
-      if (
-        positionFilter
-        && (player.position ?? '') !== positionFilter
-      ) {
-        return false;
-      }
-
-      if (!normalizedSearch) {
-        return true;
-      }
-
-      const haystack = [
-        player.name,
-        player.position ?? '',
-        player.team ?? '',
-      ]
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(normalizedSearch);
-    });
-
+    const players = [...filteredPlayers];
     players.sort((left, right) => {
       if (left.overall_adp !== right.overall_adp) {
         return left.overall_adp - right.overall_adp;
@@ -342,9 +298,7 @@ export const AdpPage = () => {
 
     return players;
   }, [
-    deferredPlayerSearch,
-    positionFilter,
-    query.data?.players,
+    filteredPlayers,
   ]);
 
   const boardSize = Math.max(filters.team_count ?? 12, 8);

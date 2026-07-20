@@ -3,7 +3,10 @@ import type {
   ADPFilters,
   ADPPlayerRow,
 } from '@/types';
-import { CORE_FANTASY_POSITIONS } from '@/utils/positions';
+import {
+  CORE_FANTASY_POSITIONS,
+  isCoreFantasyPosition,
+} from '@/utils/positions';
 
 export type SortColumn =
   | 'overall_adp'
@@ -255,6 +258,45 @@ export function compareRows(
     Number(left[column] ?? Number.NEGATIVE_INFINITY)
     - Number(right[column] ?? Number.NEGATIVE_INFINITY)
   );
+}
+
+export function filterCoreAdpPlayers(
+  players: ADPPlayerRow[],
+  {
+    positionFilter,
+    playerSearch,
+  }: {
+    positionFilter: string;
+    playerSearch: string;
+  },
+) {
+  const normalizedSearch = playerSearch.trim().toLowerCase();
+
+  return players.filter((player) => {
+    if (!isCoreFantasyPosition(player.position)) {
+      return false;
+    }
+
+    if (
+      positionFilter
+      && (player.position ?? '') !== positionFilter
+    ) {
+      return false;
+    }
+
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    const haystack = [
+      player.name,
+      player.position ?? '',
+      player.team ?? '',
+    ]
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(normalizedSearch);
+  });
 }
 
 function readNumberParam(
