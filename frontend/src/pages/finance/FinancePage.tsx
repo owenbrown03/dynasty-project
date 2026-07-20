@@ -13,7 +13,6 @@ import {
 import type {
   FinanceLeagueSeasonEntry,
 } from '@/types';
-import { formatNumber } from '@/utils/format';
 import { notify } from '@/utils/notify';
 import {
   buildPayoutRows,
@@ -23,15 +22,12 @@ import {
   draftRowsEqual,
   effectiveFinanceNet,
   effectiveFinanceWinnings,
-  financeResultLabel,
   formatCurrency,
   getDraftKey,
   isFinanceSeasonComplete,
   normalizeDraftRows,
   parseAmount,
   parseNullableAmount,
-  projectionSourceLabel,
-  sourceLabel,
   type FinanceSeasonDraft,
   type FinanceSettingsDraft,
 } from './finance.utils';
@@ -42,6 +38,7 @@ import {
   FinanceTrendChart,
 } from './FinanceCharts';
 import { FinancePayoutEditor } from './FinancePayoutEditor';
+import { FinanceSeasonCard } from './FinanceSeasonCard';
 
 import './FinancePage.css';
 
@@ -58,132 +55,6 @@ const TRACKER_VISIBLE_STATUSES = new Set([
   'post_season',
 ]);
 
-
-
-function FinanceSeasonCard({
-  entry,
-  draft,
-  onDraftChange,
-  onReset,
-  resetPending,
-}: {
-  entry: FinanceLeagueSeasonEntry;
-  draft: FinanceSeasonDraft;
-  onDraftChange: (
-    nextDraft: FinanceSeasonDraft,
-  ) => void;
-  onReset: () => void;
-  resetPending: boolean;
-}) {
-  return (
-    <article className="finance-card">
-      <header className="finance-card-header">
-        <div>
-          <p className="finance-card-kicker">{entry.season}</p>
-          <h2 className="finance-card-title">
-            {entry.league_name}
-          </h2>
-          <p className="finance-card-subtitle">
-            {financeResultLabel(entry)}
-            {
-              entry.points_for !== null
-                ? ` · PF ${formatNumber(entry.points_for)}`
-                : ''
-            }
-          </p>
-        </div>
-
-        <div className="finance-card-net">
-          <span>Net</span>
-          <strong>{formatCurrency(entry.net_amount)}</strong>
-        </div>
-      </header>
-
-      <div className="finance-card-grid">
-        <div>
-          <span>Buy-in</span>
-          <strong>{formatCurrency(entry.buy_in_amount)}</strong>
-          <small>{sourceLabel(entry.buy_in_source)}</small>
-        </div>
-        <div>
-          <span>Finish payout</span>
-          <strong>{formatCurrency(entry.winnings_amount)}</strong>
-          <small>{sourceLabel(entry.payout_source)}</small>
-        </div>
-        <div>
-          <span>Expected payout</span>
-          <strong>{formatCurrency(entry.projected_winnings_amount)}</strong>
-          <small>
-            {projectionSourceLabel(entry.projected_winnings_source)}
-          </small>
-        </div>
-      </div>
-
-      <div className="finance-inline-flags">
-        <label className="finance-inline-checkbox">
-          <input
-            type="checkbox"
-            checked={draft.isExcluded}
-            onChange={(event) => {
-              onDraftChange({
-                ...draft,
-                isExcluded: event.target.checked,
-              });
-            }}
-          />
-          Exclude this season from totals and charts
-        </label>
-
-        {
-          entry.has_season_override
-            ? (
-              <button
-                type="button"
-                className="button-secondary"
-                disabled={resetPending}
-                onClick={onReset}
-              >
-                {
-                  resetPending
-                    ? 'Resetting...'
-                    : 'Reset to inherited defaults'
-                }
-              </button>
-            )
-            : null
-        }
-      </div>
-
-      <div className="finance-form-grid">
-        <label>
-          <span>Season buy-in override</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={draft.buyInAmount}
-            onChange={(event) => {
-              onDraftChange({
-                ...draft,
-                buyInAmount: event.target.value,
-              });
-            }}
-          />
-        </label>
-      </div>
-
-      <FinancePayoutEditor
-        draft={draft}
-        onChange={(nextDraft) => {
-          onDraftChange({
-            ...draft,
-            ...nextDraft,
-          });
-        }}
-      />
-    </article>
-  );
-}
 
 
 export function FinancePage() {
