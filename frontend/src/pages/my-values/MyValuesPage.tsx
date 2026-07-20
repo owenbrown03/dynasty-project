@@ -43,7 +43,7 @@ import {
   type SortDirection,
   type TableFilter,
 } from './myValues.utils';
-
+import { MyValuesMetricCard } from './MyValuesMetricCard';
 
 function getErrorMessage(
   error: unknown,
@@ -58,43 +58,6 @@ function getErrorMessage(
 
   return 'Unable to save personal projections.';
 }
-
-
-function MetricRail({
-  label,
-  market,
-  mine,
-  delta,
-}: {
-  label: string;
-  market: number | null | undefined;
-  mine: number | null | undefined;
-  delta: number | null | undefined;
-}) {
-  const deltaClassName = (
-    delta == null
-      ? ''
-      : delta > 0
-        ? 'positive'
-        : delta < 0
-          ? 'negative'
-          : 'neutral'
-  );
-
-  return (
-    <div className="my-values-metric-card">
-      <span>{label}</span>
-      <strong>{formatMetric(mine)}</strong>
-      <div className="my-values-metric-meta">
-        <p>Market {formatMetric(market)}</p>
-        <p className={deltaClassName}>
-          Delta {delta == null ? '--' : `${delta > 0 ? '+' : ''}${formatMetric(delta)}`}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 
 export const MyValuesPage = () => {
   const valuePreference = useValuePreference();
@@ -1076,25 +1039,25 @@ export const MyValuesPage = () => {
                     </div>
 
                     <div className="my-values-metric-grid">
-                      <MetricRail
+                      <MyValuesMetricCard
                         label="Dynasty starter WAR"
                         market={marketValues.dynasty_starter_war}
                         mine={customValues.dynasty_starter_war}
                         delta={deltaValues.dynasty_starter_war}
                       />
-                      <MetricRail
+                      <MyValuesMetricCard
                         label="Dynasty roster WAR"
                         market={marketValues.dynasty_roster_war}
                         mine={customValues.dynasty_roster_war}
                         delta={deltaValues.dynasty_roster_war}
                       />
-                      <MetricRail
+                      <MyValuesMetricCard
                         label="Redraft starter WAR"
                         market={marketValues.redraft_starter_war}
                         mine={customValues.redraft_starter_war}
                         delta={deltaValues.redraft_starter_war}
                       />
-                      <MetricRail
+                      <MyValuesMetricCard
                         label="Redraft roster WAR"
                         market={marketValues.redraft_roster_war}
                         mine={customValues.redraft_roster_war}
