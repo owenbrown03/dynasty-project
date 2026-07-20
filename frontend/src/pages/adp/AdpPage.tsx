@@ -53,6 +53,7 @@ import {
   type ViewMode,
 } from './adp.utils';
 import { AdpBoard } from './AdpBoard';
+import { AdpSamplePanels } from './AdpSamplePanels';
 import { AdpTable } from './AdpTable';
 
 export const AdpPage = () => {
@@ -950,122 +951,14 @@ export const AdpPage = () => {
         <LoadingState label="Loading ADP board" />
       ) : (
         <>
-          <section className="adp-summary-grid">
-            <article className="adp-summary-card">
-              <span>Qualified drafts</span>
-              <strong>{query.data?.sample.draft_count.toLocaleString() ?? '0'}</strong>
-            </article>
-            <article className="adp-summary-card">
-              <span>Qualified picks</span>
-              <strong>{query.data?.sample.pick_count.toLocaleString() ?? '0'}</strong>
-            </article>
-            <article className="adp-summary-card">
-              <span>Earliest draft</span>
-              <strong>{formatDateTime(query.data?.sample.earliest_draft_at ?? null)}</strong>
-            </article>
-            <article className="adp-summary-card">
-              <span>Latest draft</span>
-              <strong>{formatDateTime(query.data?.sample.latest_draft_at ?? null)}</strong>
-            </article>
-            <article className="adp-summary-card">
-              <span>Board source</span>
-              <strong>{formatDataSource(query.data?.sample.data_source)}</strong>
-            </article>
-          </section>
-
-          <section className="adp-bias-note">
-            <span className="adp-section-kicker">Sample note</span>
-            <p>
-              This board reflects drafts discovered through your Sleeper graph, not a random sample of all Sleeper drafts.
-              Use the draft count, pick count, and date window to judge how representative each filter slice is.
-            </p>
-          </section>
-
-          <section className={`adp-sample-health adp-sample-health-${sampleStrength.tone}`}>
-            <span className="adp-section-kicker">Sample strength</span>
-            <strong>{sampleStrength.title}</strong>
-            <p>{sampleStrength.body}</p>
-          </section>
-
-          <section className="adp-active-filters">
-            <span className="adp-section-kicker">Current slice</span>
-            <div className="adp-active-filter-list">
-              {activeFilterPills.map((pill) => (
-                <span key={pill} className="adp-active-filter-pill">
-                  {pill}
-                </span>
-              ))}
-            </div>
-          </section>
-
-          <section className="adp-composition-card">
-            <div className="adp-composition-header">
-              <div>
-                <span className="adp-section-kicker">Corpus health</span>
-                <h2>Dataset quality and crawl shape</h2>
-              </div>
-              <small>
-                These counts reflect the whole stored Sleeper corpus, not just the current board filter.
-              </small>
-            </div>
-
-            <div className="adp-summary-grid">
-              {corpusHealthCards.map((card) => (
-                <article key={card.label} className="adp-summary-card">
-                  <span>{card.label}</span>
-                  <strong>{card.value}</strong>
-                </article>
-              ))}
-            </div>
-
-            <div className="adp-composition-grid">
-              {reportDistributionGroups.map((group) => (
-                <article key={group.label} className="adp-composition-group">
-                  <span>{group.label}</span>
-                  <div className="adp-composition-list">
-                    {group.rows.length ? group.rows.slice(0, 8).map((row) => (
-                      <div key={`${group.label}-${row.key}`} className="adp-composition-pill">
-                        <strong>{group.render(row)}</strong>
-                        <small>{row.count.toLocaleString()} drafts</small>
-                      </div>
-                    )) : (
-                      <div className="adp-composition-empty">No tracked rows</div>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="adp-composition-card">
-            <div className="adp-composition-header">
-              <div>
-                <span className="adp-section-kicker">Composition</span>
-                <h2>Current sample makeup</h2>
-              </div>
-              <small>
-                Counts reflect the discovered corpus available around this filter slice.
-              </small>
-            </div>
-
-            <div className="adp-composition-grid">
-              {sampleCompositionGroups.map((group) => (
-                <article key={group.label} className="adp-composition-group">
-                  <span>{group.label}</span>
-                  <div className="adp-composition-list">
-                    {group.rows.length ? group.rows.map((row) => (
-                      <div key={`${group.label}-${row.key}`} className="adp-composition-pill">
-                        <strong>{group.render(row)}</strong>
-                        <small>{row.count.toLocaleString()} drafts</small>
-                      </div>
-                    )) : (
-                      <div className="adp-composition-empty">No matching sample</div>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
+          <AdpSamplePanels
+            sample={query.data?.sample}
+            sampleStrength={sampleStrength}
+            activeFilterPills={activeFilterPills}
+            corpusHealthCards={corpusHealthCards}
+            reportDistributionGroups={reportDistributionGroups}
+            sampleCompositionGroups={sampleCompositionGroups}
+          />
 
           <section className="adp-table-card">
             <div className="adp-table-header">
