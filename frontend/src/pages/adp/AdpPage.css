@@ -1,0 +1,596 @@
+.adp-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.adp-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+}
+
+.adp-hero-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.adp-filters-card,
+.adp-table-card,
+.adp-summary-card,
+.adp-composition-card {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.adp-filters-card,
+.adp-table-card,
+.adp-composition-card {
+  padding: 16px;
+}
+
+.adp-filters-header,
+.adp-table-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.adp-filters-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.adp-filters-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.adp-section-kicker {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-filters-header h2,
+.adp-table-header h2,
+.adp-composition-header h2 {
+  margin-top: 6px;
+  font-size: 20px;
+}
+
+.adp-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.adp-filters-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.adp-filters-grid span,
+.adp-filter-window > span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-filter-window {
+  display: grid;
+  gap: 8px;
+}
+
+.adp-filter-window-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adp-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.adp-bias-note {
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-strong);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-accent-soft) 45%, transparent),
+      transparent 70%
+    ),
+    var(--color-surface);
+}
+
+.adp-bias-note p {
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.adp-sample-health {
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.adp-sample-health strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 18px;
+}
+
+.adp-sample-health p {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.adp-sample-health-thin {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, #b45309 18%, transparent),
+      transparent 70%
+    ),
+    var(--color-surface);
+}
+
+.adp-sample-health-limited {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, #ca8a04 16%, transparent),
+      transparent 70%
+    ),
+    var(--color-surface);
+}
+
+.adp-sample-health-healthy {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, #15803d 14%, transparent),
+      transparent 70%
+    ),
+    var(--color-surface);
+}
+
+.adp-active-filters {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.adp-active-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adp-active-filter-pill {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.adp-summary-card {
+  padding: 14px;
+}
+
+.adp-summary-card span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-summary-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.adp-composition-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.adp-composition-header small {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.adp-composition-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.adp-composition-group {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.adp-composition-group > span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-composition-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adp-composition-pill,
+.adp-composition-empty {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.adp-composition-pill strong {
+  font-size: 13px;
+}
+
+.adp-composition-pill small,
+.adp-composition-empty {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.adp-table-header small {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.adp-table-meta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.adp-table-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 18px 0 16px;
+  align-items: end;
+}
+
+.adp-table-tools label {
+  display: grid;
+  gap: 8px;
+}
+
+.adp-table-tools label span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-table-tools-summary {
+  display: grid;
+  gap: 4px;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.adp-table-tools-summary span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-table-tools-summary strong {
+  font-size: 22px;
+}
+
+.adp-table-wrap {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.adp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.adp-table th,
+.adp-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.adp-table th {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adp-table tbody tr:hover {
+  background: var(--color-surface-raised);
+}
+
+.adp-board-note {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-accent-soft) 35%, transparent),
+      transparent 72%
+    ),
+    var(--color-surface-raised);
+}
+
+.adp-board-note p {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.adp-board {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.adp-board-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.adp-board-table {
+  width: max(100%, calc(var(--adp-board-columns, 12) * 158px));
+  border-collapse: separate;
+  border-spacing: 10px 10px;
+  table-layout: fixed;
+}
+
+.adp-board-table thead th {
+  padding: 0 0 8px;
+  color: var(--color-text-strong);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.adp-board-table-row > th,
+.adp-board-table-row > td {
+  padding: 0;
+  vertical-align: top;
+}
+
+.adp-board-team-header {
+  width: calc(100% / var(--adp-board-columns, 12));
+  min-width: 158px;
+  padding: 0;
+}
+
+.adp-board-player-cell {
+  width: calc(100% / var(--adp-board-columns, 12));
+  min-width: 158px;
+  padding: 0;
+}
+
+.adp-player-card {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  min-height: 96px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid var(--color-border-strong);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-surface) 90%, transparent),
+      var(--color-surface)
+    );
+}
+
+.adp-player-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--adp-position-color, var(--color-border-strong));
+}
+
+.adp-player-card-qb {
+  --adp-position-color: #ff6b6b;
+}
+
+.adp-player-card-rb {
+  --adp-position-color: #22c55e;
+}
+
+.adp-player-card-wr {
+  --adp-position-color: #3b82f6;
+}
+
+.adp-player-card-te {
+  --adp-position-color: #facc15;
+}
+
+.adp-player-card-pick {
+  --adp-position-color: #d946ef;
+}
+
+.adp-player-card-empty {
+  min-height: 96px;
+  border-style: dashed;
+  opacity: 0.35;
+}
+
+.adp-player-card-topline {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.adp-player-slot,
+.adp-player-rank,
+.adp-player-average {
+  white-space: nowrap;
+}
+
+.adp-player-rank {
+  color: var(--adp-position-color, var(--color-text-strong));
+}
+
+.adp-player-average {
+  margin-left: auto;
+}
+
+.adp-player-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.adp-player-avatar.player-avatar-md {
+  width: 40px;
+  height: 40px;
+  align-self: end;
+}
+
+.adp-player-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.adp-player-name {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.adp-player-meta-compact {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adp-player-position {
+  color: var(--adp-position-color, var(--color-text-strong));
+  font-weight: 700;
+}
+
+.adp-empty-state {
+  margin-top: 14px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .adp-hero,
+  .adp-filters-header,
+  .adp-table-header,
+  .adp-composition-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .adp-filters-actions {
+    justify-content: stretch;
+  }
+
+  .adp-table-meta {
+    justify-items: start;
+  }
+
+  .adp-table-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .adp-board-team-header,
+  .adp-board-player-cell {
+    width: calc(100% / var(--adp-board-columns, 12));
+    min-width: 148px;
+  }
+}

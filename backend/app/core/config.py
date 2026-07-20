@@ -24,6 +24,22 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_USE_TLS: bool = True
+    ADP_CRAWL_ENABLED: bool = False
+    ADP_CRAWL_SEASONS: str = "2026,2025"
+    ADP_CACHE_TTL_SECONDS: int = 3600
+    ADP_MIN_PLAYER_DRAFT_COUNT: int = 5
+    ADP_MAX_DISCOVERY_DEPTH: int = 2
+    ADP_MAX_NODES_PER_RUN: int = 50
+    ADP_MAX_REQUESTS_PER_RUN: int = 250
+    ADP_MAX_NEW_USERS_PER_RUN: int = 100
+    ADP_MAX_NEW_LEAGUES_PER_RUN: int = 200
+    ADP_MAX_NEW_DRAFTS_PER_RUN: int = 200
+    ADP_MAX_RUNTIME_SECONDS: int = 300
+    ADP_DISCOVERY_CONCURRENCY: int = 5
+    ADP_INGEST_CONCURRENCY: int = 5
+    ADP_REQUEST_DELAY_MS: int = 100
+    ADP_PROCESSING_TIMEOUT_SECONDS: int = 900
+    ADP_SNAPSHOT_MAX_AGE_SECONDS: int = 21600
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -70,6 +86,14 @@ class Settings(BaseSettings):
                 "(32 url-safe base64-encoded bytes)."
             ) from exc
         return key
+
+    @property
+    def adp_crawl_seasons(self) -> list[str]:
+        return [
+            season.strip()
+            for season in self.ADP_CRAWL_SEASONS.split(",")
+            if season.strip()
+        ]
 
 
 settings = Settings()

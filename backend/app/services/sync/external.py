@@ -16,6 +16,7 @@ from app.integrations.ktc.client import KTCClient
 from app.integrations.sleeper.singleton import get_worker_sleeper_client
 from app.integrations.underdog.client import UnderdogClient
 from app.models.db.sleeper.api import InternalState
+from app.services.adp.maintenance import run_adp_maintenance
 from app.services.sleeper.projection import sync_projections
 from app.services.sleeper.season_stats import sync_recent_regular_season_stats
 
@@ -203,6 +204,17 @@ async def run_daily_external_syncs(
                 db=db,
                 underdog=underdog,
             )
+            adp_result = await run_adp_maintenance(
+                db,
+                sleeper,
+                seed_source="users",
+                seed_limit=250,
+                cycles=3,
+                max_nodes_per_cycle=50,
+                max_drafts_per_cycle=200,
+                allow_when_disabled=True,
+                discover_users=False,
+            )
 
             ran_at = datetime.now()
             await update_daily_external_sync_state(
@@ -223,6 +235,15 @@ async def run_daily_external_syncs(
                 "ktc": ktc_result,
                 "fantasycalc": fantasycalc_result,
                 "underdog": underdog_result,
+                "adp": {
+                    "seeded_count": adp_result.seeded_count,
+                    "completed_cycles": adp_result.completed_cycles,
+                    "total_processed_nodes": adp_result.total_processed_nodes,
+                    "total_discovered_drafts": adp_result.total_discovered_drafts,
+                    "total_ingested_drafts": adp_result.total_ingested_drafts,
+                    "total_qualified_drafts": adp_result.total_qualified_drafts,
+                    "stopped_reason": adp_result.stopped_reason,
+                },
             }
     finally:
         await release_daily_external_sync_lock(

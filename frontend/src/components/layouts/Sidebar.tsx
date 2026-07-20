@@ -10,6 +10,7 @@ import {
   Radar,
   Layers3,
   BadgeDollarSign,
+  ChartNoAxesColumn,
 } from 'lucide-react';
 
 import './Sidebar.css';
@@ -45,6 +46,7 @@ export const Sidebar = () => {
         { to: '/trades', label: 'Trades', icon: <Briefcase size={20} /> },
         { to: '/waivers', label: 'Waivers', icon: <HandCoins size={20} /> },
         { to: '/tiers', label: 'Tiers', icon: <Layers3 size={20} /> },
+        { to: '/adp', label: 'ADP', icon: <ChartNoAxesColumn size={20} /> },
         { to: '/my-values', label: 'My Values', icon: <Radar size={20} /> },
         { to: '/auction', label: 'Auction', icon: <BadgeDollarSign size={20} /> },
       ],

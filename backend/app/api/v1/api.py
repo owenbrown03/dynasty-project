@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, bootstrap, sync, test
+from app.api.v1.endpoints import adp, auth, bootstrap, sync, test
 from app.api.v1.endpoints.sleeper import auth as sleeper_auth
 from app.api.v1.endpoints.sleeper import (
     connection,
@@ -16,6 +16,7 @@ from app.core.config import settings
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(adp.router, prefix="/adp", tags=["adp"])
 api_router.include_router(bootstrap.router, prefix="/bootstrap", tags=["bootstrap"])
 api_router.include_router(sync.router, prefix="/sync", tags=["sync"])
 api_router.include_router(sleeper_auth.router, prefix="/sleeper/auth", tags=["sleeper auth"])

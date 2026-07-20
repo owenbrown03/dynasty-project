@@ -3,6 +3,14 @@ import type { ValueBasis } from '@/types';
 export const queryKeys = {
   bootstrap: ['bootstrap'] as const,
 
+  adp: {
+    results: (filters: Record<string, unknown>) =>
+      ['adp-results', filters] as const,
+    metadata: (filters: Record<string, unknown>) =>
+      ['adp-metadata', filters] as const,
+    report: ['adp-report'] as const,
+  },
+
   users: {
     rosters: (
       username: string | null | undefined,

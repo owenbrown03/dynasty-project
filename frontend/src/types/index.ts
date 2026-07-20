@@ -168,6 +168,82 @@ export interface FinanceProjectionSettings {
   settings: DraftPickProjectionSettings;
 }
 
+export interface ADPFilters {
+  season?: string | null;
+  draft_kind?: string | null;
+  qb_format?: string | null;
+  te_premium?: string | null;
+  team_count?: number | null;
+  scoring_format?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  minimum_draft_count?: number;
+  limit?: number;
+}
+
+export interface ADPSample {
+  draft_count: number;
+  pick_count: number;
+  earliest_draft_at: string | null;
+  latest_draft_at: string | null;
+  generated_at: string;
+  data_source: string;
+}
+
+export interface ADPPlayerRow {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  overall_adp: number;
+  median_pick: number;
+  min_pick: number;
+  max_pick: number;
+  standard_deviation: number | null;
+  pick_count: number;
+  draft_count: number;
+  selection_rate: number;
+}
+
+export interface ADPResponse {
+  filters: ADPFilters;
+  sample: ADPSample;
+  players: ADPPlayerRow[];
+}
+
+export interface ADPMetadataResponse {
+  season_options: ADPDistributionItem[];
+  draft_kind_options: ADPDistributionItem[];
+  qb_format_options: ADPDistributionItem[];
+  te_premium_options: ADPDistributionItem[];
+  team_count_options: ADPDistributionItem[];
+  scoring_format_options: ADPDistributionItem[];
+}
+
+export interface ADPDistributionItem {
+  key: string;
+  count: number;
+}
+
+export interface ADPDatasetReport {
+  qualified_draft_count: number;
+  excluded_draft_count: number;
+  unique_league_count: number;
+  unique_root_source_count: number;
+  earliest_draft_at: string | null;
+  latest_draft_at: string | null;
+  qualification_code_distribution: ADPDistributionItem[];
+  season_distribution: ADPDistributionItem[];
+  draft_kind_distribution: ADPDistributionItem[];
+  qb_format_distribution: ADPDistributionItem[];
+  te_premium_distribution: ADPDistributionItem[];
+  scoring_format_distribution: ADPDistributionItem[];
+  team_count_distribution: ADPDistributionItem[];
+  discovery_source_distribution: ADPDistributionItem[];
+  discovery_depth_distribution: ADPDistributionItem[];
+  discovery_status_distribution: ADPDistributionItem[];
+}
+
 export interface LeagueOverview {
   league_id: string;
   league_name: string;

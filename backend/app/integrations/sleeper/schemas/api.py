@@ -168,9 +168,14 @@ class Draft(Base):
     draft_order: Optional[Dict[str, int]] = Field(
         default_factory=dict,
     )
-    slot_to_roster_id: Optional[Dict[str, int]] = Field(
+    slot_to_roster_id: Optional[Dict[str, Optional[int]]] = Field(
         default_factory=dict,
     )
+
+    @field_validator("draft_order", "slot_to_roster_id", mode="before")
+    @classmethod
+    def normalize_draft_maps(cls, value):
+        return value or {}
 
 class Player(Base):
     player_id: str

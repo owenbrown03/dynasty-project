@@ -31,3 +31,16 @@ class RedisClient:
 
     async def delete(self, key: str):
         await self.redis.delete(key)
+
+    async def delete_prefix(
+        self,
+        prefix: str,
+    ):
+        keys: list[str] = []
+        async for key in self.redis.scan_iter(
+            match=f"{prefix}*",
+        ):
+            keys.append(key)
+
+        if keys:
+            await self.redis.delete(*keys)

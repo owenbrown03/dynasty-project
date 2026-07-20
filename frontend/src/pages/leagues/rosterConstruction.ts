@@ -2,16 +2,13 @@ import type {
   LeagueRoster,
   LeagueRosterConstructionTarget,
 } from '@/types';
-
-const CORE_POSITIONS = [
-  'QB',
-  'RB',
-  'WR',
-  'TE',
-] as const;
+import {
+  CORE_FANTASY_POSITIONS,
+  type FantasyPosition,
+} from '@/utils/positions';
 
 type CorePosition =
-  (typeof CORE_POSITIONS)[number];
+  FantasyPosition;
 
 export interface RosterConstructionRow {
   position: CorePosition;
@@ -34,7 +31,7 @@ export function buildRosterConstructionRows(
     ),
   );
 
-  return CORE_POSITIONS.map((position) => {
+  return CORE_FANTASY_POSITIONS.map((position) => {
     const playerCount = roster.players.filter(
       player => player.position === position,
     ).length;

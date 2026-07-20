@@ -37,3 +37,9 @@ from .fc.models import(
     FantasyCalcValue,
     FantasyCalcPickValue,
 )
+from .adp import(
+    ADPDiscoveryNode,
+    ADPDraftQualification,
+    ADPSnapshot,
+    ADPSnapshotPlayer,
+)
