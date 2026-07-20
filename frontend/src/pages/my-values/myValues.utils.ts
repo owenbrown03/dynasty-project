@@ -227,6 +227,22 @@ export function itemMatchesFilter(
   return numericValue < target;
 }
 
+export function buildNextTableFilter(
+  filters: TableFilter[],
+): TableFilter {
+  const nextId = filters.reduce(
+    (maxId, filter) => Math.max(maxId, filter.id),
+    0,
+  ) + 1;
+
+  return {
+    id: nextId,
+    column: 'player',
+    operator: 'contains',
+    value: '',
+  };
+}
+
 export function buildEmptyOutcome(): PersonalProjectionOutcomeItem {
   return {
     position_rank: 1,

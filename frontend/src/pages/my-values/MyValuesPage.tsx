@@ -26,6 +26,7 @@ import { notify } from '@/utils/notify';
 import { getPositionColor } from '@/utils/positions';
 import {
   SORT_LABELS,
+  buildNextTableFilter,
   buildEmptyOutcome,
   cloneSeasons,
   comparePoolItems,
@@ -527,12 +528,7 @@ export const MyValuesPage = () => {
   const addTableFilter = () => {
     setTableFilters((current) => [
       ...current,
-      {
-        id: Date.now(),
-        column: 'player',
-        operator: 'contains',
-        value: '',
-      },
+      buildNextTableFilter(current),
     ]);
   };
 

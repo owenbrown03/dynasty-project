@@ -11,6 +11,7 @@ import {
   comparePoolItems,
   formatMarketNumber,
   formatMetric,
+  buildNextTableFilter,
   getDefaultFutureOutcomes,
   getDefaultSortColumn,
   getFallbackOutcomes,
@@ -182,6 +183,30 @@ describe('myValues utils', () => {
         },
       ),
     ).toBe(false);
+  });
+
+  it('builds the next table filter with a deterministic id', () => {
+    expect(
+      buildNextTableFilter([
+        {
+          id: 1,
+          column: 'player',
+          operator: 'contains',
+          value: 'downs',
+        },
+        {
+          id: 7,
+          column: 'team',
+          operator: 'equals',
+          value: 'IND',
+        },
+      ]),
+    ).toEqual({
+      id: 8,
+      column: 'player',
+      operator: 'contains',
+      value: '',
+    });
   });
 
   it('clones seasons and fills the current empty season from default rank', () => {
