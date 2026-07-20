@@ -1,5 +1,9 @@
 import type { LeagueDetails } from '@/types';
-import { getPositionColor } from '@/utils/positions';
+import {
+  CORE_FANTASY_POSITIONS,
+  type FantasyPosition,
+  getPositionColor,
+} from '@/utils/positions';
 
 export const WAR_CHART_METRICS = [
   {
@@ -20,18 +24,13 @@ export const WAR_CHART_METRICS = [
   },
 ] as const;
 
-export const WAR_CHART_POSITIONS = [
-  'QB',
-  'RB',
-  'WR',
-  'TE',
-] as const;
+export const WAR_CHART_POSITIONS = CORE_FANTASY_POSITIONS;
 
 type WarMetricKey =
   (typeof WAR_CHART_METRICS)[number]['key'];
 
 export interface LeaguePositionWarSeries {
-  position: (typeof WAR_CHART_POSITIONS)[number];
+  position: FantasyPosition;
   color: string;
   values: number[];
 }
@@ -56,7 +55,7 @@ export function buildLeaguePositionWarSeries(
 
 function sumPositionWar(
   league: LeagueDetails,
-  position: (typeof WAR_CHART_POSITIONS)[number],
+  position: FantasyPosition,
   key: WarMetricKey,
 ) {
   return league.rosters.reduce((total, roster) => (

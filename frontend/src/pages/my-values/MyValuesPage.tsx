@@ -25,7 +25,10 @@ import type {
   ValueBasis,
 } from '@/types';
 import { notify } from '@/utils/notify';
-import { getPositionColor } from '@/utils/positions';
+import {
+  CORE_FANTASY_POSITION_ORDER,
+  getPositionColor,
+} from '@/utils/positions';
 
 type SortColumn =
   | 'player'
@@ -61,13 +64,6 @@ interface TableFilter {
 type FutureProjectionMode =
   | 'default'
   | 'year';
-
-const POSITION_ORDER: Record<string, number> = {
-  QB: 0,
-  RB: 1,
-  WR: 2,
-  TE: 3,
-};
 
 const SORT_LABELS: Record<SortColumn, string> = {
   player: 'Player',
@@ -176,8 +172,8 @@ function comparePoolItems(
   direction: SortDirection,
 ) {
   const positionDiff = (
-    (POSITION_ORDER[left.player.position] ?? 99)
-    - (POSITION_ORDER[right.player.position] ?? 99)
+    (CORE_FANTASY_POSITION_ORDER[left.player.position] ?? 99)
+    - (CORE_FANTASY_POSITION_ORDER[right.player.position] ?? 99)
   );
 
   if (positionDiff !== 0) {

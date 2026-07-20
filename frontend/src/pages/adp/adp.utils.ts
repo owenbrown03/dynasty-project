@@ -3,6 +3,7 @@ import type {
   ADPFilters,
   ADPPlayerRow,
 } from '@/types';
+import { CORE_FANTASY_POSITIONS } from '@/utils/positions';
 
 export type SortColumn =
   | 'overall_adp'
@@ -115,10 +116,12 @@ export const BOARD_SORT_OPTIONS: Array<{
 ];
 
 export const POSITION_THEME_CLASS: Record<string, string> = {
-  QB: 'adp-player-card-qb',
-  RB: 'adp-player-card-rb',
-  WR: 'adp-player-card-wr',
-  TE: 'adp-player-card-te',
+  ...Object.fromEntries(
+    CORE_FANTASY_POSITIONS.map((position) => [
+      position,
+      `adp-player-card-${position.toLowerCase()}`,
+    ]),
+  ),
   PICK: 'adp-player-card-pick',
 };
 
