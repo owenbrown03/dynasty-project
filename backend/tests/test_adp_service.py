@@ -34,6 +34,8 @@ class FakeDB:
 
 
 def test_get_adp_prefers_snapshot(monkeypatch):
+    snapshot_generated_at = datetime.now(UTC)
+
     async def fake_get_latest_adp_snapshot(*args, **kwargs):
         return adp_crud.ADPSnapshotResult(
             snapshot_id="snapshot-1",
@@ -42,7 +44,7 @@ def test_get_adp_prefers_snapshot(monkeypatch):
                 pick_count=144,
                 earliest_draft_at=datetime(2026, 1, 1, tzinfo=UTC),
                 latest_draft_at=datetime(2026, 7, 1, tzinfo=UTC),
-                generated_at=datetime(2026, 7, 18, 1, 0, tzinfo=UTC),
+                generated_at=snapshot_generated_at,
                 data_source="snapshot",
             ),
             players=[
@@ -100,7 +102,7 @@ def test_get_adp_prefers_snapshot(monkeypatch):
     )
 
     assert response.sample.data_source == "snapshot"
-    assert response.sample.generated_at == datetime(2026, 7, 18, 1, 0, tzinfo=UTC)
+    assert response.sample.generated_at == snapshot_generated_at
     assert response.players[0].name == "Test Player"
 
 
@@ -285,6 +287,6 @@ def test_invalidate_adp_cache_clears_related_keys():
         )
     )
 
-    assert any(key.startswith("adp:{") for key in redis.deleted)
+    assert any(key.startswith("adp:v2:{") for key in redis.deleted)
     assert "adp:report" in redis.deleted
     assert "adp:metadata:" in redis.deleted_prefixes
