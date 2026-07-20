@@ -57,6 +57,91 @@ def test_best_ball_empty_reserve_slots_do_not_expand_claim_capacity():
     assert roster.open_roster_spots(league) == -1
 
 
+def test_best_ball_occupied_reserve_slots_do_not_expand_claim_capacity():
+    league = League(
+        league_id="league-best-ball-occupied",
+        name="Best Ball With IR",
+        season="2026",
+        status="in_season",
+        total_rosters=12,
+        draft_id="draft-best-ball-occupied",
+        roster_positions=[
+            "QB",
+            "RB",
+            "RB",
+            "WR",
+            "WR",
+            "TE",
+            "FLEX",
+            "FLEX",
+            "SUPER_FLEX",
+            "BN",
+            "BN",
+        ],
+        settings={
+            "type": 2,
+            "best_ball": 1,
+            "reserve_slots": 2,
+            "taxi_slots": 2,
+        },
+        scoring_settings={},
+    )
+    roster = Roster(
+        roster_id=6,
+        league_id="league-best-ball-occupied",
+        owner_id="user-6",
+        players=[str(index) for index in range(11)],
+        reserve=["r1", "r2"],
+        taxi=["t1"],
+    )
+
+    assert roster.claimable_roster_capacity(league) == 11
+    assert roster.open_roster_spots(league) == 0
+
+
+def test_empty_taxi_and_reserve_slots_do_not_expand_claim_capacity():
+    league = League(
+        league_id="league-empty-extra-slots",
+        name="Lineup With Empty IR",
+        season="2026",
+        status="in_season",
+        total_rosters=12,
+        draft_id="draft-empty-extra-slots",
+        roster_positions=[
+            "QB",
+            "RB",
+            "RB",
+            "WR",
+            "WR",
+            "TE",
+            "FLEX",
+            "FLEX",
+            "SUPER_FLEX",
+            "BN",
+            "BN",
+            "BN",
+        ],
+        settings={
+            "type": 2,
+            "best_ball": 0,
+            "reserve_slots": 3,
+            "taxi_slots": 5,
+        },
+        scoring_settings={},
+    )
+    roster = Roster(
+        roster_id=7,
+        league_id="league-empty-extra-slots",
+        owner_id="user-7",
+        players=[str(index) for index in range(12)],
+        reserve=[],
+        taxi=[],
+    )
+
+    assert roster.claimable_roster_capacity(league) == 12
+    assert roster.open_roster_spots(league) == 0
+
+
 def test_occupied_taxi_and_reserve_slots_expand_claim_capacity():
     league = League(
         league_id="league-2",
