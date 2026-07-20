@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
+from time import perf_counter
 from types import SimpleNamespace
 
 from fastapi import HTTPException, status
@@ -58,6 +60,7 @@ from app.services.personal_value_projections import (
 from app.services.waivers.dynasty import build_dynasty_projection
 from app.utils.age import calculate_age
 
+logger = logging.getLogger(__name__)
 CURVE_VERSION = "league_context_v1"
 CURVE_BAND_RADIUS = 5
 HISTORICAL_LOOKBACK_SEASONS = 5
@@ -801,6 +804,7 @@ async def hydrate_personal_player_values(
     if not supported_player_ids:
         return player_values
 
+    started_at = perf_counter()
     saved_projections = await get_personal_projections_for_site_user(
         db=db,
         site_user_id=site_user_id,
@@ -822,10 +826,23 @@ async def hydrate_personal_player_values(
         )
 
         if cached_payload:
-            return [
+            hydrated = [
                 PlayerValue.model_validate(row)
                 for row in json.loads(cached_payload)
             ]
+            logger.info(
+                (
+                    "Personal value hydration source=redis league=%s "
+                    "players=%s supported_players=%s saved_projections=%s "
+                    "elapsed_ms=%.1f"
+                ),
+                league.league_id,
+                len(player_values),
+                len(supported_player_ids),
+                len(saved_projections),
+                (perf_counter() - started_at) * 1000,
+            )
+            return hydrated
 
     curve_rows_by_position = await _ensure_personal_rank_curve(
         db=db,
@@ -907,6 +924,18 @@ async def hydrate_personal_player_values(
             ),
         )
 
+    logger.info(
+        (
+            "Personal value hydration source=calculated league=%s "
+            "players=%s supported_players=%s saved_projections=%s "
+            "elapsed_ms=%.1f"
+        ),
+        league.league_id,
+        len(player_values),
+        len(supported_player_ids),
+        len(saved_projections),
+        (perf_counter() - started_at) * 1000,
+    )
     return hydrated_values
 
 
