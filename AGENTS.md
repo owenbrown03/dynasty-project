@@ -507,6 +507,12 @@ Examples:
 - New DB-backed Sleeper view: extend normalized models and sync pipeline first
 - New frontend server interaction: add endpoint wrapper, add hook, compose in page/component
 
+## Commit discipline
+
+- After completing each discrete change or fix, create a commit before moving on to the next task.
+- Keep commits scoped to one logical change whenever practical.
+- Do not let unrelated finished work accumulate in the working tree.
+
 ## Commit hygiene
 
 - Commit after each discrete fix or feature change instead of batching multiple unrelated fixes together.

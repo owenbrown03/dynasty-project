@@ -1142,11 +1142,11 @@ export const AdpPage = () => {
 
   return (
     <div className="adp-page">
-      <section className="page-hero adp-hero">
+      <section className="page-header adp-hero">
         <div>
           <p className="page-eyebrow">Rankings</p>
-          <h1>Sleeper ADP board</h1>
-          <p className="page-subtitle">
+          <h1 className="page-title">Sleeper ADP board</h1>
+          <p className="page-description">
             Aggregated qualified Sleeper drafts, segmented for dynasty formats and served from your local corpus.
           </p>
         </div>

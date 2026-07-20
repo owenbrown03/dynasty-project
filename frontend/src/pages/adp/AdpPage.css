@@ -3,15 +3,12 @@
   flex-direction: column;
   gap: 18px;
   width: 100%;
-  max-width: none;
-  margin: 0;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
 .adp-hero {
-  display: flex;
-  justify-content: space-between;
   gap: 18px;
-  align-items: end;
 }
 
 .adp-hero-note {
