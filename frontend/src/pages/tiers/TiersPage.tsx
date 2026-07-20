@@ -10,6 +10,9 @@ import type {
   ValueBasis,
 } from '@/types';
 import { getPositionColor } from '@/utils/positions';
+import {
+  formatSelectedValue as formatTierSelectedValue,
+} from '@/utils/valueFormat';
 
 import {
   TIER_SOURCE_OPTIONS,
@@ -17,23 +20,6 @@ import {
 } from './tier.constants';
 import './TiersPage.css';
 
-
-function formatSelectedValue(
-  player: TierBoardPlayer,
-  valueBasis: ValueBasis,
-) {
-  if (
-    valueBasis === 'ktc'
-    || valueBasis === 'fantasycalc'
-    || valueBasis === 'adp'
-  ) {
-    return Math.round(
-      player.selected_value,
-    ).toLocaleString();
-  }
-
-  return player.selected_value.toFixed(2);
-}
 
 function formatExposure(
   player: TierBoardPlayer,
@@ -339,8 +325,8 @@ export const TiersPage = () => {
                                       <div className="tier-player-value">
                                         <strong>
                                           {
-                                            formatSelectedValue(
-                                              player,
+                                            formatTierSelectedValue(
+                                              player.selected_value,
                                               tierBoard.value_basis,
                                             )
                                           }

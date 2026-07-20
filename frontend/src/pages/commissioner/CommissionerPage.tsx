@@ -34,6 +34,9 @@ import {
   VALUE_BASIS_OPTIONS,
   getValueBasisOptions,
 } from '@/pages/waivers/waiver.constants';
+import {
+  formatSelectedValue as formatValue,
+} from '@/utils/valueFormat';
 
 import './CommissionerPage.css';
 
@@ -49,26 +52,6 @@ function isValueBasis(
   return VALUE_BASIS_OPTIONS.some(
     (option) => option.value === value,
   );
-}
-
-
-function formatValue(
-  value: number | null,
-  valueBasis: ValueBasis,
-) {
-  if (value === null) {
-    return '—';
-  }
-
-  if (
-    valueBasis === 'ktc'
-    || valueBasis === 'fantasycalc'
-    || valueBasis === 'adp'
-  ) {
-    return Math.round(value).toLocaleString();
-  }
-
-  return value.toFixed(2);
 }
 
 
