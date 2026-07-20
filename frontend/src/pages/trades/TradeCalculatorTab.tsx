@@ -15,6 +15,7 @@ import type {
   BulkTradePickRequest,
 } from '@/types';
 import { notify } from '@/utils/notify';
+import { formatMarketValue } from '@/utils/valueFormat';
 
 
 type CalculatorBasis =
@@ -52,13 +53,6 @@ function getAssetValue(
   return basis === 'ktc'
     ? asset.ktcValue ?? 0
     : asset.fcValue ?? 0;
-}
-
-
-function formatCalculatorValue(
-  value: number,
-) {
-  return Math.round(value).toLocaleString();
 }
 
 
@@ -433,8 +427,8 @@ export function TradeCalculatorTab({
                         <div className="trade-calculator-search-actions">
                           <span>
                             {valueBasis === 'ktc'
-                              ? formatCalculatorValue(player.ktc_value ?? 0)
-                              : formatCalculatorValue(player.fc_value ?? 0)}
+                              ? formatMarketValue(player.ktc_value ?? 0)
+                              : formatMarketValue(player.fc_value ?? 0)}
                           </span>
 
                           <button
@@ -574,7 +568,7 @@ export function TradeCalculatorTab({
               >
                 <div className="trade-calculator-panel-header">
                   <h3>{panel.title}</h3>
-                  <strong>{formatCalculatorValue(panel.net)}</strong>
+                  <strong>{formatMarketValue(panel.net)}</strong>
                 </div>
 
                 <div className="trade-calculator-asset-list">
@@ -593,7 +587,7 @@ export function TradeCalculatorTab({
                             <div className="trade-calculator-asset-actions">
                               <span>
                                 {
-                                  formatCalculatorValue(
+                                  formatMarketValue(
                                     getAssetValue(asset, valueBasis),
                                   )
                                 }
@@ -624,11 +618,11 @@ export function TradeCalculatorTab({
                 <div className="trade-calculator-summary">
                   <div>
                     <span>Asset total</span>
-                    <strong>{formatCalculatorValue(panel.total)}</strong>
+                    <strong>{formatMarketValue(panel.total)}</strong>
                   </div>
                   <div>
                     <span>Roster spots</span>
-                    <strong>{formatCalculatorValue(panel.adjustment)}</strong>
+                    <strong>{formatMarketValue(panel.adjustment)}</strong>
                   </div>
                 </div>
               </section>
