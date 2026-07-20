@@ -9,7 +9,7 @@ import {
   useSearchParams,
 } from 'react-router';
 
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -45,6 +45,134 @@ function isValueBasis(
 ): value is ValueBasis {
   return VALUE_BASIS_OPTIONS.some(
     (option) => option.value === value,
+  );
+}
+
+function CommissionerCardSkeleton({
+  mode,
+}: {
+  mode: 'orphans' | 'workspace';
+}) {
+  return (
+    <article className="commissioner-card">
+      <header className="commissioner-card-header">
+        <div className="commissioner-card-heading">
+          <Skeleton width={58} variant="text" />
+          <Skeleton width="72%" variant="title" />
+          <Skeleton width={96} variant="text" />
+        </div>
+
+        <div className="commissioner-card-stats commissioner-card-stats-skeleton">
+          {
+            Array.from({ length: 3 }).map((_, index) => (
+              <div key={index}>
+                <Skeleton width={84} variant="text" />
+                <Skeleton width={72} height={22} />
+              </div>
+            ))
+          }
+        </div>
+      </header>
+
+      {
+        mode === 'orphans'
+          ? (
+            <>
+              <div className="commissioner-badge-row">
+                {
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <Skeleton width={72} height={34} key={index} />
+                  ))
+                }
+              </div>
+
+              <section className="commissioner-section">
+                <div className="commissioner-section-header">
+                  <Skeleton width={150} variant="text" />
+                </div>
+                <div className="commissioner-list">
+                  {
+                    Array.from({ length: 4 }).map((_, index) => (
+                      <div className="commissioner-player-row" key={index}>
+                        <div className="player-with-avatar">
+                          <Skeleton width={34} height={34} radius={4} />
+                          <div className="player-with-avatar-copy">
+                            <Skeleton width={150} variant="title" />
+                            <Skeleton width={80} variant="text" />
+                          </div>
+                        </div>
+                        <Skeleton width={52} height={18} />
+                      </div>
+                    ))
+                  }
+                </div>
+              </section>
+            </>
+          )
+          : (
+            <>
+              <section className="commissioner-section">
+                <div className="commissioner-section-header">
+                  <Skeleton width={160} variant="text" />
+                </div>
+                <div className="commissioner-due-settings">
+                  <Skeleton height={46} />
+                  <Skeleton width={160} height={42} />
+                </div>
+              </section>
+
+              <section className="commissioner-section">
+                <div className="commissioner-section-header">
+                  <Skeleton width={120} variant="text" />
+                </div>
+                <div className="commissioner-list">
+                  {
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <div className="commissioner-due-row" key={index}>
+                        <div className="commissioner-due-copy">
+                          <Skeleton width={140} variant="title" />
+                          <Skeleton width="70%" variant="text" />
+                        </div>
+                        <Skeleton width={100} height={36} />
+                      </div>
+                    ))
+                  }
+                </div>
+              </section>
+            </>
+          )
+      }
+    </article>
+  );
+}
+
+function CommissionerCardGridSkeleton({
+  mode,
+}: {
+  mode: 'orphans' | 'workspace';
+}) {
+  return (
+    <section
+      className="commissioner-card-grid"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">
+        {
+          mode === 'orphans'
+            ? 'Loading commissioner view...'
+            : 'Loading league dues tracker...'
+        }
+      </span>
+      {
+        Array.from({ length: 4 }).map((_, index) => (
+          <CommissionerCardSkeleton
+            key={index}
+            mode={mode}
+          />
+        ))
+      }
+    </section>
   );
 }
 
@@ -609,10 +737,7 @@ export const CommissionerPage = () => {
       {
         activeTab === 'orphans' && activeUsername && orphans.loading
           ? (
-            <LoadingState
-              label="Loading commissioner view..."
-              className="commissioner-empty-state"
-            />
+            <CommissionerCardGridSkeleton mode="orphans" />
           )
           : null
       }
@@ -668,10 +793,7 @@ export const CommissionerPage = () => {
       {
         activeTab === 'workspace' && canManageWorkspace && workspace.loading
           ? (
-            <LoadingState
-              label="Loading league dues tracker..."
-              className="commissioner-empty-state"
-            />
+            <CommissionerCardGridSkeleton mode="workspace" />
           )
           : null
       }
