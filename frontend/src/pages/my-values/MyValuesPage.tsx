@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
 import {
@@ -54,6 +54,69 @@ function getErrorMessage(
   }
 
   return 'Unable to save personal projections.';
+}
+
+function MyValuesEditorSkeleton() {
+  return (
+    <div className="my-values-editor-skeleton" role="status" aria-live="polite">
+      <span className="skeleton-sr-label">Loading player projections...</span>
+
+      <div className="my-values-player-hero">
+        <div className="my-values-player-identity">
+          <Skeleton width={52} height={52} radius={6} />
+          <div>
+            <div className="my-values-player-tag-row">
+              {
+                Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton width={index === 0 ? 34 : 58} variant="text" key={index} />
+                ))
+              }
+            </div>
+            <Skeleton width={210} height={32} />
+            <Skeleton width={320} variant="text" />
+          </div>
+        </div>
+
+        <div className="my-values-player-actions">
+          <Skeleton width={104} height={42} />
+          <Skeleton width={138} height={42} />
+        </div>
+      </div>
+
+      <div className="my-values-metric-grid">
+        {
+          Array.from({ length: 4 }).map((_, index) => (
+            <div className="my-values-metric-card" key={index}>
+              <Skeleton width={140} variant="text" />
+              <Skeleton width={76} height={36} />
+              <div className="my-values-metric-meta">
+                <Skeleton width={92} variant="text" />
+                <Skeleton width={74} variant="text" />
+              </div>
+            </div>
+          ))
+        }
+      </div>
+
+      <div className="my-values-season-grid">
+        {
+          Array.from({ length: 2 }).map((_, index) => (
+            <article className="my-values-season-card" key={index}>
+              <div className="my-values-season-card-header">
+                <div>
+                  <Skeleton width={54} variant="text" />
+                  <Skeleton width={130} variant="title" />
+                </div>
+                <Skeleton width={64} height={28} />
+              </div>
+              <Skeleton height={46} />
+              <Skeleton width="82%" variant="text" />
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  );
 }
 
 export const MyValuesPage = () => {
@@ -672,7 +735,7 @@ export const MyValuesPage = () => {
             {
               detail.loading
                 ? (
-                  <LoadingState label="Loading player projections..." />
+                  <MyValuesEditorSkeleton />
                 )
                 : null
             }

@@ -1,4 +1,5 @@
 import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import type { PersonalValuePoolItem } from '@/types';
 import { getPositionColor } from '@/utils/positions';
@@ -13,6 +14,62 @@ import {
   type SortDirection,
   type TableFilter,
 } from './myValues.utils';
+
+const MY_VALUES_TABLE_COLUMNS = [
+  'Player',
+  'Pos',
+  'Team',
+  'UD Rank',
+  'KTC',
+  'FC',
+  'ADP',
+  'Market D Ro',
+  'My D Ro',
+  'Delta',
+];
+
+function MyValuesPoolSkeleton() {
+  return (
+    <div className="my-values-table-wrap" role="status" aria-live="polite">
+      <span className="skeleton-sr-label">Building personal value pool...</span>
+      <table className="my-values-table my-values-table-skeleton">
+        <thead>
+          <tr>
+            {
+              MY_VALUES_TABLE_COLUMNS.map((column) => (
+                <th key={column}>{column}</th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {
+            Array.from({ length: 12 }).map((_, rowIndex) => (
+              <tr key={rowIndex}>
+                <td>
+                  <div className="my-values-table-player">
+                    <Skeleton width={34} height={34} radius={4} />
+                    <div>
+                      <Skeleton width={150} variant="title" />
+                      <Skeleton width={90} variant="text" />
+                    </div>
+                  </div>
+                </td>
+                {
+                  Array.from({ length: MY_VALUES_TABLE_COLUMNS.length - 1 }).map((__, columnIndex) => (
+                    <td key={columnIndex}>
+                      <Skeleton width={columnIndex < 3 ? 46 : 72} height={16} />
+                    </td>
+                  ))
+                }
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 interface MyValuesPoolPanelProps {
   leagueName: string;
@@ -211,7 +268,7 @@ export function MyValuesPoolPanel({
       {
         loading
           ? (
-            <LoadingState label="Building personal value pool..." />
+            <MyValuesPoolSkeleton />
           )
           : null
       }
