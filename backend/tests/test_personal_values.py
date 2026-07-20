@@ -8,14 +8,14 @@ from app.schemas.personal_values import (
     PersonalProjectionSeasonUpdate,
     PersonalValueUpdateRequest,
 )
-from app.services.personal_values import (
-    _merge_saved_projection_seasons,
-    _validate_projection_update,
+from app.services.personal_value_projections import (
+    merge_saved_projection_seasons,
+    validate_projection_update,
 )
 
 
 def test_merge_saved_projection_seasons_returns_new_frozen_items():
-    merged = _merge_saved_projection_seasons(
+    merged = merge_saved_projection_seasons(
         base_season=2026,
         end_season=2029,
         default_position_rank=48,
@@ -86,7 +86,7 @@ def test_validate_projection_update_rejects_empty_future_outcomes():
     )
 
     with pytest.raises(HTTPException) as exc:
-        _validate_projection_update(
+        validate_projection_update(
             base_season=2026,
             end_season=2027,
             payload=payload,
