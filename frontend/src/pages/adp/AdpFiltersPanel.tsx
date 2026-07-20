@@ -78,9 +78,10 @@ export function AdpFiltersPanel({
           <select
             value={filters.season ?? ''}
             onChange={(event) => {
+              const value = event.target.value.trim();
               setFilters((current) => ({
                 ...current,
-                season: event.target.value.trim() || null,
+                season: value || null,
               }));
             }}
           >
@@ -97,9 +98,10 @@ export function AdpFiltersPanel({
           <select
             value={filters.draft_kind ?? ''}
             onChange={(event) => {
+              const value = event.target.value;
               setFilters((current) => ({
                 ...current,
-                draft_kind: event.target.value || null,
+                draft_kind: value || null,
               }));
             }}
           >
@@ -116,9 +118,10 @@ export function AdpFiltersPanel({
           <select
             value={filters.qb_format ?? ''}
             onChange={(event) => {
+              const value = event.target.value;
               setFilters((current) => ({
                 ...current,
-                qb_format: event.target.value || null,
+                qb_format: value || null,
               }));
             }}
           >
@@ -135,9 +138,10 @@ export function AdpFiltersPanel({
           <select
             value={filters.te_premium ?? ''}
             onChange={(event) => {
+              const value = event.target.value;
               setFilters((current) => ({
                 ...current,
-                te_premium: event.target.value || null,
+                te_premium: value || null,
               }));
             }}
           >
@@ -154,9 +158,10 @@ export function AdpFiltersPanel({
           <select
             value={filters.scoring_format ?? ''}
             onChange={(event) => {
+              const value = event.target.value;
               setFilters((current) => ({
                 ...current,
-                scoring_format: event.target.value || null,
+                scoring_format: value || null,
               }));
             }}
           >
@@ -173,11 +178,10 @@ export function AdpFiltersPanel({
           <select
             value={filters.team_count?.toString() ?? ''}
             onChange={(event) => {
+              const value = event.target.value;
               setFilters((current) => ({
                 ...current,
-                team_count: event.target.value
-                  ? Number(event.target.value)
-                  : null,
+                team_count: value ? Number(value) : null,
               }));
             }}
           >
@@ -197,9 +201,10 @@ export function AdpFiltersPanel({
             max={999}
             value={filters.minimum_draft_count ?? 1}
             onChange={(event) => {
+              const value = Number(event.target.value);
               setFilters((current) => ({
                 ...current,
-                minimum_draft_count: Number(event.target.value),
+                minimum_draft_count: value,
               }));
             }}
           />
@@ -210,9 +215,10 @@ export function AdpFiltersPanel({
           <select
             value={String(filters.limit ?? DEFAULT_ADP_FILTERS.limit ?? 300)}
             onChange={(event) => {
+              const value = Number(event.target.value);
               setFilters((current) => ({
                 ...current,
-                limit: Number(event.target.value),
+                limit: value,
               }));
             }}
           >
@@ -230,9 +236,10 @@ export function AdpFiltersPanel({
             type="date"
             value={filters.start_date ?? ''}
             onChange={(event) => {
+              const value = event.target.value;
               setFilters((current) => ({
                 ...current,
-                start_date: event.target.value || null,
+                start_date: value || null,
               }));
             }}
           />
@@ -244,9 +251,10 @@ export function AdpFiltersPanel({
             type="date"
             value={filters.end_date ?? ''}
             onChange={(event) => {
+              const value = event.target.value;
               setFilters((current) => ({
                 ...current,
-                end_date: event.target.value || null,
+                end_date: value || null,
               }));
             }}
           />
