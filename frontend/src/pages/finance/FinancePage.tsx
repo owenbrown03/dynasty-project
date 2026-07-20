@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Wallet } from 'lucide-react';
 
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import {
   useFinanceSummary,
@@ -55,7 +55,68 @@ const TRACKER_VISIBLE_STATUSES = new Set([
   'post_season',
 ]);
 
+function FinancePageSkeleton() {
+  return (
+    <div className="finance-loading-shell" role="status" aria-live="polite">
+      <span className="skeleton-sr-label">Loading finance tracker...</span>
 
+      <div className="finance-tabs-row">
+        <div className="finance-tabs finance-tabs-skeleton">
+          <Skeleton width={92} height={40} />
+          <Skeleton width={92} height={40} />
+          <Skeleton width={92} height={40} />
+        </div>
+
+        <div className="finance-overview-controls">
+          <label>
+            <span>Year</span>
+            <Skeleton width={260} height={46} />
+          </label>
+        </div>
+      </div>
+
+      <section className="finance-summary-grid">
+        {
+          Array.from({ length: 4 }).map((_, index) => (
+            <article className="finance-summary-card" key={index}>
+              <Skeleton width={130} variant="text" />
+              <Skeleton width={92} height={28} />
+            </article>
+          ))
+        }
+      </section>
+
+      <section className="finance-chart-grid">
+        <article className="finance-chart-card">
+          <Skeleton width={88} variant="text" />
+          <Skeleton width={240} variant="title" />
+          <div className="finance-skeleton-chart">
+            <Skeleton width="100%" height={180} />
+          </div>
+        </article>
+
+        <article className="finance-chart-card">
+          <Skeleton width={64} variant="text" />
+          <Skeleton width={210} variant="title" />
+          <div className="finance-skeleton-bars">
+            {
+              Array.from({ length: 5 }).map((_, index) => (
+                <div className="finance-skeleton-bar-row" key={index}>
+                  <div>
+                    <Skeleton width={56} variant="text" />
+                    <Skeleton width={88} variant="text" />
+                  </div>
+                  <Skeleton width={`${80 - index * 10}%`} height={14} />
+                  <Skeleton width={58} variant="text" />
+                </div>
+              ))
+            }
+          </div>
+        </article>
+      </section>
+    </div>
+  );
+}
 
 export function FinancePage() {
   const connection = useSleeperConnection();
@@ -355,10 +416,7 @@ export function FinancePage() {
       {
         connection.linked && finance.loading
           ? (
-            <LoadingState
-              label="Loading finance tracker..."
-              className="empty-state"
-            />
+            <FinancePageSkeleton />
           )
           : null
       }

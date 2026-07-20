@@ -230,6 +230,43 @@
   gap: 12px;
 }
 
+.finance-loading-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.finance-tabs-skeleton {
+  border: 0;
+  gap: 1px;
+  background: var(--color-border-strong);
+}
+
+.finance-tabs-skeleton .skeleton {
+  border-radius: 0;
+}
+
+.finance-skeleton-chart {
+  margin-top: 18px;
+}
+
+.finance-skeleton-bars {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.finance-skeleton-bar-row {
+  display: grid;
+  grid-template-columns: 90px minmax(120px, 1fr) 60px;
+  align-items: center;
+  gap: 12px;
+}
+
+.finance-skeleton-bar-row > div {
+  display: grid;
+  gap: 6px;
+}
+
 .finance-payout-editor {
   display: grid;
   gap: 12px;

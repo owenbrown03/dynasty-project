@@ -3,10 +3,74 @@ import './LeagueDashboardPage.css';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { useLeagueDashboard } from '@/hooks/sleeper/useLeagues';
 import { DashboardLeagues } from './DashboardLeagues';
+
+function DashboardSkeleton() {
+  return (
+    <div className="dashboard-skeleton" role="status" aria-live="polite">
+      <span className="skeleton-sr-label">Loading league dashboard...</span>
+
+      <section className="dashboard-section">
+        <div className="dashboard-section-header">
+          <div>
+            <Skeleton width={120} variant="text" />
+            <Skeleton width={220} variant="title" />
+          </div>
+        </div>
+
+        <div className="summary-grid">
+          {
+            Array.from({ length: 3 }).map((_, index) => (
+              <div className="summary-card skeleton-card" key={index}>
+                <Skeleton width={100} variant="text" />
+                <Skeleton width={72} height={26} />
+              </div>
+            ))
+          }
+        </div>
+      </section>
+
+      <div className="portfolio-league-table">
+        <div className="portfolio-league-table-head">
+          {
+            ['League', 'Record', 'Standing', 'Roster', 'Value', 'Projection'].map((label) => (
+              <span key={label}>{label}</span>
+            ))
+          }
+        </div>
+
+        <div className="portfolio-league-list">
+          {
+            Array.from({ length: 8 }).map((_, index) => (
+              <div className="portfolio-league-row portfolio-league-row-skeleton" key={index}>
+                <div className="portfolio-league-primary">
+                  <Skeleton variant="circle" width={38} height={38} />
+                  <div>
+                    <Skeleton width={170} variant="title" />
+                    <Skeleton width={110} variant="text" />
+                  </div>
+                </div>
+
+                <div className="portfolio-league-metrics">
+                  {
+                    Array.from({ length: 5 }).map((__, metricIndex) => (
+                      <div className="portfolio-league-metric" key={metricIndex}>
+                        <Skeleton width="70%" height={18} />
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export const LeagueDashboardPage = () => {
   const dashboard = useLeagueDashboard();
@@ -84,7 +148,7 @@ export const LeagueDashboardPage = () => {
         </section>
 
         <div className="dashboard-container">
-          <LoadingState label="Loading league dashboard..." />
+          <DashboardSkeleton />
         </div>
       </div>
     );

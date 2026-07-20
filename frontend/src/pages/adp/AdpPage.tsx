@@ -1,10 +1,16 @@
 import './AdpPage.css';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import {
+  type CSSProperties,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Database } from 'lucide-react';
 import { useSearchParams } from 'react-router';
 
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useAdp } from '@/hooks/useAdp';
 import { useAdpMetadata } from '@/hooks/useAdpMetadata';
 import { useAdpReport } from '@/hooks/useAdpReport';
@@ -49,6 +55,101 @@ import {
 import { AdpFiltersPanel } from './AdpFiltersPanel';
 import { AdpResultsSection } from './AdpResultsSection';
 import { AdpSamplePanels } from './AdpSamplePanels';
+
+function AdpPageSkeleton() {
+  return (
+    <div className="adp-loading-shell" role="status" aria-live="polite">
+      <span className="skeleton-sr-label">Loading ADP board...</span>
+
+      <section className="adp-summary-grid">
+        {
+          Array.from({ length: 4 }).map((_, index) => (
+            <article className="adp-summary-card skeleton-card" key={index}>
+              <Skeleton width={110} variant="text" />
+              <Skeleton width={index === 0 ? 70 : 130} height={24} />
+            </article>
+          ))
+        }
+      </section>
+
+      <section className="adp-table-card">
+        <div className="adp-table-header">
+          <div>
+            <Skeleton width={70} variant="text" />
+            <Skeleton width={220} variant="title" />
+          </div>
+          <div className="adp-table-meta">
+            <Skeleton width={110} variant="text" />
+            <Skeleton width={180} variant="text" />
+          </div>
+        </div>
+
+        <div className="adp-table-tools">
+          {
+            Array.from({ length: 5 }).map((_, index) => (
+              <label key={index}>
+                <Skeleton width={84} variant="text" />
+                <Skeleton height={40} />
+              </label>
+            ))
+          }
+          <div className="adp-table-tools-summary">
+            <Skeleton width={112} variant="text" />
+            <Skeleton width={84} height={24} />
+          </div>
+        </div>
+
+        <div className="adp-board">
+          <div className="adp-board-table-wrap">
+            <table
+              className="adp-board-table adp-board-table-skeleton"
+              style={{
+                '--adp-board-columns': 12,
+              } as CSSProperties}
+            >
+              <thead>
+                <tr>
+                  {
+                    Array.from({ length: 12 }).map((_, index) => (
+                      <th key={index}>Team {index + 1}</th>
+                    ))
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                {
+                  Array.from({ length: 6 }).map((_, rowIndex) => (
+                    <tr className="adp-board-table-row" key={rowIndex}>
+                      {
+                        Array.from({ length: 12 }).map((__, columnIndex) => (
+                          <td className="adp-board-player-cell" key={`${rowIndex}-${columnIndex}`}>
+                            <div className="adp-player-card adp-player-card-skeleton">
+                              <div className="adp-player-card-topline">
+                                <Skeleton width={42} variant="text" />
+                                <Skeleton width={28} variant="text" />
+                              </div>
+                              <div className="adp-player-main">
+                                <div className="adp-player-copy">
+                                  <Skeleton width="78%" variant="title" />
+                                  <Skeleton width="54%" variant="text" />
+                                </div>
+                                <Skeleton width={34} height={34} radius={4} />
+                              </div>
+                            </div>
+                          </td>
+                        ))
+                      }
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
 
 export const AdpPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -659,7 +760,7 @@ export const AdpPage = () => {
       />
 
       {query.isLoading && !query.data ? (
-        <LoadingState label="Loading ADP board" />
+        <AdpPageSkeleton />
       ) : (
         <>
           <AdpSamplePanels
