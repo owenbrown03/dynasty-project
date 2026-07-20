@@ -31,7 +31,6 @@ import {
   cloneSeasons,
   comparePoolItems,
   formatMarketNumber,
-  formatMetric,
   getDefaultFutureOutcomes,
   getDefaultSortColumn,
   getPoolPlayerIds,
@@ -43,6 +42,7 @@ import {
 } from './myValues.utils';
 import { MyValuesMetricCard } from './MyValuesMetricCard';
 import { MyValuesPoolPanel } from './MyValuesPoolPanel';
+import { MyValuesSearchCard } from './MyValuesSearchCard';
 
 function getErrorMessage(
   error: unknown,
@@ -660,84 +660,15 @@ export const MyValuesPage = () => {
         />
 
         <section className="my-values-editor-panel">
-          <div className="my-values-search-card">
-            <div className="my-values-panel-header">
-              <div>
-                <p>Add players</p>
-                <h2>Add players missing from the sheet</h2>
-              </div>
-            </div>
-
-            <div className="my-values-search-controls">
-              <label className="my-values-control my-values-control-grow">
-                <span>Player search</span>
-                <input
-                  value={searchTerm}
-                  placeholder="Search player name"
-                  onChange={(event) => {
-                    setSearchTerm(
-                      event.target.value,
-                    );
-                  }}
-                />
-              </label>
-            </div>
-
-            {
-              search.enabled
-                ? (
-                  <div className="my-values-search-results">
-                    {
-                      search.loading || search.fetching
-                        ? (
-                          <LoadingState
-                            inline
-                            label="Searching"
-                          />
-                        )
-                        : sortedSearchResults.map((result) => (
-                          <button
-                            key={result.player_id}
-                            type="button"
-                            className="my-values-search-result"
-                            onClick={() => {
-                              setSelectedPlayerId(
-                                result.player_id,
-                              );
-                            }}
-                          >
-                            <div className="my-values-pool-player">
-                              <PlayerAvatar
-                                playerId={result.player_id}
-                                name={result.name}
-                                size="sm"
-                              />
-                              <div>
-                                <strong>{result.name}</strong>
-                                <p>
-                                  {result.position ?? '--'} · {result.team ?? '--'} · {result.underdog_position_rank ?? 'No UD rank'}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="my-values-search-metrics">
-                              <span>KTC {result.ktc_value?.toLocaleString() ?? '--'}</span>
-                              <span>FC {result.fc_value?.toLocaleString() ?? '--'}</span>
-                              <span>ADP {formatMarketNumber(result.adp_value)}</span>
-                              <span>WAR {formatMetric(result.dynasty_roster_war)}</span>
-                            </div>
-                          </button>
-                        ))
-                    }
-                  </div>
-                )
-                : (
-                  <div className="my-values-search-empty">
-                    Search at least two characters to add players who are missing from the default underdog-backed sheet.
-                  </div>
-                )
-            }
-          </div>
+          <MyValuesSearchCard
+            searchTerm={searchTerm}
+            searchEnabled={search.enabled}
+            loading={search.loading}
+            fetching={search.fetching}
+            results={sortedSearchResults}
+            onSearchTermChange={setSearchTerm}
+            onSelectPlayer={setSelectedPlayerId}
+          />
 
           <div className="my-values-editor-card">
             {
