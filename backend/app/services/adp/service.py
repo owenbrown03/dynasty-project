@@ -42,6 +42,13 @@ def _slice_adp_response(
     )
 
 
+def _as_aware_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+
+    return value.astimezone(UTC)
+
+
 async def invalidate_adp_cache(
     redis: RedisClient | None,
     *,
@@ -114,7 +121,7 @@ async def get_adp(
             UTC,
         ) - snapshot_age_limit
 
-        if snapshot.sample.generated_at < snapshot_cutoff:
+        if _as_aware_utc(snapshot.sample.generated_at) < snapshot_cutoff:
             snapshot = None
 
     if snapshot is not None:
