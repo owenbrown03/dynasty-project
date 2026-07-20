@@ -31,7 +31,6 @@ import {
   buildBoardRounds,
   buildDynamicOptions,
   compareRows,
-  formatDataSource,
   formatDateInputValue,
   formatDateTime,
   formatPercent,
@@ -49,11 +48,9 @@ import {
   type SortDirection,
   type ViewMode,
 } from './adp.utils';
-import { AdpBoard } from './AdpBoard';
-import { AdpBoardToolbar } from './AdpBoardToolbar';
 import { AdpFiltersPanel } from './AdpFiltersPanel';
+import { AdpResultsSection } from './AdpResultsSection';
 import { AdpSamplePanels } from './AdpSamplePanels';
-import { AdpTable } from './AdpTable';
 
 export const AdpPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -720,63 +717,29 @@ export const AdpPage = () => {
             sampleCompositionGroups={sampleCompositionGroups}
           />
 
-          <section className="adp-table-card">
-            <div className="adp-table-header">
-              <div>
-                <span className="adp-section-kicker">Board</span>
-                <h2>Startup draft board</h2>
-              </div>
-              <div className="adp-table-meta">
-                <button
-                  type="button"
-                  className="site-button site-button-secondary"
-                  onClick={downloadCurrentBoardCsv}
-                >
-                  Export CSV
-                </button>
-                <small>
-                  {formatDataSource(query.data?.sample.data_source)}
-                </small>
-                <small>
-                  Generated {formatDateTime(query.data?.sample.generated_at ?? null)}
-                </small>
-              </div>
-            </div>
-
-            <AdpBoardToolbar
-              playerSearch={playerSearch}
-              positionFilter={positionFilter}
-              positionOptions={positionOptions}
-              viewMode={viewMode}
-              draftOrderMode={draftOrderMode}
-              sortColumn={sortColumn}
-              sortDirection={sortDirection}
-              visibleCount={viewMode === 'board' ? boardPlayers.length : sortedPlayers.length}
-              secondaryCount={viewMode === 'board' ? boardSize : (query.data?.players.length ?? 0)}
-              onPlayerSearchChange={setPlayerSearch}
-              onPositionFilterChange={setPositionFilter}
-              onViewModeChange={setViewMode}
-              onDraftOrderModeChange={setDraftOrderMode}
-              onSortColumnChange={setSortColumn}
-              onSortDirectionChange={setSortDirection}
-            />
-
-            {viewMode === 'board' ? (
-              <AdpBoard
-                boardDisplayRows={boardDisplayRows}
-                boardSize={boardSize}
-                draftOrderMode={draftOrderMode}
-              />
-            ) : (
-              <AdpTable players={sortedPlayers} />
-            )}
-
-            {!(viewMode === 'board' ? boardPlayers.length : sortedPlayers.length) ? (
-              <div className="adp-empty-state">
-                No qualified players matched this filter set.
-              </div>
-            ) : null}
-          </section>
+          <AdpResultsSection
+            dataSource={query.data?.sample.data_source}
+            generatedAt={query.data?.sample.generated_at}
+            playerSearch={playerSearch}
+            positionFilter={positionFilter}
+            positionOptions={positionOptions}
+            viewMode={viewMode}
+            draftOrderMode={draftOrderMode}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            boardPlayers={boardPlayers}
+            sortedPlayers={sortedPlayers}
+            totalPlayerCount={query.data?.players.length ?? 0}
+            boardSize={boardSize}
+            boardDisplayRows={boardDisplayRows}
+            onExportCsv={downloadCurrentBoardCsv}
+            onPlayerSearchChange={setPlayerSearch}
+            onPositionFilterChange={setPositionFilter}
+            onViewModeChange={setViewMode}
+            onDraftOrderModeChange={setDraftOrderMode}
+            onSortColumnChange={setSortColumn}
+            onSortDirectionChange={setSortDirection}
+          />
         </>
       )}
     </div>
