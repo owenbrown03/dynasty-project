@@ -19,12 +19,10 @@ import type {
 } from '@/types';
 import {
   ADP_LIMIT_OPTIONS,
-  BOARD_SORT_OPTIONS,
   DEFAULT_ADP_FILTERS,
   DISCOVERY_SOURCE_LABELS,
   DISCOVERY_STATUS_LABELS,
   DRAFT_KIND_LABELS,
-  DRAFT_ORDER_LABELS,
   QB_FORMAT_LABELS,
   QUALIFICATION_LABELS,
   SCORING_LABELS,
@@ -53,6 +51,7 @@ import {
   type ViewMode,
 } from './adp.utils';
 import { AdpBoard } from './AdpBoard';
+import { AdpBoardToolbar } from './AdpBoardToolbar';
 import { AdpSamplePanels } from './AdpSamplePanels';
 import { AdpTable } from './AdpTable';
 
@@ -983,109 +982,23 @@ export const AdpPage = () => {
               </div>
             </div>
 
-            <div className="adp-table-tools">
-              <label>
-                <span>Search players</span>
-                <input
-                  type="search"
-                  value={playerSearch}
-                  placeholder="Search by player, team, or position"
-                  onChange={(event) => {
-                    setPlayerSearch(event.target.value);
-                  }}
-                />
-              </label>
-
-              <label>
-                <span>Position</span>
-                <select
-                  value={positionFilter}
-                  onChange={(event) => {
-                    setPositionFilter(event.target.value);
-                  }}
-                >
-                  <option value="">All positions</option>
-                  {positionOptions.map((position) => (
-                    <option key={position} value={position}>
-                      {position}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Layout</span>
-                <select
-                  value={viewMode}
-                  onChange={(event) => {
-                    setViewMode(event.target.value as ViewMode);
-                  }}
-                >
-                  <option value="board">Board style</option>
-                  <option value="table">Table style</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Draft order</span>
-                <select
-                  value={draftOrderMode}
-                  onChange={(event) => {
-                    setDraftOrderMode(event.target.value as DraftOrderMode);
-                  }}
-                >
-                  {Object.entries(DRAFT_ORDER_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Board order</span>
-                <select
-                  value={sortColumn}
-                  onChange={(event) => {
-                    setSortColumn(event.target.value as SortColumn);
-                  }}
-                >
-                  {BOARD_SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Direction</span>
-                <select
-                  value={sortDirection}
-                  onChange={(event) => {
-                    setSortDirection(event.target.value as SortDirection);
-                  }}
-                >
-                  <option value="asc">Ascending</option>
-                  <option value="desc">Descending</option>
-                </select>
-              </label>
-
-              <div className="adp-table-tools-summary">
-                <span>
-                  {viewMode === 'board'
-                    ? 'Visible players / board size'
-                    : 'Visible / fetched rows'}
-                </span>
-                <strong>
-                  {(viewMode === 'board' ? boardPlayers.length : sortedPlayers.length).toLocaleString()}
-                  {' / '}
-                  {viewMode === 'board'
-                    ? boardSize.toLocaleString()
-                    : (query.data?.players.length ?? 0).toLocaleString()}
-                </strong>
-              </div>
-            </div>
+            <AdpBoardToolbar
+              playerSearch={playerSearch}
+              positionFilter={positionFilter}
+              positionOptions={positionOptions}
+              viewMode={viewMode}
+              draftOrderMode={draftOrderMode}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              visibleCount={viewMode === 'board' ? boardPlayers.length : sortedPlayers.length}
+              secondaryCount={viewMode === 'board' ? boardSize : (query.data?.players.length ?? 0)}
+              onPlayerSearchChange={setPlayerSearch}
+              onPositionFilterChange={setPositionFilter}
+              onViewModeChange={setViewMode}
+              onDraftOrderModeChange={setDraftOrderMode}
+              onSortColumnChange={setSortColumn}
+              onSortDirectionChange={setSortDirection}
+            />
 
             {viewMode === 'board' ? (
               <AdpBoard
