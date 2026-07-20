@@ -9,7 +9,6 @@ import {
 } from 'react';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
-import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
 import {
@@ -23,14 +22,12 @@ import type {
   PersonalProjectionSeasonItem,
 } from '@/types';
 import { notify } from '@/utils/notify';
-import { getPositionColor } from '@/utils/positions';
 import {
   SORT_LABELS,
   buildNextTableFilter,
   buildEmptyOutcome,
   cloneSeasons,
   comparePoolItems,
-  formatMarketNumber,
   getDefaultFutureOutcomes,
   getDefaultSortColumn,
   getPoolPlayerIds,
@@ -41,6 +38,7 @@ import {
   type TableFilter,
 } from './myValues.utils';
 import { MyValuesMetricCard } from './MyValuesMetricCard';
+import { MyValuesPlayerHero } from './MyValuesPlayerHero';
 import { MyValuesPoolPanel } from './MyValuesPoolPanel';
 import { MyValuesSearchCard } from './MyValuesSearchCard';
 
@@ -683,62 +681,15 @@ export const MyValuesPage = () => {
               !detail.loading && selectedPlayer && marketValues && customValues && deltaValues
                 ? (
                   <>
-                    <div className="my-values-player-hero">
-                      <div className="my-values-player-identity">
-                        <PlayerAvatar
-                          playerId={selectedPlayer.player_id}
-                          name={selectedPlayer.name}
-                          size="lg"
-                        />
-                        <div>
-                          <div className="my-values-player-tag-row">
-                            <span
-                              className="my-values-player-position"
-                              style={{
-                                color: getPositionColor(
-                                  selectedPlayer.position,
-                                ),
-                              }}
-                            >
-                              {selectedPlayer.position}
-                            </span>
-                            <span>{selectedPlayer.team ?? '--'}</span>
-                            <span>Age {selectedPlayer.age ?? '--'}</span>
-                            <span>{selectedPlayer.underdog_position_rank ?? 'No UD rank'}</span>
-                            <span>KTC {formatMarketNumber(selectedPlayer.ktc_value)}</span>
-                            <span>FC {formatMarketNumber(selectedPlayer.fc_value)}</span>
-                            <span>ADP {formatMarketNumber(selectedPlayer.adp_value)}</span>
-                          </div>
-                          <h2>{selectedPlayer.name}</h2>
-                          <p>
-                            {selectedPlayerInPool
-                              ? 'Editing a player already in your active projection pool.'
-                              : 'This player will join your saved projection pool once you save a custom projection.'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="my-values-player-actions">
-                        <button
-                          type="button"
-                          className="button-secondary"
-                          onClick={handleReset}
-                          disabled={saveProjection.saving}
-                        >
-                          Reset view
-                        </button>
-                        <button
-                          type="button"
-                          className="button-secondary"
-                          onClick={() => {
-                            void handleSave();
-                          }}
-                          disabled={saveProjection.saving}
-                        >
-                          {saveProjection.saving ? 'Saving...' : 'Save projections'}
-                        </button>
-                      </div>
-                    </div>
+                    <MyValuesPlayerHero
+                      player={selectedPlayer}
+                      playerInPool={selectedPlayerInPool}
+                      saving={saveProjection.saving}
+                      onReset={handleReset}
+                      onSave={() => {
+                        void handleSave();
+                      }}
+                    />
 
                     <div className="my-values-metric-grid">
                       <MyValuesMetricCard
