@@ -5,6 +5,7 @@ import {
 } from 'react';
 import { AlertTriangle, HandCoins, Search } from 'lucide-react';
 
+import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import {
   useAvailableWaiverPlayers,
@@ -235,65 +236,13 @@ export const AvailablePlayersTab = ({
                 </span>
               </div>
 
-              <div className="available-pagination-toolbar">
-                <label className="available-page-size-selector">
-                  <span>Rows</span>
-
-                  <select
-                    value={pageSize}
-                    onChange={(event) => {
-                      setPageSize(
-                        Number(
-                          event.target.value,
-                        ),
-                      );
-                    }}
-                  >
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                    <option value={150}>150</option>
-                  </select>
-                </label>
-
-                <div className="available-pagination-status">
-                  Page {data.page}
-                  {' of '}
-                  {data.total_pages}
-                </div>
-
-                <div className="available-pagination-actions">
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    disabled={
-                      data.page <= 1
-                    }
-                    onClick={() => {
-                      setPage(
-                        data.page - 1,
-                      );
-                    }}
-                  >
-                    Previous
-                  </button>
-
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    disabled={
-                      data.page
-                      >= data.total_pages
-                    }
-                    onClick={() => {
-                      setPage(
-                        data.page + 1,
-                      );
-                    }}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              <PaginationToolbar
+                page={data.page}
+                pageSize={pageSize}
+                totalPages={data.total_pages}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
 
               <AvailablePlayersTable
                 data={data}

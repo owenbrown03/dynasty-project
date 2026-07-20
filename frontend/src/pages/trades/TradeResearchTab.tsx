@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react';
 
+import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { TradeCards } from './TradeCards';
 import { useTrades } from '@/hooks/sleeper/useTrades';
@@ -487,56 +488,13 @@ export const TradeResearchTab = () => {
         {
           filteredTrades.length > 0
             ? (
-              <div className="available-pagination-toolbar">
-                <label className="available-page-size-selector">
-                  <span>Rows</span>
-
-                  <select
-                    value={pageSize}
-                    onChange={(event) => {
-                      setPageSize(
-                        Number(
-                          event.target.value,
-                        ),
-                      );
-                    }}
-                  >
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                    <option value={150}>150</option>
-                  </select>
-                </label>
-
-                <div className="available-pagination-status">
-                  Page {page}
-                  {' of '}
-                  {totalPages}
-                </div>
-
-                <div className="available-pagination-actions">
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    disabled={page <= 1}
-                    onClick={() => {
-                      setPage(page - 1);
-                    }}
-                  >
-                    Previous
-                  </button>
-
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    disabled={page >= totalPages}
-                    onClick={() => {
-                      setPage(page + 1);
-                    }}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              <PaginationToolbar
+                page={page}
+                pageSize={pageSize}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
             )
             : null
         }

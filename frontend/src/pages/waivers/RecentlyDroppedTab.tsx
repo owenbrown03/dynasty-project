@@ -9,6 +9,7 @@ import {
   HandCoins,
 } from 'lucide-react';
 
+import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
@@ -183,76 +184,30 @@ export const RecentlyDroppedTab = ({
         </div>
       </div>
 
-      <div className="available-pagination-toolbar">
-        <label className="available-page-size-selector">
-          <span>Sort</span>
+      <PaginationToolbar
+        page={data.page}
+        pageSize={pageSize}
+        totalPages={data.total_pages}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        leadingControls={(
+          <label className="available-page-size-selector">
+            <span>Sort</span>
 
-          <select
-            value={sortBy}
-            onChange={(event) => {
-              setSortBy(
-                event.target.value as 'value' | 'recency',
-              );
-            }}
-          >
-            <option value="value">Value</option>
-            <option value="recency">Recency</option>
-          </select>
-        </label>
-
-        <label className="available-page-size-selector">
-          <span>Rows</span>
-
-          <select
-            value={pageSize}
-            onChange={(event) => {
-              setPageSize(
-                Number(
-                  event.target.value,
-                ),
-              );
-            }}
-          >
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value={150}>150</option>
-          </select>
-        </label>
-
-        <div className="available-pagination-status">
-          Page {data.page}
-          {' of '}
-          {data.total_pages}
-        </div>
-
-        <div className="available-pagination-actions">
-          <button
-            type="button"
-            className="button-secondary"
-            disabled={data.page <= 1}
-            onClick={() => {
-              setPage(
-                data.page - 1,
-              );
-            }}
-          >
-            Previous
-          </button>
-
-          <button
-            type="button"
-            className="button-secondary"
-            disabled={data.page >= data.total_pages}
-            onClick={() => {
-              setPage(
-                data.page + 1,
-              );
-            }}
-          >
-            Next
-          </button>
-        </div>
-      </div>
+            <select
+              value={sortBy}
+              onChange={(event) => {
+                setSortBy(
+                  event.target.value as 'value' | 'recency',
+                );
+              }}
+            >
+              <option value="value">Value</option>
+              <option value="recency">Recency</option>
+            </select>
+          </label>
+        )}
+      />
 
       {
         data.sync_requested
