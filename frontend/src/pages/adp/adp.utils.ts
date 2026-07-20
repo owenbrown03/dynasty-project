@@ -483,3 +483,5 @@ export function buildBoardDisplayRows(
     };
   });
 }
+
+export type BoardDisplayRows = ReturnType<typeof buildBoardDisplayRows>;
