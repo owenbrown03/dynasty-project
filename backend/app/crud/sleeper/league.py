@@ -182,6 +182,8 @@ def needs_recent_activity_sync(
 
 def needs_full_refresh(
     sync_state: model.LeagueSyncState | None,
+    *,
+    now: datetime | None = None,
 ) -> bool:
     if sync_state is None:
         return True
@@ -189,11 +191,24 @@ def needs_full_refresh(
     if sync_state.last_full_synced_at is None:
         return True
 
-    refresh_cutoff = datetime.now() - timedelta(
+    last_full_synced_at = sync_state.last_full_synced_at
+    current = now or datetime.now(UTC)
+
+    if last_full_synced_at.tzinfo is None:
+        last_full_synced_at = last_full_synced_at.replace(
+            tzinfo=UTC,
+        )
+
+    if current.tzinfo is None:
+        current = current.replace(
+            tzinfo=UTC,
+        )
+
+    refresh_cutoff = current - timedelta(
         days=FULL_REFRESH_INTERVAL_DAYS,
     )
 
-    return sync_state.last_full_synced_at < refresh_cutoff
+    return last_full_synced_at < refresh_cutoff
 
 
 def get_transaction_weeks_to_fetch(
