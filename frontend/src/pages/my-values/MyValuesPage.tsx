@@ -36,14 +36,13 @@ import {
   getDefaultSortColumn,
   getPoolPlayerIds,
   itemMatchesFilter,
-  type FilterColumn,
-  type FilterOperator,
   type FutureProjectionMode,
   type SortColumn,
   type SortDirection,
   type TableFilter,
 } from './myValues.utils';
 import { MyValuesMetricCard } from './MyValuesMetricCard';
+import { MyValuesPoolPanel } from './MyValuesPoolPanel';
 
 function getErrorMessage(
   error: unknown,
@@ -640,253 +639,25 @@ export const MyValuesPage = () => {
       </section>
 
       <section className="my-values-workspace">
-        <aside className="my-values-pool-panel">
-          <div className="my-values-panel-header">
-            <div>
-              <p>Projection pool</p>
-              <h2>{selectedLeagueName}</h2>
-            </div>
-            {
-              pool.fetching
-                ? (
-                  <LoadingState
-                    inline
-                    label="Refreshing"
-                  />
-                )
-                : null
-            }
-          </div>
-
-          <div className="my-values-pool-note">
-            This is the main projection sheet. It starts with every underdog-ranked player, then keeps any extra players you save custom projections for.
-          </div>
-
-          <div className="my-values-pool-toolbar">
-            <label className="my-values-control">
-              <span>Sort table by</span>
-              <select
-                value={searchSort}
-                onChange={(event) => {
-                  setSearchSort(
-                    event.target.value as SortColumn,
-                  );
-                }}
-              >
-                {
-                  Object.entries(SORT_LABELS).map(([value, label]) => (
-                    <option
-                      key={value}
-                      value={value}
-                    >
-                      {label}
-                    </option>
-                  ))
-                }
-              </select>
-            </label>
-
-            <label className="my-values-control">
-              <span>Direction</span>
-              <select
-                value={sortDirection}
-                onChange={(event) => {
-                  setSortDirection(
-                    event.target.value as SortDirection,
-                  );
-                }}
-              >
-                <option value="desc">Descending</option>
-                <option value="asc">Ascending</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="my-values-filter-stack">
-            <div className="my-values-filter-header">
-              <span>Table filters</span>
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={addTableFilter}
-              >
-                Add filter
-              </button>
-            </div>
-
-            {
-              tableFilters.map((filter) => (
-                <div
-                  key={filter.id}
-                  className="my-values-filter-row"
-                >
-                  <select
-                    value={filter.column}
-                    onChange={(event) => {
-                      updateTableFilter(
-                        filter.id,
-                        {
-                          column: event.target.value as FilterColumn,
-                        },
-                      );
-                    }}
-                  >
-                    {
-                      Object.entries(SORT_LABELS).map(([value, label]) => (
-                        <option
-                          key={value}
-                          value={value}
-                        >
-                          {label}
-                        </option>
-                      ))
-                    }
-                  </select>
-
-                  <select
-                    value={filter.operator}
-                    onChange={(event) => {
-                      updateTableFilter(
-                        filter.id,
-                        {
-                          operator: event.target.value as FilterOperator,
-                        },
-                      );
-                    }}
-                  >
-                    <option value="contains">contains</option>
-                    <option value="equals">equals</option>
-                    <option value="gt">greater than</option>
-                    <option value="lt">less than</option>
-                  </select>
-
-                  <input
-                    value={filter.value}
-                    placeholder="Filter value"
-                    onChange={(event) => {
-                      updateTableFilter(
-                        filter.id,
-                        {
-                          value: event.target.value,
-                        },
-                      );
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={() => {
-                      removeTableFilter(filter.id);
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))
-            }
-          </div>
-
-          <div className="my-values-pool-summary">
-            Showing {filteredPoolCount} players, position-grouped in one sheet and sorted by {pageSummaryMetric}.
-          </div>
-
-          {
-            pool.loading
-              ? (
-                <LoadingState label="Building personal value pool..." />
-              )
-              : null
-          }
-
-          {
-            !pool.loading
-              ? (
-                <div className="my-values-table-wrap">
-                  <table className="my-values-table">
-                    <thead>
-                      <tr>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('player'); }}>Player</button></th>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('position'); }}>Pos</button></th>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('team'); }}>Team</button></th>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('underdog_rank'); }}>UD Rank</button></th>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('ktc'); }}>KTC</button></th>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('fantasycalc'); }}>FC</button></th>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('adp'); }}>ADP</button></th>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('market_war'); }}>Market D Ro</button></th>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('my_war'); }}>My D Ro</button></th>
-                        <th><button type="button" className="my-values-th-button" onClick={() => { handleHeaderSort('delta'); }}>Delta</button></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {
-                        filteredPoolItems.map((item) => (
-                          <tr
-                            key={item.player.player_id}
-                            className={
-                              selectedPlayerId === item.player.player_id
-                                ? 'selected'
-                                : ''
-                            }
-                            onClick={() => {
-                              setSelectedPlayerId(
-                                item.player.player_id,
-                              );
-                            }}
-                          >
-                            <td>
-                              <div className="my-values-table-player">
-                                <PlayerAvatar
-                                  playerId={item.player.player_id}
-                                  name={item.player.name}
-                                  size="sm"
-                                />
-                                <div>
-                                  <strong>{item.player.name}</strong>
-                                  <p>
-                                    {item.is_customized
-                                      ? 'Customized'
-                                      : 'Underdog default'}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <span
-                                style={{
-                                  color: getPositionColor(
-                                    item.player.position,
-                                  ),
-                                  fontWeight: 700,
-                                }}
-                              >
-                                {item.player.position}
-                              </span>
-                            </td>
-                            <td>{item.player.team ?? '--'}</td>
-                            <td>{item.player.underdog_position_rank ?? '--'}</td>
-                            <td>{formatMarketNumber(item.player.ktc_value)}</td>
-                            <td>{formatMarketNumber(item.player.fc_value)}</td>
-                            <td>{formatMarketNumber(item.player.adp_value)}</td>
-                            <td>{formatMetric(item.market_values.dynasty_roster_war)}</td>
-                            <td>{formatMetric(item.custom_values.dynasty_roster_war)}</td>
-                            <td>
-                              {
-                                item.delta_values.dynasty_roster_war == null
-                                  ? '--'
-                                  : `${item.delta_values.dynasty_roster_war > 0 ? '+' : ''}${formatMetric(item.delta_values.dynasty_roster_war)}`
-                              }
-                            </td>
-                          </tr>
-                        ))
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              )
-              : null
-          }
-        </aside>
+        <MyValuesPoolPanel
+          leagueName={selectedLeagueName}
+          fetching={pool.fetching}
+          loading={pool.loading}
+          searchSort={searchSort}
+          sortDirection={sortDirection}
+          tableFilters={tableFilters}
+          filteredPoolItems={filteredPoolItems}
+          filteredPoolCount={filteredPoolCount}
+          pageSummaryMetric={pageSummaryMetric}
+          selectedPlayerId={selectedPlayerId}
+          onSearchSortChange={setSearchSort}
+          onSortDirectionChange={setSortDirection}
+          onAddTableFilter={addTableFilter}
+          onUpdateTableFilter={updateTableFilter}
+          onRemoveTableFilter={removeTableFilter}
+          onHeaderSort={handleHeaderSort}
+          onSelectPlayer={setSelectedPlayerId}
+        />
 
         <section className="my-values-editor-panel">
           <div className="my-values-search-card">
