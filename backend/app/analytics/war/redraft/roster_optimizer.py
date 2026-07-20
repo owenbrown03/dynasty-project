@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-
-POSITIONS = ("QB", "RB", "WR", "TE")
+from app.domain.positions import CORE_FANTASY_POSITIONS
 
 
 @dataclass
@@ -24,12 +23,12 @@ class RosterConstructionOptimizer:
                 key=lambda p: p.projected_points,
                 reverse=True,
             )
-            for position in POSITIONS
+            for position in CORE_FANTASY_POSITIONS
         }
 
         roster_counts = {
             position: self.starting_requirements.get(position, 0)
-            for position in POSITIONS
+            for position in CORE_FANTASY_POSITIONS
         }
 
         indices = roster_counts.copy()
@@ -41,7 +40,7 @@ class RosterConstructionOptimizer:
             best_position = None
             best_gain = float("-inf")
 
-            for position in POSITIONS:
+            for position in CORE_FANTASY_POSITIONS:
 
                 idx = indices[position]
 

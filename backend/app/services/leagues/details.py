@@ -25,6 +25,10 @@ from app.crud.sleeper.personal import (
 )
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
+from app.domain.positions import (
+    CORE_FANTASY_POSITIONS,
+    CORE_FANTASY_POSITION_SET,
+)
 from app.models.db.fc.models import FantasyCalcValue
 from app.models.db.sleeper import api as sleeper_model
 from app.services.draft.picks import (
@@ -66,12 +70,7 @@ WAR_POSITION_RANK_DISPLAY_LIMIT = (
     WAR_PLAYER_DISPLAY_LIMIT // 4
 )
 ROSTER_CONSTRUCTION_HISTORY_YEARS = 5
-ROSTER_CONSTRUCTION_POSITIONS = (
-    "QB",
-    "RB",
-    "WR",
-    "TE",
-)
+ROSTER_CONSTRUCTION_POSITIONS = CORE_FANTASY_POSITIONS
 ROSTER_CONSTRUCTION_CACHE_TTL_SECONDS = (
     6 * 60 * 60
 )
@@ -82,7 +81,7 @@ def is_slot_eligible(slot: str, position: str | None) -> bool:
     if position is None:
         return False
     if slot in {"SUPER_FLEX", "OP"}:
-        return position in {"QB", "RB", "WR", "TE"}
+        return position in CORE_FANTASY_POSITION_SET
     if slot in {"FLEX", "REC_FLEX", "WRRB_FLEX"}:
         return position in {"RB", "WR", "TE"}
     if slot == "IDP_FLEX":
@@ -1395,10 +1394,9 @@ class LeagueDetails:
         self,
         war_players,
     ) -> list[LeagueWarPositionValue]:
-        positions = ["QB", "RB", "WR", "TE"]
         totals = {
             position: 0.0
-            for position in positions
+            for position in CORE_FANTASY_POSITIONS
         }
 
         for player in war_players:
@@ -1414,7 +1412,7 @@ class LeagueDetails:
                 position=position,
                 war=round(totals[position], 2),
             )
-            for position in positions
+            for position in CORE_FANTASY_POSITIONS
         ]
 
     def build_position_rank_points(
@@ -1423,7 +1421,6 @@ class LeagueDetails:
         *,
         war_type: str,
     ) -> list[LeagueWarPlayerPoint]:
-        positions = ["QB", "RB", "WR", "TE"]
         points: list[LeagueWarPlayerPoint] = []
         war_attr = (
             "starter_war"
@@ -1431,7 +1428,7 @@ class LeagueDetails:
             else "roster_war"
         )
 
-        for position in positions:
+        for position in CORE_FANTASY_POSITIONS:
             position_players = sorted(
                 [
                     player
