@@ -190,6 +190,7 @@ async def dashboard(
     return await get_user_dashboard(
         ctx.db,
         ctx.redis,
+        ctx.sleeper,
         username,
     )
 
