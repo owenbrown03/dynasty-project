@@ -223,6 +223,12 @@
   border-left: 3px solid var(--color-danger);
 }
 
+.waiver-recommendation-skeleton {
+  display: grid;
+  gap: 8px;
+  border-left: 3px solid var(--color-border-strong);
+}
+
 .waiver-player-card-header {
   display: flex;
   justify-content: space-between;
@@ -588,6 +594,15 @@
 
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.available-players-loading-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.available-players-table-skeleton tbody tr:hover {
+  background: transparent;
 }
 
 .available-players-table-wrapper {
@@ -1316,6 +1331,18 @@
   gap: 0;
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
+}
+
+.bulk-claim-league-list-skeleton {
+  overflow: hidden;
+}
+
+.bulk-search-result-skeleton {
+  cursor: default;
+}
+
+.bulk-search-result-skeleton:hover {
+  background: var(--color-surface-raised);
 }
 
 .bulk-claim-league-row {

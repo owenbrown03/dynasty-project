@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -45,6 +45,77 @@ function formatDroppedAt(
     },
   ).format(
     new Date(timestampMs),
+  );
+}
+
+function RecentDropsSkeleton() {
+  return (
+    <section
+      className="available-players-section"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">Loading recently dropped players...</span>
+
+      <div className="available-players-toolbar">
+        <div>
+          <Skeleton width={190} variant="title" />
+          <Skeleton width="min(520px, 100%)" variant="text" />
+        </div>
+
+        <div className="available-players-summary">
+          <Skeleton width={86} variant="text" />
+          <Skeleton width={180} variant="text" />
+        </div>
+      </div>
+
+      <Skeleton width={240} height={40} />
+
+      <div className="recent-drops-list">
+        {
+          Array.from({ length: 5 }).map((_, index) => (
+            <article className="recent-drop-card" key={index}>
+              <div className="recent-drop-main">
+                <div className="recent-drop-card-header">
+                  <div className="player-with-avatar">
+                    <Skeleton width={40} height={40} radius={4} />
+                    <div className="player-with-avatar-copy">
+                      <Skeleton width={150} variant="title" />
+                      <Skeleton width={76} variant="text" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="recent-drop-meta-row">
+                  <div className="recent-drop-league">
+                    <Skeleton width={32} height={32} radius={4} />
+                    <div className="recent-drop-league-copy">
+                      <Skeleton width={170} variant="title" />
+                      <Skeleton width={116} variant="text" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="recent-drop-footer">
+                  <Skeleton width={220} height={36} />
+                </div>
+              </div>
+
+              <div className="recent-drop-side">
+                <div className="recent-drop-value">
+                  <Skeleton width={132} variant="text" />
+                  <Skeleton width={56} height={24} />
+                </div>
+                <div className="recent-drop-time">
+                  <Skeleton width={120} variant="text" />
+                </div>
+                <Skeleton width={128} height={42} />
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </section>
   );
 }
 
@@ -122,10 +193,7 @@ export const RecentlyDroppedTab = ({
 
   if (recentDrops.loading) {
     return (
-      <LoadingState
-        label="Loading recently dropped players..."
-        className="waivers-loading-state"
-      />
+      <RecentDropsSkeleton />
     );
   }
 

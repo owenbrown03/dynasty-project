@@ -5,7 +5,7 @@ import {
 } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import {
@@ -28,6 +28,41 @@ import { BulkPlayerSearch } from './BulkPlayerSearch';
 
 interface BulkClaimsTabProps {
   valueBasis: ValueBasis;
+}
+
+function BulkClaimAvailabilitySkeleton() {
+  return (
+    <div
+      className="bulk-claim-league-list bulk-claim-league-list-skeleton"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">
+        Checking availability across your leagues...
+      </span>
+      {
+        Array.from({ length: 6 }).map((_, index) => (
+          <article className="bulk-claim-league-row" key={index}>
+            <div className="bulk-league-selection">
+              <Skeleton width={16} height={16} radius={4} />
+              <div className="bulk-league-identity">
+                <Skeleton width={34} height={34} radius={4} />
+                <div className="bulk-league-main">
+                  <Skeleton width={170} variant="title" />
+                  <Skeleton width={130} variant="text" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bulk-league-target-value">
+              <Skeleton width={76} variant="text" />
+              <Skeleton width={52} height={20} />
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  );
 }
 
 
@@ -220,10 +255,7 @@ export const BulkClaimsTab = ({
       {
         availability.loading
           ? (
-            <LoadingState
-              label="Checking availability across your leagues..."
-              className="waivers-loading-state"
-            />
+            <BulkClaimAvailabilitySkeleton />
           )
           : null
       }

@@ -6,7 +6,7 @@ import {
 import { AlertTriangle, HandCoins, Search } from 'lucide-react';
 
 import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import {
   useAvailableWaiverPlayers,
   useWaiverLeagueOptions,
@@ -29,6 +29,111 @@ interface AvailablePlayersTabProps {
   onSelectedLeagueIdChange: (
     leagueId: string | undefined,
   ) => void;
+}
+
+function AvailablePlayersSkeleton({
+  mode,
+}: {
+  mode: 'leagues' | 'players';
+}) {
+  if (mode === 'players') {
+    return (
+      <div
+        className="available-players-loading-shell"
+        role="status"
+        aria-live="polite"
+      >
+        <span className="skeleton-sr-label">
+          Calculating available player values...
+        </span>
+
+        <div className="available-players-summary">
+          <Skeleton width={140} variant="text" />
+          <Skeleton width={130} variant="text" />
+          <Skeleton width={160} variant="text" />
+        </div>
+
+        <Skeleton width={210} height={40} />
+
+        <AvailablePlayersTableSkeleton />
+      </div>
+    );
+  }
+
+  return (
+    <section
+      className="available-players-section"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">
+        {
+          mode === 'leagues'
+            ? 'Loading your leagues...'
+            : 'Calculating available player values...'
+        }
+      </span>
+
+      <div className="available-players-toolbar">
+        <div>
+          <Skeleton width={180} variant="title" />
+          <Skeleton width="min(520px, 100%)" variant="text" />
+        </div>
+        <Skeleton width={260} height={42} />
+      </div>
+
+      <div className="available-players-summary">
+        <Skeleton width={140} variant="text" />
+        <Skeleton width={130} variant="text" />
+        <Skeleton width={160} variant="text" />
+      </div>
+
+      <Skeleton width={210} height={40} />
+
+      <AvailablePlayersTableSkeleton />
+    </section>
+  );
+}
+
+function AvailablePlayersTableSkeleton() {
+  return (
+    <div className="available-players-table-wrapper">
+      <table className="available-players-table available-players-table-skeleton">
+        <thead>
+          <tr>
+            {
+              ['Player', 'Pos', 'Team', 'Leagues', 'Age', 'Value', 'Action'].map((label) => (
+                <th key={label}>{label}</th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {
+            Array.from({ length: 8 }).map((_, rowIndex) => (
+              <tr key={rowIndex}>
+                <td className="available-player-name-cell">
+                  <div className="player-with-avatar">
+                    <Skeleton width={34} height={34} radius={4} />
+                    <div className="player-with-avatar-copy">
+                      <Skeleton width={150} variant="title" />
+                      <Skeleton width={58} variant="text" />
+                    </div>
+                  </div>
+                </td>
+                <td><Skeleton width={32} variant="text" /></td>
+                <td><Skeleton width={40} variant="text" /></td>
+                <td><Skeleton width={140} variant="text" /></td>
+                <td><Skeleton width={34} variant="text" /></td>
+                <td><Skeleton width={82} height={20} /></td>
+                <td><Skeleton width={102} height={34} /></td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 
@@ -109,10 +214,7 @@ export const AvailablePlayersTab = ({
 
   if (leagues.loading) {
     return (
-      <LoadingState
-        label="Loading your leagues..."
-        className="waivers-loading-state"
-      />
+      <AvailablePlayersSkeleton mode="leagues" />
     );
   }
 
@@ -171,10 +273,7 @@ export const AvailablePlayersTab = ({
       {
         availablePlayers.loading
           ? (
-            <LoadingState
-              label="Calculating available player values..."
-              className="waivers-loading-state"
-            />
+            <AvailablePlayersSkeleton mode="players" />
           )
           : null
       }
