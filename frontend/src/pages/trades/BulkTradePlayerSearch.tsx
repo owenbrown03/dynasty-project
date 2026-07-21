@@ -1,5 +1,4 @@
 import {
-  LoaderCircle,
   Search,
 } from 'lucide-react';
 import {
@@ -9,6 +8,7 @@ import {
 
 import { useBulkTradePlayerSearch } from '@/hooks/sleeper/useBulkTrades';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 
 import type {
   BulkTradePlayerSearchResult,
@@ -91,10 +91,7 @@ export const BulkTradePlayerSearch = ({
           {
             loading || fetching
               ? (
-                <LoaderCircle
-                  className="trade-spinner"
-                  size={15}
-                />
+                <Skeleton width={15} height={15} radius={4} />
               )
               : null
           }
@@ -158,6 +155,27 @@ export const BulkTradePlayerSearch = ({
           ? (
             <div className="bulk-trade-search-results">
               {
+                loading || fetching
+                  ? (
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <div
+                        className="bulk-trade-search-result bulk-trade-search-result-skeleton"
+                        key={index}
+                      >
+                        <div className="player-with-avatar">
+                          <Skeleton width={28} height={28} radius={4} />
+                          <div className="player-with-avatar-copy">
+                            <Skeleton width={132} variant="title" />
+                            <Skeleton width={90} variant="text" />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )
+                  : null
+              }
+
+              {
                 players.length === 0
                 && !loading
                 && !fetching
@@ -170,7 +188,8 @@ export const BulkTradePlayerSearch = ({
               }
 
               {
-                players.map(player => (
+                !loading && !fetching
+                  ? players.map(player => (
                   <button
                     key={player.player_id}
                     className="bulk-trade-search-result"
@@ -214,7 +233,8 @@ export const BulkTradePlayerSearch = ({
                     </div>
 
                   </button>
-                ))
+                  ))
+                  : null
               }
             </div>
           )

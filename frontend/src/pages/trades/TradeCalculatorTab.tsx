@@ -5,6 +5,7 @@ import {
 } from 'react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
 import {
   fetchTradeCalculatorPickValue,
@@ -404,7 +405,35 @@ export function TradeCalculatorTab({
               ? (
                 <div className="bulk-trade-search-results">
                   {
-                    playerSearch.data.map((player) => (
+                    playerSearch.loading
+                      ? (
+                        Array.from({ length: 3 }).map((_, index) => (
+                          <div
+                            key={index}
+                            className="trade-calculator-search-row trade-calculator-search-row-skeleton"
+                          >
+                            <div className="player-with-avatar">
+                              <Skeleton width={28} height={28} radius={4} />
+                              <div className="player-with-avatar-copy">
+                                <Skeleton width={132} variant="title" />
+                                <Skeleton width={80} variant="text" />
+                              </div>
+                            </div>
+
+                            <div className="trade-calculator-search-actions">
+                              <Skeleton width={58} height={18} />
+                              <Skeleton width={76} height={34} />
+                              <Skeleton width={76} height={34} />
+                            </div>
+                          </div>
+                        ))
+                      )
+                      : null
+                  }
+
+                  {
+                    !playerSearch.loading
+                      ? playerSearch.data.map((player) => (
                       <div
                         key={player.player_id}
                         className="trade-calculator-search-row"
@@ -458,7 +487,8 @@ export function TradeCalculatorTab({
                           </button>
                         </div>
                       </div>
-                    ))
+                      ))
+                      : null
                   }
 
                   {

@@ -5,7 +5,7 @@ import {
 } from 'react';
 
 import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { TradeCards } from './TradeCards';
 import { useTrades } from '@/hooks/sleeper/useTrades';
 
@@ -56,6 +56,109 @@ const FILTER_KEYS: TradeSettingsFilterKey[] = [
   'pptd',
   'tep',
 ];
+
+function TradeResearchSkeleton() {
+  return (
+    <div
+      className="trades-container trade-research-skeleton"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">Fetching trade database...</span>
+
+      <div className="trades-section-header">
+        <div>
+          <Skeleton width={74} variant="text" />
+          <Skeleton width={190} variant="title" />
+          <Skeleton width="min(520px, 100%)" variant="text" />
+        </div>
+      </div>
+
+      <section className="trade-research-filters">
+        <Skeleton height={42} />
+        <div className="trade-research-settings">
+          <div className="trade-research-settings-header">
+            <Skeleton width={120} variant="text" />
+            <Skeleton width={110} height={38} />
+          </div>
+          <div className="trade-research-filter-grid">
+            {
+              Array.from({ length: 6 }).map((_, index) => (
+                <label className="trade-research-filter-control" key={index}>
+                  <Skeleton width={70} variant="text" />
+                  <Skeleton height={38} />
+                </label>
+              ))
+            }
+          </div>
+        </div>
+      </section>
+
+      <Skeleton width={160} variant="text" />
+
+      <div className="trade-cards">
+        {
+          Array.from({ length: 4 }).map((_, index) => (
+            <article className="trade-card trade-card-skeleton" key={index}>
+              <header className="trade-header">
+                <div className="trade-header-main">
+                  <div className="trade-league-identity">
+                    <Skeleton width={34} height={34} radius={4} />
+                    <div>
+                      <Skeleton width={56} variant="text" />
+                      <Skeleton width={180} variant="title" />
+                    </div>
+                  </div>
+
+                  <div className="trade-league-settings">
+                    {
+                      Array.from({ length: 5 }).map((__, settingIndex) => (
+                        <Skeleton width={64} height={22} key={settingIndex} />
+                      ))
+                    }
+                  </div>
+                </div>
+
+                <Skeleton width={128} variant="text" />
+              </header>
+
+              <div className="trade-users-row">
+                {
+                  Array.from({ length: 2 }).map((__, sideIndex) => (
+                    <div className="user-card" key={sideIndex}>
+                      <header className="user-header">
+                        <div className="player-with-avatar">
+                          <Skeleton width={28} height={28} radius={4} />
+                          <Skeleton width={120} variant="title" />
+                        </div>
+                      </header>
+
+                      <div className="adds">
+                        {
+                          Array.from({ length: 2 }).map((___, assetIndex) => (
+                            <div className="movement-row" key={`add-${assetIndex}`}>
+                              <Skeleton width={160} variant="text" />
+                            </div>
+                          ))
+                        }
+                      </div>
+
+                      <div className="drops">
+                        <div className="movement-row">
+                          <Skeleton width={132} variant="text" />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                }
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  );
+}
 
 function parseTradeSettingBadge(
   setting: string,
@@ -380,9 +483,7 @@ export const TradeResearchTab = () => {
 
   if (trades.fetching) {
     return (
-      <div className="trades-container">
-        <LoadingState label="Fetching trade database..." />
-      </div>
+      <TradeResearchSkeleton />
     );
   }
 

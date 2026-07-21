@@ -348,9 +348,30 @@
   font-size: 13px;
 }
 
+.bulk-trade-league-list-skeleton {
+  overflow: hidden;
+}
+
 .bulk-trade-error {
   border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border));
   color: var(--color-danger);
+}
+
+.bulk-trade-search-result-skeleton {
+  cursor: default;
+}
+
+.bulk-trade-search-result-skeleton:hover {
+  background: var(--color-surface-raised);
+}
+
+.trade-card-skeleton .user-card {
+  display: grid;
+  gap: 8px;
+}
+
+.trade-calculator-search-row-skeleton {
+  cursor: default;
 }
 
 .bulk-trade-list-header {

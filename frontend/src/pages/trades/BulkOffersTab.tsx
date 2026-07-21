@@ -1,5 +1,4 @@
 import {
-  LoaderCircle,
   RotateCcw,
   Send,
 } from 'lucide-react';
@@ -14,6 +13,7 @@ import {
   useSubmitBulkTradeOffers,
 } from '@/hooks/sleeper/useBulkTrades';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
+import { Skeleton } from '@/components/feedback/Skeleton';
 
 import type {
   BulkTradeAvailabilityRequest,
@@ -103,6 +103,41 @@ function formatPickPackage(
   return picks.map(
     pick => `${pick.season} R${pick.round}`,
   ).join(', ');
+}
+
+function BulkTradeAvailabilitySkeleton() {
+  return (
+    <section
+      className="bulk-trade-league-list bulk-trade-league-list-skeleton"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">
+        Checking league ownership and counterparty inventory...
+      </span>
+      {
+        Array.from({ length: 5 }).map((_, index) => (
+          <div className="bulk-trade-league-row" key={index}>
+            <Skeleton width={16} height={16} radius={4} />
+
+            <div className="bulk-trade-league-primary">
+              <div className="bulk-trade-league-identity">
+                <Skeleton width={34} height={34} radius={4} />
+                <div>
+                  <Skeleton width={170} variant="title" />
+                  <Skeleton width={120} variant="text" />
+                </div>
+              </div>
+            </div>
+
+            <Skeleton width={132} height={38} />
+            <Skeleton width={180} height={38} />
+            <Skeleton width={31} height={31} />
+          </div>
+        ))
+      }
+    </section>
+  );
 }
 
 
@@ -815,13 +850,7 @@ export const BulkOffersTab = ({
           || receivePicks.length > 0)
         && availability.loading
           ? (
-            <div className="bulk-trade-loading">
-              <LoaderCircle
-                className="trade-spinner"
-                size={18}
-              />
-              Checking league ownership and counterparty inventory...
-            </div>
+            <BulkTradeAvailabilitySkeleton />
           )
           : null
       }
