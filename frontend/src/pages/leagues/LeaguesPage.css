@@ -73,6 +73,51 @@
   white-space: nowrap;
 }
 
+.league-details-skeleton-heading {
+  display: grid;
+  gap: 5px;
+}
+
+.league-roster-skeleton {
+  display: grid;
+  gap: 12px;
+}
+
+.league-roster-skeleton .roster-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.league-roster-skeleton .roster-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.league-roster-skeleton .roster-card-rank {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+
+.league-roster-skeleton .roster-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px;
+}
+
+.league-roster-skeleton .roster-metric {
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
 @media (max-width: 760px) {
   .leagues-selector-panel {
     grid-template-columns: 1fr;
