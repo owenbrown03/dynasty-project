@@ -132,6 +132,20 @@ services:
     networks:
       - app-network
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared_tunnel
+    restart: unless-stopped
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --url
+      - http://frontend:5173
+    depends_on:
+      - frontend
+    networks:
+      - app-network
+
 volumes:
   postgres_data:
   pgadmin_data:
