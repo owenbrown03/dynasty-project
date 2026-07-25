@@ -4,24 +4,12 @@ import type {
   LeagueDetails,
   LeagueWarPlayerPoint,
 } from '@/types';
-import { getPositionColor } from '@/utils/positions';
+import {
+  CORE_FANTASY_POSITIONS,
+  getPositionColor,
+} from '@/utils/positions';
 
 import './LeagueWarHistoryChart.css';
-
-const POSITIONS = [
-  {
-    key: 'QB',
-  },
-  {
-    key: 'RB',
-  },
-  {
-    key: 'WR',
-  },
-  {
-    key: 'TE',
-  },
-] as const;
 
 const WIDTH = 720;
 const HEIGHT = 300;
@@ -194,18 +182,18 @@ export function LeagueWarSeasonChart({
 
       <div className="league-war-history-legend">
         {
-          POSITIONS.map((position) => (
+          CORE_FANTASY_POSITIONS.map((position) => (
             <div
-              key={position.key}
+              key={position}
               className="league-war-history-legend-item"
             >
               <span
                 className="league-war-history-swatch"
                 style={{
-                  backgroundColor: getPositionColor(position.key),
+                  backgroundColor: getPositionColor(position),
                 }}
               />
-              <strong>{position.key}</strong>
+              <strong>{position}</strong>
             </div>
           ))
         }
@@ -244,18 +232,18 @@ export function LeagueWarSeasonChart({
           }
 
           {
-            POSITIONS.map((position) => {
-              const color = getPositionColor(position.key);
+            CORE_FANTASY_POSITIONS.map((position) => {
+              const color = getPositionColor(position);
               const points = buildPositionPoints(
                 selectedHistory.players,
-                position.key,
+                position,
               );
               const linePoints = points.map((player) => (
                 `${toX(player.rank)},${toY(player.war)}`
               )).join(' ');
 
               return (
-                <g key={position.key}>
+                <g key={position}>
                   <polyline
                     fill="none"
                     stroke={color}

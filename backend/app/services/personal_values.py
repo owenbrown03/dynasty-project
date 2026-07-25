@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from math import ceil, isclose
+from time import perf_counter
 from types import SimpleNamespace
 
 from fastapi import HTTPException, status
@@ -12,7 +13,6 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.war.dynasty.factory import build_dynasty_war_service
-from app.analytics.war.redraft.constants import FANTASY_GAMES_PER_SEASON
 from app.analytics.war.redraft.service import WARSharedData
 from app.analytics.war.redraft.singleton import war_service
 from app.core.context import Context
@@ -48,15 +48,19 @@ from app.services.leagues.selection import (
 from app.services.players.search import (
     search_local_dynasty_players,
 )
+from app.services.personal_value_projections import (
+    CORE_DYNASTY_POSITIONS,
+    DYNASTY_POSITIONS,
+    build_default_projection_seasons as _build_default_projection_seasons,
+    get_projection_end_season as _get_projection_end_season,
+    merge_saved_projection_seasons as _merge_saved_projection_seasons,
+    project_custom_dynasty_war as _project_custom_dynasty_war,
+    validate_projection_update as _validate_projection_update,
+)
 from app.services.waivers.dynasty import build_dynasty_projection
 from app.utils.age import calculate_age
 
-DYNASTY_POSITIONS = {
-    "QB",
-    "RB",
-    "WR",
-    "TE",
-}
+logger = logging.getLogger(__name__)
 CURVE_VERSION = "league_context_v1"
 CURVE_BAND_RADIUS = 5
 HISTORICAL_LOOKBACK_SEASONS = 5
@@ -64,12 +68,7 @@ PERSONAL_VALUE_HYDRATION_CACHE_TTL_SECONDS = (
     6 * 60 * 60
 )
 PERSONAL_VALUE_HYDRATION_CACHE_VERSION = "v1"
-POOL_POSITIONS = [
-    "QB",
-    "RB",
-    "WR",
-    "TE",
-]
+POOL_POSITIONS = list(CORE_DYNASTY_POSITIONS)
 
 
 @dataclass(frozen=True)
@@ -411,61 +410,6 @@ def _weighted_redraft_values(
     )
 
 
-def _build_default_projection_seasons(
-    *,
-    base_season: int,
-    end_season: int,
-    default_position_rank: int | None,
-) -> list[PersonalProjectionSeasonItem]:
-    seasons: list[PersonalProjectionSeasonItem] = []
-
-    for season in range(
-        base_season,
-        end_season + 1,
-    ):
-        if default_position_rank is not None:
-            outcomes = [
-                {
-                    "position_rank": default_position_rank,
-                    "probability": 100.0,
-                }
-            ]
-        else:
-            outcomes = []
-
-        seasons.append(
-            PersonalProjectionSeasonItem(
-                season=season,
-                default_position_rank=default_position_rank,
-                outcomes=outcomes,
-                is_customized=False,
-            )
-        )
-
-    return seasons
-
-
-def _get_projection_end_season(
-    *,
-    base_season: int,
-    age: float | None,
-    position: str,
-) -> int:
-    if age is None or position not in DYNASTY_POSITIONS:
-        return base_season + 4
-
-    dynasty_service = build_dynasty_war_service()
-    expected = dynasty_service.projector.expected_games_service.calculate(
-        age=age,
-        position=position,
-    )
-    years_remaining = max(
-        ceil(expected.years_remaining),
-        1,
-    )
-    return base_season + years_remaining - 1
-
-
 def _compute_custom_metrics(
     *,
     position: str,
@@ -537,145 +481,6 @@ def _compute_custom_metrics(
             season_values=dynasty_roster_by_season,
         ),
     )
-
-
-def _validate_projection_update(
-    *,
-    base_season: int,
-    end_season: int,
-    payload: PersonalValueUpdateRequest,
-) -> None:
-    expected_seasons = {
-        season
-        for season in range(
-            base_season,
-            end_season + 1,
-        )
-    }
-
-    seen: set[int] = set()
-
-    for item in payload.seasons:
-        if item.season not in expected_seasons:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{item.season} is not a supported projection season.",
-            )
-
-        if item.season in seen:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{item.season} was submitted more than once.",
-            )
-
-        seen.add(item.season)
-
-        if not item.outcomes:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{item.season} must have at least one projection outcome.",
-            )
-
-        if item.season == base_season:
-            if len(item.outcomes) != 1:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"{item.season} must have exactly one current-year outcome.",
-                )
-
-            if not isclose(
-                float(item.outcomes[0].probability),
-                100.0,
-                abs_tol=0.01,
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"{item.season} current-year probability must be 100%.",
-                )
-        total_probability = sum(
-            float(outcome.probability)
-            for outcome in item.outcomes
-        )
-
-        if not isclose(
-            total_probability,
-            100.0,
-            abs_tol=0.01,
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{item.season} probabilities must total 100%.",
-            )
-
-        for outcome in item.outcomes:
-            if outcome.position_rank <= 0:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"{item.season} position rank must be greater than zero.",
-                )
-
-            if outcome.probability <= 0:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"{item.season} probability must be greater than zero.",
-                )
-
-
-def _project_custom_dynasty_war(
-    *,
-    age: float | None,
-    position: str,
-    current_season: int,
-    season_values: dict[int, float],
-) -> float | None:
-    if age is None or position not in DYNASTY_POSITIONS:
-        return None
-
-    dynasty_service = build_dynasty_war_service()
-    expected = dynasty_service.projector.expected_games_service.calculate(
-        age=age,
-        position=position,
-    )
-
-    total = 0.0
-
-    for season, season_war in sorted(
-        season_values.items(),
-        key=lambda item: item[0],
-    ):
-        offset = season - current_season
-
-        if offset < 0:
-            continue
-
-        season_fraction = min(
-            max(
-                expected.years_remaining - offset,
-                0.0,
-            ),
-            1.0,
-        )
-
-        if season_fraction <= 0:
-            continue
-
-        if offset == 0:
-            discount = 1.0
-        else:
-            midpoint_game = (
-                offset * FANTASY_GAMES_PER_SEASON
-                + max(
-                    (season_fraction * FANTASY_GAMES_PER_SEASON) / 2,
-                    1,
-                )
-            )
-            discount = dynasty_service.projector.discount_curve.multiplier(
-                midpoint_game,
-            )
-
-        total += season_war * season_fraction * discount
-
-    return round(total, 2)
 
 
 async def _ensure_personal_rank_curve(
@@ -942,61 +747,6 @@ def _build_delta_values(
     )
 
 
-def _merge_saved_projection_seasons(
-    *,
-    base_season: int,
-    end_season: int,
-    default_position_rank: int | None,
-    saved_projections,
-    outcomes_by_projection_id: dict[int, list],
-) -> list[PersonalProjectionSeasonItem]:
-    base_seasons = _build_default_projection_seasons(
-        base_season=base_season,
-        end_season=end_season,
-        default_position_rank=default_position_rank,
-    )
-    saved_payload_by_season: dict[int, tuple[list[dict[str, float]], bool]] = {}
-
-    for projection in saved_projections:
-        saved_payload_by_season[
-            projection.season
-        ] = (
-            [
-                {
-                    "position_rank": outcome.position_rank,
-                    "probability": outcome.probability,
-                }
-                for outcome in outcomes_by_projection_id.get(
-                    projection.id,
-                    [],
-                )
-            ],
-            projection.is_customized,
-        )
-
-    merged_seasons: list[PersonalProjectionSeasonItem] = []
-
-    for season_item in base_seasons:
-        saved_outcomes, is_customized = saved_payload_by_season.get(
-            season_item.season,
-            (
-                season_item.outcomes,
-                season_item.is_customized,
-            ),
-        )
-
-        merged_seasons.append(
-            PersonalProjectionSeasonItem(
-                season=season_item.season,
-                default_position_rank=season_item.default_position_rank,
-                outcomes=saved_outcomes,
-                is_customized=is_customized,
-            )
-        )
-
-    return merged_seasons
-
-
 def _build_projection_context(
     *,
     position: str,
@@ -1054,6 +804,7 @@ async def hydrate_personal_player_values(
     if not supported_player_ids:
         return player_values
 
+    started_at = perf_counter()
     saved_projections = await get_personal_projections_for_site_user(
         db=db,
         site_user_id=site_user_id,
@@ -1075,10 +826,23 @@ async def hydrate_personal_player_values(
         )
 
         if cached_payload:
-            return [
+            hydrated = [
                 PlayerValue.model_validate(row)
                 for row in json.loads(cached_payload)
             ]
+            logger.info(
+                (
+                    "Personal value hydration source=redis league=%s "
+                    "players=%s supported_players=%s saved_projections=%s "
+                    "elapsed_ms=%.1f"
+                ),
+                league.league_id,
+                len(player_values),
+                len(supported_player_ids),
+                len(saved_projections),
+                (perf_counter() - started_at) * 1000,
+            )
+            return hydrated
 
     curve_rows_by_position = await _ensure_personal_rank_curve(
         db=db,
@@ -1160,6 +924,18 @@ async def hydrate_personal_player_values(
             ),
         )
 
+    logger.info(
+        (
+            "Personal value hydration source=calculated league=%s "
+            "players=%s supported_players=%s saved_projections=%s "
+            "elapsed_ms=%.1f"
+        ),
+        league.league_id,
+        len(player_values),
+        len(supported_player_ids),
+        len(saved_projections),
+        (perf_counter() - started_at) * 1000,
+    )
     return hydrated_values
 
 

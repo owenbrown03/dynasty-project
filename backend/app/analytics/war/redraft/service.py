@@ -33,6 +33,7 @@ class WARService:
     def __init__(self):
 
         self._normalization_cache = LRUCache(maxsize=128)
+        self._calculation_cache = LRUCache(maxsize=128)
 
         self.loader = PlayerValueLoader()
 
@@ -211,18 +212,16 @@ class WARService:
         shared: WARSharedData,
     ):
 
-        cache_key = (
-            league.season,
-            json.dumps(
-                league.scoring_settings,
-                sort_keys=True,
-            ),
-            json.dumps(
-                league.roster_positions,
-                sort_keys=True,
-            ),
-            league.total_rosters,
+        cache_key = self.build_in_memory_cache_key(
+            league,
         )
+
+        cached_results = self._calculation_cache.get(
+            cache_key,
+        )
+
+        if cached_results is not None:
+            return cached_results
 
         normalized = self._normalization_cache.get(
             cache_key,
@@ -280,7 +279,30 @@ class WARService:
             environment=environment,
         )
 
-        return self.merger.merge(
+        results = self.merger.merge(
             starter_results=starter_results,
             roster_results=roster_results,
+        )
+
+        self._calculation_cache[
+            cache_key
+        ] = results
+
+        return results
+
+    def build_in_memory_cache_key(
+        self,
+        league,
+    ):
+        return (
+            league.season,
+            json.dumps(
+                league.scoring_settings,
+                sort_keys=True,
+            ),
+            json.dumps(
+                league.roster_positions,
+                sort_keys=True,
+            ),
+            league.total_rosters,
         )

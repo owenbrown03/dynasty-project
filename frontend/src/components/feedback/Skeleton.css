@@ -1,0 +1,65 @@
+.skeleton {
+  --skeleton-height: 1rem;
+  --skeleton-width: 100%;
+  --skeleton-radius: var(--radius-sm);
+  display: block;
+  width: var(--skeleton-width);
+  max-width: 100%;
+  height: var(--skeleton-height);
+  border-radius: var(--skeleton-radius);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-surface-raised) 90%, var(--color-text-muted) 10%) 0%,
+      color-mix(in srgb, var(--color-surface-strong) 76%, var(--color-text-muted) 24%) 45%,
+      color-mix(in srgb, var(--color-surface-raised) 90%, var(--color-text-muted) 10%) 100%
+    );
+  background-size: 220% 100%;
+  opacity: 0.9;
+  animation: skeleton-shimmer 1.25s ease-in-out infinite;
+}
+
+.skeleton-circle {
+  border-radius: var(--radius-full);
+}
+
+.skeleton-text {
+  height: 0.85rem;
+}
+
+.skeleton-title {
+  height: 1.35rem;
+}
+
+.skeleton-card {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.skeleton-sr-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

@@ -8,6 +8,13 @@ export const CORE_FANTASY_POSITIONS = [
 export type FantasyPosition =
   (typeof CORE_FANTASY_POSITIONS)[number];
 
+export const CORE_FANTASY_POSITION_ORDER = Object.fromEntries(
+  CORE_FANTASY_POSITIONS.map((position, index) => [
+    position,
+    index,
+  ]),
+) as Readonly<Record<string, number>>;
+
 const POSITION_COLOR_BY_KEY = {
   QB: 'var(--position-qb-color)',
   RB: 'var(--position-rb-color)',

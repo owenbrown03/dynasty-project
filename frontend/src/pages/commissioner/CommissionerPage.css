@@ -136,6 +136,11 @@
   gap: 10px;
 }
 
+.commissioner-card-stats-skeleton > div {
+  display: grid;
+  gap: 6px;
+}
+
 .commissioner-card-stats span {
   display: block;
   color: var(--color-text-muted);

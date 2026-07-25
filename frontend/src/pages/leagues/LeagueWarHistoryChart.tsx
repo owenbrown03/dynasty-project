@@ -1,22 +1,10 @@
 import type { LeagueDetails } from '@/types';
-import { getPositionColor } from '@/utils/positions';
+import {
+  CORE_FANTASY_POSITIONS,
+  getPositionColor,
+} from '@/utils/positions';
 
 import './LeagueWarHistoryChart.css';
-
-const POSITIONS = [
-  {
-    key: 'QB',
-  },
-  {
-    key: 'RB',
-  },
-  {
-    key: 'WR',
-  },
-  {
-    key: 'TE',
-  },
-] as const;
 
 const WIDTH = 680;
 const HEIGHT = 240;
@@ -65,18 +53,18 @@ export function LeagueWarHistoryChart({
 
       <div className="league-war-history-legend">
         {
-          POSITIONS.map((position) => (
+          CORE_FANTASY_POSITIONS.map((position) => (
             <div
-              key={position.key}
+              key={position}
               className="league-war-history-legend-item"
             >
               <span
                 className="league-war-history-swatch"
                 style={{
-                  backgroundColor: getPositionColor(position.key),
+                  backgroundColor: getPositionColor(position),
                 }}
               />
-              <strong>{position.key}</strong>
+              <strong>{position}</strong>
             </div>
           ))
         }
@@ -115,17 +103,17 @@ export function LeagueWarHistoryChart({
           }
 
           {
-            POSITIONS.map((position) => {
-              const color = getPositionColor(position.key);
+            CORE_FANTASY_POSITIONS.map((position) => {
+              const color = getPositionColor(position);
               const points = league.war_position_history.map((season, index) => {
                 const value = season.values.find(
-                  (item) => item.position === position.key,
+                  (item) => item.position === position,
                 )?.war ?? 0;
                 return `${PADDING + index * columnWidth},${toY(value)}`;
               }).join(' ');
 
               return (
-                <g key={position.key}>
+                <g key={position}>
                   <polyline
                     fill="none"
                     stroke={color}
@@ -137,13 +125,13 @@ export function LeagueWarHistoryChart({
                   {
                     league.war_position_history.map((season, index) => {
                       const value = season.values.find(
-                        (item) => item.position === position.key,
+                        (item) => item.position === position,
                       )?.war ?? 0;
                       const x = PADDING + index * columnWidth;
                       const y = toY(value);
 
                       return (
-                        <g key={`${position.key}-${season.season}`}>
+                        <g key={`${position}-${season.season}`}>
                           <circle
                             cx={x}
                             cy={y}

@@ -35,7 +35,12 @@ async def get_trade_signals_endpoint(
     username: str,
     ctx: ContextDep,
 ):
-    return await get_trade_signals(ctx.db, ctx.sleeper, username)
+    return await get_trade_signals(
+        ctx.db,
+        ctx.sleeper,
+        username,
+        redis=ctx.redis,
+    )
 
 @router.post("/{username}/sync-leaguemates")
 async def sync_leaguemates_endpoint(username: str):

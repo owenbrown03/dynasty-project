@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 
 from app.core.config import settings
 from app.crud import adp as adp_crud
@@ -14,6 +16,7 @@ from app.schemas.adp import ADPFilters, ADPPlayerRow, ADPResponse, ADPSample
 
 ADP_CACHE_ROW_LIMIT = 5000
 ADP_CACHE_VERSION = "v2"
+logger = logging.getLogger(__name__)
 
 
 def build_adp_cache_key(filters: ADPFilters) -> str:
@@ -37,6 +40,13 @@ def _slice_adp_response(
         sample=response.sample,
         players=response.players[:limit],
     )
+
+
+def _as_aware_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+
+    return value.astimezone(UTC)
 
 
 async def invalidate_adp_cache(
@@ -64,6 +74,7 @@ async def get_adp(
     redis,
     filters: ADPFilters,
 ) -> ADPResponse:
+    started_at = perf_counter()
     cache_key = build_adp_cache_key(filters)
 
     if redis is not None:
@@ -72,10 +83,21 @@ async def get_adp(
             cached_response = ADPResponse.model_validate_json(
                 cached_payload,
             )
-            return _slice_adp_response(
+            response = _slice_adp_response(
                 cached_response,
                 filters=filters,
             )
+            logger.info(
+                (
+                    "ADP lookup source=redis draft_count=%s "
+                    "cached_rows=%s returned_rows=%s elapsed_ms=%.1f"
+                ),
+                cached_response.sample.draft_count,
+                len(cached_response.players),
+                len(response.players),
+                (perf_counter() - started_at) * 1000,
+            )
+            return response
 
     snapshot = await adp_crud.get_latest_adp_snapshot(
         db,
@@ -99,12 +121,13 @@ async def get_adp(
             UTC,
         ) - snapshot_age_limit
 
-        if snapshot.sample.generated_at < snapshot_cutoff:
+        if _as_aware_utc(snapshot.sample.generated_at) < snapshot_cutoff:
             snapshot = None
 
     if snapshot is not None:
         sample_summary = snapshot.sample
         player_rows = snapshot.players
+        data_source = "snapshot"
     else:
         sample_summary = await adp_crud.get_adp_sample_summary(
             db,
@@ -130,6 +153,7 @@ async def get_adp(
             minimum_draft_count=filters.minimum_draft_count,
             limit=ADP_CACHE_ROW_LIMIT,
         )
+        data_source = "aggregate"
 
     cached_response = ADPResponse(
         filters=filters,
@@ -167,7 +191,19 @@ async def get_adp(
             ttl_seconds=settings.ADP_CACHE_TTL_SECONDS,
         )
 
-    return _slice_adp_response(
+    response = _slice_adp_response(
         cached_response,
         filters=filters,
     )
+    logger.info(
+        (
+            "ADP lookup source=%s draft_count=%s rows=%s "
+            "returned_rows=%s elapsed_ms=%.1f"
+        ),
+        data_source,
+        cached_response.sample.draft_count,
+        len(cached_response.players),
+        len(response.players),
+        (perf_counter() - started_at) * 1000,
+    )
+    return response

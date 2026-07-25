@@ -9,7 +9,8 @@ import {
   HandCoins,
 } from 'lucide-react';
 
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -44,6 +45,77 @@ function formatDroppedAt(
     },
   ).format(
     new Date(timestampMs),
+  );
+}
+
+function RecentDropsSkeleton() {
+  return (
+    <section
+      className="available-players-section"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">Loading recently dropped players...</span>
+
+      <div className="available-players-toolbar">
+        <div>
+          <Skeleton width={190} variant="title" />
+          <Skeleton width="min(520px, 100%)" variant="text" />
+        </div>
+
+        <div className="available-players-summary">
+          <Skeleton width={86} variant="text" />
+          <Skeleton width={180} variant="text" />
+        </div>
+      </div>
+
+      <Skeleton width={240} height={40} />
+
+      <div className="recent-drops-list">
+        {
+          Array.from({ length: 5 }).map((_, index) => (
+            <article className="recent-drop-card" key={index}>
+              <div className="recent-drop-main">
+                <div className="recent-drop-card-header">
+                  <div className="player-with-avatar">
+                    <Skeleton width={40} height={40} radius={4} />
+                    <div className="player-with-avatar-copy">
+                      <Skeleton width={150} variant="title" />
+                      <Skeleton width={76} variant="text" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="recent-drop-meta-row">
+                  <div className="recent-drop-league">
+                    <Skeleton width={32} height={32} radius={4} />
+                    <div className="recent-drop-league-copy">
+                      <Skeleton width={170} variant="title" />
+                      <Skeleton width={116} variant="text" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="recent-drop-footer">
+                  <Skeleton width={220} height={36} />
+                </div>
+              </div>
+
+              <div className="recent-drop-side">
+                <div className="recent-drop-value">
+                  <Skeleton width={132} variant="text" />
+                  <Skeleton width={56} height={24} />
+                </div>
+                <div className="recent-drop-time">
+                  <Skeleton width={120} variant="text" />
+                </div>
+                <Skeleton width={128} height={42} />
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </section>
   );
 }
 
@@ -121,10 +193,7 @@ export const RecentlyDroppedTab = ({
 
   if (recentDrops.loading) {
     return (
-      <LoadingState
-        label="Loading recently dropped players..."
-        className="waivers-loading-state"
-      />
+      <RecentDropsSkeleton />
     );
   }
 
@@ -183,76 +252,30 @@ export const RecentlyDroppedTab = ({
         </div>
       </div>
 
-      <div className="available-pagination-toolbar">
-        <label className="available-page-size-selector">
-          <span>Sort</span>
+      <PaginationToolbar
+        page={data.page}
+        pageSize={pageSize}
+        totalPages={data.total_pages}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        leadingControls={(
+          <label className="available-page-size-selector">
+            <span>Sort</span>
 
-          <select
-            value={sortBy}
-            onChange={(event) => {
-              setSortBy(
-                event.target.value as 'value' | 'recency',
-              );
-            }}
-          >
-            <option value="value">Value</option>
-            <option value="recency">Recency</option>
-          </select>
-        </label>
-
-        <label className="available-page-size-selector">
-          <span>Rows</span>
-
-          <select
-            value={pageSize}
-            onChange={(event) => {
-              setPageSize(
-                Number(
-                  event.target.value,
-                ),
-              );
-            }}
-          >
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value={150}>150</option>
-          </select>
-        </label>
-
-        <div className="available-pagination-status">
-          Page {data.page}
-          {' of '}
-          {data.total_pages}
-        </div>
-
-        <div className="available-pagination-actions">
-          <button
-            type="button"
-            className="button-secondary"
-            disabled={data.page <= 1}
-            onClick={() => {
-              setPage(
-                data.page - 1,
-              );
-            }}
-          >
-            Previous
-          </button>
-
-          <button
-            type="button"
-            className="button-secondary"
-            disabled={data.page >= data.total_pages}
-            onClick={() => {
-              setPage(
-                data.page + 1,
-              );
-            }}
-          >
-            Next
-          </button>
-        </div>
-      </div>
+            <select
+              value={sortBy}
+              onChange={(event) => {
+                setSortBy(
+                  event.target.value as 'value' | 'recency',
+                );
+              }}
+            >
+              <option value="value">Value</option>
+              <option value="recency">Recency</option>
+            </select>
+          </label>
+        )}
+      />
 
       {
         data.sync_requested

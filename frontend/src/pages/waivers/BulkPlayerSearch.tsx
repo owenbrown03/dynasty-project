@@ -1,9 +1,9 @@
 import {
-  LoaderCircle,
   Search,
 } from 'lucide-react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import type {
   BulkWaiverPlayerSearchResult,
 } from '@/types';
@@ -60,10 +60,7 @@ export const BulkPlayerSearch = ({
           {
             loading
               ? (
-                <LoaderCircle
-                  className="waiver-spinner"
-                  size={15}
-                />
+                <Skeleton width={15} height={15} radius={4} />
               )
               : null
           }
@@ -74,6 +71,24 @@ export const BulkPlayerSearch = ({
         showResults
           ? (
             <div className="bulk-search-results">
+              {
+                loading
+                  ? (
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <div className="bulk-search-result bulk-search-result-skeleton" key={index}>
+                        <div className="player-with-avatar">
+                          <Skeleton width={28} height={28} radius={4} />
+                          <div className="player-with-avatar-copy">
+                            <Skeleton width={140} variant="title" />
+                            <Skeleton width={120} variant="text" />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )
+                  : null
+              }
+
               {
                 !loading
                 && results.length === 0
@@ -86,7 +101,8 @@ export const BulkPlayerSearch = ({
               }
 
               {
-                results.map((player) => (
+                !loading
+                  ? results.map((player) => (
                   <button
                     key={player.player_id}
                     className={
@@ -122,7 +138,8 @@ export const BulkPlayerSearch = ({
                       </div>
                     </div>
                   </button>
-                ))
+                  ))
+                  : null
               }
             </div>
           )

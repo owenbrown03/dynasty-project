@@ -1,17 +1,27 @@
+from app.domain.positions import POSITION_SORT_ORDER
+
+
 def format_players(player_ids: list[str], player_map: dict[str, dict]) -> list[str]:
     """
     Takes a pre-loaded player map and a list of IDs, filtering and sorting
     them into a position-prioritized text manifest.
     """
-    pos_order = {"QB": 0, "RB": 1, "WR": 2, "TE": 3, "K": 4, "DEF": 5}    
-    
     current_roster_dicts = [
         player_map[p_id] for p_id in player_ids 
         if p_id in player_map
     ]
     
     current_roster_dicts.sort(
-        key=lambda p: (pos_order.get(p.get("position"), 99), p.get("last_name", ""))
+        key=lambda p: (
+            POSITION_SORT_ORDER.get(
+                p.get("position"),
+                99,
+            ),
+            p.get(
+                "last_name",
+                "",
+            ),
+        )
     )
     
     return [
@@ -28,8 +38,6 @@ def format_player_cards(
     Takes a pre-loaded player map and returns a position-sorted
     structured player manifest for UI surfaces that need player IDs.
     """
-    pos_order = {"QB": 0, "RB": 1, "WR": 2, "TE": 3, "K": 4, "DEF": 5}
-
     current_roster_dicts = [
         player_map[p_id]
         for p_id in player_ids
@@ -38,7 +46,7 @@ def format_player_cards(
 
     current_roster_dicts.sort(
         key=lambda p: (
-            pos_order.get(
+            POSITION_SORT_ORDER.get(
                 p.get("position"),
                 99,
             ),

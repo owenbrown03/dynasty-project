@@ -25,6 +25,10 @@ from app.crud.sleeper.personal import (
 )
 from app.crud.sleeper.user import get_users
 from app.crud.value import get_player_values
+from app.domain.positions import (
+    CORE_FANTASY_POSITIONS,
+    CORE_FANTASY_POSITION_SET,
+)
 from app.models.db.fc.models import FantasyCalcValue
 from app.models.db.sleeper import api as sleeper_model
 from app.services.draft.picks import (
@@ -66,23 +70,52 @@ WAR_POSITION_RANK_DISPLAY_LIMIT = (
     WAR_PLAYER_DISPLAY_LIMIT // 4
 )
 ROSTER_CONSTRUCTION_HISTORY_YEARS = 5
-ROSTER_CONSTRUCTION_POSITIONS = (
-    "QB",
-    "RB",
-    "WR",
-    "TE",
-)
+ROSTER_CONSTRUCTION_POSITIONS = CORE_FANTASY_POSITIONS
 ROSTER_CONSTRUCTION_CACHE_TTL_SECONDS = (
     6 * 60 * 60
 )
 ROSTER_CONSTRUCTION_CACHE_VERSION = "v2"
+LEAGUE_DETAILS_CACHE_VERSION = "v1"
+LEAGUE_DETAILS_CACHE_TTL_SECONDS = 60
+
+
+def build_league_details_cache_key(
+    *,
+    league_id: str,
+    site_user_id: UUID | None,
+    current_week: int,
+    note: str,
+    draft_pick_projection_settings: (
+        dict[str, object] | None
+    ),
+) -> str:
+    return (
+        f"league-details:{LEAGUE_DETAILS_CACHE_VERSION}:"
+        + json.dumps(
+            {
+                "league_id": league_id,
+                "site_user_id": (
+                    str(site_user_id)
+                    if site_user_id is not None
+                    else None
+                ),
+                "current_week": current_week,
+                "note": note,
+                "draft_pick_projection_settings": (
+                    draft_pick_projection_settings or {}
+                ),
+            },
+            sort_keys=True,
+            default=str,
+        )
+    )
 
 
 def is_slot_eligible(slot: str, position: str | None) -> bool:
     if position is None:
         return False
     if slot in {"SUPER_FLEX", "OP"}:
-        return position in {"QB", "RB", "WR", "TE"}
+        return position in CORE_FANTASY_POSITION_SET
     if slot in {"FLEX", "REC_FLEX", "WRRB_FLEX"}:
         return position in {"RB", "WR", "TE"}
     if slot == "IDP_FLEX":
@@ -648,6 +681,32 @@ class LeagueDetails:
             if league_id in sync_states
             else 0
         )
+        note = (
+            notes_by_league_id[league_id].note
+            if league_id in notes_by_league_id
+            else ""
+        )
+        cache_key = build_league_details_cache_key(
+            league_id=league_id,
+            site_user_id=site_user_id,
+            current_week=current_week,
+            note=note,
+            draft_pick_projection_settings=(
+                draft_pick_projection_settings
+            ),
+        )
+
+        if redis is not None:
+            cached_payload = await redis.get(
+                cache_key,
+            )
+            if cached_payload:
+                return (
+                    LeagueDetailsResponse
+                    .model_validate_json(
+                        cached_payload,
+                    )
+                )
 
         shared = await self.war_service.load_shared_data(
             db,
@@ -1174,7 +1233,7 @@ class LeagueDetails:
             )
         )
 
-        return LeagueDetailsResponse(
+        response = LeagueDetailsResponse(
             league_id=league.league_id,
             league_name=league.name,
             avatar=league.avatar,
@@ -1200,17 +1259,24 @@ class LeagueDetails:
                 if projected_pick_slots_by_roster_id.slots_by_roster_id
                 else None
             ),
-            note=(
-                notes_by_league_id[league_id].note
-                if league_id in notes_by_league_id
-                else ""
-            ),
+            note=note,
             settings_badges=build_settings_badges(league),
             settings_details=build_settings_details(league),
             war_position_history=war_position_history,
             war_player_history=war_player_history,
             rosters=rosters,
         )
+
+        if redis is not None:
+            await redis.set(
+                cache_key,
+                response.model_dump_json(),
+                ttl_seconds=(
+                    LEAGUE_DETAILS_CACHE_TTL_SECONDS
+                ),
+            )
+
+        return response
 
     async def build_roster_construction_seasonal_results(
         self,
@@ -1395,10 +1461,9 @@ class LeagueDetails:
         self,
         war_players,
     ) -> list[LeagueWarPositionValue]:
-        positions = ["QB", "RB", "WR", "TE"]
         totals = {
             position: 0.0
-            for position in positions
+            for position in CORE_FANTASY_POSITIONS
         }
 
         for player in war_players:
@@ -1414,7 +1479,7 @@ class LeagueDetails:
                 position=position,
                 war=round(totals[position], 2),
             )
-            for position in positions
+            for position in CORE_FANTASY_POSITIONS
         ]
 
     def build_position_rank_points(
@@ -1423,7 +1488,6 @@ class LeagueDetails:
         *,
         war_type: str,
     ) -> list[LeagueWarPlayerPoint]:
-        positions = ["QB", "RB", "WR", "TE"]
         points: list[LeagueWarPlayerPoint] = []
         war_attr = (
             "starter_war"
@@ -1431,7 +1495,7 @@ class LeagueDetails:
             else "roster_war"
         )
 
-        for position in positions:
+        for position in CORE_FANTASY_POSITIONS:
             position_players = sorted(
                 [
                     player

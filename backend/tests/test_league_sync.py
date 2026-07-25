@@ -78,6 +78,45 @@ def test_needs_full_refresh_uses_last_full_sync_age():
         )
         is True
     )
+
+
+def test_needs_full_refresh_handles_mixed_timestamp_awareness():
+    now = datetime(
+        2026,
+        7,
+        20,
+        12,
+        0,
+        tzinfo=UTC,
+    )
+
+    assert (
+        league_crud.needs_full_refresh(
+            SimpleNamespace(
+                last_full_synced_at=now
+                - timedelta(days=1),
+            ),
+            now=now.replace(tzinfo=None),
+        )
+        is False
+    )
+    assert (
+        league_crud.needs_full_refresh(
+            SimpleNamespace(
+                last_full_synced_at=(
+                    now
+                    - timedelta(
+                        days=league_crud.FULL_REFRESH_INTERVAL_DAYS + 1,
+                    )
+                ).replace(tzinfo=None),
+            ),
+            now=now,
+        )
+        is True
+    )
+
+
+def test_was_synced_today_uses_utc_calendar_day():
     assert (
         league_crud.was_synced_today(
             SimpleNamespace(

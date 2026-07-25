@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
 import { usePlayerTiers } from '@/hooks/sleeper/usePlayerTiers';
@@ -10,6 +11,9 @@ import type {
   ValueBasis,
 } from '@/types';
 import { getPositionColor } from '@/utils/positions';
+import {
+  formatSelectedValue as formatTierSelectedValue,
+} from '@/utils/valueFormat';
 
 import {
   TIER_SOURCE_OPTIONS,
@@ -17,23 +21,75 @@ import {
 } from './tier.constants';
 import './TiersPage.css';
 
+function TierBoardSkeleton() {
+  return (
+    <div
+      className="tiers-skeleton"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">Building tier board...</span>
 
-function formatSelectedValue(
-  player: TierBoardPlayer,
-  valueBasis: ValueBasis,
-) {
-  if (
-    valueBasis === 'ktc'
-    || valueBasis === 'fantasycalc'
-    || valueBasis === 'adp'
-  ) {
-    return Math.round(
-      player.selected_value,
-    ).toLocaleString();
-  }
+      <section className="tiers-meta-row">
+        {
+          Array.from({ length: 3 }).map((_, index) => (
+            <div className="tiers-meta-block" key={index}>
+              <Skeleton width={86} variant="text" />
+              <Skeleton width={index === 1 ? 190 : 120} height={20} />
+            </div>
+          ))
+        }
+      </section>
 
-  return player.selected_value.toFixed(2);
+      <section className="tiers-board">
+        {
+          ['S+', 'S', 'S-', 'A+', 'A'].map((label, rowIndex) => (
+            <div className="tier-row" key={label}>
+              <div className="tier-row-label">
+                <span className="tier-row-grade">{label}</span>
+                <span className="tier-row-count">
+                  <Skeleton width={16} variant="text" />
+                </span>
+              </div>
+
+              <div className="tier-row-players">
+                {
+                  Array.from({
+                    length: rowIndex === 1 || rowIndex === 3 ? 1 : 4,
+                  }).map((_, playerIndex) => (
+                    <article
+                      className="tier-player tier-player-skeleton"
+                      key={playerIndex}
+                    >
+                      <Skeleton width={42} height={42} radius={4} />
+
+                      <div className="tier-player-copy">
+                        <div className="tier-player-topline">
+                          <div className="tier-player-name">
+                            <Skeleton width={130} variant="title" />
+                          </div>
+                          <div className="tier-player-value">
+                            <Skeleton width={54} height={18} />
+                          </div>
+                        </div>
+
+                        <div className="tier-player-subline">
+                          <Skeleton width={58} variant="text" />
+                          <Skeleton width={104} variant="text" />
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                }
+              </div>
+            </div>
+          ))
+        }
+      </section>
+    </div>
+  );
 }
+
 
 function formatExposure(
   player: TierBoardPlayer,
@@ -249,9 +305,7 @@ export const TiersPage = () => {
       {
         canRequestBoard && tiers.loading
           ? (
-            <div className="tiers-empty-state">
-              Building tier board...
-            </div>
+            <TierBoardSkeleton />
           )
           : null
       }
@@ -339,8 +393,8 @@ export const TiersPage = () => {
                                       <div className="tier-player-value">
                                         <strong>
                                           {
-                                            formatSelectedValue(
-                                              player,
+                                            formatTierSelectedValue(
+                                              player.selected_value,
                                               tierBoard.value_basis,
                                             )
                                           }

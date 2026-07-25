@@ -1,5 +1,5 @@
 import { AlertTriangle, HandCoins, WifiOff } from 'lucide-react';
-import { LoadingState } from '@/components/feedback/LoadingState';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useWaiverOverview } from '@/hooks/sleeper/useWaivers';
 
 import type { ValueBasis } from '@/types';
@@ -14,6 +14,66 @@ interface WaiversOverviewTabProps {
   ) => void;
 }
 
+function WaiverOverviewSkeleton() {
+  return (
+    <section
+      className="waiver-league-list"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">Loading waiver recommendations...</span>
+      {
+        Array.from({ length: 4 }).map((_, index) => (
+          <article className="waiver-league-card" key={index}>
+            <div className="waiver-league-header">
+              <div className="waiver-league-identity">
+                <Skeleton width={40} height={40} radius={4} />
+                <div>
+                  <Skeleton width={190} variant="title" />
+                  <Skeleton width={150} variant="text" />
+                </div>
+              </div>
+
+              <div className="waiver-gain">
+                <Skeleton width={72} variant="text" />
+                <Skeleton width={82} height={30} />
+              </div>
+            </div>
+
+            <div className="waiver-league-stats">
+              {
+                Array.from({ length: 4 }).map((__, statIndex) => (
+                  <div className="waiver-stat" key={statIndex}>
+                    <Skeleton width={15} height={15} radius={4} />
+                    <Skeleton width={82} variant="text" />
+                    <Skeleton width={56} height={20} />
+                  </div>
+                ))
+              }
+            </div>
+
+            <div className="waiver-recommendation-grid">
+              {
+                Array.from({ length: 2 }).map((__, recommendationIndex) => (
+                  <div
+                    className="waiver-player-card waiver-recommendation-skeleton"
+                    key={recommendationIndex}
+                  >
+                    <Skeleton width={112} variant="text" />
+                    <Skeleton width={42} height={42} radius={4} />
+                    <Skeleton width={150} variant="title" />
+                    <Skeleton width={96} variant="text" />
+                  </div>
+                ))
+              }
+            </div>
+          </article>
+        ))
+      }
+    </section>
+  );
+}
+
 
 export const WaiversOverviewTab = ({
   valueBasis,
@@ -23,10 +83,7 @@ export const WaiversOverviewTab = ({
 
   if (waivers.loading) {
     return (
-      <LoadingState
-        label="Loading waiver recommendations..."
-        className="waivers-loading-state"
-      />
+      <WaiverOverviewSkeleton />
     );
   }
 

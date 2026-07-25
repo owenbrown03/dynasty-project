@@ -1,24 +1,62 @@
 import asyncio
+import json
 import logging
 from collections import defaultdict
 from typing import Dict, List
 
+from pydantic import TypeAdapter
 from sqlalchemy import and_, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from app.infrastructure.redis.client import RedisClient
 from app.integrations.sleeper.client import SleeperClient
 from app.crud.sleeper.leaguemate import get_leaguemate_ids
 from app.crud.sleeper.player import get_player_map
 from app.crud.sleeper.user import get_userid_by_username
-from app.integrations.sleeper.schemas import (
-    api as schema,
-)
 from app.integrations.sleeper.schemas import display
 from app.models.db.sleeper import api as model
 from app.services.leagues.settings import build_settings_badges
 
 logger = logging.getLogger(__name__)
+
+TRADE_SIGNALS_CACHE_VERSION = "v1"
+TRADE_SIGNALS_CACHE_TTL_SECONDS = 10 * 60
+TRADE_SIGNALS_ADAPTER = TypeAdapter(
+    list[display.Transaction],
+)
+
+
+async def build_trade_signals_cache_key(
+    db: AsyncSession,
+    *,
+    username: str,
+    user_id: str,
+) -> str:
+    result = await db.execute(
+        select(
+            func.count(model.Transaction.transaction_id),
+            func.max(model.Transaction.time_ms),
+        ).where(
+            model.Transaction.type == "trade",
+        )
+    )
+    transaction_count, max_time_ms = result.one()
+
+    payload = json.dumps(
+        {
+            "username": username,
+            "user_id": user_id,
+            "transaction_count": transaction_count or 0,
+            "max_time_ms": max_time_ms or 0,
+        },
+        sort_keys=True,
+    )
+    return (
+        f"trade-signals:{TRADE_SIGNALS_CACHE_VERSION}:"
+        f"{payload}"
+    )
+
 
 async def get_user_meta_map(db: AsyncSession) -> Dict[str, dict]:
     """Fetches high-level metadata maps for displaying names and user avatars."""
@@ -122,7 +160,12 @@ async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
 
     return lm_trades
 
-async def get_trade_signals(db: AsyncSession, sleeper: SleeperClient, username: str) -> List[schema.Transaction]:
+async def get_trade_signals(
+    db: AsyncSession,
+    sleeper: SleeperClient,
+    username: str,
+    redis: RedisClient | None = None,
+) -> List[display.Transaction]:
     """
     Evaluates historical trade records to find high-value cross-league strategies.
     Uses structured milestone logging for stateless engine auditing.
@@ -130,6 +173,22 @@ async def get_trade_signals(db: AsyncSession, sleeper: SleeperClient, username: 
 
     try:
         main_user_id = await get_userid_by_username(db, sleeper, username)
+        cache_key = await build_trade_signals_cache_key(
+            db,
+            username=username,
+            user_id=main_user_id,
+        )
+        if redis is not None:
+            cached_payload = await redis.get(cache_key)
+            if cached_payload:
+                logger.info(
+                    "Trade signals source=redis user=%s",
+                    username,
+                )
+                return TRADE_SIGNALS_ADAPTER.validate_json(
+                    cached_payload,
+                )
+
         logger.info(f"Initiating trade signal calculation matrix for user: {username}")
         lm_ids = await get_leaguemate_ids(db, main_user_id)
         logger.info(f"Context loaded: Identified {len(lm_ids)} unique leaguemates.")
@@ -314,7 +373,21 @@ async def get_trade_signals(db: AsyncSession, sleeper: SleeperClient, username: 
                 logger.info(f"[Task Progress] Evaluated {idx}/{total_trades} records ({(idx / total_trades) * 100:.1f}%)")
                 
         logger.info(f"Calculation complete. Identified {len(final_trades)} actionable trade cross-signals.")
-        return sorted(final_trades, key=lambda x: x.time_ms, reverse=True)
+        sorted_trades = sorted(
+            final_trades,
+            key=lambda x: x.time_ms,
+            reverse=True,
+        )
+        if redis is not None:
+            await redis.set(
+                cache_key,
+                TRADE_SIGNALS_ADAPTER.dump_json(
+                    sorted_trades,
+                ).decode("utf-8"),
+                ttl_seconds=TRADE_SIGNALS_CACHE_TTL_SECONDS,
+            )
+
+        return sorted_trades
                 
     except Exception:
         logger.exception(

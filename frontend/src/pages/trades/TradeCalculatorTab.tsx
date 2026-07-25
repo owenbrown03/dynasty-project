@@ -5,6 +5,7 @@ import {
 } from 'react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
 import {
   fetchTradeCalculatorPickValue,
@@ -15,6 +16,7 @@ import type {
   BulkTradePickRequest,
 } from '@/types';
 import { notify } from '@/utils/notify';
+import { formatMarketValue } from '@/utils/valueFormat';
 
 
 type CalculatorBasis =
@@ -52,13 +54,6 @@ function getAssetValue(
   return basis === 'ktc'
     ? asset.ktcValue ?? 0
     : asset.fcValue ?? 0;
-}
-
-
-function formatCalculatorValue(
-  value: number,
-) {
-  return Math.round(value).toLocaleString();
 }
 
 
@@ -410,7 +405,35 @@ export function TradeCalculatorTab({
               ? (
                 <div className="bulk-trade-search-results">
                   {
-                    playerSearch.data.map((player) => (
+                    playerSearch.loading
+                      ? (
+                        Array.from({ length: 3 }).map((_, index) => (
+                          <div
+                            key={index}
+                            className="trade-calculator-search-row trade-calculator-search-row-skeleton"
+                          >
+                            <div className="player-with-avatar">
+                              <Skeleton width={28} height={28} radius={4} />
+                              <div className="player-with-avatar-copy">
+                                <Skeleton width={132} variant="title" />
+                                <Skeleton width={80} variant="text" />
+                              </div>
+                            </div>
+
+                            <div className="trade-calculator-search-actions">
+                              <Skeleton width={58} height={18} />
+                              <Skeleton width={76} height={34} />
+                              <Skeleton width={76} height={34} />
+                            </div>
+                          </div>
+                        ))
+                      )
+                      : null
+                  }
+
+                  {
+                    !playerSearch.loading
+                      ? playerSearch.data.map((player) => (
                       <div
                         key={player.player_id}
                         className="trade-calculator-search-row"
@@ -433,8 +456,8 @@ export function TradeCalculatorTab({
                         <div className="trade-calculator-search-actions">
                           <span>
                             {valueBasis === 'ktc'
-                              ? formatCalculatorValue(player.ktc_value ?? 0)
-                              : formatCalculatorValue(player.fc_value ?? 0)}
+                              ? formatMarketValue(player.ktc_value ?? 0)
+                              : formatMarketValue(player.fc_value ?? 0)}
                           </span>
 
                           <button
@@ -464,7 +487,8 @@ export function TradeCalculatorTab({
                           </button>
                         </div>
                       </div>
-                    ))
+                      ))
+                      : null
                   }
 
                   {
@@ -574,7 +598,7 @@ export function TradeCalculatorTab({
               >
                 <div className="trade-calculator-panel-header">
                   <h3>{panel.title}</h3>
-                  <strong>{formatCalculatorValue(panel.net)}</strong>
+                  <strong>{formatMarketValue(panel.net)}</strong>
                 </div>
 
                 <div className="trade-calculator-asset-list">
@@ -593,7 +617,7 @@ export function TradeCalculatorTab({
                             <div className="trade-calculator-asset-actions">
                               <span>
                                 {
-                                  formatCalculatorValue(
+                                  formatMarketValue(
                                     getAssetValue(asset, valueBasis),
                                   )
                                 }
@@ -624,11 +648,11 @@ export function TradeCalculatorTab({
                 <div className="trade-calculator-summary">
                   <div>
                     <span>Asset total</span>
-                    <strong>{formatCalculatorValue(panel.total)}</strong>
+                    <strong>{formatMarketValue(panel.total)}</strong>
                   </div>
                   <div>
                     <span>Roster spots</span>
-                    <strong>{formatCalculatorValue(panel.adjustment)}</strong>
+                    <strong>{formatMarketValue(panel.adjustment)}</strong>
                   </div>
                 </div>
               </section>

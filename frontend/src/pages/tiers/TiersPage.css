@@ -47,6 +47,11 @@
   gap: 10px;
 }
 
+.tiers-skeleton {
+  display: grid;
+  gap: 18px;
+}
+
 .tier-row {
   display: grid;
   grid-template-columns: 70px minmax(0, 1fr);
@@ -110,6 +115,10 @@
 
 .tier-player-avatar {
   flex-shrink: 0;
+}
+
+.tier-player-skeleton {
+  border-left: 2px solid var(--color-border-strong);
 }
 
 .tier-player-copy {

@@ -1,522 +1,155 @@
 import './AdpPage.css';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Database, Filter } from 'lucide-react';
+import {
+  type CSSProperties,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { Database } from 'lucide-react';
 import { useSearchParams } from 'react-router';
 
-import { LoadingState } from '@/components/feedback/LoadingState';
-import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useAdp } from '@/hooks/useAdp';
 import { useAdpMetadata } from '@/hooks/useAdpMetadata';
 import { useAdpReport } from '@/hooks/useAdpReport';
-import {
-  CORE_FANTASY_POSITIONS,
-  isCoreFantasyPosition,
-} from '@/utils/positions';
+import { CORE_FANTASY_POSITIONS } from '@/utils/positions';
 import { notify } from '@/utils/notify';
 import type {
   ADPDistributionItem,
   ADPFilters,
-  ADPPlayerRow,
 } from '@/types';
+import {
+  DEFAULT_ADP_FILTERS,
+  DISCOVERY_SOURCE_LABELS,
+  DISCOVERY_STATUS_LABELS,
+  DRAFT_KIND_LABELS,
+  QB_FORMAT_LABELS,
+  QUALIFICATION_LABELS,
+  SCORING_LABELS,
+  TEP_LABELS,
+  areFiltersEqual,
+  buildBoardDisplayRows,
+  buildBoardRounds,
+  buildDynamicOptions,
+  compareRows,
+  filterCoreAdpPlayers,
+  formatDateInputValue,
+  formatDateTime,
+  formatPercent,
+  getDefaultDraftOrderMode,
+  getSampleStrengthMessage,
+  hasDistributionValue,
+  readDraftOrderModeParam,
+  readFiltersFromSearchParams,
+  readSortColumnParam,
+  readSortDirectionParam,
+  readViewModeParam,
+  renderDistributionLabel,
+  type DraftOrderMode,
+  type SortColumn,
+  type SortDirection,
+  type ViewMode,
+} from './adp.utils';
+import { AdpFiltersPanel } from './AdpFiltersPanel';
+import { AdpResultsSection } from './AdpResultsSection';
+import { AdpSamplePanels } from './AdpSamplePanels';
 
-
-type SortColumn =
-  | 'overall_adp'
-  | 'median_pick'
-  | 'min_pick'
-  | 'max_pick'
-  | 'standard_deviation'
-  | 'name'
-  | 'position'
-  | 'team'
-  | 'draft_count'
-  | 'selection_rate';
-
-type SortDirection =
-  | 'asc'
-  | 'desc';
-
-type ViewMode =
-  | 'board'
-  | 'table';
-
-type DraftOrderMode =
-  | 'snake'
-  | 'linear'
-  | 'third_round_reversal';
-
-const DRAFT_KIND_LABELS: Record<string, string> = {
-  startup: 'Startup',
-  rookie: 'Rookie',
-  supplemental: 'Supplemental',
-};
-
-const QB_FORMAT_LABELS: Record<string, string> = {
-  one_qb: '1QB',
-  superflex: 'Superflex',
-  two_qb: '2QB',
-};
-
-const TEP_LABELS: Record<string, string> = {
-  none: 'Non-TEP',
-  premium: 'TE premium',
-};
-
-const SCORING_LABELS: Record<string, string> = {
-  standard: 'Standard',
-  half_ppr: 'Half PPR',
-  ppr: 'PPR',
-  custom: 'Custom',
-};
-
-const QUALIFICATION_LABELS: Record<string, string> = {
-  qualified: 'Qualified',
-  missing_picks: 'Missing picks',
-  incomplete: 'Incomplete',
-  mock: 'Mock',
-  auction: 'Auction',
-  keeper_draft: 'Keeper draft',
-  unsupported_team_count: 'Unsupported team count',
-  unsupported_round_count: 'Unsupported round count',
-  missing_player_ids: 'Missing player IDs',
-  unknown_format: 'Unknown format',
-};
-
-const DISCOVERY_SOURCE_LABELS: Record<string, string> = {
-  existing_db: 'Existing DB seeds',
-  user_id: 'User expansion',
-  league_id: 'League expansion',
-  draft_id: 'Direct draft seed',
-};
-
-const DISCOVERY_STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  processing: 'Processing',
-  processed: 'Processed',
-  failed: 'Failed',
-  ignored: 'Ignored',
-};
-
-const DEFAULT_ADP_FILTERS: ADPFilters = {
-  season: '2026',
-  draft_kind: 'startup',
-  qb_format: 'superflex',
-  te_premium: '',
-  scoring_format: '',
-  team_count: 12,
-  minimum_draft_count: 1,
-  limit: 300,
-  start_date: null,
-  end_date: null,
-};
-
-const ADP_LIMIT_OPTIONS = [
-  100,
-  300,
-  500,
-  1000,
-];
-
-const BOARD_SORT_OPTIONS: Array<{
-  value: SortColumn;
-  label: string;
-}> = [
-  { value: 'overall_adp', label: 'ADP' },
-  { value: 'median_pick', label: 'Median pick' },
-  { value: 'name', label: 'Player name' },
-  { value: 'position', label: 'Position' },
-  { value: 'team', label: 'NFL team' },
-  { value: 'draft_count', label: 'Draft count' },
-  { value: 'selection_rate', label: 'Selection rate' },
-];
-
-const POSITION_THEME_CLASS: Record<string, string> = {
-  QB: 'adp-player-card-qb',
-  RB: 'adp-player-card-rb',
-  WR: 'adp-player-card-wr',
-  TE: 'adp-player-card-te',
-  PICK: 'adp-player-card-pick',
-};
-
-const DRAFT_ORDER_LABELS: Record<DraftOrderMode, string> = {
-  snake: 'Snake',
-  linear: 'Linear',
-  third_round_reversal: '3RR',
-};
-
-function formatDateTime(
-  value: string | null,
-) {
-  if (!value) {
-    return '—';
-  }
-
-  return new Date(value).toLocaleString();
-}
-
-
-function formatDateInputValue(
-  value: Date,
-) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const day = String(value.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-
-function formatPercent(
-  value: number,
-) {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-
-function getSampleStrengthMessage(
-  draftCount: number,
-) {
-  if (draftCount < 10) {
-    return {
-      tone: 'thin',
-      title: 'Thin sample',
-      body: 'This filter slice is built from fewer than 10 qualified drafts. Treat the rankings as directional only.',
-    };
-  }
-
-  if (draftCount < 25) {
-    return {
-      tone: 'limited',
-      title: 'Limited sample',
-      body: 'This slice has some signal, but the draft count is still light enough that outliers can move player prices meaningfully.',
-    };
-  }
-
-  return {
-    tone: 'healthy',
-    title: 'Healthy sample',
-    body: 'This filter slice has enough qualified drafts that the board should be materially more stable.',
-  };
-}
-
-
-function formatDataSource(
-  value: string | null | undefined,
-) {
-  if (value === 'snapshot') {
-    return 'Stored snapshot';
-  }
-
-  return 'Live aggregate';
-}
-
-
-function renderDistributionLabel(
-  row: ADPDistributionItem,
-  labelMap: Record<string, string> = {},
-) {
-  return labelMap[row.key] ?? row.key;
-}
-
-
-function buildDynamicOptions(
-  rows: ADPDistributionItem[] | undefined,
-  {
-    allLabel,
-    labelMap = {},
-    formatLabel,
-  }: {
-    allLabel: string;
-    labelMap?: Record<string, string>;
-    formatLabel?: (row: ADPDistributionItem) => string;
-  },
-) {
-  const options = [
-    {
-      value: '',
-      label: allLabel,
-    },
-  ];
-
-  for (const row of rows ?? []) {
-    if (!row.key || row.key === 'unknown') {
-      continue;
-    }
-
-    const label = formatLabel
-      ? formatLabel(row)
-      : `${labelMap[row.key] ?? row.key} (${row.count})`;
-    options.push({
-      value: row.key,
-      label,
-    });
-  }
-
-  return options;
-}
-
-
-function compareRows(
-  left: ADPPlayerRow,
-  right: ADPPlayerRow,
-  column: SortColumn,
-  direction: SortDirection,
-) {
-  const multiplier = direction === 'asc'
-    ? 1
-    : -1;
-
-  if (column === 'name' || column === 'position' || column === 'team') {
-    return multiplier * String(left[column] ?? '').localeCompare(
-      String(right[column] ?? ''),
-    );
-  }
-
-  return multiplier * (
-    Number(left[column] ?? Number.NEGATIVE_INFINITY)
-    - Number(right[column] ?? Number.NEGATIVE_INFINITY)
-  );
-}
-
-
-function readNumberParam(
-  value: string | null,
-  fallback: number,
-) {
-  if (!value) {
-    return fallback;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed)
-    ? parsed
-    : fallback;
-}
-
-
-function readSortColumnParam(
-  value: string | null,
-): SortColumn {
-  if (
-    value === 'overall_adp'
-    || value === 'median_pick'
-    || value === 'min_pick'
-    || value === 'max_pick'
-    || value === 'standard_deviation'
-    || value === 'name'
-    || value === 'position'
-    || value === 'team'
-    || value === 'draft_count'
-    || value === 'selection_rate'
-  ) {
-    return value;
-  }
-
-  return 'overall_adp';
-}
-
-
-function readSortDirectionParam(
-  value: string | null,
-): SortDirection {
-  return value === 'desc'
-    ? 'desc'
-    : 'asc';
-}
-
-
-function readViewModeParam(
-  value: string | null,
-): ViewMode {
-  return value === 'table'
-    ? 'table'
-    : 'board';
-}
-
-
-function getDefaultDraftOrderMode(
-  draftKind: string | null | undefined,
-): DraftOrderMode {
-  return draftKind === 'rookie'
-    ? 'linear'
-    : 'snake';
-}
-
-
-function readDraftOrderModeParam(
-  value: string | null,
-  draftKind: string | null | undefined,
-): DraftOrderMode {
-  if (
-    value === 'snake'
-    || value === 'linear'
-    || value === 'third_round_reversal'
-  ) {
-    return value;
-  }
-
-  return getDefaultDraftOrderMode(draftKind);
-}
-
-
-function readFiltersFromSearchParams(
-  searchParams: URLSearchParams,
-): ADPFilters {
-  return {
-    season: searchParams.get('season') ?? DEFAULT_ADP_FILTERS.season,
-    draft_kind: searchParams.get('draft_kind') ?? DEFAULT_ADP_FILTERS.draft_kind,
-    qb_format: searchParams.get('qb_format') ?? DEFAULT_ADP_FILTERS.qb_format,
-    te_premium: searchParams.get('te_premium') ?? '',
-    scoring_format: searchParams.get('scoring_format') ?? '',
-    team_count: readNumberParam(
-      searchParams.get('team_count'),
-      DEFAULT_ADP_FILTERS.team_count ?? 12,
-    ),
-    minimum_draft_count: readNumberParam(
-      searchParams.get('minimum_draft_count'),
-      DEFAULT_ADP_FILTERS.minimum_draft_count ?? 1,
-    ),
-    limit: readNumberParam(
-      searchParams.get('limit'),
-      DEFAULT_ADP_FILTERS.limit ?? 300,
-    ),
-    start_date: searchParams.get('start_date'),
-    end_date: searchParams.get('end_date'),
-  };
-}
-
-
-function areFiltersEqual(
-  left: ADPFilters,
-  right: ADPFilters,
-) {
+function AdpPageSkeleton() {
   return (
-    left.season === right.season
-    && left.draft_kind === right.draft_kind
-    && left.qb_format === right.qb_format
-    && left.te_premium === right.te_premium
-    && left.scoring_format === right.scoring_format
-    && left.team_count === right.team_count
-    && left.minimum_draft_count === right.minimum_draft_count
-    && left.limit === right.limit
-    && left.start_date === right.start_date
-    && left.end_date === right.end_date
+    <div className="adp-loading-shell" role="status" aria-live="polite">
+      <span className="skeleton-sr-label">Loading ADP board...</span>
+
+      <section className="adp-summary-grid">
+        {
+          Array.from({ length: 4 }).map((_, index) => (
+            <article className="adp-summary-card skeleton-card" key={index}>
+              <Skeleton width={110} variant="text" />
+              <Skeleton width={index === 0 ? 70 : 130} height={24} />
+            </article>
+          ))
+        }
+      </section>
+
+      <section className="adp-table-card">
+        <div className="adp-table-header">
+          <div>
+            <Skeleton width={70} variant="text" />
+            <Skeleton width={220} variant="title" />
+          </div>
+          <div className="adp-table-meta">
+            <Skeleton width={110} variant="text" />
+            <Skeleton width={180} variant="text" />
+          </div>
+        </div>
+
+        <div className="adp-table-tools">
+          {
+            Array.from({ length: 5 }).map((_, index) => (
+              <label key={index}>
+                <Skeleton width={84} variant="text" />
+                <Skeleton height={40} />
+              </label>
+            ))
+          }
+          <div className="adp-table-tools-summary">
+            <Skeleton width={112} variant="text" />
+            <Skeleton width={84} height={24} />
+          </div>
+        </div>
+
+        <div className="adp-board">
+          <div className="adp-board-table-wrap">
+            <table
+              className="adp-board-table adp-board-table-skeleton"
+              style={{
+                '--adp-board-columns': 12,
+              } as CSSProperties}
+            >
+              <thead>
+                <tr>
+                  {
+                    Array.from({ length: 12 }).map((_, index) => (
+                      <th key={index}>Team {index + 1}</th>
+                    ))
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                {
+                  Array.from({ length: 6 }).map((_, rowIndex) => (
+                    <tr className="adp-board-table-row" key={rowIndex}>
+                      {
+                        Array.from({ length: 12 }).map((__, columnIndex) => (
+                          <td className="adp-board-player-cell" key={`${rowIndex}-${columnIndex}`}>
+                            <div className="adp-player-card adp-player-card-skeleton">
+                              <div className="adp-player-card-topline">
+                                <Skeleton width={42} variant="text" />
+                                <Skeleton width={28} variant="text" />
+                              </div>
+                              <div className="adp-player-main">
+                                <div className="adp-player-copy">
+                                  <Skeleton width="78%" variant="title" />
+                                  <Skeleton width="54%" variant="text" />
+                                </div>
+                                <Skeleton width={34} height={34} radius={4} />
+                              </div>
+                            </div>
+                          </td>
+                        ))
+                      }
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
-
-
-function hasDistributionValue(
-  rows: ADPDistributionItem[] | undefined,
-  value: string | null | undefined,
-) {
-  if (!value) {
-    return true;
-  }
-
-  return (rows ?? []).some((row) => row.key === value);
-}
-
-
-function buildBoardRounds(
-  players: ADPPlayerRow[],
-  boardSize: number,
-) {
-  const positionCounts = new Map<string, number>();
-  const entries = players.map((player) => {
-    const position = player.position ?? '—';
-    const nextCount = (positionCounts.get(position) ?? 0) + 1;
-    positionCounts.set(position, nextCount);
-
-    return {
-      player,
-      positionRankLabel: `${position}${nextCount}`,
-    };
-  });
-
-  const rounds = new Map<number, typeof entries>();
-
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index];
-    const round = Math.floor(index / boardSize) + 1;
-    const current = rounds.get(round) ?? [];
-    current.push(entry);
-    rounds.set(round, current);
-  }
-
-  return Array.from(rounds.entries())
-    .sort((left, right) => left[0] - right[0])
-    .map(([round, roundPlayers]) => ({
-      round,
-      players: roundPlayers,
-    }));
-}
-
-
-function getDisplaySlotForColumn(
-  round: number,
-  columnIndex: number,
-  boardSize: number,
-  draftOrderMode: DraftOrderMode,
-) {
-  const ascending = columnIndex + 1;
-  const descending = boardSize - columnIndex;
-
-  if (draftOrderMode === 'linear') {
-    return ascending;
-  }
-
-  if (draftOrderMode === 'snake') {
-    return round % 2 === 1
-      ? ascending
-      : descending;
-  }
-
-  if (round === 1) {
-    return ascending;
-  }
-
-  if (round === 2 || round === 3) {
-    return descending;
-  }
-
-  return round % 2 === 0
-    ? ascending
-    : descending;
-}
-
-
-function buildBoardDisplayRows(
-  rounds: ReturnType<typeof buildBoardRounds>,
-  boardSize: number,
-  draftOrderMode: DraftOrderMode,
-) {
-  return rounds.map((roundRow) => {
-    const cells = Array.from({ length: boardSize }, (_, columnIndex) => {
-      const displaySlot = getDisplaySlotForColumn(
-        roundRow.round,
-        columnIndex,
-        boardSize,
-        draftOrderMode,
-      );
-      const playerIndex = displaySlot - 1;
-      const entry = roundRow.players[playerIndex] ?? null;
-      const overallPick = ((roundRow.round - 1) * boardSize) + displaySlot;
-
-      return {
-        columnIndex,
-        displaySlot,
-        overallPick,
-        entry,
-      };
-    });
-
-    return {
-      round: roundRow.round,
-      cells,
-    };
-  });
-}
-
 
 export const AdpPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -713,34 +346,20 @@ export const AdpPage = () => {
     draftOrderMode,
   ]);
 
+  const filteredPlayers = useMemo(() => filterCoreAdpPlayers(
+    query.data?.players ?? [],
+    {
+      positionFilter,
+      playerSearch: deferredPlayerSearch,
+    },
+  ), [
+    deferredPlayerSearch,
+    positionFilter,
+    query.data?.players,
+  ]);
+
   const sortedPlayers = useMemo(() => {
-    const normalizedSearch = deferredPlayerSearch.trim().toLowerCase();
-    const players = [...(query.data?.players ?? [])].filter((player) => {
-      if (!isCoreFantasyPosition(player.position)) {
-        return false;
-      }
-
-      if (
-        positionFilter
-        && (player.position ?? '') !== positionFilter
-      ) {
-        return false;
-      }
-
-      if (!normalizedSearch) {
-        return true;
-      }
-
-      const haystack = [
-        player.name,
-        player.position ?? '',
-        player.team ?? '',
-      ]
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(normalizedSearch);
-    });
-
+    const players = [...filteredPlayers];
     players.sort((left, right) => {
       const value = compareRows(
         left,
@@ -757,9 +376,7 @@ export const AdpPage = () => {
     });
     return players;
   }, [
-    deferredPlayerSearch,
-    positionFilter,
-    query.data?.players,
+    filteredPlayers,
     sortColumn,
     sortDirection,
   ]);
@@ -771,33 +388,7 @@ export const AdpPage = () => {
   }, [query.data?.players]);
 
   const boardPlayers = useMemo(() => {
-    const normalizedSearch = deferredPlayerSearch.trim().toLowerCase();
-    const players = [...(query.data?.players ?? [])].filter((player) => {
-      if (!isCoreFantasyPosition(player.position)) {
-        return false;
-      }
-
-      if (
-        positionFilter
-        && (player.position ?? '') !== positionFilter
-      ) {
-        return false;
-      }
-
-      if (!normalizedSearch) {
-        return true;
-      }
-
-      const haystack = [
-        player.name,
-        player.position ?? '',
-        player.team ?? '',
-      ]
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(normalizedSearch);
-    });
-
+    const players = [...filteredPlayers];
     players.sort((left, right) => {
       if (left.overall_adp !== right.overall_adp) {
         return left.overall_adp - right.overall_adp;
@@ -808,9 +399,7 @@ export const AdpPage = () => {
 
     return players;
   }, [
-    deferredPlayerSearch,
-    positionFilter,
-    query.data?.players,
+    filteredPlayers,
   ]);
 
   const boardSize = Math.max(filters.team_count ?? 12, 8);
@@ -1142,11 +731,11 @@ export const AdpPage = () => {
 
   return (
     <div className="adp-page">
-      <section className="page-hero adp-hero">
+      <section className="page-header adp-hero">
         <div>
           <p className="page-eyebrow">Rankings</p>
-          <h1>Sleeper ADP board</h1>
-          <p className="page-subtitle">
+          <h1 className="page-title">Sleeper ADP board</h1>
+          <p className="page-description">
             Aggregated qualified Sleeper drafts, segmented for dynasty formats and served from your local corpus.
           </p>
         </div>
@@ -1156,658 +745,56 @@ export const AdpPage = () => {
         </div>
       </section>
 
-      <section className="adp-filters-card">
-        <div className="adp-filters-header">
-          <div>
-            <span className="adp-section-kicker">Filters</span>
-            <h2>Draft sample controls</h2>
-          </div>
-          <div className="adp-filters-actions">
-            <div className="adp-filters-note">
-              <Filter size={16} />
-              <span>Changing filters requeries the cached `/adp` dataset.</span>
-            </div>
-            <button
-              type="button"
-              className="site-button site-button-secondary"
-              onClick={copyBoardLink}
-            >
-              Copy link
-            </button>
-            <button
-              type="button"
-              className="site-button site-button-secondary"
-              onClick={resetBoardView}
-            >
-              Reset board
-            </button>
-          </div>
-        </div>
-
-        <div className="adp-filters-grid">
-          <label>
-            <span>Season</span>
-            <select
-              value={filters.season ?? ''}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  season: event.target.value.trim() || null,
-                }));
-              }}
-            >
-              {seasonOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>Draft kind</span>
-            <select
-              value={filters.draft_kind ?? ''}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  draft_kind: event.target.value || null,
-                }));
-              }}
-            >
-              {draftKindOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>QB format</span>
-            <select
-              value={filters.qb_format ?? ''}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  qb_format: event.target.value || null,
-                }));
-              }}
-            >
-              {qbFormatOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>TE premium</span>
-            <select
-              value={filters.te_premium ?? ''}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  te_premium: event.target.value || null,
-                }));
-              }}
-            >
-              {tepOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>Scoring</span>
-            <select
-              value={filters.scoring_format ?? ''}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  scoring_format: event.target.value || null,
-                }));
-              }}
-            >
-              {scoringOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>Team count</span>
-            <select
-              value={filters.team_count?.toString() ?? ''}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  team_count: event.target.value
-                    ? Number(event.target.value)
-                    : null,
-                }));
-              }}
-            >
-              {teamCountOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>Min draft count</span>
-            <input
-              type="number"
-              min={1}
-              max={999}
-              value={filters.minimum_draft_count ?? 1}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  minimum_draft_count: Number(event.target.value),
-                }));
-              }}
-            />
-          </label>
-
-          <label>
-            <span>Row limit</span>
-            <select
-              value={String(filters.limit ?? DEFAULT_ADP_FILTERS.limit ?? 300)}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  limit: Number(event.target.value),
-                }));
-              }}
-            >
-              {ADP_LIMIT_OPTIONS.map((limit) => (
-                <option key={limit} value={limit}>
-                  Top {limit}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span>Start date</span>
-            <input
-              type="date"
-              value={filters.start_date ?? ''}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  start_date: event.target.value || null,
-                }));
-              }}
-            />
-          </label>
-
-          <label>
-            <span>End date</span>
-            <input
-              type="date"
-              value={filters.end_date ?? ''}
-              onChange={(event) => {
-                setFilters((current) => ({
-                  ...current,
-                  end_date: event.target.value || null,
-                }));
-              }}
-            />
-          </label>
-
-          <div className="adp-filter-window">
-            <span>Date presets</span>
-            <div className="adp-filter-window-buttons">
-              <button
-                type="button"
-                className="site-button site-button-secondary"
-                onClick={() => {
-                  applyDateWindow(30);
-                }}
-              >
-                Last 30d
-              </button>
-              <button
-                type="button"
-                className="site-button site-button-secondary"
-                onClick={() => {
-                  applyDateWindow(60);
-                }}
-              >
-                Last 60d
-              </button>
-              <button
-                type="button"
-                className="site-button site-button-secondary"
-                onClick={() => {
-                  applyDateWindow(90);
-                }}
-              >
-                Last 90d
-              </button>
-              <button
-                type="button"
-                className="site-button site-button-secondary"
-                onClick={() => {
-                  applyDateWindow(null);
-                }}
-              >
-                All time
-              </button>
-            </div>
-          </div>
-
-        </div>
-      </section>
+      <AdpFiltersPanel
+        filters={filters}
+        seasonOptions={seasonOptions}
+        draftKindOptions={draftKindOptions}
+        qbFormatOptions={qbFormatOptions}
+        tepOptions={tepOptions}
+        scoringOptions={scoringOptions}
+        teamCountOptions={teamCountOptions}
+        setFilters={setFilters}
+        onCopyBoardLink={copyBoardLink}
+        onResetBoardView={resetBoardView}
+        onApplyDateWindow={applyDateWindow}
+      />
 
       {query.isLoading && !query.data ? (
-        <LoadingState label="Loading ADP board" />
+        <AdpPageSkeleton />
       ) : (
         <>
-          <section className="adp-summary-grid">
-            <article className="adp-summary-card">
-              <span>Qualified drafts</span>
-              <strong>{query.data?.sample.draft_count.toLocaleString() ?? '0'}</strong>
-            </article>
-            <article className="adp-summary-card">
-              <span>Qualified picks</span>
-              <strong>{query.data?.sample.pick_count.toLocaleString() ?? '0'}</strong>
-            </article>
-            <article className="adp-summary-card">
-              <span>Earliest draft</span>
-              <strong>{formatDateTime(query.data?.sample.earliest_draft_at ?? null)}</strong>
-            </article>
-            <article className="adp-summary-card">
-              <span>Latest draft</span>
-              <strong>{formatDateTime(query.data?.sample.latest_draft_at ?? null)}</strong>
-            </article>
-            <article className="adp-summary-card">
-              <span>Board source</span>
-              <strong>{formatDataSource(query.data?.sample.data_source)}</strong>
-            </article>
-          </section>
+          <AdpSamplePanels
+            sample={query.data?.sample}
+            sampleStrength={sampleStrength}
+            activeFilterPills={activeFilterPills}
+            corpusHealthCards={corpusHealthCards}
+            reportDistributionGroups={reportDistributionGroups}
+            sampleCompositionGroups={sampleCompositionGroups}
+          />
 
-          <section className="adp-bias-note">
-            <span className="adp-section-kicker">Sample note</span>
-            <p>
-              This board reflects drafts discovered through your Sleeper graph, not a random sample of all Sleeper drafts.
-              Use the draft count, pick count, and date window to judge how representative each filter slice is.
-            </p>
-          </section>
-
-          <section className={`adp-sample-health adp-sample-health-${sampleStrength.tone}`}>
-            <span className="adp-section-kicker">Sample strength</span>
-            <strong>{sampleStrength.title}</strong>
-            <p>{sampleStrength.body}</p>
-          </section>
-
-          <section className="adp-active-filters">
-            <span className="adp-section-kicker">Current slice</span>
-            <div className="adp-active-filter-list">
-              {activeFilterPills.map((pill) => (
-                <span key={pill} className="adp-active-filter-pill">
-                  {pill}
-                </span>
-              ))}
-            </div>
-          </section>
-
-          <section className="adp-composition-card">
-            <div className="adp-composition-header">
-              <div>
-                <span className="adp-section-kicker">Corpus health</span>
-                <h2>Dataset quality and crawl shape</h2>
-              </div>
-              <small>
-                These counts reflect the whole stored Sleeper corpus, not just the current board filter.
-              </small>
-            </div>
-
-            <div className="adp-summary-grid">
-              {corpusHealthCards.map((card) => (
-                <article key={card.label} className="adp-summary-card">
-                  <span>{card.label}</span>
-                  <strong>{card.value}</strong>
-                </article>
-              ))}
-            </div>
-
-            <div className="adp-composition-grid">
-              {reportDistributionGroups.map((group) => (
-                <article key={group.label} className="adp-composition-group">
-                  <span>{group.label}</span>
-                  <div className="adp-composition-list">
-                    {group.rows.length ? group.rows.slice(0, 8).map((row) => (
-                      <div key={`${group.label}-${row.key}`} className="adp-composition-pill">
-                        <strong>{group.render(row)}</strong>
-                        <small>{row.count.toLocaleString()} drafts</small>
-                      </div>
-                    )) : (
-                      <div className="adp-composition-empty">No tracked rows</div>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="adp-composition-card">
-            <div className="adp-composition-header">
-              <div>
-                <span className="adp-section-kicker">Composition</span>
-                <h2>Current sample makeup</h2>
-              </div>
-              <small>
-                Counts reflect the discovered corpus available around this filter slice.
-              </small>
-            </div>
-
-            <div className="adp-composition-grid">
-              {sampleCompositionGroups.map((group) => (
-                <article key={group.label} className="adp-composition-group">
-                  <span>{group.label}</span>
-                  <div className="adp-composition-list">
-                    {group.rows.length ? group.rows.map((row) => (
-                      <div key={`${group.label}-${row.key}`} className="adp-composition-pill">
-                        <strong>{group.render(row)}</strong>
-                        <small>{row.count.toLocaleString()} drafts</small>
-                      </div>
-                    )) : (
-                      <div className="adp-composition-empty">No matching sample</div>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="adp-table-card">
-            <div className="adp-table-header">
-              <div>
-                <span className="adp-section-kicker">Board</span>
-                <h2>Startup draft board</h2>
-              </div>
-              <div className="adp-table-meta">
-                <button
-                  type="button"
-                  className="site-button site-button-secondary"
-                  onClick={downloadCurrentBoardCsv}
-                >
-                  Export CSV
-                </button>
-                <small>
-                  {formatDataSource(query.data?.sample.data_source)}
-                </small>
-                <small>
-                  Generated {formatDateTime(query.data?.sample.generated_at ?? null)}
-                </small>
-              </div>
-            </div>
-
-            <div className="adp-table-tools">
-              <label>
-                <span>Search players</span>
-                <input
-                  type="search"
-                  value={playerSearch}
-                  placeholder="Search by player, team, or position"
-                  onChange={(event) => {
-                    setPlayerSearch(event.target.value);
-                  }}
-                />
-              </label>
-
-              <label>
-                <span>Position</span>
-                <select
-                  value={positionFilter}
-                  onChange={(event) => {
-                    setPositionFilter(event.target.value);
-                  }}
-                >
-                  <option value="">All positions</option>
-                  {positionOptions.map((position) => (
-                    <option key={position} value={position}>
-                      {position}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Layout</span>
-                <select
-                  value={viewMode}
-                  onChange={(event) => {
-                    setViewMode(event.target.value as ViewMode);
-                  }}
-                >
-                  <option value="board">Board style</option>
-                  <option value="table">Table style</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Draft order</span>
-                <select
-                  value={draftOrderMode}
-                  onChange={(event) => {
-                    setDraftOrderMode(event.target.value as DraftOrderMode);
-                  }}
-                >
-                  {Object.entries(DRAFT_ORDER_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Board order</span>
-                <select
-                  value={sortColumn}
-                  onChange={(event) => {
-                    setSortColumn(event.target.value as SortColumn);
-                  }}
-                >
-                  {BOARD_SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Direction</span>
-                <select
-                  value={sortDirection}
-                  onChange={(event) => {
-                    setSortDirection(event.target.value as SortDirection);
-                  }}
-                >
-                  <option value="asc">Ascending</option>
-                  <option value="desc">Descending</option>
-                </select>
-              </label>
-
-              <div className="adp-table-tools-summary">
-                <span>
-                  {viewMode === 'board'
-                    ? 'Visible players / board size'
-                    : 'Visible / fetched rows'}
-                </span>
-                <strong>
-                  {(viewMode === 'board' ? boardPlayers.length : sortedPlayers.length).toLocaleString()}
-                  {' / '}
-                  {viewMode === 'board'
-                    ? boardSize.toLocaleString()
-                    : (query.data?.players.length ?? 0).toLocaleString()}
-                </strong>
-              </div>
-            </div>
-
-            {viewMode === 'board' ? (
-              <>
-                <div className="adp-board-note">
-                  <span className="adp-section-kicker">Board style</span>
-                  <p>
-                    Draft-board layout always follows ADP order, grouped into
-                    {' '}
-                    {boardSize}
-                    {' '}
-                    picks per round. Scroll horizontally to read the full room.
-                    {' '}
-                    Visual draft order is set to
-                    {' '}
-                    {DRAFT_ORDER_LABELS[draftOrderMode]}.
-                  </p>
-                </div>
-
-                <div className="adp-board">
-                  <div
-                    className="adp-board-table-wrap"
-                    style={
-                      {
-                        '--adp-board-columns': String(boardSize),
-                      } as React.CSSProperties
-                    }
-                  >
-                    <table className="adp-board-table">
-                      <thead>
-                        <tr>
-                          {Array.from({ length: boardSize }, (_, index) => (
-                            <th key={`team-${index + 1}`} className="adp-board-team-header">
-                              Team
-                              {' '}
-                              {index + 1}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {boardDisplayRows.map((roundRow) => (
-                          <tr key={`round-${roundRow.round}`} className="adp-board-table-row">
-                            {roundRow.cells.map((cell) => {
-                              const player = cell.entry?.player;
-                              const themeClass = POSITION_THEME_CLASS[player?.position ?? ''] ?? '';
-
-                              if (!cell.entry || !player) {
-                                return (
-                                  <td
-                                    key={`${roundRow.round}-empty-${cell.columnIndex}`}
-                                    className="adp-board-player-cell"
-                                  >
-                                    <article className="adp-player-card adp-player-card-empty">
-                                      <div className="adp-player-card-topline">
-                                        <span className="adp-player-slot">
-                                          {roundRow.round}
-                                          .
-                                          {String(cell.displaySlot).padStart(2, '0')}
-                                        </span>
-                                      </div>
-                                    </article>
-                                  </td>
-                                );
-                              }
-
-                              return (
-                                <td
-                                  key={`${roundRow.round}-${player.player_id}-${cell.overallPick}`}
-                                  className="adp-board-player-cell"
-                                >
-                                  <article className={`adp-player-card ${themeClass}`}>
-                                    <div className="adp-player-card-topline">
-                                      <span className="adp-player-slot">
-                                        {roundRow.round}
-                                        .
-                                        {String(cell.displaySlot).padStart(2, '0')}
-                                      </span>
-                                      <span className="adp-player-rank">{cell.entry.positionRankLabel}</span>
-                                      <span className="adp-player-average">{player.overall_adp.toFixed(1)}</span>
-                                    </div>
-
-                                    <div className="adp-player-main">
-                                      <div className="adp-player-copy">
-                                        <strong className="adp-player-name">{player.name}</strong>
-                                        <span className="adp-player-meta-compact">
-                                          {player.position ?? '—'}
-                                          {' '}
-                                          ·
-                                          {' '}
-                                          {player.team ?? '—'}
-                                        </span>
-                                      </div>
-
-                                      <PlayerAvatar
-                                        playerId={player.player_id}
-                                        name={player.name}
-                                        size="md"
-                                        className="adp-player-avatar"
-                                      />
-                                    </div>
-                                  </article>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="adp-table-wrap">
-                <table className="adp-table">
-                  <thead>
-                    <tr>
-                      <th>ADP</th>
-                      <th>Player</th>
-                      <th>Pos</th>
-                      <th>Team</th>
-                      <th>Median</th>
-                      <th>Range</th>
-                      <th>Std Dev</th>
-                      <th>Drafts</th>
-                      <th>Selection rate</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedPlayers.map((player) => (
-                      <tr key={player.player_id}>
-                        <td>{player.overall_adp.toFixed(2)}</td>
-                        <td>{player.name}</td>
-                        <td>{player.position ?? '—'}</td>
-                        <td>{player.team ?? '—'}</td>
-                        <td>{player.median_pick.toFixed(1)}</td>
-                        <td>{player.min_pick} - {player.max_pick}</td>
-                        <td>{player.standard_deviation?.toFixed(2) ?? '—'}</td>
-                        <td>{player.draft_count.toLocaleString()}</td>
-                        <td>{formatPercent(player.selection_rate)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {!(viewMode === 'board' ? boardPlayers.length : sortedPlayers.length) ? (
-              <div className="adp-empty-state">
-                No qualified players matched this filter set.
-              </div>
-            ) : null}
-          </section>
+          <AdpResultsSection
+            dataSource={query.data?.sample.data_source}
+            generatedAt={query.data?.sample.generated_at}
+            playerSearch={playerSearch}
+            positionFilter={positionFilter}
+            positionOptions={positionOptions}
+            viewMode={viewMode}
+            draftOrderMode={draftOrderMode}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            boardPlayers={boardPlayers}
+            sortedPlayers={sortedPlayers}
+            totalPlayerCount={query.data?.players.length ?? 0}
+            boardSize={boardSize}
+            boardDisplayRows={boardDisplayRows}
+            onExportCsv={downloadCurrentBoardCsv}
+            onPlayerSearchChange={setPlayerSearch}
+            onPositionFilterChange={setPositionFilter}
+            onViewModeChange={setViewMode}
+            onDraftOrderModeChange={setDraftOrderMode}
+            onSortColumnChange={setSortColumn}
+            onSortDirectionChange={setSortDirection}
+          />
         </>
       )}
     </div>

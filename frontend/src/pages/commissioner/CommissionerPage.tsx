@@ -9,8 +9,7 @@ import {
   useSearchParams,
 } from 'react-router';
 
-import { LoadingState } from '@/components/feedback/LoadingState';
-import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -25,15 +24,13 @@ import { notify } from '@/utils/notify';
 import type {
   CommissionerLeagueDuesEntry,
   CommissionerWorkspaceLeague,
-  CommissionerLineupSlot,
-  CommissionerOrphanRoster,
-  CommissionerPlayerAsset,
   ValueBasis,
 } from '@/types';
 import {
   VALUE_BASIS_OPTIONS,
   getValueBasisOptions,
 } from '@/pages/waivers/waiver.constants';
+import { CommissionerOrphanCard } from './CommissionerOrphanCard';
 
 import './CommissionerPage.css';
 
@@ -51,327 +48,131 @@ function isValueBasis(
   );
 }
 
-
-function formatValue(
-  value: number | null,
-  valueBasis: ValueBasis,
-) {
-  if (value === null) {
-    return '—';
-  }
-
-  if (
-    valueBasis === 'ktc'
-    || valueBasis === 'fantasycalc'
-    || valueBasis === 'adp'
-  ) {
-    return Math.round(value).toLocaleString();
-  }
-
-  return value.toFixed(2);
-}
-
-
-function CommissionerPlayerRow({
-  player,
-  valueBasis,
+function CommissionerCardSkeleton({
+  mode,
 }: {
-  player: CommissionerPlayerAsset;
-  valueBasis: ValueBasis;
+  mode: 'orphans' | 'workspace';
 }) {
-  return (
-    <div className="commissioner-player-row">
-      <div className="player-with-avatar">
-        <PlayerAvatar
-          playerId={player.player_id}
-          name={player.name}
-          size="sm"
-        />
-
-        <div className="player-with-avatar-copy">
-          <strong>{player.name}</strong>
-          <span>
-            {
-              [player.position, player.team]
-                .filter(Boolean)
-                .join(' · ') || '—'
-            }
-          </span>
-        </div>
-      </div>
-
-      <strong className="commissioner-player-value">
-        {
-          formatValue(
-            player.selected_value,
-            valueBasis,
-          )
-        }
-      </strong>
-    </div>
-  );
-}
-
-
-function CommissionerLineupRow({
-  slot,
-  valueBasis,
-}: {
-  slot: CommissionerLineupSlot;
-  valueBasis: ValueBasis;
-}) {
-  return (
-    <div className="commissioner-player-row">
-      <div className="commissioner-lineup-slot">
-        <span className="commissioner-lineup-slot-label">
-          {slot.slot}
-        </span>
-
-        {
-          slot.player
-            ? (
-              <div className="player-with-avatar">
-                <PlayerAvatar
-                  playerId={slot.player.player_id}
-                  name={slot.player.name}
-                  size="sm"
-                />
-
-                <div className="player-with-avatar-copy">
-                  <strong>{slot.player.name}</strong>
-                  <span>
-                    {
-                      [
-                        slot.player.position,
-                        slot.player.team,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ') || '—'
-                    }
-                  </span>
-                </div>
-              </div>
-            )
-            : (
-              <span className="commissioner-empty-slot">
-                Empty
-              </span>
-            )
-        }
-      </div>
-
-      <strong className="commissioner-player-value">
-        {
-          formatValue(
-            slot.player?.selected_value ?? null,
-            valueBasis,
-          )
-        }
-      </strong>
-    </div>
-  );
-}
-
-
-function CommissionerOrphanCard({
-  orphan,
-  valueBasis,
-}: {
-  orphan: CommissionerOrphanRoster;
-  valueBasis: ValueBasis;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
   return (
     <article className="commissioner-card">
       <header className="commissioner-card-header">
         <div className="commissioner-card-heading">
-          <p className="commissioner-card-kicker">
-            League
-          </p>
-          <h2 className="commissioner-card-title">
-            {orphan.league_name}
-          </h2>
-          <p className="commissioner-card-subtitle">
-            {orphan.roster_name}
-          </p>
+          <Skeleton width={58} variant="text" />
+          <Skeleton width="72%" variant="title" />
+          <Skeleton width={96} variant="text" />
         </div>
 
-        <div className="commissioner-card-stats">
-          <div>
-            <span>Roster value</span>
-            <strong>
-              {
-                formatValue(
-                  orphan.roster_value,
-                  valueBasis,
-                )
-              }
-            </strong>
-          </div>
-
-          <div>
-            <span>League avg</span>
-            <strong>
-              {
-                formatValue(
-                  orphan.league_average_value,
-                  valueBasis,
-                )
-              }
-            </strong>
-          </div>
-
-          <div>
-            <span>Avg age</span>
-            <strong>
-              {
-                orphan.average_age !== null
-                  ? orphan.average_age.toFixed(1)
-                  : '—'
-              }
-            </strong>
-          </div>
-        </div>
-      </header>
-
-      <div className="commissioner-badge-row">
-        {
-          orphan.settings_badges.map((badge) => (
-            <span
-              key={`${orphan.league_id}-${orphan.roster_id}-${badge}`}
-              className="commissioner-badge"
-            >
-              {badge}
-            </span>
-          ))
-        }
-      </div>
-
-      <section className="commissioner-section">
-        <div className="commissioner-section-header">
-          <p>Mocked starting lineup</p>
-        </div>
-
-        <div className="commissioner-list">
+        <div className="commissioner-card-stats commissioner-card-stats-skeleton">
           {
-            orphan.lineup.map((slot) => (
-              <CommissionerLineupRow
-                key={`${orphan.league_id}-${orphan.roster_id}-${slot.slot}`}
-                slot={slot}
-                valueBasis={valueBasis}
-              />
+            Array.from({ length: 3 }).map((_, index) => (
+              <div key={index}>
+                <Skeleton width={84} variant="text" />
+                <Skeleton width={72} height={22} />
+              </div>
             ))
           }
         </div>
-      </section>
-
-      <div className="commissioner-card-actions">
-        <button
-          className="button-secondary"
-          type="button"
-          onClick={() => {
-            setExpanded(!expanded);
-          }}
-        >
-          {
-            expanded
-              ? 'Hide details'
-              : 'Bench & picks'
-          }
-        </button>
-      </div>
+      </header>
 
       {
-        expanded
+        mode === 'orphans'
           ? (
-            <div className="commissioner-card-details">
-              <section className="commissioner-section">
-                <div className="commissioner-section-header">
-                  <p>Bench assets</p>
-                </div>
-
-                <div className="commissioner-list">
-                  {
-                    orphan.bench.length > 0
-                      ? orphan.bench.map((player) => (
-                          <CommissionerPlayerRow
-                            key={player.player_id}
-                            player={player}
-                            valueBasis={valueBasis}
-                          />
-                        ))
-                      : (
-                        <div className="commissioner-empty-note">
-                          No bench assets.
-                        </div>
-                      )
-                  }
-                </div>
-              </section>
+            <>
+              <div className="commissioner-badge-row">
+                {
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <Skeleton width={72} height={34} key={index} />
+                  ))
+                }
+              </div>
 
               <section className="commissioner-section">
                 <div className="commissioner-section-header">
-                  <p>Draft capital</p>
+                  <Skeleton width={150} variant="text" />
                 </div>
-
                 <div className="commissioner-list">
                   {
-                    orphan.picks.length > 0
-                      ? orphan.picks.map((pick) => (
-                          <div
-                            key={`${pick.season}-${pick.round}-${pick.og_roster_id}`}
-                            className="commissioner-pick-row"
-                          >
-                            <div className="commissioner-pick-copy">
-                              <span className="commissioner-pick-label">
-                                {pick.label}
-                              </span>
-
-                              {
-                                pick.slot_source_label
-                                  ? (
-                                    <span className="commissioner-pick-meta">
-                                      {pick.slot_source_label}
-                                    </span>
-                                  )
-                                  : null
-                              }
-
-                              {
-                                pick.value_source_label
-                                  ? (
-                                    <span className="commissioner-pick-meta">
-                                      {pick.value_source_label}
-                                    </span>
-                                  )
-                                  : null
-                              }
-                            </div>
-
-                            <strong className="commissioner-player-value">
-                              {
-                                formatValue(
-                                  pick.selected_value,
-                                  valueBasis,
-                                )
-                              }
-                            </strong>
+                    Array.from({ length: 4 }).map((_, index) => (
+                      <div className="commissioner-player-row" key={index}>
+                        <div className="player-with-avatar">
+                          <Skeleton width={34} height={34} radius={4} />
+                          <div className="player-with-avatar-copy">
+                            <Skeleton width={150} variant="title" />
+                            <Skeleton width={80} variant="text" />
                           </div>
-                        ))
-                      : (
-                        <div className="commissioner-empty-note">
-                          No draft picks resolved.
                         </div>
-                      )
+                        <Skeleton width={52} height={18} />
+                      </div>
+                    ))
                   }
                 </div>
               </section>
-            </div>
+            </>
           )
-          : null
+          : (
+            <>
+              <section className="commissioner-section">
+                <div className="commissioner-section-header">
+                  <Skeleton width={160} variant="text" />
+                </div>
+                <div className="commissioner-due-settings">
+                  <Skeleton height={46} />
+                  <Skeleton width={160} height={42} />
+                </div>
+              </section>
+
+              <section className="commissioner-section">
+                <div className="commissioner-section-header">
+                  <Skeleton width={120} variant="text" />
+                </div>
+                <div className="commissioner-list">
+                  {
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <div className="commissioner-due-row" key={index}>
+                        <div className="commissioner-due-copy">
+                          <Skeleton width={140} variant="title" />
+                          <Skeleton width="70%" variant="text" />
+                        </div>
+                        <Skeleton width={100} height={36} />
+                      </div>
+                    ))
+                  }
+                </div>
+              </section>
+            </>
+          )
       }
     </article>
+  );
+}
+
+function CommissionerCardGridSkeleton({
+  mode,
+}: {
+  mode: 'orphans' | 'workspace';
+}) {
+  return (
+    <section
+      className="commissioner-card-grid"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">
+        {
+          mode === 'orphans'
+            ? 'Loading commissioner view...'
+            : 'Loading league dues tracker...'
+        }
+      </span>
+      {
+        Array.from({ length: 4 }).map((_, index) => (
+          <CommissionerCardSkeleton
+            key={index}
+            mode={mode}
+          />
+        ))
+      }
+    </section>
   );
 }
 
@@ -936,10 +737,7 @@ export const CommissionerPage = () => {
       {
         activeTab === 'orphans' && activeUsername && orphans.loading
           ? (
-            <LoadingState
-              label="Loading commissioner view..."
-              className="commissioner-empty-state"
-            />
+            <CommissionerCardGridSkeleton mode="orphans" />
           )
           : null
       }
@@ -995,10 +793,7 @@ export const CommissionerPage = () => {
       {
         activeTab === 'workspace' && canManageWorkspace && workspace.loading
           ? (
-            <LoadingState
-              label="Loading league dues tracker..."
-              className="commissioner-empty-state"
-            />
+            <CommissionerCardGridSkeleton mode="workspace" />
           )
           : null
       }

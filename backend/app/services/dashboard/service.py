@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections.abc import Iterable
 
@@ -48,6 +49,35 @@ CURRENT_DASHBOARD_STATUSES = {
     "in_season",
     "post_season",
 }
+DASHBOARD_CACHE_VERSION = "v1"
+DASHBOARD_CACHE_TTL_SECONDS = 60
+
+
+def build_dashboard_cache_key(
+    *,
+    user_id: str,
+    site_user_id,
+    league_ids: Iterable[str],
+    sort_order: dict[str, int],
+) -> str:
+    return (
+        f"dashboard:{DASHBOARD_CACHE_VERSION}:"
+        + json.dumps(
+            {
+                "user_id": user_id,
+                "site_user_id": (
+                    str(site_user_id)
+                    if site_user_id is not None
+                    else None
+                ),
+                "league_ids": sorted(league_ids),
+                "sort_order": sorted(
+                    sort_order.items(),
+                ),
+            },
+            sort_keys=True,
+        )
+    )
 
 
 def get_league_season(
@@ -361,6 +391,24 @@ async def get_user_dashboard(
     league_ids = list(
         leagues.keys(),
     )
+    dashboard_cache_key = build_dashboard_cache_key(
+        user_id=user_id,
+        site_user_id=site_user_id,
+        league_ids=league_ids,
+        sort_order=sort_order,
+    )
+
+    if redis is not None:
+        cached_payload = await redis.get(
+            dashboard_cache_key,
+        )
+        if cached_payload:
+            logger.info(
+                "Dashboard source=redis user=%s leagues=%s",
+                username,
+                len(league_ids),
+            )
+            return json.loads(cached_payload)
 
     all_rosters = await get_all_league_rosters(
         db,
@@ -460,6 +508,15 @@ async def get_user_dashboard(
         ),
     )
 
-    return {
+    response = {
         "leagues": league_cards,
     }
+
+    if redis is not None:
+        await redis.set(
+            dashboard_cache_key,
+            json.dumps(response),
+            ttl_seconds=DASHBOARD_CACHE_TTL_SECONDS,
+        )
+
+    return response

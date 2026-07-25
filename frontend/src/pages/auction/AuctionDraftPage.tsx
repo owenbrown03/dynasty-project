@@ -22,28 +22,10 @@ import { useValuePreference } from '@/context/useValuePreference';
 import { useAuctionDraftCenter } from '@/hooks/sleeper/useAuctionDraft';
 import { notify } from '@/utils/notify';
 import { getPositionColor } from '@/utils/positions';
-
-
-function formatCurrency(
-  value: number | null | undefined,
-) {
-  if (value == null) {
-    return '--';
-  }
-
-  return `$${Math.round(value).toLocaleString()}`;
-}
-
-
-function formatValue(
-  value: number | null | undefined,
-) {
-  if (value == null) {
-    return '--';
-  }
-
-  return value.toFixed(2);
-}
+import {
+  formatDollarAmount as formatCurrency,
+  formatSelectedValue,
+} from '@/utils/valueFormat';
 
 
 export const AuctionDraftPage = () => {
@@ -310,8 +292,9 @@ export const AuctionDraftPage = () => {
                       Bought value
                     </span>
                     <strong>
-                      {formatValue(
+                      {formatSelectedValue(
                         data.my_team.acquired_value,
+                        valueBasis,
                       )}
                     </strong>
                   </div>
@@ -344,8 +327,9 @@ export const AuctionDraftPage = () => {
                           )}
                         </span>
                         <span>
-                          {formatValue(
+                          {formatSelectedValue(
                             summary.selected_value_total,
+                            valueBasis,
                           )}
                         </span>
                       </div>
@@ -402,8 +386,9 @@ export const AuctionDraftPage = () => {
                           </span>
                           <span>
                             {data.value_label}:{' '}
-                            {formatValue(
+                            {formatSelectedValue(
                               player.selected_value,
+                              valueBasis,
                             )}
                           </span>
                         </div>
@@ -458,8 +443,9 @@ export const AuctionDraftPage = () => {
                           )}
                         </span>
                         <span>
-                          {formatValue(
+                          {formatSelectedValue(
                             team.acquired_value,
+                            valueBasis,
                           )}
                         </span>
                         <span>
@@ -571,8 +557,9 @@ export const AuctionDraftPage = () => {
                     </div>
 
                     <span>
-                      {formatValue(
+                      {formatSelectedValue(
                         player.selected_value,
+                        valueBasis,
                       )}
                     </span>
                     <span>
