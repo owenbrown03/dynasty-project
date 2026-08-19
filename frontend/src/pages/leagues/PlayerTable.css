@@ -46,3 +46,18 @@
 .player-table-position-cell {
   font-weight: 700;
 }
+
+@media (max-width: 768px) {
+  .player-table {
+    font-size: 11px;
+  }
+
+  .player-table th,
+  .player-table td {
+    padding: 6px 7px;
+  }
+
+  .player-table-name-cell {
+    min-width: 140px;
+  }
+}

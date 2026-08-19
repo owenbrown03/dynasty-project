@@ -594,3 +594,29 @@ th {
     transform: rotate(360deg);
   }
 }
+
+@media (max-width: 768px) {
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  button,
+  a,
+  select,
+  input {
+    min-height: 44px;
+  }
+
+  .button-primary,
+  .button-secondary {
+    min-height: 44px;
+  }
+
+  .page-title {
+    font-size: 24px;
+  }
+
+  .page-header {
+    padding: 14px;
+  }
+}

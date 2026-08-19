@@ -125,3 +125,49 @@
   width: auto;
   opacity: 1;
 }
+
+/* Mobile drawer styles */
+.sidebar-mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--color-backdrop);
+  z-index: 40;
+}
+
+.sidebar-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 260px;
+  z-index: 50;
+  transform: translateX(-100%);
+  transition: transform 0.22s ease;
+}
+
+.sidebar-mobile-open {
+  transform: translateX(0);
+}
+
+.sidebar-panel-mobile {
+  width: 100%;
+  padding: 16px 10px;
+}
+
+.sidebar-section-label-visible {
+  position: static;
+  transform: none;
+  opacity: 1;
+  padding: 0 12px 4px;
+}
+
+.sidebar-link-label-visible {
+  width: auto;
+  opacity: 1;
+}
+
+.sidebar-mobile .sidebar-link {
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 12px;
+}
