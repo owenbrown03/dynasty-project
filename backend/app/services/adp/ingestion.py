@@ -5,6 +5,7 @@ from datetime import datetime
 import logging
 from typing import Any
 
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import adp as adp_crud
@@ -254,9 +255,27 @@ async def ingest_draft_by_id(
     )
 
     if league is None:
-        raw_league = await sleeper.read.get_league(
-            draft.league_id,
-        )
+        try:
+            raw_league = await sleeper.read.get_league(
+                draft.league_id,
+            )
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                logger.warning(
+                    "Skipping draft %s; league %s no longer exists on Sleeper",
+                    draft_id,
+                    draft.league_id,
+                )
+                return DraftIngestionResult(
+                    draft_id=draft_id,
+                    league_id=None,
+                    pick_count=0,
+                    inserted_pick_count=0,
+                    is_qualified=False,
+                    qualification_code="league_not_found",
+                )
+            raise
+
         await adp_crud.upsert_leagues(
             db,
             [
