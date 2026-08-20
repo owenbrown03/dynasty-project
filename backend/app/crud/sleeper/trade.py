@@ -278,7 +278,9 @@ async def get_trade_signals(
                 if m.action == "DROP":
                     shared_with_this_lm = player_to_leagues[user_id][m.player_id].intersection(shared_leagues[user_id])
                     if shared_with_this_lm and user_id != main_user_id:
-                        signals = [league_map[lid] for lid in shared_with_this_lm if lid in league_map]
+                        signals = list(dict.fromkeys(
+                            league_map[lid] for lid in shared_with_this_lm if lid in league_map
+                        ))
                         signal_text = f"Buy opportunity ({', '.join(signals)})"
                         has_signal = True
                     users_dict[user_id]["drops"].append(display.Movement(name=asset_name, signal=signal_text))
@@ -286,7 +288,9 @@ async def get_trade_signals(
                 elif m.action == "ADD":
                     my_ownership = player_to_leagues[main_user_id][m.player_id].intersection(shared_leagues[user_id])
                     if my_ownership and user_id != main_user_id:
-                        signals = [league_map[lid] for lid in my_ownership if lid in league_map]
+                        signals = list(dict.fromkeys(
+                            league_map[lid] for lid in my_ownership if lid in league_map
+                        ))
                         signal_text = f"Sell opportunity ({', '.join(signals)})"
                         has_signal = True
                     users_dict[user_id]["adds"].append(display.Movement(name=asset_name, signal=signal_text))
