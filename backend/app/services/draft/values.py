@@ -218,6 +218,7 @@ async def get_resolved_pick_values_by_key(
     league_ppr: int,
     league_scoring_settings: dict[str, float] | None = None,
     league_roster_positions: list[str] | None = None,
+    redis=None,
 ) -> dict[tuple[str, int, int], ResolvedPickValue]:
     if value_basis not in {
         ValueBasis.KTC,
@@ -243,6 +244,7 @@ async def get_resolved_pick_values_by_key(
                 league_total_rosters=league_total_rosters,
                 league_scoring_settings=league_scoring_settings,
                 league_roster_positions=league_roster_positions,
+                redis=redis,
             )
         )
 
