@@ -161,13 +161,13 @@ export function useLeagueDashboard() {
     queryKey: queryKeys.leagues.dashboard(
       username,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!username) {
         throw new Error('Missing username');
       }
 
       return api.leagues
-        .getDashboard(username)
+        .getDashboard(username, signal)
         .then(res => res.data);
     },
     enabled: !!username,

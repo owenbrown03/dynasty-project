@@ -222,11 +222,16 @@ async def load_shared_war_data_by_season(
 
 async def calculate_war_by_league(
     *,
+    redis,
     leagues,
     shared_by_season,
 ) -> dict[str, list]:
     """
     Calculates redraft WAR independently for every league.
+
+    When a Redis client is provided the fingerprint cache is consulted first
+    so that a pre-warmed result (written by the post-sync worker task) is
+    returned without any thread-pool CPU work.
 
     Do not flatten these results into one global player map afterward.
     The same player can have different WAR values across leagues.
@@ -237,7 +242,8 @@ async def calculate_war_by_league(
     )
 
     tasks = [
-        war_service.calculate_with_data(
+        war_service.calculate_with_shared_cache(
+            redis=redis,
             league=leagues[league_id]["league"],
             shared=shared_by_season[
                 get_league_season(
@@ -464,6 +470,7 @@ async def get_user_dashboard(
     t_war = time.monotonic()
     war_results_by_league_id = (
         await calculate_war_by_league(
+            redis=redis,
             leagues=leagues,
             shared_by_season=shared_by_season,
         )

@@ -40,10 +40,12 @@ export const leaguesEndpoints = (
 
 
   getDashboard: (
-    username: string
+    username: string,
+    signal?: AbortSignal,
   ) =>
     client.get<Dashboard>(
-      `${prefix}/dashboard/${username}`
+      `${prefix}/dashboard/${username}`,
+      { signal },
     ),
 
   setVisibility: (
