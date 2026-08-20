@@ -477,6 +477,37 @@ def build_clickthrough_specs(args: argparse.Namespace) -> list[RequestSpec]:
                 value_basis=args.value_basis,
             ),
         ),
+        request_spec(
+            "trade-signals",
+            "GET",
+            build_url(args.base_url, f"/sleeper/trades/{args.username}/trade-signals"),
+            validate_trade_signals_payload,
+        ),
+        request_spec(
+            "waiver-overview",
+            "GET",
+            build_url(
+                args.base_url,
+                "/sleeper/waivers/overview",
+                {"value_basis": args.value_basis},
+            ),
+            validate_waiver_overview_payload,
+        ),
+        request_spec(
+            "recent-drops",
+            "GET",
+            build_url(
+                args.base_url,
+                "/sleeper/waivers/recent-drops",
+                {
+                    "value_basis": args.value_basis,
+                    "page": 1,
+                    "page_size": 25,
+                    "sort_by": args.recent_drops_sort,
+                },
+            ),
+            validate_waiver_recent_drops_payload,
+        ),
     ]
 
 
