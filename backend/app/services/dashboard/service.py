@@ -512,6 +512,7 @@ async def get_user_dashboard(
                         current_shared = shared_by_season[get_league_season(league)]
                         seasonal_results = await roster_construction_service.build_roster_construction_seasonal_results(
                             db=task_db,
+                            redis=redis,
                             league=league,
                             players=current_shared.players,
                             current_shared=current_shared,

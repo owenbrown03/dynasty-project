@@ -721,6 +721,7 @@ class LeagueDetails:
             roster_construction_seasonal_results = (
                 await self.build_roster_construction_seasonal_results(
                     db=db,
+                    redis=redis,
                     league=league,
                     players=shared.players,
                     current_shared=shared,
@@ -1290,6 +1291,7 @@ class LeagueDetails:
         self,
         *,
         db: AsyncSession,
+        redis = None,
         league,
         players: dict,
         current_shared: WARSharedData,
@@ -1316,7 +1318,8 @@ class LeagueDetails:
             )
 
             seasonal_results.append(
-                await self.war_service.calculate_with_data(
+                await self.war_service.calculate_with_shared_cache(
+                    redis=redis,
                     league=season_league,
                     shared=WARSharedData(
                         players=players,
@@ -1329,7 +1332,8 @@ class LeagueDetails:
             return seasonal_results
 
         return [
-            await self.war_service.calculate_with_data(
+            await self.war_service.calculate_with_shared_cache(
+                redis=redis,
                 league=league,
                 shared=current_shared,
             )
