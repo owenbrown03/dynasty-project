@@ -396,8 +396,8 @@ def test_fetch_league_bundle_uses_full_refresh_for_incomplete_existing_league():
             sync_states={
                 "league-1": SimpleNamespace(
                     last_synced_week=1,
-                    last_synced_at=datetime.now(),
-                    last_full_synced_at=datetime.now(),
+                    last_synced_at=datetime.now(UTC) - timedelta(hours=1),
+                    last_full_synced_at=datetime.now(UTC) - timedelta(hours=1),
                 )
             },
             incomplete_league_ids={"league-1"},
