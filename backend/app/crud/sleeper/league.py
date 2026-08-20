@@ -469,10 +469,14 @@ async def fetch_league_bundle(
         or needs_full_refresh(sync_state)
     )
 
+    last_synced_utc = sync_state.last_synced_at if sync_state else None
+    if last_synced_utc is not None and last_synced_utc.tzinfo is None:
+        last_synced_utc = last_synced_utc.replace(tzinfo=UTC)
+
     recently_synced = (
         sync_state is not None
-        and sync_state.last_synced_at is not None
-        and (datetime.now(UTC) - sync_state.last_synced_at) < timedelta(minutes=RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES)
+        and last_synced_utc is not None
+        and (datetime.now(UTC) - last_synced_utc) < timedelta(minutes=RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES)
     )
 
     needs_refresh = (
@@ -1305,7 +1309,7 @@ async def _update_sync_states(
     successfully saved.
     """
 
-    now = datetime.now()
+    now = datetime.now(UTC)
 
     transaction_rows = [
         {
