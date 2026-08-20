@@ -39,6 +39,7 @@ async def get_trade_signals_endpoint(
         ctx.db,
         ctx.sleeper,
         username,
+        site_user_id=ctx.site_user.id if ctx.site_user else None,
         redis=ctx.redis,
     )
 

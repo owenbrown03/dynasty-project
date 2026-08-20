@@ -23,6 +23,7 @@ class League(SQLModel, table=True):
     name: str
     avatar: Optional[str] = Field(default=None, nullable=True)
     season: str
+    type: str = Field(index=True)
     status: str = Field(default="pre_draft", index=True)
     total_rosters: int
     draft_id: str = Field(unique=True, index=True)

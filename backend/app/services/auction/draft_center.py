@@ -513,6 +513,7 @@ async def get_auction_draft_center(
     details_service = LeagueDetails()
     seasonal_results = await details_service.build_roster_construction_seasonal_results(
         db=db,
+        redis=redis,
         league=league,
         players=shared.players,
         current_shared=shared,

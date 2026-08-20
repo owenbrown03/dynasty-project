@@ -1,3 +1,4 @@
+import asyncio
 import json
 from dataclasses import dataclass
 
@@ -34,6 +35,10 @@ class WARService:
 
         self._normalization_cache = LRUCache(maxsize=128)
         self._calculation_cache = LRUCache(maxsize=128)
+
+        # Tracks in-progress calculations so concurrent callers for the same
+        # cache key await the first caller's result instead of duplicating work.
+        self._inflight: dict[str, asyncio.Event] = {}
 
         self.loader = PlayerValueLoader()
 
@@ -223,6 +228,37 @@ class WARService:
         if cached_results is not None:
             return cached_results
 
+        # If another coroutine is already computing this exact league/key,
+        # await its event rather than duplicating the CPU work on the thread pool.
+        if cache_key in self._inflight:
+            await self._inflight[cache_key].wait()
+            cached_results = self._calculation_cache.get(cache_key)
+            if cached_results is not None:
+                return cached_results
+            # First caller failed — fall through and try ourselves.
+
+        event = asyncio.Event()
+        self._inflight[cache_key] = event
+        try:
+            from app.analytics.war.redraft.singleton import war_thread_pool
+
+            return await asyncio.get_event_loop().run_in_executor(
+                war_thread_pool,
+                self._calculate_with_data_sync,
+                cache_key,
+                league,
+                shared,
+            )
+        finally:
+            self._inflight.pop(cache_key, None)
+            event.set()
+
+    def _calculate_with_data_sync(
+        self,
+        cache_key,
+        league,
+        shared: WARSharedData,
+    ):
         normalized = self._normalization_cache.get(
             cache_key,
         )

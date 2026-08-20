@@ -9,9 +9,12 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from uuid import UUID
+
 from app.infrastructure.redis.client import RedisClient
 from app.integrations.sleeper.client import SleeperClient
 from app.crud.sleeper.leaguemate import get_leaguemate_ids
+from app.crud.sleeper.personal import get_hidden_league_ids
 from app.crud.sleeper.player import get_player_map
 from app.crud.sleeper.user import get_userid_by_username
 from app.integrations.sleeper.schemas import display
@@ -164,6 +167,7 @@ async def get_trade_signals(
     db: AsyncSession,
     sleeper: SleeperClient,
     username: str,
+    site_user_id: UUID | None = None,
     redis: RedisClient | None = None,
 ) -> List[display.Transaction]:
     """
@@ -192,6 +196,13 @@ async def get_trade_signals(
         logger.info(f"Initiating trade signal calculation matrix for user: {username}")
         lm_ids = await get_leaguemate_ids(db, main_user_id)
         logger.info(f"Context loaded: Identified {len(lm_ids)} unique leaguemates.")
+
+        hidden_league_ids: set[str] = set()
+        if site_user_id is not None:
+            hidden_league_ids = await get_hidden_league_ids(
+                db=db,
+                site_user_id=site_user_id,
+            )
 
         lm_trades_data = await read_trades(db, lm_ids)
         if not lm_trades_data:
@@ -231,6 +242,10 @@ async def get_trade_signals(
             .where(model.Roster.league_id.in_(my_leagues))
             .where(or_(model.Roster.owner_id.in_(lm_ids), model.Roster.owner_id == main_user_id))
         )
+        if hidden_league_ids:
+            intersect_stmt = intersect_stmt.where(
+                model.Roster.league_id.notin_(hidden_league_ids)
+            )
         int_res = await db.execute(intersect_stmt)
         intersect_query = int_res.all()
         
@@ -240,6 +255,15 @@ async def get_trade_signals(
             player_to_leagues[o_id][p_id].add(l_id)
             if o_id != main_user_id:
                 shared_leagues[o_id].add(l_id)
+
+        all_shared_league_ids = set()
+        for lids in shared_leagues.values():
+            all_shared_league_ids.update(lids)
+        extra_league_ids = all_shared_league_ids - trade_league_ids
+        if extra_league_ids:
+            extra_meta = await get_trade_league_meta_map(db, extra_league_ids)
+            for lid, meta in extra_meta.items():
+                league_map[lid] = meta["name"]
 
         draft_orders = defaultdict(dict)
         d_res = await db.execute(select(model.Draft.draft_id, model.Draft.season, model.Draft.draft_order))
@@ -278,17 +302,23 @@ async def get_trade_signals(
                 if m.action == "DROP":
                     shared_with_this_lm = player_to_leagues[user_id][m.player_id].intersection(shared_leagues[user_id])
                     if shared_with_this_lm and user_id != main_user_id:
-                        signals = [league_map[lid] for lid in shared_with_this_lm if lid in league_map]
-                        signal_text = f"Buy opportunity ({', '.join(signals)})"
-                        has_signal = True
+                        signals = list(dict.fromkeys(
+                            league_map[lid] for lid in shared_with_this_lm if lid in league_map
+                        ))
+                        if signals:
+                            signal_text = f"Buy opportunity ({', '.join(signals)})"
+                            has_signal = True
                     users_dict[user_id]["drops"].append(display.Movement(name=asset_name, signal=signal_text))
 
                 elif m.action == "ADD":
                     my_ownership = player_to_leagues[main_user_id][m.player_id].intersection(shared_leagues[user_id])
                     if my_ownership and user_id != main_user_id:
-                        signals = [league_map[lid] for lid in my_ownership if lid in league_map]
-                        signal_text = f"Sell opportunity ({', '.join(signals)})"
-                        has_signal = True
+                        signals = list(dict.fromkeys(
+                            league_map[lid] for lid in my_ownership if lid in league_map
+                        ))
+                        if signals:
+                            signal_text = f"Sell opportunity ({', '.join(signals)})"
+                            has_signal = True
                     users_dict[user_id]["adds"].append(display.Movement(name=asset_name, signal=signal_text))
 
             for p in tx['picks']:

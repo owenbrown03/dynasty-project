@@ -244,6 +244,7 @@ def get_transaction_weeks_to_fetch(
             curr_week,
         )
 
+
     # Always re-fetch the previous week so late-arriving
     # transactions (e.g. status updates) are captured.
     prev_week = curr_week - 1
@@ -261,18 +262,33 @@ def get_transaction_weeks_to_fetch(
 # --------------------------------------------------
 
 async def sync_leagues(
-    db: AsyncSession,
-    raw_leagues,
-    curr_week: int,
-    sleeper,
+    db: AsyncSession | None = None,
+    raw_leagues=None,
+    curr_week: int = 0,
+    sleeper=None,
     *,
+    db_session: AsyncSession | None = None,
     force: bool = False,
     existing_refresh: Literal[
         "full",
         "transactions_only",
     ] = "full",
     user_id: str | None = None,
+    league_id: str | None = None,
+    league_type: str | None = None,
 ):
+    # Backward compatibility: if raw_leagues not provided but legacy args supplied,
+    # construct a minimal iterable with the needed attributes.
+    if raw_leagues is None:
+        if league_id is None:
+            raise ValueError("Either raw_leagues or league_id must be provided")
+        from types import SimpleNamespace
+        raw_leagues = [SimpleNamespace(league_id=league_id, type=league_type)]
+
+    # Allow passing the session via the keyword 'db_session' for backwards compatibility
+    if db_session is not None:
+        db = db_session
+    # Ensure a valid week number
     curr_week = max(curr_week, 1)
 
     sleeper_order = [
@@ -469,10 +485,14 @@ async def fetch_league_bundle(
         or needs_full_refresh(sync_state)
     )
 
+    last_synced_utc = sync_state.last_synced_at if sync_state else None
+    if last_synced_utc is not None and last_synced_utc.tzinfo is None:
+        last_synced_utc = last_synced_utc.replace(tzinfo=UTC)
+
     recently_synced = (
         sync_state is not None
-        and sync_state.last_synced_at is not None
-        and (datetime.now(UTC) - sync_state.last_synced_at) < timedelta(minutes=RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES)
+        and last_synced_utc is not None
+        and (datetime.now(UTC) - last_synced_utc) < timedelta(minutes=RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES)
     )
 
     needs_refresh = (
@@ -1305,7 +1325,7 @@ async def _update_sync_states(
     successfully saved.
     """
 
-    now = datetime.now()
+    now = datetime.now(UTC).replace(tzinfo=None)
 
     transaction_rows = [
         {

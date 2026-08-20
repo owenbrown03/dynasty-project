@@ -15,9 +15,10 @@ export function useAdpMetadata(
     queryKey: queryKeys.adp.metadata(
       filters as Record<string, unknown>,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const response = await api.adp.getMetadata(
         filters,
+        signal,
       );
       return response.data;
     },

@@ -51,7 +51,7 @@ export function useLeagueOverview(
       includeHidden,
     ),
 
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!username) {
         throw new Error('Missing username');
       }
@@ -60,6 +60,7 @@ export function useLeagueOverview(
         .getOverview(
           username,
           includeHidden,
+          signal,
         )
         .then(res => res.data);
     },
@@ -133,13 +134,13 @@ export function useLeagueDetails(league_id?: string) {
       viewerKey,
     ),
 
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!league_id) {
         throw new Error('Missing league id');
       }
 
       return api.leagues
-        .getDetails(league_id)
+        .getDetails(league_id, signal)
         .then(res => res.data);
     },
 
@@ -161,13 +162,13 @@ export function useLeagueDashboard() {
     queryKey: queryKeys.leagues.dashboard(
       username,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!username) {
         throw new Error('Missing username');
       }
 
       return api.leagues
-        .getDashboard(username)
+        .getDashboard(username, signal)
         .then(res => res.data);
     },
     enabled: !!username,

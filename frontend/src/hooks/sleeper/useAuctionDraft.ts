@@ -26,7 +26,7 @@ export function useAuctionDraftCenter(
       page,
       pageSize,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!draftId) {
         throw new Error('Missing draft id');
       }
@@ -37,6 +37,7 @@ export function useAuctionDraftCenter(
         search,
         page,
         pageSize,
+        signal,
       ).then((res) => res.data);
     },
     enabled: !!draftId && !!username,

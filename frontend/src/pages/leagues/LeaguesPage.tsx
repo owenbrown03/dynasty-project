@@ -7,6 +7,7 @@ import {
 import { useLocation } from 'react-router';
 
 import { useBootstrap } from '@/hooks/useBootstrap';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import {
   useLeagueDetails,
@@ -120,6 +121,10 @@ export const LeaguesPage = () => {
     includeHidden,
     setIncludeHidden
   ] = useState(false);
+  const debouncedSelectedLeague = useDebouncedValue(
+    selectedLeague,
+    250,
+  );
 
   const overview = useLeagueOverview(
     includeHidden
@@ -127,7 +132,7 @@ export const LeaguesPage = () => {
   const visibility = useLeagueVisibility();
 
   const details = useLeagueDetails(
-    selectedLeague
+    debouncedSelectedLeague
   );
 
   const selectedLeagueEntry =

@@ -23,22 +23,34 @@ import {
 
 export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
   sync: (username: string) => client.post(`${prefix}/${username}/sync`),
-  getRosters: (username: string) => client.get<Roster[]>(`${prefix}/${username}/rosters`),
-  getOrphans: (username: string) => client.get<Orphan[]>(`${prefix}/${username}/orphans`),
+  getRosters: (username: string, signal?: AbortSignal) =>
+    client.get<Roster[]>(
+      `${prefix}/${username}/rosters`,
+      { signal },
+    ),
+  getOrphans: (username: string, signal?: AbortSignal) =>
+    client.get<Orphan[]>(
+      `${prefix}/${username}/orphans`,
+      { signal },
+    ),
   getCommissionerOrphans: (
     username: string,
     valueBasis: ValueBasis,
+    signal?: AbortSignal,
   ) => client.get<CommissionerOrphansResponse>(
     `${prefix}/${username}/commissioner/orphans`,
     {
       params: {
         value_basis: valueBasis,
       },
+      signal,
     },
   ),
-  getCommissionerWorkspace: () => client.get<CommissionerWorkspaceResponse>(
-    `${prefix}/commissioner/workspace`,
-  ),
+  getCommissionerWorkspace: (signal?: AbortSignal) =>
+    client.get<CommissionerWorkspaceResponse>(
+      `${prefix}/commissioner/workspace`,
+      { signal },
+    ),
   saveCommissionerNote: (
     body: CommissionerLeagueNoteUpdate,
   ) => client.post(
@@ -57,9 +69,11 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     `${prefix}/commissioner/workspace/settings`,
     body,
   ),
-  getFinanceSummary: () => client.get<FinanceSummaryResponse>(
-    `${prefix}/finance/summary`,
-  ),
+  getFinanceSummary: (signal?: AbortSignal) =>
+    client.get<FinanceSummaryResponse>(
+      `${prefix}/finance/summary`,
+      { signal },
+    ),
   saveFinanceDefaults: (
     body: FinanceDefaultsUpdate,
   ) => client.post<FinanceSummaryResponse>(
@@ -84,9 +98,11 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     `${prefix}/finance/season/reset`,
     body,
   ),
-  getReminders: () => client.get<ReminderListResponse>(
-    `${prefix}/reminders`,
-  ),
+  getReminders: (signal?: AbortSignal) =>
+    client.get<ReminderListResponse>(
+      `${prefix}/reminders`,
+      { signal },
+    ),
   createReminder: (
     body: ReminderCreate,
   ) => client.post(

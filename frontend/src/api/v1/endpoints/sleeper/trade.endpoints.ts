@@ -17,25 +17,35 @@ export const tradeEndpoints = (
   syncLeaguemates: (username: string) =>
     client.post(`${prefix}/${username}/sync-leaguemates`),
 
-  getTradeSignals: (username: string) =>
-    client.get<Transaction[]>(`${prefix}/${username}/trade-signals`),
+  getTradeSignals: (
+    username: string,
+    signal?: AbortSignal,
+  ) =>
+    client.get<Transaction[]>(
+      `${prefix}/${username}/trade-signals`,
+      { signal },
+    ),
 
   searchBulkPlayers: (
     query: string,
+    signal?: AbortSignal,
   ) => client.get<BulkTradePlayerSearchResult[]>(
     `${prefix}/bulk/search`,
     {
       params: {
         q: query,
       },
+      signal,
     },
   ),
 
   getBulkAvailability: (
     payload: BulkTradeAvailabilityRequest,
+    signal?: AbortSignal,
   ) => client.post<BulkTradeAvailabilityResponse>(
     `${prefix}/bulk/availability`,
     payload,
+    { signal },
   ),
 
   submitBulkOffers: (
@@ -52,6 +62,7 @@ export const tradeEndpoints = (
     totalRosters: number,
     numQbs: number,
     ppr: number,
+    signal?: AbortSignal,
   ) => client.get<TradeCalculatorPickValueResponse>(
     `${prefix}/calculator/pick-value`,
     {
@@ -63,6 +74,7 @@ export const tradeEndpoints = (
         num_qbs: numQbs,
         ppr,
       },
+      signal,
     },
   ),
 });

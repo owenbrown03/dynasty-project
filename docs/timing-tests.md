@@ -2,6 +2,15 @@
 
 Reference guide for benchmarking and profiling the league details endpoint.
 
+For a repeatable benchmark, use [`docs/timing_benchmark.py`](./timing_benchmark.py). It supports:
+
+- `--mode clickthrough` for dashboard -> details -> tiers
+- `--mode site` for the broader read surface
+- `--mode overlap` for concurrent in-flight requests that mimic clicking away before the previous page finishes
+- `--mode cancel` for the same reads, but with older requests explicitly aborted after the next navigation starts
+
+Pass `--flush-redis` to start each cycle cold on Redis. For a fully cold read, also restart the API so the in-memory caches clear.
+
 ## Endpoint
 
 ```
@@ -33,7 +42,8 @@ All have rounds `[1,2,3,4]` and 12 rosters:
 | Cache | Key Pattern | TTL | Location | What it caches |
 |-------|-------------|-----|----------|----------------|
 | Rookie WAR shared | `rookie_war:shared::{rounds}` e.g. `rookie_war:shared::1-2-3-4` | 6 hours | Redis | Draft selections (4-column tuples) + stat seasons |
-| League details response | `league-details:v1:{json}` | 60 seconds | Redis | Full serialized `LeagueDetailsResponse` |
+| Dashboard response | `dashboard:v1:{json}` | 10 minutes | Redis | Full serialized dashboard payload |
+| League details response | `league-details:v1:{json}` | 10 minutes | Redis | Full serialized `LeagueDetailsResponse` |
 | Dynasty projections | `dynasty-projection:v1:{hash}` | varies | Redis | Per-player dynasty projection objects |
 | WAR calculation | in-memory LRU (size 128) | request lifetime | `WARService` singleton | Full `calculate_with_data` results keyed by `(season, scoring, roster_positions, total_rosters)` |
 | Personal value hydration | in-memory + DB | persistent | `personal_values.py` | Personal rank curve rows in `personal_rank_curve` table |
@@ -83,9 +93,13 @@ docker compose exec redis redis-cli KEYS "dynasty-projection:*" | xargs docker c
 docker compose restart api
 ```
 
-WAR LRU caches clear. Redis caches survive. League details response cache (60s TTL) will expire naturally or be overwritten.
+WAR LRU caches clear. Redis caches survive. Dashboard and league details response caches (10 minute TTLs) will expire naturally or be overwritten.
 
 ## Timing Test Protocol
+
+The scripted version of this sequence lives in [`docs/timing_benchmark.py`](./timing_benchmark.py).
+Run `python3 docs/timing_benchmark.py --mode overlap --flush-redis` to reproduce the concurrent click-through case.
+Run `python3 docs/timing_benchmark.py --mode cancel --flush-redis` to reproduce the aborted-navigation case.
 
 ### Cold request (no caches)
 
@@ -101,7 +115,7 @@ time curl -s -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n" \
 
 ### Warm request (full response cache hit)
 
-Immediately repeat the same request. The 60-second response cache returns the full payload.
+Immediately repeat the same request. The 10-minute response cache returns the full payload.
 
 ### Shared cache test (second league, same rounds)
 

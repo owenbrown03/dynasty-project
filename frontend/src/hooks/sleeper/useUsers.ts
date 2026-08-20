@@ -30,9 +30,9 @@ export function useRosters() {
     queryKey: queryKeys.users.rosters(
       username,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!username) throw new Error('Missing username');
-      return api.users.getRosters(username).then(res => res.data);
+      return api.users.getRosters(username, signal).then(res => res.data);
     },
     enabled: !!username,
   });
@@ -51,9 +51,9 @@ export function useOrphans() {
     queryKey: queryKeys.users.orphans(
       username,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!username) throw new Error('Missing username');
-      return api.users.getOrphans(username).then(res => res.data);
+      return api.users.getOrphans(username, signal).then(res => res.data);
     },
     enabled: !!username,
   });
@@ -102,7 +102,7 @@ export function useCommissionerOrphans(
       username,
       valueBasis,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!username) {
         throw new Error('Missing username');
       }
@@ -111,6 +111,7 @@ export function useCommissionerOrphans(
         .getCommissionerOrphans(
           username,
           valueBasis,
+          signal,
         )
         .then((res) => res.data);
     },
@@ -131,8 +132,8 @@ export function useCommissionerWorkspace(
 ) {
   const query = useQuery<CommissionerWorkspaceResponse>({
     queryKey: queryKeys.users.commissionerWorkspace,
-    queryFn: async () => api.users
-      .getCommissionerWorkspace()
+    queryFn: async ({ signal }) => api.users
+      .getCommissionerWorkspace(signal)
       .then((res) => res.data),
     enabled,
   });
@@ -202,8 +203,8 @@ export function useFinanceSummary(
 ) {
   const query = useQuery<FinanceSummaryResponse>({
     queryKey: queryKeys.users.financeSummary,
-    queryFn: async () => api.users
-      .getFinanceSummary()
+    queryFn: async ({ signal }) => api.users
+      .getFinanceSummary(signal)
       .then((res) => res.data),
     enabled,
   });
@@ -286,8 +287,8 @@ export function useReminders(
 ) {
   const query = useQuery<ReminderListResponse>({
     queryKey: queryKeys.users.reminders,
-    queryFn: async () => api.users
-      .getReminders()
+    queryFn: async ({ signal }) => api.users
+      .getReminders(signal)
       .then((res) => res.data),
     enabled,
   });

@@ -7,8 +7,8 @@ import type { Bootstrap } from '@/types';
 export function useBootstrap() {
   return useQuery<Bootstrap>({
     queryKey: BOOTSTRAP_QUERY_KEY,
-    queryFn: async () => {
-      return api.bootstrap.bootstrap();
+    queryFn: async ({ signal }) => {
+      return api.bootstrap.bootstrap(signal);
     },
     staleTime: 5 * 60 * 1000,
   });

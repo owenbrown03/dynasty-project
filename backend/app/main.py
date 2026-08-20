@@ -15,6 +15,7 @@ from app.core.logger import setup_logging
 
 
 setup_logging()
+# Non-disruptive reload comment 2
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager

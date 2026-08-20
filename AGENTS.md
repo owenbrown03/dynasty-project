@@ -468,6 +468,8 @@ docker compose exec api python -c "..."
 docker compose exec db psql ...
 ```
 
+If you change dashboard/details/tiers request lifecycles, shared-cache behavior, or other heavy query paths, run [`docs/timing_benchmark.py`](docs/timing_benchmark.py) and compare the report against `docs/timing-tests.md`. Use `--mode overlap --flush-redis` for the concurrent click-through case. Treat that script like a regression test fixture and update it alongside the code when the contract changes.
+
 Do not stop at static checks alone if the app stack is available. After backend, schema, auth, sync, or write-path changes, inspect recent API logs and confirm there are no new tracebacks or `500` responses related to the modified flow.
 
 For sync-related changes, verify against the existing ingestion path rather than creating a second path around it.
@@ -615,3 +617,16 @@ Before running any other restart or rebuild command:
 3. Wait for explicit approval.
 
 When possible, prefer non-disruptive alternatives such as inspecting logs, relying on API hot reload, running commands with `docker compose exec`, or restarting only the worker.
+
+## Automated Git Operations
+
+Agents may, when explicitly prompted by the user, perform the following GitHub workflow actions:
+
+- Create a commit with the current changes.
+- Push the commit to the remote repository.
+- Open a pull request (PR) from the current branch to the target branch.
+- Optionally create a linked GitHub issue that references the PR.
+- After the PR checks pass, merge the PR automatically.
+- Agents may create commits and new branches automatically as needed.
+
+These operations should **only** be executed after the user explicitly asks the agent to do so. The agent must not perform any Git actions automatically without a clear user request.

@@ -48,7 +48,7 @@ def run_migrations_online() -> None:
     """Run migrations in 'online' mode using an AsyncEngine."""
     
     connectable = create_async_engine(
-        settings.DATABASE_URL,
+        settings.async_database_url,
         poolclass=pool.NullPool,
     )
 

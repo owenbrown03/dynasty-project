@@ -29,9 +29,10 @@ export function useBulkTradePlayerSearch(
     queryKey: queryKeys.trades.bulkPlayerSearch(
       trimmedQuery,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       return api.trades.searchBulkPlayers(
         trimmedQuery,
+        signal,
       ).then(
         response => response.data,
       );
@@ -63,7 +64,7 @@ export function useBulkTradeAvailability(
       username,
       JSON.stringify(payload),
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!payload) {
         throw new Error(
           'Missing selected trade package.',
@@ -72,6 +73,7 @@ export function useBulkTradeAvailability(
 
       return api.trades.getBulkAvailability(
         payload,
+        signal,
       ).then(
         response => response.data,
       );
@@ -152,6 +154,7 @@ export async function fetchTradeCalculatorPickValue(
   totalRosters: number,
   numQbs: number,
   ppr: number,
+  signal?: AbortSignal,
 ) {
   return api.trades.getTradeCalculatorPickValue(
     season,
@@ -160,6 +163,7 @@ export async function fetchTradeCalculatorPickValue(
     totalRosters,
     numQbs,
     ppr,
+    signal,
   ).then(
     (
       response,

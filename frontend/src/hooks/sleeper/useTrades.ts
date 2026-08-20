@@ -12,9 +12,9 @@ export function useTrades() {
     queryKey: queryKeys.trades.signals(
       username,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!username) throw notify.error('Missing username!');
-      return api.trades.getTradeSignals(username).then(res => res.data);
+      return api.trades.getTradeSignals(username, signal).then(res => res.data);
     },
     enabled: !!username,
   });

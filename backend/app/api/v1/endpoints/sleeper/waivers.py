@@ -2,7 +2,10 @@ from fastapi import (
     APIRouter,
     Query,
     status,
+    Request,
 )
+
+from app.api.cancellation import cancel_on_disconnect
 
 from app.analytics.war.redraft.service import WARService
 from app.api.deps import (
@@ -55,6 +58,7 @@ router = APIRouter()
     response_model=WaiverOverviewResponse,
 )
 async def waiver_overview(
+    request: Request,
     ctx: ContextDep,
     value_basis: ValueBasis = Query(
         default=DEFAULT_VALUE_BASIS,
@@ -67,15 +71,16 @@ async def waiver_overview(
     if ctx.connection is None:
         return WaiverOverviewResponse()
 
-    war_service = WARService()
+    async with cancel_on_disconnect(request):
+        war_service = WARService()
 
-    return await get_waiver_overview(
-        db=ctx.db,
-        redis=ctx.redis,
-        connection=ctx.connection,
-        war_service=war_service,
-        value_basis=value_basis,
-    )
+        return await get_waiver_overview(
+            db=ctx.db,
+            redis=ctx.redis,
+            connection=ctx.connection,
+            war_service=war_service,
+            value_basis=value_basis,
+        )
 
 
 @router.post(
@@ -99,6 +104,7 @@ async def submit_waiver_claim(
     response_model=list[WaiverLeagueOption],
 )
 async def waiver_leagues(
+    request: Request,
     ctx: ContextDep,
 ) -> list[WaiverLeagueOption]:
     """
@@ -108,10 +114,11 @@ async def waiver_leagues(
     if ctx.connection is None:
         return []
 
-    return await get_waiver_league_options(
-        db=ctx.db,
-        connection=ctx.connection,
-    )
+    async with cancel_on_disconnect(request):
+        return await get_waiver_league_options(
+            db=ctx.db,
+            connection=ctx.connection,
+        )
 
 
 @router.get(
@@ -119,6 +126,7 @@ async def waiver_leagues(
     response_model=WaiverAvailablePlayersResponse,
 )
 async def available_waiver_players(
+    request: Request,
     ctx: ContextDep,
     league_id: str | None = Query(
         default=None,
@@ -157,18 +165,19 @@ async def available_waiver_players(
         ),
     )
 
-    war_service = WARService()
+    async with cancel_on_disconnect(request):
+        war_service = WARService()
 
-    return await get_available_waiver_players(
-        db=ctx.db,
-        redis=ctx.redis,
-        connection=ctx.connection,
-        league_id=league_id,
-        value_basis=value_basis,
-        war_service=war_service,
-        page=page,
-        page_size=page_size,
-    )
+        return await get_available_waiver_players(
+            db=ctx.db,
+            redis=ctx.redis,
+            connection=ctx.connection,
+            league_id=league_id,
+            value_basis=value_basis,
+            war_service=war_service,
+            page=page,
+            page_size=page_size,
+        )
 
 
 @router.get(
@@ -176,6 +185,7 @@ async def available_waiver_players(
     response_model=WaiverRosterPlayersResponse,
 )
 async def roster_waiver_players(
+    request: Request,
     ctx: ContextDep,
     league_id: str = Query(
         ...,
@@ -194,16 +204,17 @@ async def roster_waiver_players(
         ),
     )
 
-    war_service = WARService()
+    async with cancel_on_disconnect(request):
+        war_service = WARService()
 
-    return await get_roster_waiver_players(
-        db=ctx.db,
-        redis=ctx.redis,
-        connection=ctx.connection,
-        league_id=league_id,
-        value_basis=value_basis,
-        war_service=war_service,
-    )
+        return await get_roster_waiver_players(
+            db=ctx.db,
+            redis=ctx.redis,
+            connection=ctx.connection,
+            league_id=league_id,
+            value_basis=value_basis,
+            war_service=war_service,
+        )
 
 
 @router.get(
@@ -211,6 +222,7 @@ async def roster_waiver_players(
     response_model=WaiverRecentlyDroppedResponse,
 )
 async def recent_waiver_drops(
+    request: Request,
     ctx: ContextDep,
     value_basis: ValueBasis = Query(
         default=DEFAULT_VALUE_BASIS,
@@ -238,35 +250,36 @@ async def recent_waiver_drops(
         ),
     )
 
-    sync_requested = await get_recent_drops_sync_required(
-        db=ctx.db,
-        connection=ctx.connection,
-    )
-
-    if (
-        sync_requested
-        and ctx.connection
-        and ctx.sleeper
-    ):
-        await sync_recent_drop_activity(
+    async with cancel_on_disconnect(request):
+        sync_requested = await get_recent_drops_sync_required(
             db=ctx.db,
-            sleeper=ctx.sleeper,
             connection=ctx.connection,
         )
 
-    war_service = WARService()
+        if (
+            sync_requested
+            and ctx.connection
+            and ctx.sleeper
+        ):
+            await sync_recent_drop_activity(
+                db=ctx.db,
+                sleeper=ctx.sleeper,
+                connection=ctx.connection,
+            )
 
-    return await get_recently_dropped_players(
-        db=ctx.db,
-        redis=ctx.redis,
-        connection=ctx.connection,
-        value_basis=value_basis,
-        war_service=war_service,
-        sync_requested=sync_requested,
-        page=page,
-        page_size=page_size,
-        sort_by=sort_by,
-    )
+        war_service = WARService()
+
+        return await get_recently_dropped_players(
+            db=ctx.db,
+            redis=ctx.redis,
+            connection=ctx.connection,
+            value_basis=value_basis,
+            war_service=war_service,
+            sync_requested=sync_requested,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+        )
 
 
 @router.get(

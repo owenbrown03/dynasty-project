@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
 import { usePlayerTiers } from '@/hooks/sleeper/usePlayerTiers';
 import type {
@@ -145,6 +146,10 @@ export const TiersPage = () => {
     initialWarBasis,
   );
   const [leagueId, setLeagueId] = useState('');
+  const debouncedLeagueId = useDebouncedValue(
+    leagueId,
+    250,
+  );
 
   const leagueOverview = useLeagueOverview();
   const effectiveValueBasis = (
@@ -154,7 +159,7 @@ export const TiersPage = () => {
   ) as ValueBasis;
   const effectiveLeagueId = (
     source === 'league_war'
-      ? leagueId || undefined
+      ? debouncedLeagueId || undefined
       : undefined
   );
   const needsLeagueSelection = (
@@ -162,7 +167,7 @@ export const TiersPage = () => {
   );
   const canRequestBoard = (
     !needsLeagueSelection
-    || leagueId.length > 0
+    || debouncedLeagueId.length > 0
   );
 
   const tiers = usePlayerTiers(

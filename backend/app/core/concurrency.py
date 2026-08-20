@@ -7,6 +7,9 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+# Process-wide gate for the heaviest read paths.
+heavy_work_semaphore = asyncio.Semaphore(2)
+
 
 async def bounded_gather(
     coros: Iterable[Awaitable[T]],

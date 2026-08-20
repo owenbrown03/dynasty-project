@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.analytics.war.redraft.singleton import war_service
+from app.core.concurrency import heavy_work_semaphore
 from app.analytics.war.redraft.service import WARSharedData
 from app.crud.sleeper.draft import (
     get_completed_draft_seasons_by_league_ids,
@@ -76,7 +77,7 @@ ROSTER_CONSTRUCTION_CACHE_TTL_SECONDS = (
 )
 ROSTER_CONSTRUCTION_CACHE_VERSION = "v2"
 LEAGUE_DETAILS_CACHE_VERSION = "v1"
-LEAGUE_DETAILS_CACHE_TTL_SECONDS = 60
+LEAGUE_DETAILS_CACHE_TTL_SECONDS = 10 * 60
 
 
 def build_league_details_cache_key(
@@ -109,6 +110,10 @@ def build_league_details_cache_key(
             default=str,
         )
     )
+
+
+def build_league_details_cache_prefix() -> str:
+    return f"league-details:{LEAGUE_DETAILS_CACHE_VERSION}:"
 
 
 def is_slot_eligible(slot: str, position: str | None) -> bool:
@@ -708,74 +713,79 @@ class LeagueDetails:
                     )
                 )
 
-        shared = await self.war_service.load_shared_data(
-            db,
-            int(league.season),
-        )
-        roster_construction_seasonal_results = (
-            await self.build_roster_construction_seasonal_results(
+        async with heavy_work_semaphore:
+            shared = await self.war_service.load_shared_data(
+                db,
+                int(league.season),
+            )
+            roster_construction_seasonal_results = (
+                await self.build_roster_construction_seasonal_results(
+                    db=db,
+                    redis=redis,
+                    league=league,
+                    players=shared.players,
+                    current_shared=shared,
+                )
+            )
+            war_position_history = await self.build_war_position_history(
                 db=db,
+                redis=redis,
                 league=league,
                 players=shared.players,
                 current_shared=shared,
             )
-        )
-        war_position_history = await self.build_war_position_history(
-            db=db,
-            league=league,
-            players=shared.players,
-            current_shared=shared,
-        )
-        war_player_history = await self.build_war_player_history(
-            db=db,
-            league=league,
-            players=shared.players,
-            current_shared=shared,
-        )
-
-        war_players = await self.war_service.calculate_with_data(
-            league=league,
-            shared=shared,
-        )
-
-        war_lookup = {
-            player.player_id: player
-            for player in war_players
-        }
-
-        dynasty_war_by_player_id = (
-            await build_cached_dynasty_projections_by_player_id(
+            war_player_history = await self.build_war_player_history(
+                db=db,
                 redis=redis,
-                player_wars=war_players,
+                league=league,
+                players=shared.players,
+                current_shared=shared,
             )
-        )
 
-        player_ids = set()
-        owner_ids = set()
+            war_players = await self.war_service.calculate_with_shared_cache(
+                redis=redis,
+                league=league,
+                shared=shared,
+            )
 
-        for roster in roster_rows:
-            player_ids.update(roster.players or [])
-            if roster.owner_id:
-                owner_ids.add(roster.owner_id)
+            war_lookup = {
+                player.player_id: player
+                for player in war_players
+            }
 
-        users = await get_users(
-            db,
-            owner_ids,
-        )
+            dynasty_war_by_player_id = (
+                await build_cached_dynasty_projections_by_player_id(
+                    redis=redis,
+                    player_wars=war_players,
+                )
+            )
 
-        player_values = await get_player_values(
-            db,
-            player_ids,
-            war_players,
-            dynasty_war_by_player_id=dynasty_war_by_player_id,
-        )
-        player_values = await hydrate_personal_player_values(
-            db=db,
-            site_user_id=site_user_id,
-            league=league,
-            player_values=player_values,
-            redis=redis,
-        )
+            player_ids = set()
+            owner_ids = set()
+
+            for roster in roster_rows:
+                player_ids.update(roster.players or [])
+                if roster.owner_id:
+                    owner_ids.add(roster.owner_id)
+
+            users = await get_users(
+                db,
+                owner_ids,
+            )
+
+            player_values = await get_player_values(
+                db,
+                player_ids,
+                war_players,
+                dynasty_war_by_player_id=dynasty_war_by_player_id,
+            )
+            player_values = await hydrate_personal_player_values(
+                db=db,
+                site_user_id=site_user_id,
+                league=league,
+                player_values=player_values,
+                redis=redis,
+            )
 
         player_map = {
             player.player_id: player
@@ -1283,6 +1293,7 @@ class LeagueDetails:
         self,
         *,
         db: AsyncSession,
+        redis = None,
         league,
         players: dict,
         current_shared: WARSharedData,
@@ -1309,7 +1320,8 @@ class LeagueDetails:
             )
 
             seasonal_results.append(
-                await self.war_service.calculate_with_data(
+                await self.war_service.calculate_with_shared_cache(
+                    redis=redis,
                     league=season_league,
                     shared=WARSharedData(
                         players=players,
@@ -1322,7 +1334,8 @@ class LeagueDetails:
             return seasonal_results
 
         return [
-            await self.war_service.calculate_with_data(
+            await self.war_service.calculate_with_shared_cache(
+                redis=redis,
                 league=league,
                 shared=current_shared,
             )
@@ -1332,6 +1345,7 @@ class LeagueDetails:
         self,
         *,
         db: AsyncSession,
+        redis = None,
         league,
         players: dict,
         current_shared: WARSharedData,
@@ -1354,7 +1368,8 @@ class LeagueDetails:
                 },
             )
 
-            results = await self.war_service.calculate_with_data(
+            results = await self.war_service.calculate_with_shared_cache(
+                redis=redis,
                 league=season_league,
                 shared=WARSharedData(
                     players=players,
@@ -1372,7 +1387,8 @@ class LeagueDetails:
                 )
             )
 
-        current_results = await self.war_service.calculate_with_data(
+        current_results = await self.war_service.calculate_with_shared_cache(
+            redis=redis,
             league=league,
             shared=current_shared,
         )
@@ -1392,6 +1408,7 @@ class LeagueDetails:
         self,
         *,
         db: AsyncSession,
+        redis = None,
         league,
         players: dict,
         current_shared: WARSharedData,
@@ -1418,7 +1435,8 @@ class LeagueDetails:
                 },
             )
 
-            results = await self.war_service.calculate_with_data(
+            results = await self.war_service.calculate_with_shared_cache(
+                redis=redis,
                 league=season_league,
                 shared=WARSharedData(
                     players=players,
@@ -1439,7 +1457,8 @@ class LeagueDetails:
                     )
                 )
 
-        current_results = await self.war_service.calculate_with_data(
+        current_results = await self.war_service.calculate_with_shared_cache(
+            redis=redis,
             league=league,
             shared=current_shared,
         )

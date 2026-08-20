@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.war.redraft.singleton import war_service
+from app.core.concurrency import heavy_work_semaphore
 from app.core.context import Context
 from app.crud.sleeper.player import (
     get_latest_projection_season,
@@ -132,46 +133,48 @@ async def load_player_values_for_basis(
             dynasty_war_by_player_id={},
         )
 
-    shared = await war_service.load_shared_data(
-        db,
-        season,
-    )
-
-    war_players = await war_service.calculate_with_data(
-        league=league,
-        shared=shared,
-    )
-
-    dynasty_war_by_player_id = {}
-
-    if value_basis in {
-        ValueBasis.DYNASTY_STARTER_WAR,
-        ValueBasis.DYNASTY_ROSTER_WAR,
-        ValueBasis.SLEEPER_WAR,
-        ValueBasis.MY_WAR,
-    }:
-        dynasty_war_by_player_id = (
-            await build_dynasty_values_by_player_id(
-                redis=redis,
-                players=war_players,
-            )
+    async with heavy_work_semaphore:
+        shared = await war_service.load_shared_data(
+            db,
+            season,
         )
 
-    player_values = await get_player_values(
-        db,
-        player_ids=[player.player_id for player in war_players],
-        redraft_war_players=war_players,
-        dynasty_war_by_player_id=dynasty_war_by_player_id,
-    )
-
-    if value_basis == ValueBasis.MY_WAR and league is not None:
-        player_values = await hydrate_personal_player_values(
-            db=db,
-            site_user_id=site_user_id,
-            league=league,
-            player_values=player_values,
+        war_players = await war_service.calculate_with_shared_cache(
             redis=redis,
+            league=league,
+            shared=shared,
         )
+
+        dynasty_war_by_player_id = {}
+
+        if value_basis in {
+            ValueBasis.DYNASTY_STARTER_WAR,
+            ValueBasis.DYNASTY_ROSTER_WAR,
+            ValueBasis.SLEEPER_WAR,
+            ValueBasis.MY_WAR,
+        }:
+            dynasty_war_by_player_id = (
+                await build_dynasty_values_by_player_id(
+                    redis=redis,
+                    players=war_players,
+                )
+            )
+
+        player_values = await get_player_values(
+            db,
+            player_ids=[player.player_id for player in war_players],
+            redraft_war_players=war_players,
+            dynasty_war_by_player_id=dynasty_war_by_player_id,
+        )
+
+        if value_basis == ValueBasis.MY_WAR and league is not None:
+            player_values = await hydrate_personal_player_values(
+                db=db,
+                site_user_id=site_user_id,
+                league=league,
+                player_values=player_values,
+                redis=redis,
+            )
 
     return player_values
 
