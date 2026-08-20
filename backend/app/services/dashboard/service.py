@@ -40,6 +40,7 @@ from app.services.leagues.selection import (
 )
 from app.crud.sleeper.personal import get_league_sort_orders
 from app.crud.sleeper.user import get_userid_by_username
+from app.core.database import AsyncSessionLocal
 
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,30 @@ def build_dashboard_cache_key(
             sort_keys=True,
         )
     )
+
+
+async def _prefetch_trade_signals(username: str, site_user_id):
+    try:
+        async with AsyncSessionLocal() as db:
+            from app.crud.sleeper.trade import get_trade_signals
+            from app.integrations.sleeper.factory import get_sleeper_client
+            from app.infrastructure.redis.client import RedisClient
+            from app.core.config import settings
+            from redis.asyncio import Redis
+
+            sleeper = await get_sleeper_client()
+            redis = RedisClient(redis=Redis.from_url(settings.REDIS_URL))
+
+            await get_trade_signals(
+                db,
+                sleeper,
+                username,
+                site_user_id=site_user_id,
+                redis=redis,
+            )
+            logger.info("Trade signals prefetch completed for %s", username)
+    except Exception:
+        logger.warning("Trade signals prefetch failed for %s", username, exc_info=True)
 
 
 def get_league_season(

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, BackgroundTasks, Query
 
 from app.api.deps import ContextDep
 from app.crud.auth.session import (
@@ -7,7 +7,10 @@ from app.crud.auth.session import (
 from app.crud.auth.user import (
     get_draft_pick_projection_settings,
 )
-from app.services.dashboard.service import get_user_dashboard
+from app.services.dashboard.service import (
+    get_user_dashboard,
+    _prefetch_trade_signals,
+)
 from app.schemas.league import (
     LeagueOverviewItem,
     LeagueVisibilityItem,
@@ -73,18 +76,26 @@ async def details_endpoint(
 async def dashboard_endpoint(
     username: str,
     ctx: ContextDep,
+    background_tasks: BackgroundTasks,
 ):
-    return await get_user_dashboard(
+    site_user_id = (
+        ctx.site_user.id
+        if ctx.site_user is not None
+        else None
+    )
+    result = await get_user_dashboard(
         ctx.db,
         ctx.redis,
         ctx.sleeper,
         username,
-        site_user_id=(
-            ctx.site_user.id
-            if ctx.site_user is not None
-            else None
-        ),
+        site_user_id=site_user_id,
     )
+    background_tasks.add_task(
+        _prefetch_trade_signals,
+        username,
+        site_user_id,
+    )
+    return result
 
 
 @router.put(
