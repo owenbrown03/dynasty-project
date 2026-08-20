@@ -104,8 +104,9 @@ def test_get_resolved_pick_values_supports_rookie_pick_war(
         league_total_rosters,
         league_scoring_settings,
         league_roster_positions,
+        redis=None,
     ):
-        del db, league_total_rosters, league_scoring_settings, league_roster_positions
+        del db, league_total_rosters, league_scoring_settings, league_roster_positions, redis
         return {
             (
                 picks[0].season,

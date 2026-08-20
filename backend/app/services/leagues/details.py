@@ -1043,6 +1043,7 @@ class LeagueDetails:
             league_roster_positions=list(
                 league.roster_positions or [],
             ),
+            redis=redis,
         )
 
         rosters: list[LeagueRoster] = []
