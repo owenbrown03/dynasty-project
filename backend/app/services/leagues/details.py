@@ -77,7 +77,7 @@ ROSTER_CONSTRUCTION_CACHE_TTL_SECONDS = (
 )
 ROSTER_CONSTRUCTION_CACHE_VERSION = "v2"
 LEAGUE_DETAILS_CACHE_VERSION = "v1"
-LEAGUE_DETAILS_CACHE_TTL_SECONDS = 60
+LEAGUE_DETAILS_CACHE_TTL_SECONDS = 10 * 60
 
 
 def build_league_details_cache_key(
@@ -110,6 +110,10 @@ def build_league_details_cache_key(
             default=str,
         )
     )
+
+
+def build_league_details_cache_prefix() -> str:
+    return f"league-details:{LEAGUE_DETAILS_CACHE_VERSION}:"
 
 
 def is_slot_eligible(slot: str, position: str | None) -> bool:

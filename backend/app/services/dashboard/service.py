@@ -53,7 +53,7 @@ CURRENT_DASHBOARD_STATUSES = {
     "post_season",
 }
 DASHBOARD_CACHE_VERSION = "v1"
-DASHBOARD_CACHE_TTL_SECONDS = 60
+DASHBOARD_CACHE_TTL_SECONDS = 10 * 60
 
 
 def build_dashboard_cache_key(
@@ -81,6 +81,10 @@ def build_dashboard_cache_key(
             sort_keys=True,
         )
     )
+
+
+def build_dashboard_cache_prefix() -> str:
+    return f"dashboard:{DASHBOARD_CACHE_VERSION}:"
 
 
 async def _prefetch_trade_signals(username: str, site_user_id):
