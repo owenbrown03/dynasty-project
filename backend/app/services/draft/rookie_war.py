@@ -114,7 +114,7 @@ async def _load_shared_data(
                 },
                 default=str,
             ),
-            ex=SHARED_DATA_CACHE_TTL_SECONDS,
+            ttl_seconds=SHARED_DATA_CACHE_TTL_SECONDS,
         )
 
     return shared
