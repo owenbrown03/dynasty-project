@@ -1309,7 +1309,7 @@ async def _update_sync_states(
     successfully saved.
     """
 
-    now = datetime.now(UTC)
+    now = datetime.now(UTC).replace(tzinfo=None)
 
     transaction_rows = [
         {
