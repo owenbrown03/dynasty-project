@@ -29,11 +29,12 @@ export function usePlayerTiers(
       leagueId,
       viewerKey,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       return api.players
         .getTiers(
           valueBasis,
           leagueId,
+          signal,
         )
         .then((res) => res.data);
     },

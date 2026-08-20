@@ -14,6 +14,7 @@ export const personalValuesEndpoints = (
   search: (
     query: string,
     leagueId?: string,
+    signal?: AbortSignal,
   ) => client.get<PersonalValueSearchResult[]>(
     `${prefix}/search`,
     {
@@ -21,27 +22,32 @@ export const personalValuesEndpoints = (
         query,
         league_id: leagueId,
       },
+      signal,
     },
   ),
   getPool: (
     leagueId: string,
+    signal?: AbortSignal,
   ) => client.get<PersonalValuePoolResponse>(
     `${prefix}/pool`,
     {
       params: {
         league_id: leagueId,
       },
+      signal,
     },
   ),
   getPlayer: (
     leagueId: string,
     playerId: string,
+    signal?: AbortSignal,
   ) => client.get<PersonalValueDetail>(
     `${prefix}/player/${playerId}`,
     {
       params: {
         league_id: leagueId,
       },
+      signal,
     },
   ),
   savePlayer: (

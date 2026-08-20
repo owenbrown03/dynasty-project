@@ -37,9 +37,9 @@ export function useWaiverOverview(
       valueBasis,
     ),
 
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       return api.waivers
-        .getOverview(valueBasis)
+        .getOverview(valueBasis, signal)
         .then((res) => res.data);
     },
 
@@ -123,13 +123,14 @@ export function useRecentlyDroppedPlayers(
       sortBy,
     ),
 
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       return api.waivers
         .getRecentDrops(
           valueBasis,
           page,
           pageSize,
           sortBy,
+          signal,
         )
         .then((res) => res.data);
     },
@@ -158,9 +159,9 @@ export function useWaiverLeagueOptions() {
       username,
     ),
 
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       return api.waivers
-        .getLeagues()
+        .getLeagues(signal)
         .then((res) => res.data);
     },
 
@@ -196,13 +197,14 @@ export function useAvailableWaiverPlayers(
       pageSize,
     ),
 
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       return api.waivers
         .getAvailablePlayers(
           leagueId,
           valueBasis,
           page,
           pageSize,
+          signal,
         )
         .then((res) => res.data);
     },
@@ -238,7 +240,7 @@ export function useRosterWaiverPlayers(
       valueBasis,
     ),
 
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!leagueId) {
         throw new Error(
           'Missing waiver league id',
@@ -249,6 +251,7 @@ export function useRosterWaiverPlayers(
         .getRosterPlayers(
           leagueId,
           valueBasis,
+          signal,
         )
         .then((res) => res.data);
     },
@@ -278,9 +281,9 @@ export function useBulkWaiverPlayerSearch(
       trimmedQuery,
     ),
 
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       return api.waivers
-        .searchBulkPlayers(trimmedQuery)
+        .searchBulkPlayers(trimmedQuery, signal)
         .then((res) => res.data);
     },
 
@@ -312,7 +315,7 @@ export function useBulkWaiverAvailability(
       valueBasis,
     ),
 
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!playerId) {
         throw new Error(
           'Missing bulk waiver player id',
@@ -323,6 +326,7 @@ export function useBulkWaiverAvailability(
         .getBulkAvailability(
           playerId,
           valueBasis,
+          signal,
         )
         .then((res) => res.data);
     },

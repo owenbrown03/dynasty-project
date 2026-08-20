@@ -6,8 +6,10 @@ export const connectionEndpoints = (
   prefix: string,
 ) => ({
 
-  get: async (): Promise<SleeperConnection> => {
-    const res = await client.get<SleeperConnection>(prefix);
+  get: async (
+    signal?: AbortSignal,
+  ): Promise<SleeperConnection> => {
+    const res = await client.get<SleeperConnection>(prefix, { signal });
     return res.data;
   },
 
@@ -20,8 +22,14 @@ export const connectionEndpoints = (
     return res.data;
   },
 
-  reconcile: async (): Promise<SleeperConnection> => {
-    const res = await client.post<SleeperConnection>(`${prefix}/reconcile`);
+  reconcile: async (
+    signal?: AbortSignal,
+  ): Promise<SleeperConnection> => {
+    const res = await client.post<SleeperConnection>(
+      `${prefix}/reconcile`,
+      undefined,
+      { signal },
+    );
     return res.data;
   },
 });

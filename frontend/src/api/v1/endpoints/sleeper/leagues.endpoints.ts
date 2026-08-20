@@ -20,6 +20,7 @@ export const leaguesEndpoints = (
   getOverview: (
     username: string,
     includeHidden = false,
+    signal?: AbortSignal,
   ) =>
     client.get<LeagueOverview[]>(
       `${prefix}/overview/${username}`,
@@ -27,15 +28,18 @@ export const leaguesEndpoints = (
         params: {
           include_hidden: includeHidden,
         },
+        signal,
       },
     ),
 
 
   getDetails: (
-    league_id: string
+    league_id: string,
+    signal?: AbortSignal,
   ) =>
     client.get<LeagueDetails>(
-      `${prefix}/details/${league_id}`
+      `${prefix}/details/${league_id}`,
+      { signal },
     ),
 
 
@@ -69,6 +73,7 @@ export const leaguesEndpoints = (
     search: string,
     page: number,
     pageSize: number,
+    signal?: AbortSignal,
   ) =>
     client.get<AuctionDraftCenter>(
       `/sleeper/drafts/auction-center`,
@@ -80,6 +85,7 @@ export const leaguesEndpoints = (
           page,
           page_size: pageSize,
         },
+        signal,
       },
     ),
 });

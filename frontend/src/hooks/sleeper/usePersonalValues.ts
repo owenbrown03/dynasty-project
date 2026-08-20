@@ -23,13 +23,13 @@ export function usePersonalValuePool(
       'pool',
       leagueId ?? null,
     ],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!leagueId) {
         throw new Error('Missing league id');
       }
 
       return api.personal_values
-        .getPool(leagueId)
+        .getPool(leagueId, signal)
         .then((res) => res.data);
     },
     enabled: Boolean(leagueId),
@@ -54,11 +54,12 @@ export function usePersonalValueSearch(
     queryKey: queryKeys.players.personalSearch(
       `${leagueId ?? 'global'}:${normalizedQuery}`,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       return api.personal_values
         .search(
           normalizedQuery,
           leagueId,
+          signal,
         )
         .then((res) => res.data);
     },
@@ -83,7 +84,7 @@ export function usePersonalValueDetail(
       leagueId,
       playerId,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!leagueId || !playerId) {
         throw new Error('Missing personal values context');
       }
@@ -92,6 +93,7 @@ export function usePersonalValueDetail(
         .getPlayer(
           leagueId,
           playerId,
+          signal,
         )
         .then((res) => res.data);
     },

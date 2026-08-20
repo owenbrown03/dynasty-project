@@ -8,8 +8,8 @@ import type { ADPDatasetReport } from '@/types';
 export function useAdpReport() {
   return useQuery<ADPDatasetReport>({
     queryKey: queryKeys.adp.report,
-    queryFn: async () => {
-      const response = await api.adp.getReport();
+    queryFn: async ({ signal }) => {
+      const response = await api.adp.getReport(signal);
       return response.data;
     },
     staleTime: 5 * 60 * 1000,

@@ -15,9 +15,10 @@ export function useAdp(
     queryKey: queryKeys.adp.results(
       filters as Record<string, unknown>,
     ),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const response = await api.adp.get(
         filters,
+        signal,
       );
       return response.data;
     },

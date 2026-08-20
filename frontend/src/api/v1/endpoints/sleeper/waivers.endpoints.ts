@@ -22,6 +22,7 @@ export const waiversEndpoints = (
 ) => ({
   getOverview: (
     valueBasis: ValueBasis,
+    signal?: AbortSignal,
   ) => {
     return client.get<WaiverOverviewResponse>(
       `${basePath}/overview`,
@@ -29,6 +30,7 @@ export const waiversEndpoints = (
         params: {
           value_basis: valueBasis,
         },
+        signal,
       },
     );
   },
@@ -38,6 +40,7 @@ export const waiversEndpoints = (
     page: number,
     pageSize: number,
     sortBy: 'value' | 'recency',
+    signal?: AbortSignal,
   ) => {
     return client.get<WaiverRecentlyDroppedResponse>(
       `${basePath}/recent-drops`,
@@ -48,13 +51,17 @@ export const waiversEndpoints = (
           page_size: pageSize,
           sort_by: sortBy,
         },
+        signal,
       },
     );
   },
 
-  getLeagues: () => {
+  getLeagues: (
+    signal?: AbortSignal,
+  ) => {
     return client.get<WaiverLeagueOption[]>(
       `${basePath}/leagues`,
+      { signal },
     );
   },
 
@@ -63,6 +70,7 @@ export const waiversEndpoints = (
     valueBasis: ValueBasis,
     page: number,
     pageSize: number,
+    signal?: AbortSignal,
   ) => {
     return client.get<WaiverAvailablePlayersResponse>(
       `${basePath}/available`,
@@ -73,6 +81,7 @@ export const waiversEndpoints = (
           page,
           page_size: pageSize,
         },
+        signal,
       },
     );
   },
@@ -89,6 +98,7 @@ export const waiversEndpoints = (
   getRosterPlayers: (
     leagueId: string,
     valueBasis: ValueBasis,
+    signal?: AbortSignal,
   ) => {
     return client.get<WaiverRosterPlayersResponse>(
       `${basePath}/roster-players`,
@@ -97,12 +107,14 @@ export const waiversEndpoints = (
           league_id: leagueId,
           value_basis: valueBasis,
         },
+        signal,
       },
     );
   },
 
   searchBulkPlayers: (
     query: string,
+    signal?: AbortSignal,
   ) => {
     return client.get<BulkWaiverPlayerSearchResult[]>(
       `${basePath}/bulk/search`,
@@ -110,6 +122,7 @@ export const waiversEndpoints = (
         params: {
           q: query,
         },
+        signal,
       },
     );
   },
@@ -117,6 +130,7 @@ export const waiversEndpoints = (
   getBulkAvailability: (
     playerId: string,
     valueBasis: ValueBasis,
+    signal?: AbortSignal,
   ) => {
     return client.get<BulkWaiverAvailabilityResponse>(
       `${basePath}/bulk/availability`,
@@ -125,6 +139,7 @@ export const waiversEndpoints = (
           player_id: playerId,
           value_basis: valueBasis,
         },
+        signal,
       },
     );
   },
