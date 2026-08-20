@@ -617,3 +617,16 @@ Before running any other restart or rebuild command:
 3. Wait for explicit approval.
 
 When possible, prefer non-disruptive alternatives such as inspecting logs, relying on API hot reload, running commands with `docker compose exec`, or restarting only the worker.
+
+## Automated Git Operations
+
+Agents may, when explicitly prompted by the user, perform the following GitHub workflow actions:
+
+- Create a commit with the current changes.
+- Push the commit to the remote repository.
+- Open a pull request (PR) from the current branch to the target branch.
+- Optionally create a linked GitHub issue that references the PR.
+- After the PR checks pass, merge the PR automatically.
+- Agents may create commits and new branches automatically as needed.
+
+These operations should **only** be executed after the user explicitly asks the agent to do so. The agent must not perform any Git actions automatically without a clear user request.

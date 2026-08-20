@@ -1,4 +1,10 @@
-import hashlib
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module="passlib.utils",
+)
+
 import secrets
 from datetime import datetime, timedelta
 
@@ -25,7 +31,7 @@ from app.services.values.war_settings import (
     normalize_war_value_settings,
 )
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 VALID_THEME_PREFERENCES = {"light", "dark", "system"}
 VALID_ACCENT_COLORS = {
     "blue", "green", "purple", "red", "orange", "teal", "pink",

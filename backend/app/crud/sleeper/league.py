@@ -244,6 +244,7 @@ def get_transaction_weeks_to_fetch(
             curr_week,
         )
 
+
     # Always re-fetch the previous week so late-arriving
     # transactions (e.g. status updates) are captured.
     prev_week = curr_week - 1
@@ -261,18 +262,33 @@ def get_transaction_weeks_to_fetch(
 # --------------------------------------------------
 
 async def sync_leagues(
-    db: AsyncSession,
-    raw_leagues,
-    curr_week: int,
-    sleeper,
+    db: AsyncSession | None = None,
+    raw_leagues=None,
+    curr_week: int = 0,
+    sleeper=None,
     *,
+    db_session: AsyncSession | None = None,
     force: bool = False,
     existing_refresh: Literal[
         "full",
         "transactions_only",
     ] = "full",
     user_id: str | None = None,
+    league_id: str | None = None,
+    league_type: str | None = None,
 ):
+    # Backward compatibility: if raw_leagues not provided but legacy args supplied,
+    # construct a minimal iterable with the needed attributes.
+    if raw_leagues is None:
+        if league_id is None:
+            raise ValueError("Either raw_leagues or league_id must be provided")
+        from types import SimpleNamespace
+        raw_leagues = [SimpleNamespace(league_id=league_id, type=league_type)]
+
+    # Allow passing the session via the keyword 'db_session' for backwards compatibility
+    if db_session is not None:
+        db = db_session
+    # Ensure a valid week number
     curr_week = max(curr_week, 1)
 
     sleeper_order = [

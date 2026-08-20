@@ -33,8 +33,14 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r requirements.txt
 
-      - name: Run backend tests
-        run: python -m pytest -q
+      - name: Run backend tests with coverage
+        run: pytest --cov=backend/app --cov-report=xml -q
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: coverage.xml
+          fail_ci_if_error: true
 
   frontend:
     runs-on: ubuntu-latest
