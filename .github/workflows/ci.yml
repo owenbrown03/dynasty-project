@@ -19,6 +19,7 @@ jobs:
       ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
       REDIS_URL: redis://localhost:6379/0
       BACKEND_CORS_ORIGINS: http://localhost:5173
+      PYTHONPATH: .
     defaults:
       run:
         working-directory: backend
@@ -34,7 +35,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run backend tests with coverage
-        run: pytest --cov=backend/app --cov-report=xml -q
+        run: pytest --cov=app --cov-report=xml -q
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
