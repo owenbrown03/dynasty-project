@@ -92,6 +92,29 @@ class ScenarioResult:
     wall_time_seconds: float
 
 
+@dataclass(frozen=True)
+class CancelRequestResult:
+    scenario: str
+    name: str
+    method: str
+    url: str
+    start_offset_seconds: float
+    elapsed_seconds: float
+    completed: bool
+    cancelled: bool
+    exit_code: int
+    http_code: int | None
+    payload_bytes: int
+    summary: str
+
+
+@dataclass(frozen=True)
+class CancelScenarioResult:
+    name: str
+    results: list[CancelRequestResult]
+    wall_time_seconds: float
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -116,12 +139,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trade-ppr", type=int, default=1)
     parser.add_argument(
         "--mode",
-        choices=("clickthrough", "site", "overlap", "all"),
+        choices=("clickthrough", "site", "overlap", "cancel", "all"),
         default="all",
         help=(
             "Which scenario to run. 'clickthrough' is the dashboard -> "
             "details -> tiers path, 'site' covers the broader read surface, "
-            "and 'overlap' launches the heavy reads at once."
+            "'overlap' launches the heavy reads at once, and 'cancel' starts "
+            "those same requests before canceling the older ones."
         ),
     )
     parser.add_argument(
@@ -144,6 +168,12 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=float(os.getenv("DYNASTY_TIMING_STAGGER_MS", "50")),
         help="Delay between concurrent starts in overlap mode.",
+    )
+    parser.add_argument(
+        "--cancel-grace-ms",
+        type=float,
+        default=float(os.getenv("DYNASTY_TIMING_CANCEL_GRACE_MS", "100")),
+        help="Delay after launching the last request before canceling the older ones.",
     )
     parser.add_argument(
         "--flush-redis",
@@ -717,6 +747,10 @@ def build_overlap_specs(args: argparse.Namespace) -> list[RequestSpec]:
     ]
 
 
+def build_cancel_specs(args: argparse.Namespace) -> list[RequestSpec]:
+    return build_clickthrough_specs(args)
+
+
 def run_spec(
     *,
     scenario: str,
@@ -827,6 +861,183 @@ def run_overlap_scenario(
     )
 
 
+def build_curl_command(
+    *,
+    method: str,
+    url: str,
+    headers: dict[str, str],
+) -> list[str]:
+    command = [
+        "curl",
+        "-sS",
+        "-o",
+        "/dev/null",
+        "--http1.1",
+        "-X",
+        method,
+        "-w",
+        "%{http_code} %{time_total} %{size_download}",
+    ]
+    for key, value in headers.items():
+        command.extend(["-H", f"{key}: {value}"])
+    command.append(url)
+    return command
+
+
+def launch_curl_request(
+    *,
+    spec: RequestSpec,
+    headers: dict[str, str],
+) -> tuple[subprocess.Popen[str], float]:
+    started = time.perf_counter()
+    proc = subprocess.Popen(
+        build_curl_command(
+            method=spec.method,
+            url=spec.url,
+            headers=headers,
+        ),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return proc, started
+
+
+def finish_curl_request(
+    *,
+    scenario: str,
+    spec: RequestSpec,
+    proc: subprocess.Popen[str],
+    started: float,
+    scenario_origin: float,
+    cancelled: bool,
+) -> CancelRequestResult:
+    try:
+        stdout, stderr = proc.communicate(timeout=0.1 if cancelled else None)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, stderr = proc.communicate()
+        cancelled = True
+
+    elapsed = time.perf_counter() - started
+    stdout = (stdout or "").strip()
+    stderr = (stderr or "").strip()
+
+    completed = proc.returncode == 0 and not cancelled
+    http_code: int | None = None
+    payload_bytes = 0
+    summary = "canceled before response"
+
+    if stdout:
+        parts = stdout.split()
+        if len(parts) >= 3:
+            try:
+                http_code = int(parts[0])
+                payload_bytes = int(float(parts[2]))
+            except ValueError:
+                http_code = None
+                payload_bytes = 0
+        summary = (
+            "completed"
+            if completed
+            else f"canceled with stdout={stdout!r}"
+        )
+    elif stderr and not completed:
+        summary = f"canceled stderr={stderr!r}"
+
+    return CancelRequestResult(
+        scenario=scenario,
+        name=spec.name,
+        method=spec.method,
+        url=spec.url,
+        start_offset_seconds=started - scenario_origin,
+        elapsed_seconds=elapsed,
+        completed=completed,
+        cancelled=cancelled or not completed,
+        exit_code=proc.returncode if proc.returncode is not None else -1,
+        http_code=http_code,
+        payload_bytes=payload_bytes,
+        summary=summary,
+    )
+
+
+def run_cancel_scenario(
+    *,
+    scenario: str,
+    specs: list[RequestSpec],
+    headers: dict[str, str],
+    stagger_seconds: float,
+    cancel_grace_seconds: float,
+) -> CancelScenarioResult:
+    print(f"Scenario {scenario}:")
+    started = time.perf_counter()
+    launched: list[tuple[RequestSpec, subprocess.Popen[str], float]] = []
+
+    for index, spec in enumerate(specs):
+        proc, proc_started = launch_curl_request(
+            spec=spec,
+            headers=headers,
+        )
+        launched.append((spec, proc, proc_started))
+        print(
+            f"  launched {spec.name:<12} "
+            f"at {proc_started - started:>7.3f}s"
+        )
+        if index < len(specs) - 1 and stagger_seconds > 0:
+            time.sleep(stagger_seconds)
+
+    if cancel_grace_seconds > 0:
+        time.sleep(cancel_grace_seconds)
+
+    results: list[CancelRequestResult] = []
+
+    for spec, proc, proc_started in launched[:-1]:
+        cancelled = False
+        if proc.poll() is None:
+            proc.terminate()
+            cancelled = True
+        results.append(
+            finish_curl_request(
+                scenario=scenario,
+                spec=spec,
+                proc=proc,
+                started=proc_started,
+                scenario_origin=started,
+                cancelled=cancelled,
+            )
+        )
+
+    last_spec, last_proc, last_started = launched[-1]
+    results.append(
+        finish_curl_request(
+            scenario=scenario,
+            spec=last_spec,
+            proc=last_proc,
+            started=last_started,
+            scenario_origin=started,
+            cancelled=False,
+        )
+    )
+
+    results.sort(key=lambda result: result.start_offset_seconds)
+    for result in results:
+        state = "completed" if result.completed else "canceled"
+        code = result.http_code if result.http_code is not None else "n/a"
+        print(
+            f"  {result.name:<12} "
+            f"{state:<9} "
+            f"{result.start_offset_seconds:>7.3f}s + {result.elapsed_seconds:>7.3f}s "
+            f"code={code} exit={result.exit_code}"
+        )
+
+    wall_time = time.perf_counter() - started
+    return CancelScenarioResult(
+        name=scenario,
+        results=results,
+        wall_time_seconds=wall_time,
+    )
+
+
 def print_scenario_summary(result: ScenarioResult) -> None:
     print()
     print(f"Summary for {result.name}:")
@@ -848,6 +1059,26 @@ def print_scenario_summary(result: ScenarioResult) -> None:
         print(
             f"  span {first.start_offset_seconds:.3f}s -> "
             f"{last.start_offset_seconds + last.elapsed_seconds:.3f}s"
+        )
+
+
+def print_cancel_summary(result: CancelScenarioResult) -> None:
+    print()
+    print(f"Summary for {result.name}:")
+    completed = [entry for entry in result.results if entry.completed]
+    cancelled = [entry for entry in result.results if entry.cancelled]
+    print(
+        f"  requests {len(result.results)}  "
+        f"wall {result.wall_time_seconds:.3f}s  "
+        f"completed {len(completed)}  "
+        f"canceled {len(cancelled)}"
+    )
+    if completed:
+        timings = [entry.elapsed_seconds for entry in completed]
+        print(
+            f"  completed avg {statistics.mean(timings):.3f}s "
+            f"min {min(timings):.3f}s "
+            f"max {max(timings):.3f}s"
         )
 
 
@@ -882,6 +1113,37 @@ def write_report(path: Path, *, args: argparse.Namespace, scenarios: list[Scenar
             }
             for scenario in scenarios
         ],
+    }
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_cancel_report(
+    path: Path,
+    *,
+    args: argparse.Namespace,
+    scenario: CancelScenarioResult,
+) -> None:
+    payload = {
+        "args": {
+            "base_url": args.base_url,
+            "username": args.username,
+            "details_league_id": args.details_league_id,
+            "shared_league_id": args.shared_league_id,
+            "value_basis": args.value_basis,
+            "mode": args.mode,
+            "timeout": args.timeout,
+            "stagger_ms": args.stagger_ms,
+            "cancel_grace_ms": args.cancel_grace_ms,
+            "flush_redis": args.flush_redis,
+        },
+        "scenario": {
+            "name": scenario.name,
+            "wall_time_seconds": scenario.wall_time_seconds,
+            "results": [asdict(result) for result in scenario.results],
+        },
     }
     path.write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
@@ -928,6 +1190,7 @@ def main() -> int:
 
     headers = build_headers(args.session_token)
     scenarios: list[ScenarioResult] = []
+    cancel_scenario: CancelScenarioResult | None = None
 
     try:
         for cycle in range(1, args.cycles + 1):
@@ -946,14 +1209,32 @@ def main() -> int:
                 print_scenario_summary(scenario_result)
                 scenarios.append(scenario_result)
                 print()
+            if args.mode in {"cancel", "all"}:
+                cancel_scenario = run_cancel_scenario(
+                    scenario="cancel",
+                    specs=build_cancel_specs(args),
+                    headers=headers,
+                    stagger_seconds=max(args.stagger_ms, 0.0) / 1000.0,
+                    cancel_grace_seconds=max(args.cancel_grace_ms, 0.0) / 1000.0,
+                )
+                print_cancel_summary(cancel_scenario)
+                print()
     except BenchmarkError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
     print_comparison(scenarios)
 
-    if args.report_json is not None:
+    if args.report_json is not None and cancel_scenario is None:
         write_report(args.report_json, args=args, scenarios=scenarios)
+        print()
+        print(f"Wrote report to {args.report_json}")
+    elif args.report_json is not None and cancel_scenario is not None:
+        write_cancel_report(
+            args.report_json,
+            args=args,
+            scenario=cancel_scenario,
+        )
         print()
         print(f"Wrote report to {args.report_json}")
 

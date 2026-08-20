@@ -7,6 +7,7 @@ For a repeatable benchmark, use [`docs/timing_benchmark.py`](./timing_benchmark.
 - `--mode clickthrough` for dashboard -> details -> tiers
 - `--mode site` for the broader read surface
 - `--mode overlap` for concurrent in-flight requests that mimic clicking away before the previous page finishes
+- `--mode cancel` for the same reads, but with older requests explicitly aborted after the next navigation starts
 
 Pass `--flush-redis` to start each cycle cold on Redis. For a fully cold read, also restart the API so the in-memory caches clear.
 
@@ -98,6 +99,7 @@ WAR LRU caches clear. Redis caches survive. Dashboard and league details respons
 
 The scripted version of this sequence lives in [`docs/timing_benchmark.py`](./timing_benchmark.py).
 Run `python3 docs/timing_benchmark.py --mode overlap --flush-redis` to reproduce the concurrent click-through case.
+Run `python3 docs/timing_benchmark.py --mode cancel --flush-redis` to reproduce the aborted-navigation case.
 
 ### Cold request (no caches)
 

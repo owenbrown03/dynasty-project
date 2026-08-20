@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
 from typing import Literal
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import AsyncSessionLocal
 
 from app.analytics.war.dynasty.models import DynastyProjection
 from app.analytics.war.redraft.models import PlayerWAR
@@ -317,18 +319,12 @@ async def get_recently_dropped_players(
         )
     )
 
-    for league_id, entries in league_drop_rows.items():
-        league = league_by_id.get(
-            league_id,
-        )
-
+    async def process_league_drops(league_id, entries):
+        league = league_by_id.get(league_id)
         if league is None:
-            continue
+            return []
 
-        redraft_war_players = redraft_war_by_league_id[
-            league_id
-        ]
-
+        redraft_war_players = redraft_war_by_league_id[league_id]
         redraft_by_player_id = {
             player.player_id: player
             for player in redraft_war_players
@@ -341,7 +337,7 @@ async def get_recently_dropped_players(
         ]
 
         if not league_war_players:
-            continue
+            return []
 
         dynasty_by_player_id: dict[str, DynastyProjection] = (
             await project_full_available_dynasty_pool(
@@ -355,14 +351,30 @@ async def get_recently_dropped_players(
             for player in league_war_players
         ]
 
-        player_values = await get_player_values(
-            db=db,
-            player_ids=player_ids,
-            redraft_war_players=redraft_war_players,
-            dynasty_war_by_player_id=dynasty_by_player_id,
-        )
+        async with AsyncSessionLocal() as task_db:
+            player_values = await get_player_values(
+                db=task_db,
+                player_ids=player_ids,
+                redraft_war_players=redraft_war_players,
+                dynasty_war_by_player_id=dynasty_by_player_id,
+            )
 
-        for player_value in player_values:
+        return [(league_id, pv) for pv in player_values]
+
+    sem = asyncio.Semaphore(10)
+
+    async def _sem_task(league_id, entries):
+        async with sem:
+            return await process_league_drops(league_id, entries)
+
+    tasks = [
+        _sem_task(league_id, entries)
+        for league_id, entries in league_drop_rows.items()
+    ]
+    results = await asyncio.gather(*tasks)
+
+    for result in results:
+        for league_id, player_value in result:
             key = (
                 league_id,
                 player_value.player_id,
@@ -435,13 +447,10 @@ async def get_recently_dropped_players(
                 )
             )
 
-        for league_id, keys in candidate_keys_by_league.items():
-            league = league_by_id.get(
-                league_id,
-            )
-
+        async def hydrate_league_drops(league_id, keys):
+            league = league_by_id.get(league_id)
             if league is None:
-                continue
+                return []
 
             candidate_player_values = [
                 player_value_by_key[key]
@@ -450,17 +459,31 @@ async def get_recently_dropped_players(
             ]
 
             if not candidate_player_values:
-                continue
+                return []
 
-            hydrated_values = await hydrate_personal_player_values(
-                db=db,
-                site_user_id=connection.site_user_id,
-                league=league,
-                player_values=candidate_player_values,
-                redis=redis,
-            )
+            async with AsyncSessionLocal() as task_db:
+                hydrated_values = await hydrate_personal_player_values(
+                    db=task_db,
+                    site_user_id=connection.site_user_id,
+                    league=league,
+                    player_values=candidate_player_values,
+                    redis=redis,
+                )
 
-            for player_value in hydrated_values:
+            return [(league_id, pv) for pv in hydrated_values]
+
+        async def _sem_hydrate_task(league_id, keys):
+            async with sem:
+                return await hydrate_league_drops(league_id, keys)
+
+        hydrate_tasks = [
+            _sem_hydrate_task(league_id, keys)
+            for league_id, keys in candidate_keys_by_league.items()
+        ]
+        hydrate_results = await asyncio.gather(*hydrate_tasks)
+
+        for result in hydrate_results:
+            for league_id, player_value in result:
                 key = (
                     league_id,
                     player_value.player_id,

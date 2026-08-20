@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import AsyncSessionLocal
 
 from app.analytics.war.dynasty.factory import (
     build_dynasty_war_service,
@@ -235,7 +237,7 @@ async def get_waiver_overview(
         )
     )
 
-    for roster, league in owned_roster_rows:
+    async def _build_league_waiver_card(roster, league):
         redraft_war_players = redraft_war_by_league_id[
             league.league_id
         ]
@@ -307,12 +309,14 @@ async def get_waiver_overview(
             )
         )
 
-        enriched_values = await get_player_values(
-            db=db,
-            player_ids=relevant_player_ids,
-            redraft_war_players=redraft_war_players,
-            dynasty_war_by_player_id=dynasty_war_by_player_id,
-        )
+        async with AsyncSessionLocal() as task_db:
+            enriched_values = await get_player_values(
+                db=task_db,
+                player_ids=relevant_player_ids,
+                redraft_war_players=redraft_war_players,
+                dynasty_war_by_player_id=dynasty_war_by_player_id,
+            )
+
         enriched_by_player_id = {
             player.player_id: player
             for player in enriched_values
@@ -398,17 +402,18 @@ async def get_waiver_overview(
                     ]
                 )
             )
-            hydrated_values = await hydrate_personal_player_values(
-                db=db,
-                site_user_id=connection.site_user_id,
-                league=league,
-                player_values=[
-                    enriched_by_player_id[player_id]
-                    for player_id in hydrate_ids
-                    if player_id in enriched_by_player_id
-                ],
-                redis=redis,
-            )
+            async with AsyncSessionLocal() as task_db:
+                hydrated_values = await hydrate_personal_player_values(
+                    db=task_db,
+                    site_user_id=connection.site_user_id,
+                    league=league,
+                    player_values=[
+                        enriched_by_player_id[player_id]
+                        for player_id in hydrate_ids
+                        if player_id in enriched_by_player_id
+                    ],
+                    redis=redis,
+                )
             hydrated_by_player_id = {
                 player.player_id: player
                 for player in hydrated_values
@@ -474,51 +479,61 @@ async def get_waiver_overview(
             league,
         )
 
-        overview_cards.append(
-            WaiverLeagueOverview(
-                league_id=league.league_id,
-                league_name=league.name,
-                league_avatar=league.avatar,
+        return WaiverLeagueOverview(
+            league_id=league.league_id,
+            league_name=league.name,
+            league_avatar=league.avatar,
 
-                roster_id=roster.roster_id,
+            roster_id=roster.roster_id,
 
-                roster_size=roster.roster_size,
-                roster_capacity=roster_capacity,
-                roster_spots_available=(
-                    roster.open_roster_spots(league)
-                ),
+            roster_size=roster.roster_size,
+            roster_capacity=roster_capacity,
+            roster_spots_available=(
+                roster.open_roster_spots(league)
+            ),
 
-                faab_budget=faab_budget,
-                faab_used=roster.waiver_budget_used,
-                faab_remaining=faab_remaining,
-                faab_percent_remaining=(
-                    faab_percent_remaining
-                ),
+            faab_budget=faab_budget,
+            faab_used=roster.waiver_budget_used,
+            faab_remaining=faab_remaining,
+            faab_percent_remaining=(
+                faab_percent_remaining
+            ),
 
-                available_player_count=len(
-                    available_player_ids
-                ),
+            available_player_count=len(
+                available_player_ids
+            ),
 
-                value_basis=value_basis,
-                value_label=get_value_label(
-                    value_basis,
-                    war_value_settings,
-                ),
+            value_basis=value_basis,
+            value_label=get_value_label(
+                value_basis,
+                war_value_settings,
+            ),
 
-                suggested_add=suggested_add,
-                suggested_drop=suggested_drop,
+            suggested_add=suggested_add,
+            suggested_drop=suggested_drop,
 
-                suggested_add_value=suggested_add_value,
-                suggested_drop_value=suggested_drop_value,
-                value_gain=value_gain,
+            suggested_add_value=suggested_add_value,
+            suggested_drop_value=suggested_drop_value,
+            value_gain=value_gain,
 
-                can_submit_claim=bool(
-                    connection.encrypted_token
-                ),
-            )
+            can_submit_claim=bool(
+                connection.encrypted_token
+            ),
         )
+
+    sem = asyncio.Semaphore(10)
+
+    async def _sem_task(roster, league):
+        async with sem:
+            return await _build_league_waiver_card(roster, league)
+
+    tasks = [
+        _sem_task(roster, league)
+        for roster, league in owned_roster_rows
+    ]
+    overview_cards = await asyncio.gather(*tasks)
 
     return WaiverOverviewResponse(
         sleeper_username=connection.sleeper_username,
-        leagues=overview_cards,
+        leagues=list(overview_cards),
     )

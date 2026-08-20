@@ -1,5 +1,6 @@
-from fastapi import APIRouter, BackgroundTasks, Query
+from fastapi import APIRouter, BackgroundTasks, Query, Request
 
+from app.api.cancellation import cancel_on_disconnect
 from app.api.deps import ContextDep
 from app.crud.auth.session import (
     get_session_draft_pick_projection_settings,
@@ -49,53 +50,57 @@ async def overview_endpoint(
 
 @router.get("/details/{league_id}")
 async def details_endpoint(
+    request: Request,
     league_id: str,
     ctx: ContextDep,
 ):
-    return await LeagueDetails().get_league_details(
-        ctx.db,
-        ctx.redis,
-        league_id=league_id,
-        site_user_id=(
-            ctx.site_user.id
-            if ctx.site_user is not None
-            else None
-        ),
-        draft_pick_projection_settings=(
-            get_draft_pick_projection_settings(
-                ctx.site_user,
-            )
-            if ctx.site_user is not None
-            else get_session_draft_pick_projection_settings(
-                ctx.session,
-            )
-        ),
-    )
+    async with cancel_on_disconnect(request):
+        return await LeagueDetails().get_league_details(
+            ctx.db,
+            ctx.redis,
+            league_id=league_id,
+            site_user_id=(
+                ctx.site_user.id
+                if ctx.site_user is not None
+                else None
+            ),
+            draft_pick_projection_settings=(
+                get_draft_pick_projection_settings(
+                    ctx.site_user,
+                )
+                if ctx.site_user is not None
+                else get_session_draft_pick_projection_settings(
+                    ctx.session,
+                )
+            ),
+        )
 
 @router.get("/dashboard/{username}")
 async def dashboard_endpoint(
+    request: Request,
     username: str,
     ctx: ContextDep,
     background_tasks: BackgroundTasks,
 ):
-    site_user_id = (
-        ctx.site_user.id
-        if ctx.site_user is not None
-        else None
-    )
-    result = await get_user_dashboard(
-        ctx.db,
-        ctx.redis,
-        ctx.sleeper,
-        username,
-        site_user_id=site_user_id,
-    )
-    background_tasks.add_task(
-        _prefetch_trade_signals,
-        username,
-        site_user_id,
-    )
-    return result
+    async with cancel_on_disconnect(request):
+        site_user_id = (
+            ctx.site_user.id
+            if ctx.site_user is not None
+            else None
+        )
+        result = await get_user_dashboard(
+            ctx.db,
+            ctx.redis,
+            ctx.sleeper,
+            username,
+            site_user_id=site_user_id,
+        )
+        background_tasks.add_task(
+            _prefetch_trade_signals,
+            username,
+            site_user_id,
+        )
+        return result
 
 
 @router.put(
