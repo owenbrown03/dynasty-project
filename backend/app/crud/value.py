@@ -102,12 +102,10 @@ async def get_player_values(
                 underdog_values[row.player_id] = row
         return underdog_values
 
-    players, ktc_values, fc_values, underdog_values = await asyncio.gather(
-        _fetch_players(),
-        _fetch_ktc(),
-        _fetch_fc(),
-        _fetch_underdog(),
-    )
+    players = await _fetch_players()
+    ktc_values = await _fetch_ktc()
+    fc_values = await _fetch_fc()
+    underdog_values = await _fetch_underdog()
 
     # ------------------------------------
     # Redraft WAR lookup

@@ -343,19 +343,22 @@ async def build_player_maps_by_league(
     - dynasty WAR projected from that exact league's redraft WAR
     """
 
-    tasks = [
-        _build_single_league_player_map(
-            db=db,
-            redis=redis,
-            site_user_id=site_user_id,
-            league_id=league_id,
-            league=leagues[league_id]["league"],
-            league_war_players=war_results_by_league_id[league_id],
-            league_rosters=all_rosters.get(league_id, []),
-        )
-        for league_id in leagues
-    ]
+    sem = asyncio.Semaphore(10)
 
+    async def _task(league_id):
+        async with sem:
+            async with AsyncSessionLocal() as task_db:
+                return await _build_single_league_player_map(
+                    db=task_db,
+                    redis=redis,
+                    site_user_id=site_user_id,
+                    league_id=league_id,
+                    league=leagues[league_id]["league"],
+                    league_war_players=war_results_by_league_id[league_id],
+                    league_rosters=all_rosters.get(league_id, []),
+                )
+
+    tasks = [_task(league_id) for league_id in leagues]
     results = await asyncio.gather(*tasks)
 
     return {league_id: player_map for league_id, player_map in results}
@@ -481,24 +484,28 @@ async def get_user_dashboard(
     roster_construction_service = LeagueDetails()
 
     async def _build_roster_construction():
-        targets = {}
-        for league_id, league_data in leagues.items():
-            league = league_data["league"]
-            league_rosters = all_rosters.get(league_id, [])
-            current_shared = shared_by_season[get_league_season(league)]
-            seasonal_results = await roster_construction_service.build_roster_construction_seasonal_results(
-                db=db,
-                league=league,
-                players=current_shared.players,
-                current_shared=current_shared,
-            )
-            targets[league_id] = await build_cached_league_roster_construction_targets(
-                redis=redis,
-                league=league,
-                roster_rows=league_rosters,
-                seasonal_results=seasonal_results,
-            )
-        return targets
+        sem = asyncio.Semaphore(10)
+
+        async def _rc_task(league_id):
+            async with sem:
+                async with AsyncSessionLocal() as task_db:
+                    league = leagues[league_id]["league"]
+                    league_rosters = all_rosters.get(league_id, [])
+                    current_shared = shared_by_season[get_league_season(league)]
+                    seasonal_results = await roster_construction_service.build_roster_construction_seasonal_results(
+                        db=task_db,
+                        league=league,
+                        players=current_shared.players,
+                        current_shared=current_shared,
+                    )
+                    return league_id, await build_cached_league_roster_construction_targets(
+                        redis=redis,
+                        league=league,
+                        roster_rows=league_rosters,
+                        seasonal_results=seasonal_results,
+                    )
+        results = await asyncio.gather(*[_rc_task(lid) for lid in leagues])
+        return dict(results)
 
     finance_coro = build_dashboard_finance_metrics_by_league_id(
         db=db,
