@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from fastapi import HTTPException, status
 from sqlmodel import select
@@ -66,27 +67,40 @@ async def sync_user_data(db: AsyncSession, sleeper: SleeperClient, username: str
     current_season = int(state.season)
     curr_week = max(int(state.week), 1)
 
+    seasons = list(range(
+        current_season,
+        SLEEPER_HISTORY_START_SEASON - 1,
+        -1,
+    ))
+
+    season_leagues = await asyncio.gather(
+        *[
+            sleeper.read.get_leagues(user_id, str(season))
+            for season in seasons
+        ],
+        return_exceptions=True,
+    )
+
     season_summaries: list[dict] = []
     total_synced_count = 0
     total_failed_batches = 0
 
-    for season in range(
-        current_season,
-        SLEEPER_HISTORY_START_SEASON - 1,
-        -1,
-    ):
-        leagues_json = await sleeper.read.get_leagues(
-            user_id,
-            str(season),
-        )
+    for season, leagues_result in zip(seasons, season_leagues):
+        if isinstance(leagues_result, Exception):
+            logger.warning(
+                "Failed to fetch leagues for season %s: %s",
+                season,
+                leagues_result,
+            )
+            continue
 
-        if not leagues_json:
+        if not leagues_result:
             continue
 
         is_current_season = season == current_season
         season_result = await sync_leagues(
             db,
-            leagues_json,
+            leagues_result,
             curr_week if is_current_season else HISTORICAL_SYNC_WEEK,
             sleeper,
             force=is_current_season,
