@@ -7,7 +7,9 @@ from sqlmodel import select
 
 from app.core.database import AsyncSessionLocal, engine
 from app.models.db.auth import SiteUser
-from app.models.db.sleeper.api import League, LeagueSyncState
+from app.models.db.sleeper.api import League, LeagueSyncState, Movement, Transaction
+from types import SimpleNamespace
+from app.crud.sleeper import league as league_crud
 
 
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -123,5 +125,69 @@ def test_database_sync_state_timestamp_compatibility():
             assert db_state.last_synced_week == 1
             # Retrieve time should match naive UTC now (within database resolution)
             assert abs((db_state.last_synced_at - naive_utc_now).total_seconds()) < 1.0
+
+    asyncio.run(_test())
+
+
+def test_save_transactions_real_db():
+    """
+    Verify that _save_transactions successfully stores transaction metadata and
+    movement children in the real Postgres database.
+    """
+    async def _test():
+        async with transactional_session() as session:
+            # 1. Create and insert a test league
+            league_id = "test-league-abc-123"
+            league = League(
+                league_id=league_id,
+                name="Test League",
+                season="2026",
+                status="in_season",
+                roster_positions=["QB", "RB", "WR", "TE"],
+                scoring_settings={},
+                settings={},
+                total_rosters=12,
+                draft_id="draft-test-123",
+            )
+            session.add(league)
+            await session.commit()
+
+            # 2. Build mock Transaction namespace
+            transaction = SimpleNamespace(
+                transaction_id="txn-drop-real-1",
+                type="waiver",
+                status="complete",
+                status_updated=123456789,
+                adds={},
+                drops={"player-1": 9},
+                waiver_budget=[],
+                draft_picks=[],
+            )
+
+            # 3. Call the actual crud function to save it to Postgres
+            await league_crud._save_transactions(
+                db=session,
+                transactions=[transaction],
+                league_id=league_id,
+            )
+            await session.commit()
+
+            # 4. Query the real tables to verify insertion
+            tx_result = await session.execute(
+                select(Transaction).where(Transaction.transaction_id == "txn-drop-real-1")
+            )
+            db_tx = tx_result.scalars().first()
+            assert db_tx is not None
+            assert db_tx.league_id == league_id
+            assert db_tx.type == "waiver"
+
+            mv_result = await session.execute(
+                select(Movement).where(Movement.transaction_id == "txn-drop-real-1")
+            )
+            db_mvs = mv_result.scalars().all()
+            assert len(db_mvs) == 1
+            assert db_mvs[0].player_id == "player-1"
+            assert db_mvs[0].roster_id == 9
+            assert db_mvs[0].action == "DROP"
 
     asyncio.run(_test())
