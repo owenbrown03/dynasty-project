@@ -21,8 +21,24 @@ from app.integrations.sleeper.factory import get_sleeper_client
 
 
 async def get_db() -> AsyncIterator[AsyncSession]:
-    async with AsyncSessionLocal() as db:
-        yield db
+    """
+    Yield an async database session.
+
+    On client disconnect, the cancellation handler cancels the request task.
+    SQLAlchemy's session cleanup then tries to rollback the transaction, but
+    the asyncpg connection is already closed. We catch that specific
+    InterfaceError so it doesn't produce noisy tracebacks in the logs.
+    """
+    session = AsyncSessionLocal()
+    try:
+        async with session:
+            yield session
+    except Exception as exc:
+        # sqlalchemy wraps asyncpg InterfaceError as sqlalchemy.exc.InterfaceError
+        from sqlalchemy.exc import InterfaceError as SAInterfaceError
+        if isinstance(exc, SAInterfaceError) and "underlying connection is closed" in str(exc):
+            return
+        raise
 
 
 async def get_current_session(
