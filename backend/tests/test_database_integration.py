@@ -15,6 +15,7 @@ from app.crud.sleeper import league as league_crud
 from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import settings
 
+
 @asynccontextmanager
 async def transactional_session():
     """
