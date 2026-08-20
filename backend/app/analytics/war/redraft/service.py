@@ -224,11 +224,14 @@ class WARService:
         if cached_results is not None:
             return cached_results
 
-        return await asyncio.to_thread(
+        from app.analytics.war.redraft.singleton import war_thread_pool
+
+        return await asyncio.get_event_loop().run_in_executor(
+            war_thread_pool,
             self._calculate_with_data_sync,
-            cache_key=cache_key,
-            league=league,
-            shared=shared,
+            cache_key,
+            league,
+            shared,
         )
 
     def _calculate_with_data_sync(

@@ -1,3 +1,6 @@
+import logging
+import time
+
 from fastapi import APIRouter, BackgroundTasks, Query
 
 from app.api.deps import ContextDep
@@ -7,6 +10,7 @@ from app.services.values.basis import ValueBasis
 from app.services.values.tiers import get_player_tier_board
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 
 @router.post("/sync")
 async def sync_players_endpoint(
@@ -30,8 +34,33 @@ async def get_player_tiers_endpoint(
         default=None,
     ),
 ):
-    return await get_player_tier_board(
-        ctx=ctx,
-        value_basis=value_basis,
-        league_id=league_id,
+    t0 = time.monotonic()
+    log.info(
+        "TIER_REQUEST_START basis=%s league=%s has_connection=%s user=%s",
+        value_basis,
+        league_id,
+        ctx.connection is not None,
+        ctx.site_user.id if ctx.site_user else None,
     )
+    try:
+        result = await get_player_tier_board(
+            ctx=ctx,
+            value_basis=value_basis,
+            league_id=league_id,
+        )
+        log.info(
+            "TIER_REQUEST_OK basis=%s league=%s elapsed=%.2fs",
+            value_basis,
+            league_id,
+            time.monotonic() - t0,
+        )
+        return result
+    except Exception as exc:
+        log.info(
+            "TIER_REQUEST_ERR basis=%s league=%s elapsed=%s err=%s",
+            value_basis,
+            league_id,
+            f"{time.monotonic() - t0:.2f}s",
+            exc,
+        )
+        raise
