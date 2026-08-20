@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from collections.abc import Iterable
 
 from app.analytics.war.redraft.singleton import (
@@ -235,6 +236,64 @@ async def calculate_war_by_league(
     )
 
 
+async def _build_single_league_player_map(
+    *,
+    db,
+    redis,
+    site_user_id,
+    league_id,
+    league,
+    league_war_players,
+    league_rosters,
+):
+    """Build player map for a single league (extracted for parallelization)."""
+
+    league_war_by_player_id = {
+        player.player_id: player
+        for player in league_war_players
+    }
+
+    rostered_player_ids = build_league_rostered_player_ids(
+        rosters=league_rosters,
+        league_war_by_player_id=league_war_by_player_id,
+    )
+
+    dynasty_war_by_player_id = await build_dynasty_war_by_player_id(
+        redis=redis,
+        league_war_by_player_id=league_war_by_player_id,
+        rostered_player_ids=rostered_player_ids,
+    )
+
+    league_player_values = await get_player_values(
+        db=db,
+        player_ids=rostered_player_ids,
+        redraft_war_players=league_war_players,
+        dynasty_war_by_player_id=dynasty_war_by_player_id,
+    )
+    league_player_values = await hydrate_personal_player_values(
+        db=db,
+        site_user_id=site_user_id,
+        league=league,
+        player_values=league_player_values,
+        redis=redis,
+    )
+
+    player_map = {
+        player.player_id: player
+        for player in league_player_values
+    }
+
+    logger.info(
+        "Dashboard values league=%s rostered=%s dynasty_projected=%s enriched=%s",
+        league_id,
+        len(rostered_player_ids),
+        len(dynasty_war_by_player_id),
+        len(league_player_values),
+    )
+
+    return league_id, player_map
+
+
 async def build_player_maps_by_league(
     *,
     db,
@@ -259,77 +318,22 @@ async def build_player_maps_by_league(
     - dynasty WAR projected from that exact league's redraft WAR
     """
 
-    player_maps_by_league_id = {}
-
-    for league_id in leagues:
-        league_war_players = war_results_by_league_id[
-            league_id
-        ]
-
-        league_war_by_player_id = {
-            player.player_id: player
-            for player in league_war_players
-        }
-
-        league_rosters = all_rosters.get(
-            league_id,
-            [],
-        )
-
-        rostered_player_ids = (
-            build_league_rostered_player_ids(
-                rosters=league_rosters,
-                league_war_by_player_id=(
-                    league_war_by_player_id
-                ),
-            )
-        )
-
-        dynasty_war_by_player_id = (
-            await build_dynasty_war_by_player_id(
-                redis=redis,
-                league_war_by_player_id=(
-                    league_war_by_player_id
-                ),
-                rostered_player_ids=(
-                    rostered_player_ids
-                ),
-            )
-        )
-
-        league_player_values = await get_player_values(
+    tasks = [
+        _build_single_league_player_map(
             db=db,
-            player_ids=rostered_player_ids,
-            redraft_war_players=league_war_players,
-            dynasty_war_by_player_id=(
-                dynasty_war_by_player_id
-            ),
-        )
-        league_player_values = await hydrate_personal_player_values(
-            db=db,
-            site_user_id=site_user_id,
-            league=leagues[league_id]["league"],
-            player_values=league_player_values,
             redis=redis,
+            site_user_id=site_user_id,
+            league_id=league_id,
+            league=leagues[league_id]["league"],
+            league_war_players=war_results_by_league_id[league_id],
+            league_rosters=all_rosters.get(league_id, []),
         )
+        for league_id in leagues
+    ]
 
-        player_maps_by_league_id[league_id] = {
-            player.player_id: player
-            for player in league_player_values
-        }
+    results = await asyncio.gather(*tasks)
 
-        logger.info(
-            (
-                "Dashboard values league=%s "
-                "rostered=%s dynasty_projected=%s enriched=%s"
-            ),
-            league_id,
-            len(rostered_player_ids),
-            len(dynasty_war_by_player_id),
-            len(league_player_values),
-        )
-
-    return player_maps_by_league_id
+    return {league_id: player_map for league_id, player_map in results}
 
 
 async def get_user_dashboard(
@@ -346,6 +350,8 @@ async def get_user_dashboard(
     Redis is used for cross-league dynasty projection caching after the
     league-specific redraft WAR inputs are computed.
     """
+
+    t_total = time.monotonic()
 
     user_id = await get_userid_by_username(
         db,
@@ -404,89 +410,91 @@ async def get_user_dashboard(
         )
         if cached_payload:
             logger.info(
-                "Dashboard source=redis user=%s leagues=%s",
+                "Dashboard source=redis user=%s leagues=%s elapsed=%.1fs",
                 username,
                 len(league_ids),
+                time.monotonic() - t_total,
             )
             return json.loads(cached_payload)
 
+    t_rosters = time.monotonic()
     all_rosters = await get_all_league_rosters(
         db,
         league_ids,
     )
+    logger.info("Dashboard get_rosters took %.2fs", time.monotonic() - t_rosters)
 
+    t_shared = time.monotonic()
     shared_by_season = (
         await load_shared_war_data_by_season(
             db=db,
             leagues=leagues,
         )
     )
+    logger.info("Dashboard load_shared took %.2fs", time.monotonic() - t_shared)
 
+    t_war = time.monotonic()
     war_results_by_league_id = (
         await calculate_war_by_league(
             leagues=leagues,
             shared_by_season=shared_by_season,
         )
     )
+    logger.info("Dashboard calculate_war took %.2fs (%d leagues)", time.monotonic() - t_war, len(leagues))
 
-    player_maps_by_league_id = (
-        await build_player_maps_by_league(
-            db=db,
-            redis=redis,
-            site_user_id=site_user_id,
-            leagues=leagues,
-            all_rosters=all_rosters,
-            war_results_by_league_id=(
-                war_results_by_league_id
-            ),
-        )
+    t_parallel = time.monotonic()
+
+    player_maps_by_league_id_coro = build_player_maps_by_league(
+        db=db,
+        redis=redis,
+        site_user_id=site_user_id,
+        leagues=leagues,
+        all_rosters=all_rosters,
+        war_results_by_league_id=war_results_by_league_id,
     )
-    roster_construction_service = LeagueDetails()
-    roster_construction_targets_by_league_id = {}
 
-    for league_id, league_data in leagues.items():
-        league = league_data["league"]
-        league_rosters = all_rosters.get(
-            league_id,
-            [],
-        )
-        current_shared = shared_by_season[
-            get_league_season(
-                league,
-            )
-        ]
-        seasonal_results = (
-            await roster_construction_service.build_roster_construction_seasonal_results(
+    roster_construction_service = LeagueDetails()
+
+    async def _build_roster_construction():
+        targets = {}
+        for league_id, league_data in leagues.items():
+            league = league_data["league"]
+            league_rosters = all_rosters.get(league_id, [])
+            current_shared = shared_by_season[get_league_season(league)]
+            seasonal_results = await roster_construction_service.build_roster_construction_seasonal_results(
                 db=db,
                 league=league,
                 players=current_shared.players,
                 current_shared=current_shared,
             )
-        )
-        roster_construction_targets_by_league_id[
-            league_id
-        ] = await build_cached_league_roster_construction_targets(
-            redis=redis,
-            league=league,
-            roster_rows=league_rosters,
-            seasonal_results=seasonal_results,
-        )
+            targets[league_id] = await build_cached_league_roster_construction_targets(
+                redis=redis,
+                league=league,
+                roster_rows=league_rosters,
+                seasonal_results=seasonal_results,
+            )
+        return targets
 
-    finance_metrics_by_league_id = (
-        await build_dashboard_finance_metrics_by_league_id(
-            db=db,
-            redis=redis,
-            site_user_id=site_user_id,
-            owned_rows=[
-                (
-                    row.roster,
-                    row.league,
-                )
-                for row in selected_rows
-            ],
-        )
+    finance_coro = build_dashboard_finance_metrics_by_league_id(
+        db=db,
+        redis=redis,
+        site_user_id=site_user_id,
+        owned_rows=[
+            (row.roster, row.league)
+            for row in selected_rows
+        ],
     )
 
+    player_maps_by_league_id, roster_construction_targets_by_league_id, finance_metrics_by_league_id = (
+        await asyncio.gather(
+            player_maps_by_league_id_coro,
+            _build_roster_construction(),
+            finance_coro,
+        )
+    )
+    logger.info("Dashboard parallel phase took %.2fs", time.monotonic() - t_parallel)
+
+    t_cards = time.monotonic()
     league_cards = build_league_cards(
         leagues=leagues,
         all_rosters=all_rosters,
@@ -507,6 +515,7 @@ async def get_user_dashboard(
             league["league_name"].lower(),
         ),
     )
+    logger.info("Dashboard build_cards took %.2fs", time.monotonic() - t_cards)
 
     response = {
         "leagues": league_cards,
@@ -518,5 +527,12 @@ async def get_user_dashboard(
             json.dumps(response),
             ttl_seconds=DASHBOARD_CACHE_TTL_SECONDS,
         )
+
+    logger.info(
+        "Dashboard cold total=%.1fs user=%s leagues=%d",
+        time.monotonic() - t_total,
+        username,
+        len(leagues),
+    )
 
     return response

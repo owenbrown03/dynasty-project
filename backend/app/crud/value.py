@@ -1,8 +1,9 @@
 from typing import Iterable
+import asyncio
 import math
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, col
 
 from app.analytics.war.dynasty.models import DynastyProjection
 from app.analytics.war.redraft.models import PlayerWAR
@@ -69,66 +70,44 @@ async def get_player_values(
     dynasty_war_by_player_id = dynasty_war_by_player_id or {}
 
     # ------------------------------------
-    # Players
+    # Parallel DB fetches
     # ------------------------------------
-    result = await db.execute(
-        select(Player).where(
-            Player.player_id.in_(player_ids)
+    async def _fetch_players():
+        result = await db.execute(
+            select(Player).where(Player.player_id.in_(player_ids))
         )
+        return {player.player_id: player for player in result.scalars()}
+
+    async def _fetch_ktc():
+        result = await db.execute(
+            select(KTCValue).where(KTCValue.player_id.in_(player_ids))
+        )
+        return {value.player_id: value for value in result.scalars()}
+
+    async def _fetch_fc():
+        result = await db.execute(
+            select(FantasyCalcValue).where(FantasyCalcValue.player_id.in_(player_ids))
+        )
+        return {value.player_id: value for value in result.scalars()}
+
+    async def _fetch_underdog():
+        result = await db.execute(
+            select(UnderdogADP)
+            .where(UnderdogADP.player_id.in_(player_ids))
+            .order_by(UnderdogADP.player_id, UnderdogADP.id.desc())
+        )
+        underdog_values: dict[str, UnderdogADP] = {}
+        for row in result.scalars():
+            if row.player_id not in underdog_values:
+                underdog_values[row.player_id] = row
+        return underdog_values
+
+    players, ktc_values, fc_values, underdog_values = await asyncio.gather(
+        _fetch_players(),
+        _fetch_ktc(),
+        _fetch_fc(),
+        _fetch_underdog(),
     )
-
-    players = {
-        player.player_id: player
-        for player in result.scalars()
-    }
-
-    # ------------------------------------
-    # KTC
-    # ------------------------------------
-    result = await db.execute(
-        select(KTCValue).where(
-            KTCValue.player_id.in_(player_ids)
-        )
-    )
-
-    ktc_values = {
-        value.player_id: value
-        for value in result.scalars()
-    }
-
-    # ------------------------------------
-    # FantasyCalc
-    # ------------------------------------
-    result = await db.execute(
-        select(FantasyCalcValue).where(
-            FantasyCalcValue.player_id.in_(player_ids)
-        )
-    )
-
-    fc_values = {
-        value.player_id: value
-        for value in result.scalars()
-    }
-
-    # ------------------------------------
-    # Latest Underdog ADP
-    # ------------------------------------
-    result = await db.execute(
-        select(UnderdogADP)
-        .where(
-            UnderdogADP.player_id.in_(player_ids)
-        )
-        .order_by(
-            UnderdogADP.player_id,
-            UnderdogADP.id.desc(),
-        )
-    )
-
-    underdog_values: dict[str, UnderdogADP] = {}
-
-    for row in result.scalars():
-        if row.player_id not in underdog_values:
-            underdog_values[row.player_id] = row
 
     # ------------------------------------
     # Redraft WAR lookup
