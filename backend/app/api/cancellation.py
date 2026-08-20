@@ -35,6 +35,8 @@ async def cancel_on_disconnect(request: Request):
     watcher = asyncio.create_task(watch_disconnect())
     try:
         yield
+    except asyncio.CancelledError:
+        logger.info("Request handler execution successfully aborted on client disconnect.")
     finally:
         watcher.cancel()
         try:
