@@ -36,7 +36,6 @@ class RookiePickWarAggregate:
 @dataclass
 class _SharedData:
     selections: list
-    players: list
     stat_seasons: list[int]
 
 
@@ -44,7 +43,23 @@ def _build_shared_cache_key(rounds: list[int]) -> str:
     return f"{SHARED_DATA_CACHE_KEY_PREFIX}:{'-'.join(str(r) for r in rounds)}"
 
 
+_SEL_PLAYER_ID = 0
+_SEL_SEASON = 1
+_SEL_ROUND = 2
+_SEL_ROUND_SLOT = 3
+
+
 def _sel_attr(selection, name: str):
+    if isinstance(selection, tuple):
+        idx = {
+            "player_id": _SEL_PLAYER_ID,
+            "season": _SEL_SEASON,
+            "round": _SEL_ROUND,
+            "round_slot": _SEL_ROUND_SLOT,
+        }.get(name)
+        if idx is not None:
+            return selection[idx]
+        return None
     if isinstance(selection, dict):
         return selection.get(name)
     return getattr(selection, name, None)
@@ -63,7 +78,6 @@ async def _load_shared_data(
             data = json.loads(cached)
             return _SharedData(
                 selections=data["selections"],
-                players=data["players"],
                 stat_seasons=data["stat_seasons"],
             )
 
@@ -80,36 +94,18 @@ async def _load_shared_data(
     )
     logger.info("rookie_war get_seasons took %.1fs", time.monotonic() - t0)
 
-    war_service = WARService()
-    t0 = time.monotonic()
-    players = await war_service.loader.get_players(
-        db,
-    )
-    logger.info("rookie_war get_players took %.1fs", time.monotonic() - t0)
-
     shared = _SharedData(
         selections=selections,
-        players=players,
         stat_seasons=stat_seasons,
     )
 
-    if redis is not None and selections and stat_seasons and players:
+    if redis is not None and selections and stat_seasons:
         cache_key = _build_shared_cache_key(rounds)
         await redis.set(
             cache_key,
             json.dumps(
                 {
-                    "selections": [
-                        {
-                            "id": getattr(s, "id", None),
-                            "player_id": getattr(s, "player_id", None),
-                            "season": getattr(s, "season", None),
-                            "round": getattr(s, "round", None),
-                            "round_slot": getattr(s, "round_slot", None),
-                        }
-                        for s in selections
-                    ],
-                    "players": players,
+                    "selections": selections,
                     "stat_seasons": stat_seasons,
                 },
                 default=str,
@@ -166,7 +162,9 @@ async def get_rookie_pick_war_values_by_key(
         return {}
 
     war_service = WARService()
-    players = shared.players
+    t0 = time.monotonic()
+    players = await war_service.loader.get_players(db)
+    logger.info("rookie_war get_players took %.1fs", time.monotonic() - t0)
 
     starter_war_by_player_id: dict[str, float] = defaultdict(float)
     roster_war_by_player_id: dict[str, float] = defaultdict(float)

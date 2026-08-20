@@ -118,22 +118,26 @@ async def get_historical_rookie_draft_selections(
     db: AsyncSession,
     *,
     rounds: list[int] | None = None,
-) -> list[DraftSelection]:
-    query = (
-        select(
-            DraftSelection,
-        )
-        .join(
-            League,
-            League.league_id == DraftSelection.league_id,
-        )
+) -> list[tuple[str, str, int, int]]:
+    subquery = (
+        select(League.league_id)
         .where(
             League.previous_league_id.is_not(None),
-            DraftSelection.player_id.is_not(None),
         )
-        .order_by(
-            DraftSelection.season.asc(),
-            DraftSelection.pick_no.asc(),
+        .correlate(DraftSelection)
+        .exists()
+    )
+
+    query = (
+        select(
+            DraftSelection.player_id,
+            DraftSelection.season,
+            DraftSelection.round,
+            DraftSelection.round_slot,
+        )
+        .where(
+            subquery,
+            DraftSelection.player_id.is_not(None),
         )
     )
 
@@ -146,12 +150,9 @@ async def get_historical_rookie_draft_selections(
         query,
     )
 
-    selections = result.scalars().all()
-
     return [
-        selection
-        for selection in selections
-        if selection.player_id is not None
+        (row.player_id, row.season, row.round, row.round_slot)
+        for row in result.all()
     ]
 
 
