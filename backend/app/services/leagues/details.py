@@ -729,12 +729,14 @@ class LeagueDetails:
             )
             war_position_history = await self.build_war_position_history(
                 db=db,
+                redis=redis,
                 league=league,
                 players=shared.players,
                 current_shared=shared,
             )
             war_player_history = await self.build_war_player_history(
                 db=db,
+                redis=redis,
                 league=league,
                 players=shared.players,
                 current_shared=shared,
@@ -1343,6 +1345,7 @@ class LeagueDetails:
         self,
         *,
         db: AsyncSession,
+        redis = None,
         league,
         players: dict,
         current_shared: WARSharedData,
@@ -1365,7 +1368,8 @@ class LeagueDetails:
                 },
             )
 
-            results = await self.war_service.calculate_with_data(
+            results = await self.war_service.calculate_with_shared_cache(
+                redis=redis,
                 league=season_league,
                 shared=WARSharedData(
                     players=players,
@@ -1383,7 +1387,8 @@ class LeagueDetails:
                 )
             )
 
-        current_results = await self.war_service.calculate_with_data(
+        current_results = await self.war_service.calculate_with_shared_cache(
+            redis=redis,
             league=league,
             shared=current_shared,
         )
@@ -1403,6 +1408,7 @@ class LeagueDetails:
         self,
         *,
         db: AsyncSession,
+        redis = None,
         league,
         players: dict,
         current_shared: WARSharedData,
@@ -1429,7 +1435,8 @@ class LeagueDetails:
                 },
             )
 
-            results = await self.war_service.calculate_with_data(
+            results = await self.war_service.calculate_with_shared_cache(
+                redis=redis,
                 league=season_league,
                 shared=WARSharedData(
                     players=players,
@@ -1450,7 +1457,8 @@ class LeagueDetails:
                     )
                 )
 
-        current_results = await self.war_service.calculate_with_data(
+        current_results = await self.war_service.calculate_with_shared_cache(
+            redis=redis,
             league=league,
             shared=current_shared,
         )
