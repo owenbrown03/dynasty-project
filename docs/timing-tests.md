@@ -2,7 +2,13 @@
 
 Reference guide for benchmarking and profiling the league details endpoint.
 
-For a repeatable click-through benchmark, use [`docs/timing_benchmark.py`](./timing_benchmark.py). It exercises dashboard -> details -> tiers in one run and fails on malformed responses or non-2xx status codes.
+For a repeatable benchmark, use [`docs/timing_benchmark.py`](./timing_benchmark.py). It supports:
+
+- `--mode clickthrough` for dashboard -> details -> tiers
+- `--mode site` for the broader read surface
+- `--mode overlap` for concurrent in-flight requests that mimic clicking away before the previous page finishes
+
+Pass `--flush-redis` to start each cycle cold on Redis. For a fully cold read, also restart the API so the in-memory caches clear.
 
 ## Endpoint
 
@@ -91,6 +97,7 @@ WAR LRU caches clear. Redis caches survive. Dashboard and league details respons
 ## Timing Test Protocol
 
 The scripted version of this sequence lives in [`docs/timing_benchmark.py`](./timing_benchmark.py).
+Run `python3 docs/timing_benchmark.py --mode overlap --flush-redis` to reproduce the concurrent click-through case.
 
 ### Cold request (no caches)
 

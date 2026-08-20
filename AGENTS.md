@@ -468,7 +468,7 @@ docker compose exec api python -c "..."
 docker compose exec db psql ...
 ```
 
-If you change dashboard/details/tiers request lifecycles, shared-cache behavior, or other heavy query paths, run [`docs/timing_benchmark.py`](docs/timing_benchmark.py) and compare the report against `docs/timing-tests.md`. Treat that script like a regression test fixture and update it alongside the code when the contract changes.
+If you change dashboard/details/tiers request lifecycles, shared-cache behavior, or other heavy query paths, run [`docs/timing_benchmark.py`](docs/timing_benchmark.py) and compare the report against `docs/timing-tests.md`. Use `--mode overlap --flush-redis` for the concurrent click-through case. Treat that script like a regression test fixture and update it alongside the code when the contract changes.
 
 Do not stop at static checks alone if the app stack is available. After backend, schema, auth, sync, or write-path changes, inspect recent API logs and confirm there are no new tracebacks or `500` responses related to the modified flow.
 
