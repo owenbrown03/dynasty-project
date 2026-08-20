@@ -6,6 +6,7 @@ import logging
 import time
 from collections.abc import Iterable
 
+from app.core.concurrency import heavy_work_semaphore
 from app.analytics.war.redraft.singleton import (
     war_service,
 )
@@ -241,16 +242,21 @@ async def calculate_war_by_league(
         leagues.keys(),
     )
 
+    sem = asyncio.Semaphore(4)
+
+    async def _task(league_id: str):
+        async with sem:
+            league = leagues[league_id]["league"]
+            return await war_service.calculate_with_shared_cache(
+                redis=redis,
+                league=league,
+                shared=shared_by_season[
+                    get_league_season(league)
+                ],
+            )
+
     tasks = [
-        war_service.calculate_with_shared_cache(
-            redis=redis,
-            league=leagues[league_id]["league"],
-            shared=shared_by_season[
-                get_league_season(
-                    leagues[league_id]["league"],
-                )
-            ],
-        )
+        _task(league_id)
         for league_id in league_ids
     ]
 
@@ -451,87 +457,88 @@ async def get_user_dashboard(
             )
             return json.loads(cached_payload)
 
-    t_rosters = time.monotonic()
-    all_rosters = await get_all_league_rosters(
-        db,
-        league_ids,
-    )
-    logger.info("Dashboard get_rosters took %.2fs", time.monotonic() - t_rosters)
+    async with heavy_work_semaphore:
+        t_rosters = time.monotonic()
+        all_rosters = await get_all_league_rosters(
+            db,
+            league_ids,
+        )
+        logger.info("Dashboard get_rosters took %.2fs", time.monotonic() - t_rosters)
 
-    t_shared = time.monotonic()
-    shared_by_season = (
-        await load_shared_war_data_by_season(
+        t_shared = time.monotonic()
+        shared_by_season = (
+            await load_shared_war_data_by_season(
+                db=db,
+                leagues=leagues,
+            )
+        )
+        logger.info("Dashboard load_shared took %.2fs", time.monotonic() - t_shared)
+
+        t_war = time.monotonic()
+        war_results_by_league_id = (
+            await calculate_war_by_league(
+                redis=redis,
+                leagues=leagues,
+                shared_by_season=shared_by_season,
+            )
+        )
+        logger.info("Dashboard calculate_war took %.2fs (%d leagues)", time.monotonic() - t_war, len(leagues))
+
+        t_parallel = time.monotonic()
+
+        player_maps_by_league_id_coro = build_player_maps_by_league(
             db=db,
-            leagues=leagues,
-        )
-    )
-    logger.info("Dashboard load_shared took %.2fs", time.monotonic() - t_shared)
-
-    t_war = time.monotonic()
-    war_results_by_league_id = (
-        await calculate_war_by_league(
             redis=redis,
+            site_user_id=site_user_id,
             leagues=leagues,
-            shared_by_season=shared_by_season,
+            all_rosters=all_rosters,
+            war_results_by_league_id=war_results_by_league_id,
         )
-    )
-    logger.info("Dashboard calculate_war took %.2fs (%d leagues)", time.monotonic() - t_war, len(leagues))
 
-    t_parallel = time.monotonic()
+        roster_construction_service = LeagueDetails()
 
-    player_maps_by_league_id_coro = build_player_maps_by_league(
-        db=db,
-        redis=redis,
-        site_user_id=site_user_id,
-        leagues=leagues,
-        all_rosters=all_rosters,
-        war_results_by_league_id=war_results_by_league_id,
-    )
+        async def _build_roster_construction():
+            sem = asyncio.Semaphore(10)
 
-    roster_construction_service = LeagueDetails()
+            async def _rc_task(league_id):
+                async with sem:
+                    async with AsyncSessionLocal() as task_db:
+                        league = leagues[league_id]["league"]
+                        league_rosters = all_rosters.get(league_id, [])
+                        current_shared = shared_by_season[get_league_season(league)]
+                        seasonal_results = await roster_construction_service.build_roster_construction_seasonal_results(
+                            db=task_db,
+                            league=league,
+                            players=current_shared.players,
+                            current_shared=current_shared,
+                        )
+                        return league_id, await build_cached_league_roster_construction_targets(
+                            redis=redis,
+                            league=league,
+                            roster_rows=league_rosters,
+                            seasonal_results=seasonal_results,
+                        )
+            results = await asyncio.gather(*[_rc_task(lid) for lid in leagues])
+            return dict(results)
 
-    async def _build_roster_construction():
-        sem = asyncio.Semaphore(10)
-
-        async def _rc_task(league_id):
-            async with sem:
-                async with AsyncSessionLocal() as task_db:
-                    league = leagues[league_id]["league"]
-                    league_rosters = all_rosters.get(league_id, [])
-                    current_shared = shared_by_season[get_league_season(league)]
-                    seasonal_results = await roster_construction_service.build_roster_construction_seasonal_results(
-                        db=task_db,
-                        league=league,
-                        players=current_shared.players,
-                        current_shared=current_shared,
-                    )
-                    return league_id, await build_cached_league_roster_construction_targets(
-                        redis=redis,
-                        league=league,
-                        roster_rows=league_rosters,
-                        seasonal_results=seasonal_results,
-                    )
-        results = await asyncio.gather(*[_rc_task(lid) for lid in leagues])
-        return dict(results)
-
-    finance_coro = build_dashboard_finance_metrics_by_league_id(
-        db=db,
-        redis=redis,
-        site_user_id=site_user_id,
-        owned_rows=[
-            (row.roster, row.league)
-            for row in selected_rows
-        ],
-    )
-
-    player_maps_by_league_id, roster_construction_targets_by_league_id, finance_metrics_by_league_id = (
-        await asyncio.gather(
-            player_maps_by_league_id_coro,
-            _build_roster_construction(),
-            finance_coro,
+        finance_coro = build_dashboard_finance_metrics_by_league_id(
+            db=db,
+            redis=redis,
+            site_user_id=site_user_id,
+            owned_rows=[
+                (row.roster, row.league)
+                for row in selected_rows
+            ],
         )
-    )
-    logger.info("Dashboard parallel phase took %.2fs", time.monotonic() - t_parallel)
+
+        player_maps_by_league_id, roster_construction_targets_by_league_id, finance_metrics_by_league_id = (
+            await asyncio.gather(
+                player_maps_by_league_id_coro,
+                _build_roster_construction(),
+                finance_coro,
+            )
+        )
+        logger.info("Dashboard parallel phase took %.2fs", time.monotonic() - t_parallel)
 
     t_cards = time.monotonic()
     league_cards = build_league_cards(
