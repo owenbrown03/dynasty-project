@@ -12,3 +12,9 @@
   overflow-y: auto;
   background: var(--color-canvas);
 }
+
+@media (max-width: 768px) {
+  .content {
+    padding: 16px;
+  }
+}

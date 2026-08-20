@@ -7,5 +7,5 @@ class SleeperConfig:
         self.rest_alt = settings.SLEEPER_REST_ALT
         self.graphql_url = settings.SLEEPER_GRAPHQL_URL
 
-        self.rate_limit_capacity = 10
-        self.rate_limit_refill = 10
+        self.rate_limit_capacity = 50
+        self.rate_limit_refill = 50

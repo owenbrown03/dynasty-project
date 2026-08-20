@@ -217,8 +217,11 @@ def get_transaction_weeks_to_fetch(
     curr_week: int,
 ) -> list[int]:
     """
-    Always re-fetch the current week because trades and waiver activity
-    can happen multiple times during the same NFL week.
+    Always re-fetch the current week and the previous week because
+    trades and waiver activity can happen multiple times during the
+    same NFL week, and Sleeper may process status changes (pending
+    → complete) with a delay that pushes them into the next week's
+    view.
 
     Also backfill any earlier weeks we have not seen yet.
     """
@@ -235,9 +238,18 @@ def get_transaction_weeks_to_fetch(
         )
     )
 
+    # Always re-fetch the current week.
     if curr_week not in missing_weeks:
         missing_weeks.append(
             curr_week,
+        )
+
+    # Always re-fetch the previous week so late-arriving
+    # transactions (e.g. status updates) are captured.
+    prev_week = curr_week - 1
+    if prev_week >= 1 and prev_week not in missing_weeks:
+        missing_weeks.append(
+            prev_week,
         )
 
     return sorted(
@@ -457,10 +469,16 @@ async def fetch_league_bundle(
         or needs_full_refresh(sync_state)
     )
 
+    recently_synced = (
+        sync_state is not None
+        and sync_state.last_synced_at is not None
+        and (datetime.now(UTC) - sync_state.last_synced_at) < timedelta(minutes=RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES)
+    )
+
     needs_refresh = (
         full_refresh_due
         or not was_synced_today(sync_state)
-    )
+    ) and not (recently_synced and not is_new)
 
     should_fetch_brackets = (
         getattr(

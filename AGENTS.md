@@ -472,6 +472,22 @@ Do not stop at static checks alone if the app stack is available. After backend,
 
 For sync-related changes, verify against the existing ingestion path rather than creating a second path around it.
 
+### Backend tests
+
+When adding or modifying business logic, write or update tests in `backend/tests/`. Run them from the repo root:
+
+```sh
+docker compose exec api python -m pytest tests/ -v
+```
+
+Run a specific test file:
+
+```sh
+docker compose exec api python -m pytest tests/test_transaction_week_fetch.py -v
+```
+
+Tests use plain pytest with no external test framework. Mock external services (Sleeper API, DB) with simple fakes or `monkeypatch` — see existing tests for patterns.
+
 You have permission to trigger real local backend API calls for verification when that is the most direct way to test a change. Prefer hitting the existing application endpoints over inventing ad hoc scripts when validating request, sync, and worker flows.
 
 ### Worker verification

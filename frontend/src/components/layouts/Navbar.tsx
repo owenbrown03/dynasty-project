@@ -5,11 +5,14 @@ import {
   useState,
 } from 'react';
 import { Link } from 'react-router';
+import { Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthContext } from '@/context/useAuthContext'
 import { useSleeperAuthContext } from '@/context/useSleeperAuthContext';
 import { useSettingsContext } from '@/context/useSettingsContext';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useMobileNav } from '@/hooks/useMobileNav';
 import { UserAvatar } from '@/components/users/UserAvatar';
 
 export const Navbar = () => {
@@ -20,6 +23,8 @@ export const Navbar = () => {
   const sleeperContext = useSleeperAuthContext();
   const settingsContext = useSettingsContext();
   const connection = useSleeperConnection();
+  const isMobile = useIsMobile();
+  const { toggle: toggleMobileNav } = useMobileNav();
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -45,6 +50,17 @@ export const Navbar = () => {
 
   return (
     <nav className="navbar">
+      {isMobile && (
+        <button
+          type="button"
+          className="navbar-hamburger"
+          onClick={toggleMobileNav}
+          aria-label="Toggle navigation"
+        >
+          <Menu size={20} />
+        </button>
+      )}
+
       <Link to="/" className="navbar-left navbar-brand-link">
         <div className="navbar-brand-mark">
           <span className="navbar-brand-d">D</span>

@@ -771,6 +771,7 @@
 @media (max-width: 620px) {
   .trades-tabs {
     flex-wrap: wrap;
+    width: 100%;
   }
 
   .trade-calculator-grid {
@@ -810,5 +811,9 @@
 
   .bulk-trade-row-details {
     grid-column: 1 / -1;
+  }
+
+  .trade-research-filter-grid {
+    grid-template-columns: 1fr;
   }
 }

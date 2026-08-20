@@ -620,6 +620,12 @@
   border-collapse: collapse;
 }
 
+@media (max-width: 768px) {
+  .available-players-table {
+    min-width: 700px;
+  }
+}
+
 .available-players-table th,
 .available-players-table td {
   border-bottom: 1px solid var(--color-border);
