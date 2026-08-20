@@ -1,3 +1,4 @@
+import asyncio
 import json
 from dataclasses import dataclass
 
@@ -223,6 +224,19 @@ class WARService:
         if cached_results is not None:
             return cached_results
 
+        return await asyncio.to_thread(
+            self._calculate_with_data_sync,
+            cache_key=cache_key,
+            league=league,
+            shared=shared,
+        )
+
+    def _calculate_with_data_sync(
+        self,
+        cache_key,
+        league,
+        shared: WARSharedData,
+    ):
         normalized = self._normalization_cache.get(
             cache_key,
         )
