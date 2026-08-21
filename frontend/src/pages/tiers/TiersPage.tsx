@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { Skeleton } from '@/components/feedback/Skeleton';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
@@ -198,6 +199,9 @@ export const TiersPage = () => {
             Visual player tiers across your current value systems, with
             canonical global WAR and optional league-context WAR.
           </p>
+          {tiers.fetching && !tiers.loading && (
+            <LoadingState label="Updating tier board..." inline className="tiers-refresh-indicator" />
+          )}
         </div>
 
         <div className="tiers-toolbar">

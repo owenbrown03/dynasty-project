@@ -9,6 +9,7 @@ import { useLocation } from 'react-router';
 import { useBootstrap } from '@/hooks/useBootstrap';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Skeleton } from '@/components/feedback/Skeleton';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import {
   useLeagueDetails,
   useLeagueOverview,
@@ -207,6 +208,9 @@ export const LeaguesPage = () => {
             Review roster strength, WAR distribution, and player composition for
             each synced league.
           </p>
+          {details.fetching && !details.loading && (
+            <LoadingState label="Updating league details..." inline className="leagues-refresh-indicator" />
+          )}
         </div>
       </section>
 

@@ -252,3 +252,10 @@
     gap: 8px;
   }
 }
+
+.tiers-refresh-indicator {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+

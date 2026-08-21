@@ -402,3 +402,10 @@
     font-size: 24px;
   }
 }
+
+.dashboard-refresh-indicator {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+

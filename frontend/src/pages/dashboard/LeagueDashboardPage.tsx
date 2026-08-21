@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 import { Skeleton } from '@/components/feedback/Skeleton';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { useLeagueDashboard } from '@/hooks/sleeper/useLeagues';
 import { DashboardLeagues } from './DashboardLeagues';
@@ -121,7 +122,7 @@ export const LeagueDashboardPage = () => {
     );
   }
 
-  if (dashboard.fetching) {
+  if (dashboard.loading) {
     return (
       <div className="dashboard-page">
         <section className="page-header dashboard-hero">
@@ -163,6 +164,9 @@ export const LeagueDashboardPage = () => {
           <p className="page-description">
             Review your leagues from one screen.
           </p>
+          {dashboard.fetching && !dashboard.loading && (
+            <LoadingState label="Updating dashboard data..." inline className="dashboard-refresh-indicator" />
+          )}
         </div>
 
         <div className="dashboard-hero-input">
