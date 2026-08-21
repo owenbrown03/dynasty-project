@@ -74,7 +74,13 @@ function DashboardSkeleton() {
 }
 
 export const LeagueDashboardPage = () => {
-  const dashboard = useLeagueDashboard();
+  const cheapDashboard = useLeagueDashboard(true);
+  const fullDashboard = useLeagueDashboard(false);
+
+  const displayData = fullDashboard.data ?? cheapDashboard.data;
+  const isLoading = cheapDashboard.loading;
+  const isFetching = fullDashboard.fetching;
+
   const connection = useSleeperConnection();
   const [input, setInput] = useState('');
 
@@ -122,7 +128,7 @@ export const LeagueDashboardPage = () => {
     );
   }
 
-  if (dashboard.loading) {
+  if (isLoading) {
     return (
       <div className="dashboard-page">
         <section className="page-header dashboard-hero">
@@ -164,7 +170,7 @@ export const LeagueDashboardPage = () => {
           <p className="page-description">
             Review your leagues from one screen.
           </p>
-          {dashboard.fetching && !dashboard.loading && (
+          {isFetching && !isLoading && (
             <LoadingState label="Updating dashboard data..." inline className="dashboard-refresh-indicator" />
           )}
         </div>
@@ -184,8 +190,8 @@ export const LeagueDashboardPage = () => {
       </section>
 
       <div className="dashboard-container">
-        {dashboard.data ? (
-          <DashboardLeagues leagues={dashboard.data.leagues} />
+        {displayData ? (
+          <DashboardLeagues leagues={displayData.leagues} />
         ) : (
           <p className="no-results-text">
             No league dashboard found.

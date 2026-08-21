@@ -55,8 +55,9 @@ export const queryKeys = {
       ] as const,
     dashboard: (
       username: string | null | undefined,
+      cheap = false,
     ) =>
-      ['league-dashboard', username ?? null] as const,
+      ['league-dashboard', username ?? null, cheap] as const,
   },
 
   drafts: {

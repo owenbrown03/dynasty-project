@@ -451,6 +451,7 @@ export interface DashboardLeague {
 
 export interface Dashboard {
   leagues: DashboardLeague[];
+  is_cheap_data?: boolean;
 }
 
 export type ValueBasis =

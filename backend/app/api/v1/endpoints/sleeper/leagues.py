@@ -81,6 +81,7 @@ async def dashboard_endpoint(
     username: str,
     ctx: ContextDep,
     background_tasks: BackgroundTasks,
+    cheap: bool = False,
 ):
     async with cancel_on_disconnect(request):
         site_user_id = (
@@ -94,6 +95,7 @@ async def dashboard_endpoint(
             ctx.sleeper,
             username,
             site_user_id=site_user_id,
+            cheap=cheap,
         )
         background_tasks.add_task(
             _prefetch_trade_signals,

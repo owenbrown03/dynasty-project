@@ -155,12 +155,13 @@ export function useLeagueDetails(league_id?: string) {
 }
 
 
-export function useLeagueDashboard() {
+export function useLeagueDashboard(cheap = false) {
   const { username } = useSleeperConnection();
 
   const query = useQuery<Dashboard>({
     queryKey: queryKeys.leagues.dashboard(
       username,
+      cheap,
     ),
     queryFn: async ({ signal }) => {
       if (!username) {
@@ -168,7 +169,7 @@ export function useLeagueDashboard() {
       }
 
       return api.leagues
-        .getDashboard(username, signal)
+        .getDashboard(username, cheap, signal)
         .then(res => res.data);
     },
     enabled: !!username,
