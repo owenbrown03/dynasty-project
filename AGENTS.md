@@ -620,13 +620,29 @@ When possible, prefer non-disruptive alternatives such as inspecting logs, relyi
 
 ## Automated Git Operations
 
-Agents may, when explicitly prompted by the user, perform the following GitHub workflow actions:
+### Branching and committing
 
-- Create a commit with the current changes.
-- Push the commit to the remote repository.
-- Open a pull request (PR) from the current branch to the target branch.
-- Optionally create a linked GitHub issue that references the PR.
-- After the PR checks pass, merge the PR automatically.
-- Agents may create commits and new branches automatically as needed.
+- All edits must be made on a **new branch**, never directly on `main`.
+- Agents are free to create branches and commit to them at will — no approval needed.
+- Branch names should be short and descriptive (e.g. `fix/disconnect-error`, `feat/coverage-ci`).
 
-These operations should **only** be executed after the user explicitly asks the agent to do so. The agent must not perform any Git actions automatically without a clear user request.
+### Pushing, pull requests, and merging
+
+- **Always ask the user before pushing**, opening a PR, or merging.
+- After the user approves, the agent may:
+  - Push the branch to origin.
+  - Open a pull request via `gh pr create`.
+  - Monitor CI checks and report results.
+  - Merge the PR via `gh pr merge` once all checks pass — but only after the user has already given approval for the push/PR step.
+- Do not push, open a PR, or merge without explicit user approval for that specific action.
+
+### Testing after changes
+
+- After any significant backend change (endpoints, services, CRUD, models, deps, workers), run the test suite before committing:
+
+```sh
+docker compose exec api bash -c "cd /workspace && PYTHONPATH=backend pytest -q"
+```
+
+- Confirm all tests pass. If any fail, fix them before committing or reporting the change as done.
+- For minor changes (comments, log messages, formatting), tests are optional but encouraged.
