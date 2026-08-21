@@ -38,6 +38,9 @@ export type FinanceTimelinePoint = {
 export function formatCurrency(
   value: number,
 ) {
+  const rounded = Math.round(value);
+  const normalizedValue = Object.is(rounded, -0) || rounded === 0 ? 0 : value;
+
   return new Intl.NumberFormat(
     'en-US',
     {
@@ -45,7 +48,7 @@ export function formatCurrency(
       currency: 'USD',
       maximumFractionDigits: 0,
     },
-  ).format(value);
+  ).format(normalizedValue);
 }
 
 export function ordinal(
