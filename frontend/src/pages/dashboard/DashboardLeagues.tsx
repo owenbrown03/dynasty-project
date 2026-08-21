@@ -55,7 +55,10 @@ function formatCurrency(
     return '—';
   }
 
-  return value.toLocaleString(undefined, {
+  const rounded = Math.round(value);
+  const normalizedValue = Object.is(rounded, -0) || rounded === 0 ? 0 : value;
+
+  return normalizedValue.toLocaleString(undefined, {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,

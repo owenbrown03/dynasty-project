@@ -103,3 +103,16 @@ def test_display_models_use_isolated_list_defaults():
     )
 
     assert display_txn.users == []
+
+
+def test_nfl_state_effective_week():
+    from app.integrations.sleeper.schemas.api import NFLState
+
+    # Regular season uses the actual week
+    reg_state = NFLState(season="2026", week=3, season_type="regular")
+    assert reg_state.effective_week == 3
+
+    # Pre-season maps to Week 1
+    pre_state = NFLState(season="2026", week=2, season_type="pre")
+    assert pre_state.effective_week == 1
+

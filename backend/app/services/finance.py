@@ -1334,10 +1334,14 @@ async def build_dashboard_finance_metrics_by_league_id(
                     roster.roster_id,
                 )
             )
+            if league.status in {"in_season", "post_season"}
+            else finish_place
         )
-
-        if projected_finish_place is None:
-            projected_finish_place = finish_place or rank
+        if (
+            projected_finish_place is None
+            and league.status == "complete"
+        ):
+            projected_finish_place = rank
 
         configured_winnings_amount = (
             payout_for_rank(
@@ -1358,6 +1362,7 @@ async def build_dashboard_finance_metrics_by_league_id(
             if projected_finish_place is not None
             else []
         )
+
         expected_winnings_amount = (
             calculate_expected_winnings_from_seed(
                 payout_structure=resolved["payout_structure"],
@@ -1365,7 +1370,7 @@ async def build_dashboard_finance_metrics_by_league_id(
                 total_rosters=league.total_rosters,
                 playoff_teams=league.playoff_teams,
             )
-            if projected_finish_place is not None
+            if league.status in {"in_season", "post_season"}
             else None
         )
 
@@ -1393,6 +1398,7 @@ async def build_dashboard_finance_metrics_by_league_id(
                 playoff_teams=league.playoff_teams,
                 rank=projected_finish_place,
             )
+
 
         metrics_by_league_id[league.league_id] = {
             "projected_payout": round(

@@ -221,9 +221,7 @@ export const SettingsModal = () => {
         },
       );
 
-      await queryClient.invalidateQueries({
-        queryKey: BOOTSTRAP_QUERY_KEY,
-      });
+      await queryClient.invalidateQueries();
       notify.success('Draft pick projection settings saved.');
     },
     onError: () => {
@@ -248,9 +246,7 @@ export const SettingsModal = () => {
         },
       );
 
-      await queryClient.invalidateQueries({
-        queryKey: BOOTSTRAP_QUERY_KEY,
-      });
+      await queryClient.invalidateQueries();
       notify.success('WAR value settings saved.');
     },
     onError: () => {
@@ -275,9 +271,7 @@ export const SettingsModal = () => {
         },
       );
 
-      await queryClient.invalidateQueries({
-        queryKey: BOOTSTRAP_QUERY_KEY,
-      });
+      await queryClient.invalidateQueries();
       notify.success('Finance projection settings saved.');
     },
     onError: () => {

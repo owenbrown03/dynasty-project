@@ -65,7 +65,7 @@ async def sync_user_data(db: AsyncSession, sleeper: SleeperClient, username: str
     user_id = await get_userid_by_username(db, sleeper, username)
     state = await sleeper.read.get_nfl_state()
     current_season = int(state.season)
-    curr_week = max(int(state.week), 1)
+    curr_week = state.effective_week if hasattr(state, "effective_week") else max(int(state.week), 1)
 
     seasons = list(range(
         current_season,
