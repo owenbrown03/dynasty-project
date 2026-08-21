@@ -3,6 +3,7 @@ import type {
 } from '@/types';
 import { formatNumber } from '@/utils/format';
 import {
+  effectiveFinanceNet,
   financeResultLabel,
   formatCurrency,
   projectionSourceLabel,
@@ -48,7 +49,7 @@ export function FinanceSeasonCard({
 
         <div className="finance-card-net">
           <span>Net</span>
-          <strong>{formatCurrency(entry.net_amount)}</strong>
+          <strong>{formatCurrency(effectiveFinanceNet(entry))}</strong>
         </div>
       </header>
 

@@ -1327,14 +1327,15 @@ async def build_dashboard_finance_metrics_by_league_id(
             if league.status == "complete"
             else None
         )
-        projected_finish_place = (
-            projected_seed_by_league_roster.get(
-                (
-                    league.league_id,
-                    roster.roster_id,
-                )
+        projected_finish_place = projected_seed_by_league_roster.get(
+            (
+                league.league_id,
+                roster.roster_id,
             )
         )
+        # Only treat a seed as a genuine projection if it came from the
+        # WAR-based projection pipeline. Raw standings rank is not a projection.
+        has_genuine_projection = projected_finish_place is not None
 
         if projected_finish_place is None:
             projected_finish_place = finish_place or rank
@@ -1358,6 +1359,7 @@ async def build_dashboard_finance_metrics_by_league_id(
             if projected_finish_place is not None
             else []
         )
+        # Only use seed-probability calculation when projection is genuine
         expected_winnings_amount = (
             calculate_expected_winnings_from_seed(
                 payout_structure=resolved["payout_structure"],
@@ -1365,7 +1367,11 @@ async def build_dashboard_finance_metrics_by_league_id(
                 total_rosters=league.total_rosters,
                 playoff_teams=league.playoff_teams,
             )
-            if projected_finish_place is not None
+            if (
+                has_genuine_projection
+                and league.status in {"in_season", "post_season"}
+                and projected_finish_place is not None
+            )
             else None
         )
 
@@ -1373,9 +1379,27 @@ async def build_dashboard_finance_metrics_by_league_id(
             projected_winnings_amount = expected_winnings_amount
         elif (
             league.status in {"in_season", "post_season"}
-            and projected_finish_place is None
+            and not has_genuine_projection
         ):
-            projected_winnings_amount = 0.0
+            # No projection available — fall back through the same cascade
+            # as get_finance_summary: configured place → historical → heuristic
+            if configured_winnings_amount is not None:
+                projected_winnings_amount = round(
+                    configured_winnings_amount,
+                    2,
+                )
+            elif historical_payouts:
+                projected_winnings_amount = round(
+                    mean(historical_payouts),
+                    2,
+                )
+            else:
+                projected_winnings_amount = calculate_projected_winnings(
+                    buy_in_amount=resolved["buy_in_amount"],
+                    total_rosters=league.total_rosters,
+                    playoff_teams=league.playoff_teams,
+                    rank=projected_finish_place,
+                )
         elif configured_winnings_amount is not None:
             projected_winnings_amount = round(
                 configured_winnings_amount,
