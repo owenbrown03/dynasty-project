@@ -646,3 +646,15 @@ docker compose exec api bash -c "cd /workspace && PYTHONPATH=backend pytest -q"
 
 - Confirm all tests pass. If any fail, fix them before committing or reporting the change as done.
 - For minor changes (comments, log messages, formatting), tests are optional but encouraged.
+
+## GitHub Issues
+
+GitHub Issues are the source of truth for tracking bugs, features, and tasks in this repository.
+
+### Working with Issues
+
+- Check open issues first: `gh issue list --state open`
+- When you are fixing a GitHub issue, always reference the issue number in your branch name (e.g. `fix/150-finance-projections`).
+- In your commit messages and PR descriptions/comments, include closing keywords referencing the issue (e.g., `Closes #150` or `Fixes #150`). This allows GitHub to automatically close the issue once the PR is merged into `main`.
+- If you find a new bug or have a feature task, you can create a new issue using `gh issue create`.
+
