@@ -211,6 +211,14 @@ class TrendingPlayer(Base):
 class NFLState(Base):
     season: str
     week: int
+    season_type: str = "regular"
+
+    @property
+    def effective_week(self) -> int:
+        if self.season_type == "pre":
+            return 1
+        return max(self.week, 1)
+
 
 class ProjectionStats(Base):
     gp: float = FANTASY_GAMES_PER_SEASON

@@ -635,10 +635,7 @@ async def sync_recent_drop_activity(
         return False
 
     state = await sleeper.read.get_nfl_state()
-    curr_week = max(
-        int(state.week),
-        1,
-    )
+    curr_week = state.effective_week if hasattr(state, "effective_week") else max(int(state.week), 1)
 
     await sync_transactions_for_known_leagues(
         db=db,

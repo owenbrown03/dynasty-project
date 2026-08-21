@@ -44,7 +44,7 @@ async def sync_leaguemates(
 ):
     state = await sleeper.read.get_nfl_state()
     season = state.season
-    curr_week = state.week
+    curr_week = state.effective_week if hasattr(state, "effective_week") else max(int(state.week), 1)
 
     main_user_id = await get_userid_by_username(db, sleeper, username)
     lm_ids = await get_leaguemate_ids(db, main_user_id)
