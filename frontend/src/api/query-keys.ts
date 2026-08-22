@@ -83,7 +83,8 @@ export const queryKeys = {
   trades: {
     signals: (
       username: string | null | undefined,
-    ) => ['trade-signals', username ?? null] as const,
+      cheap = false,
+    ) => ['trade-signals', username ?? null, cheap] as const,
     bulkPlayerSearch: (query: string) =>
       ['bulk-trade-player-search', query] as const,
     bulkAvailability: (

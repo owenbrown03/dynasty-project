@@ -42,6 +42,32 @@ async def get_player_map(
     return _PLAYER_MAP_CACHE
 
 
+async def get_player_map_for_ids(
+    db,
+    player_ids: list[str],
+) -> dict[str, dict]:
+    global _PLAYER_MAP_CACHE
+
+    if _PLAYER_MAP_CACHE is not None:
+        return _PLAYER_MAP_CACHE
+
+    if not player_ids:
+        return {}
+
+    result = await db.execute(
+        select(
+            Player,
+        ).where(Player.player_id.in_(player_ids))
+    )
+
+    players = result.scalars().all()
+
+    return {
+        player.player_id: player.model_dump()
+        for player in players
+    }
+
+
 _PLAYER_SNAPSHOT_CACHE: dict[str, dict[str, Any]] = {}
 
 async def get_analytics_player_map(db: AsyncSession,) -> dict[str, dict[str, Any]]:

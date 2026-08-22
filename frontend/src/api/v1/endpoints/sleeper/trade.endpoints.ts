@@ -19,11 +19,15 @@ export const tradeEndpoints = (
 
   getTradeSignals: (
     username: string,
+    cheap = false,
     signal?: AbortSignal,
   ) =>
     client.get<Transaction[]>(
       `${prefix}/${username}/trade-signals`,
-      { signal },
+      {
+        params: { cheap },
+        signal,
+      },
     ),
 
   searchBulkPlayers: (

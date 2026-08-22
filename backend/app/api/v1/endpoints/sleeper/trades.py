@@ -34,6 +34,7 @@ router = APIRouter()
 async def get_trade_signals_endpoint(
     username: str,
     ctx: ContextDep,
+    cheap: bool = False,
 ):
     return await get_trade_signals(
         ctx.db,
@@ -41,6 +42,7 @@ async def get_trade_signals_endpoint(
         username,
         site_user_id=ctx.site_user.id if ctx.site_user else None,
         redis=ctx.redis,
+        cheap=cheap,
     )
 
 @router.post("/{username}/sync-leaguemates")
