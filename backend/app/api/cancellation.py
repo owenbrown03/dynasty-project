@@ -37,6 +37,7 @@ async def cancel_on_disconnect(request: Request):
         yield
     except asyncio.CancelledError:
         logger.info("Request handler execution successfully aborted on client disconnect.")
+        raise
     finally:
         watcher.cancel()
         try:

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { Skeleton } from '@/components/feedback/Skeleton';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
@@ -170,11 +171,23 @@ export const TiersPage = () => {
     || debouncedLeagueId.length > 0
   );
 
-  const tiers = usePlayerTiers(
+  const cheapTiers = usePlayerTiers(
     effectiveValueBasis,
     effectiveLeagueId,
     canRequestBoard,
+    true,
   );
+  const fullTiers = usePlayerTiers(
+    effectiveValueBasis,
+    effectiveLeagueId,
+    canRequestBoard,
+    false,
+  );
+
+  const displayData = fullTiers.data ?? cheapTiers.data;
+  const isLoading = cheapTiers.loading;
+  const isFetching = fullTiers.fetching;
+  const hasError = fullTiers.error || cheapTiers.error;
 
   const selectedLeagueName = useMemo(
     () =>
@@ -186,7 +199,7 @@ export const TiersPage = () => {
       leagueOverview.data,
     ],
   );
-  const tierBoard = tiers.data;
+  const tierBoard = displayData;
 
   return (
     <div className="tiers-page">
@@ -198,6 +211,9 @@ export const TiersPage = () => {
             Visual player tiers across your current value systems, with
             canonical global WAR and optional league-context WAR.
           </p>
+          {isFetching && !isLoading && (
+            <LoadingState label="Updating tier board..." inline className="tiers-refresh-indicator" />
+          )}
         </div>
 
         <div className="tiers-toolbar">
@@ -308,7 +324,7 @@ export const TiersPage = () => {
       }
 
       {
-        canRequestBoard && tiers.loading
+        canRequestBoard && isLoading
           ? (
             <TierBoardSkeleton />
           )
@@ -316,7 +332,7 @@ export const TiersPage = () => {
       }
 
       {
-        canRequestBoard && !tiers.loading && tiers.error
+        canRequestBoard && !isLoading && hasError
           ? (
             <div className="tiers-empty-state">
               Unable to load the tier board.

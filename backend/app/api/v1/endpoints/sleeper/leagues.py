@@ -53,6 +53,7 @@ async def details_endpoint(
     request: Request,
     league_id: str,
     ctx: ContextDep,
+    cheap: bool = False,
 ):
     async with cancel_on_disconnect(request):
         return await LeagueDetails().get_league_details(
@@ -73,6 +74,7 @@ async def details_endpoint(
                     ctx.session,
                 )
             ),
+            cheap=cheap,
         )
 
 @router.get("/dashboard/{username}")
@@ -81,6 +83,7 @@ async def dashboard_endpoint(
     username: str,
     ctx: ContextDep,
     background_tasks: BackgroundTasks,
+    cheap: bool = False,
 ):
     async with cancel_on_disconnect(request):
         site_user_id = (
@@ -94,6 +97,7 @@ async def dashboard_endpoint(
             ctx.sleeper,
             username,
             site_user_id=site_user_id,
+            cheap=cheap,
         )
         background_tasks.add_task(
             _prefetch_trade_signals,

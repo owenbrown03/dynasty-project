@@ -14,6 +14,7 @@ export function usePlayerTiers(
   valueBasis: ValueBasis,
   leagueId?: string,
   enabled: boolean = true,
+  cheap = false,
 ) {
   const bootstrap = useBootstrap();
   const connection = useSleeperConnection();
@@ -28,12 +29,14 @@ export function usePlayerTiers(
       valueBasis,
       leagueId,
       viewerKey,
+      cheap,
     ),
     queryFn: async ({ signal }) => {
       return api.players
         .getTiers(
           valueBasis,
           leagueId,
+          cheap,
           signal,
         )
         .then((res) => res.data);

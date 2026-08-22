@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Wallet } from 'lucide-react';
 
 import { Skeleton } from '@/components/feedback/Skeleton';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import {
   useFinanceSummary,
@@ -396,6 +397,9 @@ export function FinancePage() {
             Set global defaults once, bulk-apply league-specific settings where
             needed, and only use season overrides when a year was different.
           </p>
+          {finance.fetching && !finance.loading && (
+            <LoadingState label="Updating finance data..." inline className="finance-refresh-indicator" />
+          )}
         </div>
       </section>
 

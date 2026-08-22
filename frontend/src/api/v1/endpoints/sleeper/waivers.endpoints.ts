@@ -22,6 +22,7 @@ export const waiversEndpoints = (
 ) => ({
   getOverview: (
     valueBasis: ValueBasis,
+    cheap = false,
     signal?: AbortSignal,
   ) => {
     return client.get<WaiverOverviewResponse>(
@@ -29,6 +30,7 @@ export const waiversEndpoints = (
       {
         params: {
           value_basis: valueBasis,
+          cheap,
         },
         signal,
       },
@@ -40,6 +42,7 @@ export const waiversEndpoints = (
     page: number,
     pageSize: number,
     sortBy: 'value' | 'recency',
+    cheap = false,
     signal?: AbortSignal,
   ) => {
     return client.get<WaiverRecentlyDroppedResponse>(
@@ -50,6 +53,7 @@ export const waiversEndpoints = (
           page,
           page_size: pageSize,
           sort_by: sortBy,
+          cheap,
         },
         signal,
       },

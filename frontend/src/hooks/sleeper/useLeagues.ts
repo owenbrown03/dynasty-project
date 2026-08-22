@@ -121,7 +121,7 @@ export function useLeagueVisibility() {
 }
 
 
-export function useLeagueDetails(league_id?: string) {
+export function useLeagueDetails(league_id?: string, cheap = false) {
   const bootstrap = useBootstrap();
   const viewerKey =
     buildLeagueDetailsViewerKey(
@@ -132,6 +132,7 @@ export function useLeagueDetails(league_id?: string) {
     queryKey: queryKeys.leagues.details(
       league_id,
       viewerKey,
+      cheap,
     ),
 
     queryFn: async ({ signal }) => {
@@ -140,7 +141,7 @@ export function useLeagueDetails(league_id?: string) {
       }
 
       return api.leagues
-        .getDetails(league_id, signal)
+        .getDetails(league_id, cheap, signal)
         .then(res => res.data);
     },
 
@@ -155,12 +156,13 @@ export function useLeagueDetails(league_id?: string) {
 }
 
 
-export function useLeagueDashboard() {
+export function useLeagueDashboard(cheap = false) {
   const { username } = useSleeperConnection();
 
   const query = useQuery<Dashboard>({
     queryKey: queryKeys.leagues.dashboard(
       username,
+      cheap,
     ),
     queryFn: async ({ signal }) => {
       if (!username) {
@@ -168,7 +170,7 @@ export function useLeagueDashboard() {
       }
 
       return api.leagues
-        .getDashboard(username, signal)
+        .getDashboard(username, cheap, signal)
         .then(res => res.data);
     },
     enabled: !!username,

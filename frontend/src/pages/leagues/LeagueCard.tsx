@@ -291,6 +291,7 @@ export function LeagueCard({
                 draftPickProjectionSummary={league.draft_pick_projection_summary}
                 valueBasis={rosterSortBasis}
                 warValueSettings={warValueSettings}
+                isCheap={!!league.is_cheap_data}
               />
         ))}
       </div>

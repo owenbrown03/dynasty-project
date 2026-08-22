@@ -114,6 +114,7 @@ async def load_player_values_for_basis(
     war_value_settings: WarValueSettings | None = None,
     league=None,
     season: int,
+    cheap: bool = False,
 ) -> list[PlayerValue]:
     supported_player_ids = await get_supported_player_ids(
         db,
@@ -122,7 +123,11 @@ async def load_player_values_for_basis(
     if not supported_player_ids:
         return []
 
-    if value_basis in {
+    effective_basis = value_basis
+    if cheap and value_basis not in {ValueBasis.KTC, ValueBasis.FANTASYCALC}:
+        effective_basis = ValueBasis.KTC
+
+    if effective_basis in {
         ValueBasis.KTC,
         ValueBasis.FANTASYCALC,
     }:
@@ -262,6 +267,7 @@ async def get_player_tier_board(
     ctx: Context,
     value_basis: ValueBasis,
     league_id: str | None = None,
+    cheap: bool = False,
 ) -> PlayerTierBoardResponse:
     season = await get_latest_projection_season(
         ctx.db,
@@ -313,6 +319,7 @@ async def get_player_tier_board(
         else None,
         league=league,
         season=effective_season,
+        cheap=cheap,
     )
     war_value_settings = (
         ctx.site_user.settings.get("war_value_settings")
@@ -325,10 +332,14 @@ async def get_player_tier_board(
         ctx=ctx,
     )
 
+    effective_value_basis = value_basis
+    if cheap and value_basis not in {ValueBasis.KTC, ValueBasis.FANTASYCALC}:
+        effective_value_basis = ValueBasis.KTC
+
     for player in player_values:
         selected_value = get_player_value(
             player,
-            value_basis,
+            effective_value_basis,
             war_value_settings,
         )
 
@@ -427,4 +438,5 @@ async def get_player_tier_board(
             tier_groups[label]
             for label in TIER_LABELS
         ],
+        is_cheap_data=cheap,
     )

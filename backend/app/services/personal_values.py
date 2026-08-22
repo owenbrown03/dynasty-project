@@ -341,15 +341,43 @@ def _subtract_metric(
 
 def _lookup_curve_value(
     *,
-    curve_rows_by_position: dict[str, list[PersonalRankCurve]],
+    curve_rows_by_position: dict,
     position: str,
     position_rank: int,
 ) -> _CurveValue | None:
-    rows = curve_rows_by_position.get(position, [])
-
-    if not rows:
+    pos_data = curve_rows_by_position.get(position)
+    if not pos_data:
         return None
 
+    if isinstance(pos_data, tuple):
+        lookup, pos_rows, ranks = pos_data
+        
+        # 1. Fast exact-match lookup (O(1))
+        val = lookup.get(position_rank)
+        if val is not None:
+            return val
+            
+        # 2. Binary search fallback for closest rank (O(log N))
+        import bisect
+        idx = bisect.bisect_left(ranks, position_rank)
+        if idx == 0:
+            best = pos_rows[0]
+        elif idx == len(pos_rows):
+            best = pos_rows[-1]
+        else:
+            before = pos_rows[idx - 1]
+            after = pos_rows[idx]
+            if abs(before.rank_value - position_rank) <= abs(after.rank_value - position_rank):
+                best = before
+            else:
+                best = after
+        return _CurveValue(
+            redraft_starter_war=best.avg_redraft_starter_war,
+            redraft_roster_war=best.avg_redraft_roster_war,
+        )
+
+    # Legacy O(N) fallback path
+    rows = pos_data
     best = min(
         rows,
         key=lambda row: abs(
@@ -363,9 +391,10 @@ def _lookup_curve_value(
     )
 
 
+
 def _weighted_redraft_values(
     *,
-    curve_rows_by_position: dict[str, list[PersonalRankCurve]],
+    curve_rows_by_position: dict,
     position: str,
     outcomes,
 ) -> _CurveValue | None:
@@ -416,7 +445,7 @@ def _compute_custom_metrics(
     age: float | None,
     seasons: list[PersonalProjectionSeasonItem],
     current_season: int,
-    curve_rows_by_position: dict[str, list[PersonalRankCurve]],
+    curve_rows_by_position: dict,
 ) -> PersonalValueMetrics:
     current_projection = next(
         (
@@ -756,7 +785,7 @@ def _build_projection_context(
     default_position_rank: int | None,
     saved_projections,
     outcomes_by_projection_id: dict[int, list],
-    curve_rows_by_position: dict[str, list[PersonalRankCurve]],
+    curve_rows_by_position: dict,
 ) -> _ProjectionContext:
     seasons = _merge_saved_projection_seasons(
         base_season=base_season,
@@ -848,6 +877,18 @@ async def hydrate_personal_player_values(
         db=db,
         league=league,
     )
+    optimized_curve_lookup = {}
+    for pos, pos_rows in curve_rows_by_position.items():
+        if not pos_rows:
+            continue
+        lookup = {}
+        for row in pos_rows:
+            lookup[row.rank_value] = _CurveValue(
+                redraft_starter_war=row.avg_redraft_starter_war,
+                redraft_roster_war=row.avg_redraft_roster_war,
+            )
+        optimized_curve_lookup[pos] = (lookup, pos_rows, [r.rank_value for r in pos_rows])
+
     outcomes_by_projection_id = await get_personal_projection_outcomes(
         db=db,
         projection_ids=[
@@ -888,7 +929,7 @@ async def hydrate_personal_player_values(
                 [],
             ),
             outcomes_by_projection_id=outcomes_by_projection_id,
-            curve_rows_by_position=curve_rows_by_position,
+            curve_rows_by_position=optimized_curve_lookup,
         )
         hydrated_values.append(
             player.model_copy(

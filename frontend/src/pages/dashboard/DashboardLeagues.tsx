@@ -9,8 +9,11 @@ import {
   getValueBasisLabel,
 } from '@/utils/valueBasis';
 
+import { Skeleton } from '@/components/feedback/Skeleton';
+
 interface Props {
   leagues: DashboardLeague[];
+  isCheap?: boolean;
 }
 
 function formatLeagueRecord(
@@ -67,6 +70,7 @@ function formatCurrency(
 
 export function DashboardLeagues({
   leagues,
+  isCheap = false,
 }: Props) {
   const navigate = useNavigate();
   const valuePreference = useValuePreference();
@@ -141,37 +145,58 @@ export function DashboardLeagues({
               <div className="portfolio-league-metric">
                 <span>Projected payout</span>
                 <strong>
-                  {formatCurrency(league.projected_payout)}
+                  {isCheap && league.projected_payout == null ? (
+                    <Skeleton variant="text" width="48px" height="14px" />
+                  ) : (
+                    formatCurrency(league.projected_payout)
+                  )}
                 </strong>
                 <small>
-                  {league.projected_seed
-                    ? `Seed ${formatOrdinal(league.projected_seed)}`
-                    : 'No seed yet'}
+                  {isCheap && league.projected_seed == null ? (
+                    <Skeleton variant="text" width="36px" height="10px" />
+                  ) : league.projected_seed ? (
+                    `Seed ${formatOrdinal(league.projected_seed)}`
+                  ) : (
+                    'No seed yet'
+                  )}
                 </small>
               </div>
 
               <div className="portfolio-league-metric">
                 <span>Construction</span>
                 <strong>
-                  {league.roster_construction_alignment_pct != null
-                    ? `${league.roster_construction_alignment_pct.toFixed(0)}%`
-                    : '—'}
+                  {isCheap && league.roster_construction_alignment_pct == null ? (
+                    <Skeleton variant="text" width="40px" height="14px" />
+                  ) : league.roster_construction_alignment_pct != null ? (
+                    `${league.roster_construction_alignment_pct.toFixed(0)}%`
+                  ) : (
+                    '—'
+                  )}
                 </strong>
                 <small>
-                  {league.roster_construction_moves_needed != null
-                    ? `${league.roster_construction_moves_needed} move${
-                      league.roster_construction_moves_needed === 1
-                        ? ''
-                        : 's'
+                  {isCheap && league.roster_construction_moves_needed == null ? (
+                    <Skeleton variant="text" width="52px" height="10px" />
+                  ) : league.roster_construction_moves_needed != null ? (
+                    `${league.roster_construction_moves_needed} move${
+                      league.roster_construction_moves_needed === 1 ? '' : 's'
                     } off`
-                    : 'Unavailable'}
+                  ) : (
+                    'Unavailable'
+                  )}
                 </small>
               </div>
 
               <div className="portfolio-league-metric">
                 <span>{selectedLabel}</span>
                 <strong>
-                  {
+                  {isCheap &&
+                  getDashboardLeagueSelectedValue(
+                    league,
+                    valuePreference.preference,
+                    bootstrap?.war_value_settings,
+                  ) == null ? (
+                    <Skeleton variant="text" width="56px" height="14px" />
+                  ) : (
                     getDashboardLeagueSelectedValue(
                       league,
                       valuePreference.preference,
@@ -190,32 +215,50 @@ export function DashboardLeagues({
                           : 2
                       ),
                     }) ?? '—'
-                  }
+                  )}
                 </strong>
                 <small>
-                  {
-                    getDashboardLeagueSelectedRank(
+                  {isCheap &&
+                  getDashboardLeagueSelectedRank(
+                    league,
+                    valuePreference.preference,
+                    bootstrap?.war_value_settings,
+                  ) == null ? (
+                    <Skeleton variant="text" width="28px" height="10px" />
+                  ) : getDashboardLeagueSelectedRank(
+                    league,
+                    valuePreference.preference,
+                    bootstrap?.war_value_settings,
+                  ) ? (
+                    `#${getDashboardLeagueSelectedRank(
                       league,
                       valuePreference.preference,
-                    )
-                      ? `#${getDashboardLeagueSelectedRank(
-                        league,
-                        valuePreference.preference,
-                        bootstrap?.war_value_settings,
-                      )}`
-                      : '—'
-                  }
+                      bootstrap?.war_value_settings,
+                    )}`
+                  ) : (
+                    '—'
+                  )}
                 </small>
               </div>
 
               <div className="portfolio-league-metric">
                 <span>Average age</span>
                 <strong>
-                  {league.average_age
-                    ? league.average_age.toFixed(1)
-                    : 'N/A'}
+                  {isCheap && league.average_age == null ? (
+                    <Skeleton variant="text" width="32px" height="14px" />
+                  ) : league.average_age ? (
+                    league.average_age.toFixed(1)
+                  ) : (
+                    'N/A'
+                  )}
                 </strong>
-                <small>#{league.age_rank} youngest</small>
+                <small>
+                  {isCheap && league.age_rank == null ? (
+                    <Skeleton variant="text" width="44px" height="10px" />
+                  ) : (
+                    `#${league.age_rank} youngest`
+                  )}
+                </small>
               </div>
             </div>
           </button>

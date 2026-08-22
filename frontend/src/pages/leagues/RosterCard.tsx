@@ -3,6 +3,7 @@ import { useState } from 'react';
 import './RosterCard.css';
 
 import { UserAvatar } from '@/components/users/UserAvatar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import type {
   LeaguePick,
   LeagueRoster,
@@ -37,15 +38,26 @@ interface Props {
   draftPickProjectionSummary?: string | null;
   valueBasis: ValueBasis;
   warValueSettings: WarValueSettings;
+  isCheap?: boolean;
 }
 
 function StatValue({
   value,
   rank,
+  loading = false,
 }: {
   value: string | number;
   rank?: number;
+  loading?: boolean;
 }) {
+  if (loading) {
+    return (
+      <>
+        <strong><Skeleton variant="text" width="40px" height="14px" /></strong>
+        <small><Skeleton variant="text" width="20px" height="10px" /></small>
+      </>
+    );
+  }
   return (
     <>
       <strong>{value}</strong>
@@ -135,6 +147,7 @@ export function RosterCard({
   draftPickProjectionSummary,
   valueBasis,
   warValueSettings,
+  isCheap = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const constructionRows = buildRosterConstructionRows(
@@ -199,6 +212,7 @@ export function RosterCard({
               valueBasis,
               warValueSettings,
             )}
+            loading={isCheap && (valueBasis === 'my_war' || valueBasis === 'sleeper_war')}
           />
         </div>
       </header>
@@ -209,6 +223,7 @@ export function RosterCard({
           <StatValue
             value={formatNumber(roster.projected_points)}
             rank={roster.stat_ranks.projected_points}
+            loading={isCheap && roster.projected_points === 0}
           />
         </div>
         <div className="roster-summary-stat">
@@ -230,6 +245,7 @@ export function RosterCard({
               valueBasis,
               warValueSettings,
             )}
+            loading={isCheap && (valueBasis === 'my_war' || valueBasis === 'sleeper_war')}
           />
         </div>
         <div className="roster-summary-stat">
@@ -250,6 +266,7 @@ export function RosterCard({
               roster,
               valueBasis,
             )}
+            loading={isCheap && (valueBasis === 'my_war' || valueBasis === 'sleeper_war')}
           />
         </div>
         <div className="roster-summary-stat">

@@ -396,6 +396,7 @@ export interface LeagueDetails {
   war_position_history: LeagueWarPositionSeason[];
   war_player_history: LeagueWarPlayerSeason[];
   rosters: LeagueRoster[];
+  is_cheap_data?: boolean;
 }
 
 export interface DashboardLeague {
@@ -451,6 +452,7 @@ export interface DashboardLeague {
 
 export interface Dashboard {
   leagues: DashboardLeague[];
+  is_cheap_data?: boolean;
 }
 
 export type ValueBasis =
@@ -495,6 +497,7 @@ export interface TierBoard {
   war_league_id: string | null;
   war_league_name: string | null;
   tiers: TierBoardGroup[];
+  is_cheap_data?: boolean;
 }
 
 export interface PersonalValueSearchResult {
@@ -948,11 +951,13 @@ export interface WaiverLeagueOverview {
   value_gain: number | null;
 
   can_submit_claim: boolean;
+  is_cheap_data?: boolean;
 }
 
 export interface WaiverOverviewResponse {
   sleeper_username: string | null;
   leagues: WaiverLeagueOverview[];
+  is_cheap_data?: boolean;
 }
 
 export interface WaiverRecentlyDroppedPlayer extends PlayerValue {
@@ -989,6 +994,7 @@ export interface WaiverRecentlyDroppedResponse {
   total_players: number;
 
   players: WaiverRecentlyDroppedPlayer[];
+  is_cheap_data?: boolean;
 }
 
 export interface WaiverClaimRequest {

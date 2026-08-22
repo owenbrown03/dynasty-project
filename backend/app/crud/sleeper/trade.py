@@ -15,7 +15,7 @@ from app.infrastructure.redis.client import RedisClient
 from app.integrations.sleeper.client import SleeperClient
 from app.crud.sleeper.leaguemate import get_leaguemate_ids
 from app.crud.sleeper.personal import get_hidden_league_ids
-from app.crud.sleeper.player import get_player_map
+from app.crud.sleeper.player import get_player_map, get_player_map_for_ids
 from app.crud.sleeper.user import get_userid_by_username
 from app.integrations.sleeper.schemas import display
 from app.models.db.sleeper import api as model
@@ -169,6 +169,7 @@ async def get_trade_signals(
     username: str,
     site_user_id: UUID | None = None,
     redis: RedisClient | None = None,
+    cheap: bool = False,
 ) -> List[display.Transaction]:
     """
     Evaluates historical trade records to find high-value cross-league strategies.
@@ -182,7 +183,7 @@ async def get_trade_signals(
             username=username,
             user_id=main_user_id,
         )
-        if redis is not None:
+        if redis is not None and not cheap:
             cached_payload = await redis.get(cache_key)
             if cached_payload:
                 logger.info(
@@ -204,7 +205,13 @@ async def get_trade_signals(
                 site_user_id=site_user_id,
             )
 
-        lm_trades_data = await read_trades(db, lm_ids)
+        if cheap:
+            lm_trades_data = await read_trades(db, [main_user_id])
+            lm_trades_keys = list(lm_trades_data.keys())[:20]
+            lm_trades_data = {k: lm_trades_data[k] for k in lm_trades_keys}
+        else:
+            lm_trades_data = await read_trades(db, lm_ids)
+
         if not lm_trades_data:
             logger.info("Matrix generation skipped: No relevant trade records found.")
             return []
@@ -266,13 +273,21 @@ async def get_trade_signals(
                 league_map[lid] = meta["name"]
 
         draft_orders = defaultdict(dict)
-        d_res = await db.execute(select(model.Draft.draft_id, model.Draft.season, model.Draft.draft_order))
-        raw_drafts = d_res.all()
-        
-        for d_id, season, d_order in raw_drafts:
-            draft_orders[d_id][season] = d_order or {}
+        if not cheap:
+            d_res = await db.execute(select(model.Draft.draft_id, model.Draft.season, model.Draft.draft_order))
+            raw_drafts = d_res.all()
+            for d_id, season, d_order in raw_drafts:
+                draft_orders[d_id][season] = d_order or {}
 
-        player_map = await get_player_map(db)
+        if cheap:
+            p_ids = set()
+            for tx in lm_trades_data.values():
+                for m in tx['movements']:
+                    if m.player_id:
+                        p_ids.add(m.player_id)
+            player_map = await get_player_map_for_ids(db, list(p_ids))
+        else:
+            player_map = await get_player_map(db)
         
         final_trades = []
         log_milestone = max(1, total_trades // 10)
@@ -288,7 +303,7 @@ async def get_trade_signals(
                 
             league_id = trade_obj.league_id
             users_dict = defaultdict(lambda: {"adds": [], "drops": []})
-            has_signal = False
+            has_signal = True if cheap else False
 
             for m in tx['movements']:
                 user_id = roster_owner_map[league_id].get(m.roster_id)
@@ -299,27 +314,33 @@ async def get_trade_signals(
                     asset_name = "Unknown Player"
                 signal_text = ""
 
-                if m.action == "DROP":
-                    shared_with_this_lm = player_to_leagues[user_id][m.player_id].intersection(shared_leagues[user_id])
-                    if shared_with_this_lm and user_id != main_user_id:
-                        signals = list(dict.fromkeys(
-                            league_map[lid] for lid in shared_with_this_lm if lid in league_map
-                        ))
-                        if signals:
-                            signal_text = f"Buy opportunity ({', '.join(signals)})"
-                            has_signal = True
-                    users_dict[user_id]["drops"].append(display.Movement(name=asset_name, signal=signal_text))
+                if cheap:
+                    if m.action == "DROP":
+                        users_dict[user_id]["drops"].append(display.Movement(name=asset_name, signal=""))
+                    elif m.action == "ADD":
+                        users_dict[user_id]["adds"].append(display.Movement(name=asset_name, signal=""))
+                else:
+                    if m.action == "DROP":
+                        shared_with_this_lm = player_to_leagues[user_id][m.player_id].intersection(shared_leagues[user_id])
+                        if shared_with_this_lm and user_id != main_user_id:
+                            signals = list(dict.fromkeys(
+                                league_map[lid] for lid in shared_with_this_lm if lid in league_map
+                            ))
+                            if signals:
+                                signal_text = f"Buy opportunity ({', '.join(signals)})"
+                                has_signal = True
+                        users_dict[user_id]["drops"].append(display.Movement(name=asset_name, signal=signal_text))
 
-                elif m.action == "ADD":
-                    my_ownership = player_to_leagues[main_user_id][m.player_id].intersection(shared_leagues[user_id])
-                    if my_ownership and user_id != main_user_id:
-                        signals = list(dict.fromkeys(
-                            league_map[lid] for lid in my_ownership if lid in league_map
-                        ))
-                        if signals:
-                            signal_text = f"Sell opportunity ({', '.join(signals)})"
-                            has_signal = True
-                    users_dict[user_id]["adds"].append(display.Movement(name=asset_name, signal=signal_text))
+                    elif m.action == "ADD":
+                        my_ownership = player_to_leagues[main_user_id][m.player_id].intersection(shared_leagues[user_id])
+                        if my_ownership and user_id != main_user_id:
+                            signals = list(dict.fromkeys(
+                                league_map[lid] for lid in my_ownership if lid in league_map
+                            ))
+                            if signals:
+                                signal_text = f"Sell opportunity ({', '.join(signals)})"
+                                has_signal = True
+                        users_dict[user_id]["adds"].append(display.Movement(name=asset_name, signal=signal_text))
 
             for p in tx['picks']:
                 signal_text = ""
@@ -332,9 +353,12 @@ async def get_trade_signals(
                 og_user_id = roster_owner_map[league_id].get(p.og_roster_id)
                 
                 try:
-                    draft_order = draft_orders[draft_id][year]
-                    pick_slot = draft_order[og_user_id]
-                    asset = f"{year} Pick {round_num}.{pick_slot:02d}"
+                    if cheap:
+                        asset = f"{year} Round {round_num}"
+                    else:
+                        draft_order = draft_orders[draft_id][year]
+                        pick_slot = draft_order[og_user_id]
+                        asset = f"{year} Pick {round_num}.{pick_slot:02d}"
                 except (
                     KeyError,
                     TypeError,
@@ -408,7 +432,7 @@ async def get_trade_signals(
             key=lambda x: x.time_ms,
             reverse=True,
         )
-        if redis is not None:
+        if redis is not None and not cheap:
             await redis.set(
                 cache_key,
                 TRADE_SIGNALS_ADAPTER.dump_json(

@@ -6,6 +6,7 @@ import {
 
 import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
 import { Skeleton } from '@/components/feedback/Skeleton';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { TradeCards } from './TradeCards';
 import { useTrades } from '@/hooks/sleeper/useTrades';
 
@@ -274,7 +275,18 @@ function getTradeSettingsFilterValue(
 }
 
 export const TradeResearchTab = () => {
-  const trades = useTrades();
+  const cheapTrades = useTrades(true);
+  const fullTrades = useTrades(false);
+
+  const displayData = fullTrades.data.length > 0 ? fullTrades.data : cheapTrades.data;
+  const isLoading = cheapTrades.loading;
+  const isFetching = fullTrades.fetching;
+  const trades = {
+    loading: isLoading,
+    fetching: isFetching,
+    data: displayData,
+    username: fullTrades.username ?? cheapTrades.username,
+  };
   const [search, setSearch] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<TradeSettingsFilters>(
     DEFAULT_FILTERS,
@@ -481,7 +493,7 @@ export const TradeResearchTab = () => {
     ],
   );
 
-  if (trades.fetching) {
+  if (trades.loading) {
     return (
       <TradeResearchSkeleton />
     );
@@ -497,6 +509,11 @@ export const TradeResearchTab = () => {
             <p className="page-description">
               Latest actionable trades from your synced Sleeper trade history, filtered by league settings and asset search.
             </p>
+            {trades.fetching && !trades.loading && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <LoadingState label="Searching leaguemate trade history..." inline />
+              </div>
+            )}
           </div>
         </div>
 

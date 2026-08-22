@@ -62,6 +62,7 @@ def build_dashboard_cache_key(
     site_user_id,
     league_ids: Iterable[str],
     sort_order: dict[str, int],
+    cheap: bool = False,
 ) -> str:
     return (
         f"dashboard:{DASHBOARD_CACHE_VERSION}:"
@@ -77,6 +78,7 @@ def build_dashboard_cache_key(
                 "sort_order": sorted(
                     sort_order.items(),
                 ),
+                "cheap": cheap,
             },
             sort_keys=True,
         )
@@ -387,6 +389,7 @@ async def get_user_dashboard(
     username: str,
     *,
     site_user_id=None,
+    cheap: bool = False,
 ):
     """
     Returns the user's cross-league dashboard.
@@ -446,6 +449,7 @@ async def get_user_dashboard(
         site_user_id=site_user_id,
         league_ids=league_ids,
         sort_order=sort_order,
+        cheap=cheap,
     )
 
     if redis is not None:
@@ -460,6 +464,66 @@ async def get_user_dashboard(
                 time.monotonic() - t_total,
             )
             return json.loads(cached_payload)
+
+    if cheap:
+        all_rosters = await get_all_league_rosters(
+            db,
+            league_ids,
+        )
+        league_cards = build_league_cards(
+            leagues=leagues,
+            all_rosters=all_rosters,
+            player_maps_by_league_id={},
+            roster_construction_targets_by_league_id={},
+            finance_metrics_by_league_id={},
+            user_id=user_id,
+        )
+        expensive_fields = [
+            "ktc_value", "ktc_rank",
+            "fc_value", "fc_rank",
+            "dynasty_starter_war", "dynasty_starter_war_rank",
+            "dynasty_roster_war", "dynasty_roster_war_rank",
+            "redraft_starter_war", "redraft_starter_war_rank",
+            "redraft_roster_war", "redraft_roster_war_rank",
+            "my_dynasty_starter_war", "my_dynasty_starter_war_rank",
+            "my_dynasty_roster_war", "my_dynasty_roster_war_rank",
+            "my_redraft_starter_war", "my_redraft_starter_war_rank",
+            "my_redraft_roster_war", "my_redraft_roster_war_rank",
+            "average_age", "age_rank",
+            "projected_payout", "projected_seed", "buy_in_amount",
+            "roster_construction_alignment_pct", "roster_construction_moves_needed"
+        ]
+        for card in league_cards:
+            for field in expensive_fields:
+                card[field] = None
+            card["is_cheap_data"] = True
+
+        league_cards.sort(
+            key=lambda league: (
+                sort_order.get(league["league_id"], 9999),
+                league["league_name"].lower(),
+            ),
+        )
+
+        response = {
+            "leagues": league_cards,
+            "is_cheap_data": True,
+        }
+
+        if redis is not None:
+            await redis.set(
+                dashboard_cache_key,
+                json.dumps(response),
+                ttl_seconds=DASHBOARD_CACHE_TTL_SECONDS,
+            )
+
+        logger.info(
+            "Dashboard cheap cold total=%.2fs user=%s leagues=%d",
+            time.monotonic() - t_total,
+            username,
+            len(leagues),
+        )
+        return response
 
     async with heavy_work_semaphore:
         t_rosters = time.monotonic()

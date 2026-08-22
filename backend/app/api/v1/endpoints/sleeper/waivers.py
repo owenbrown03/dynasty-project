@@ -67,6 +67,7 @@ async def waiver_overview(
             "and suggested drops."
         ),
     ),
+    cheap: bool = False,
 ) -> WaiverOverviewResponse:
     if ctx.connection is None:
         return WaiverOverviewResponse()
@@ -80,6 +81,7 @@ async def waiver_overview(
             connection=ctx.connection,
             war_service=war_service,
             value_basis=value_basis,
+            cheap=cheap,
         )
 
 
@@ -242,6 +244,7 @@ async def recent_waiver_drops(
         default="recency",
         description="Sort by player value or by drop recency.",
     ),
+    cheap: bool = False,
 ) -> WaiverRecentlyDroppedResponse:
     require_sleeper_connection(
         ctx,
@@ -279,6 +282,7 @@ async def recent_waiver_drops(
             page=page,
             page_size=page_size,
             sort_by=sort_by,
+            cheap=cheap,
         )
 
 

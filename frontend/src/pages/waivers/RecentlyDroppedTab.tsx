@@ -11,6 +11,7 @@ import {
 
 import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
 import { Skeleton } from '@/components/feedback/Skeleton';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -131,12 +132,31 @@ export const RecentlyDroppedTab = ({
   const [claimPlayer, setClaimPlayer] = useState<WaiverRecentlyDroppedPlayer | null>(
     null,
   );
-  const recentDrops = useRecentlyDroppedPlayers(
+  const cheapDrops = useRecentlyDroppedPlayers(
     valueBasis,
     page,
     pageSize,
     sortBy,
+    true,
   );
+  const fullDrops = useRecentlyDroppedPlayers(
+    valueBasis,
+    page,
+    pageSize,
+    sortBy,
+    false,
+  );
+
+  const displayData = fullDrops.data ?? cheapDrops.data;
+  const isLoading = cheapDrops.loading;
+  const isFetching = fullDrops.fetching;
+  const hasError = fullDrops.error || cheapDrops.error;
+  const recentDrops = {
+    loading: isLoading,
+    fetching: isFetching,
+    error: hasError,
+    data: displayData,
+  };
   const {
     canWrite,
   } = useSleeperConnection();
@@ -234,6 +254,11 @@ export const RecentlyDroppedTab = ({
           <p>
             Claim players from the latest completed drops across your visible leagues.
           </p>
+          {recentDrops.fetching && !recentDrops.loading && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <LoadingState label="Updating values..." inline className="recent-drops-refresh-indicator" />
+            </div>
+          )}
         </div>
 
         <div className="available-players-summary">

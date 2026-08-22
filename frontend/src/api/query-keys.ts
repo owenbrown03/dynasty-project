@@ -47,16 +47,19 @@ export const queryKeys = {
     details: (
       leagueId: string | undefined,
       viewerKey: string | null | undefined,
+      cheap = false,
     ) =>
       [
         'league-details',
         leagueId ?? null,
         viewerKey ?? null,
+        cheap,
       ] as const,
     dashboard: (
       username: string | null | undefined,
+      cheap = false,
     ) =>
-      ['league-dashboard', username ?? null] as const,
+      ['league-dashboard', username ?? null, cheap] as const,
   },
 
   drafts: {
@@ -80,7 +83,8 @@ export const queryKeys = {
   trades: {
     signals: (
       username: string | null | undefined,
-    ) => ['trade-signals', username ?? null] as const,
+      cheap = false,
+    ) => ['trade-signals', username ?? null, cheap] as const,
     bulkPlayerSearch: (query: string) =>
       ['bulk-trade-player-search', query] as const,
     bulkAvailability: (
@@ -101,11 +105,13 @@ export const queryKeys = {
     overview: (
       username: string | null | undefined,
       valueBasis: ValueBasis,
+      cheap = false,
     ) =>
       [
         'waiver-overview',
         username ?? null,
         valueBasis,
+        cheap,
       ] as const,
     overviewRoot: ['waiver-overview'] as const,
     recentDrops: (
@@ -114,6 +120,7 @@ export const queryKeys = {
       page: number,
       pageSize: number,
       sortBy: 'value' | 'recency',
+      cheap = false,
     ) =>
       [
         'waiver-recent-drops',
@@ -122,6 +129,7 @@ export const queryKeys = {
         page,
         pageSize,
         sortBy,
+        cheap,
       ] as const,
     recentDropsRoot: ['waiver-recent-drops'] as const,
     leagues: (
@@ -183,12 +191,14 @@ export const queryKeys = {
       valueBasis: ValueBasis,
       leagueId?: string,
       viewerKey?: string | null,
+      cheap = false,
     ) =>
       [
         'player-tiers',
         valueBasis,
         leagueId ?? null,
         viewerKey ?? null,
+        cheap,
       ] as const,
     personalSearch: (query: string) =>
       ['personal-values-search', query] as const,

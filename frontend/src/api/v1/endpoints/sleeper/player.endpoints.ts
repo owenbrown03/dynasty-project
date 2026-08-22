@@ -9,6 +9,7 @@ export const playerEndpoints = (client: AxiosInstance, prefix: string) => ({
   getTiers: (
     valueBasis: ValueBasis,
     leagueId?: string,
+    cheap = false,
     signal?: AbortSignal,
   ) =>
     client.get<TierBoard>(
@@ -17,6 +18,7 @@ export const playerEndpoints = (client: AxiosInstance, prefix: string) => ({
         params: {
           value_basis: valueBasis,
           league_id: leagueId,
+          cheap,
         },
         signal,
       },
