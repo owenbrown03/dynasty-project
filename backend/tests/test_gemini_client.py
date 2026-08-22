@@ -47,6 +47,32 @@ def _client_with_handler(
     )
 
 
+def _request_model(request: httpx.Request) -> str:
+    return request.url.path.split("/models/")[-1].split(":")[0]
+
+
+def _daily_quota_payload() -> dict:
+    return {
+        "error": {
+            "code": 429,
+            "status": "RESOURCE_EXHAUSTED",
+            "details": [
+                {
+                    "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                    "violations": [
+                        {
+                            "quotaId": (
+                                "GenerateRequestsPerDayPerProjectPerModel"
+                                "-FreeTier"
+                            ),
+                        }
+                    ],
+                }
+            ],
+        }
+    }
+
+
 def test_generate_text_parses_parts_and_usage():
     captured: dict = {}
 
@@ -66,7 +92,7 @@ def test_generate_text_parses_parts_and_usage():
     )
 
     assert text == "Hello world"
-    assert "models/gemini-flash-latest:generateContent" in captured["url"]
+    assert "models/gemini-3.5-flash:generateContent" in captured["url"]
     assert "key=test-key" in captured["url"]
     assert (
         captured["body"]["systemInstruction"]["parts"][0]["text"]
@@ -151,6 +177,93 @@ def test_retries_transient_errors_then_succeeds():
 
     assert text == "Hello world"
     assert len(calls) == 3
+
+
+def test_falls_back_to_next_model_when_unavailable():
+    seen_models: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_models.append(_request_model(request))
+        if len(seen_models) == 1:
+            return httpx.Response(
+                404,
+                json={"error": {"message": "Model not found"}},
+            )
+        return httpx.Response(200, json=_gemini_ok_payload())
+
+    client = _client_with_handler(handler)
+
+    text = asyncio.run(client.read.generate_text("hi"))
+
+    assert text == "Hello world"
+    assert seen_models == [
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
+    ]
+
+
+def test_falls_back_on_daily_quota_exhaustion_without_waiting():
+    import time
+
+    calls: list[float] = []
+    seen_models: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(time.monotonic())
+        seen_models.append(_request_model(request))
+        if len(calls) == 1:
+            return httpx.Response(429, json=_daily_quota_payload())
+        return httpx.Response(200, json=_gemini_ok_payload())
+
+    client = _client_with_handler(handler)
+
+    text = asyncio.run(client.read.generate_text("hi"))
+
+    assert text == "Hello world"
+    assert seen_models[0] != seen_models[1]
+    assert calls[1] - calls[0] < 0.5
+
+
+def test_per_minute_429_retries_same_model():
+    seen_models: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = _request_model(request)
+        seen_models.append(model)
+        if len(seen_models) == 1:
+            return httpx.Response(
+                429,
+                json={
+                    "error": {
+                        "code": 429,
+                        "status": "RESOURCE_EXHAUSTED",
+                        "details": [
+                            {
+                                "@type": (
+                                    "type.googleapis.com/"
+                                    "google.rpc.QuotaFailure"
+                                ),
+                                "violations": [
+                                    {
+                                        "quotaId": (
+                                            "GenerateRequestsPerMinute"
+                                            "PerProjectPerModel-FreeTier"
+                                        ),
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                },
+            )
+        return httpx.Response(200, json=_gemini_ok_payload())
+
+    client = _client_with_handler(handler, max_attempts=2)
+
+    text = asyncio.run(client.read.generate_text("hi"))
+
+    assert text == "Hello world"
+    assert seen_models == ["gemini-3.5-flash", "gemini-3.5-flash"]
 
 
 def test_non_retryable_error_raises_without_retry():

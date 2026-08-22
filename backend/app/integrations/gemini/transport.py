@@ -56,6 +56,42 @@ def _server_retry_delay_seconds(
     return None
 
 
+def _daily_quota_exhausted(exc: httpx.HTTPStatusError) -> bool:
+    """
+    Detects a per-day quota exhaustion in a 429 response.
+
+    Google marks these with a google.rpc.QuotaFailure detail whose
+    violations carry a quotaId containing "PerDay" (e.g.
+    GenerateRequestsPerDayPerProjectPerModel-FreeTier). Waiting seconds
+    does not help with those; only switching models or the daily reset does.
+    """
+    try:
+        payload = exc.response.json()
+    except Exception:
+        return False
+
+    error_payload = payload.get("error")
+
+    if not isinstance(error_payload, dict):
+        return False
+
+    for detail in error_payload.get("details") or []:
+        if not isinstance(detail, dict):
+            continue
+
+        if not str(detail.get("@type", "")).endswith("QuotaFailure"):
+            continue
+
+        for violation in detail.get("violations") or []:
+            if not isinstance(violation, dict):
+                continue
+
+            if "PerDay" in str(violation.get("quotaId", "")):
+                return True
+
+    return False
+
+
 class GeminiTransport:
     def __init__(
         self,
@@ -66,10 +102,10 @@ class GeminiTransport:
         self.http = http
         self.config = config
 
-    def _url(self, method: str) -> str:
+    def _url(self, model: str, method: str) -> str:
         return (
             f"{self.config.base_url}"
-            f"/models/{self.config.model}:{method}"
+            f"/models/{model}:{method}"
         )
 
     async def generate_content(
@@ -79,6 +115,13 @@ class GeminiTransport:
         system_instruction: str | None = None,
         generation_config: dict | None = None,
     ) -> GeminiGenerateResponse:
+        """Generates content, walking the configured model fallback chain.
+
+        Each model gets the full attempt budget. The chain advances when a
+        model is unavailable (404) or its daily quota is exhausted (429 with
+        a PerDay QuotaFailure); all other failures retry the same model and
+        eventually propagate.
+        """
         if not self.config.api_key:
             raise RuntimeError(
                 "GEMINI_API_KEY is not configured"
@@ -96,45 +139,65 @@ class GeminiTransport:
 
         last_error: httpx.HTTPStatusError | None = None
 
-        for attempt in range(max(1, self.config.max_attempts)):
-            response = await self.http.post(
-                self._url("generateContent"),
-                params={"key": self.config.api_key},
-                json=body,
-                timeout=self.config.timeout_seconds,
-            )
-
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                is_last_attempt = attempt == self.config.max_attempts - 1
-                if (
-                    exc.response.status_code not in _RETRYABLE_STATUS_CODES
-                    or is_last_attempt
-                ):
-                    raise
-                last_error = exc
-                logger.warning(
-                    "Gemini generate attempt %d/%d failed status=%d",
-                    attempt + 1,
-                    self.config.max_attempts,
-                    exc.response.status_code,
+        for model in self.config.model_chain:
+            for attempt in range(max(1, self.config.max_attempts)):
+                response = await self.http.post(
+                    self._url(model, "generateContent"),
+                    params={"key": self.config.api_key},
+                    json=body,
+                    timeout=self.config.timeout_seconds,
                 )
-                wait = self.config.retry_backoff_seconds * (attempt + 1)
-                server_delay = _server_retry_delay_seconds(exc)
 
-                if server_delay is not None and server_delay > wait:
-                    logger.info(
-                        "Gemini requested retry delay of %.1fs",
-                        server_delay,
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    last_error = exc
+                    status = exc.response.status_code
+
+                    if status == 404:
+                        logger.warning(
+                            "Gemini model %s unavailable; trying next fallback",
+                            model,
+                        )
+                        break
+
+                    if status == 429 and _daily_quota_exhausted(exc):
+                        logger.warning(
+                            "Gemini model %s daily quota exhausted; "
+                            "switching to next fallback",
+                            model,
+                        )
+                        break
+
+                    is_last_attempt = attempt == self.config.max_attempts - 1
+                    if (
+                        status not in _RETRYABLE_STATUS_CODES
+                        or is_last_attempt
+                    ):
+                        raise
+
+                    logger.warning(
+                        "Gemini generate attempt %d/%d on %s failed status=%d",
+                        attempt + 1,
+                        self.config.max_attempts,
+                        model,
+                        status,
                     )
-                    wait = server_delay
+                    wait = self.config.retry_backoff_seconds * (attempt + 1)
+                    server_delay = _server_retry_delay_seconds(exc)
 
-                await asyncio.sleep(wait)
-            else:
-                return _parse_generate_response(
-                    response.json(),
-                )
+                    if server_delay is not None and server_delay > wait:
+                        logger.info(
+                            "Gemini requested retry delay of %.1fs",
+                            server_delay,
+                        )
+                        wait = server_delay
+
+                    await asyncio.sleep(wait)
+                else:
+                    return _parse_generate_response(
+                        response.json(),
+                    )
 
         raise last_error  # pragma: no cover - loop always returns or raises
 
