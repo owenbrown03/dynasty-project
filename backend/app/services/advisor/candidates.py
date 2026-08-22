@@ -27,8 +27,13 @@ logger = logging.getLogger(__name__)
 MAX_LEAGUES = 6
 ANCHOR_POOL_SIZE = 5
 MAX_PROPOSALS_PER_LEAGUE = 2
-KTC_MATCH_MIN_RATIO = 0.65
-KTC_MATCH_MAX_RATIO = 1.55
+# A proposal must be convincing for the COUNTERPARTY: we always send at
+# least even market (KTC) value, ideally more, so the other manager has
+# a reason to accept. Our edge comes solely from the personal value
+# system (see _passes_value_constraints).
+COUNTERPARTY_KTC_MIN_RATIO = 1.0
+COUNTERPARTY_KTC_MAX_RATIO = 2.0
+PERSONAL_EDGE_TOLERANCE = 1e-9
 SIGNAL_SUMMARY_LIMIT = 15
 
 
@@ -219,6 +224,25 @@ async def _build_league_candidates(
         if package is None:
             continue
 
+        market_send_total = _sum_ktc(package)
+        personal_send_total = _sum_or_none(
+            package,
+            _personal_war,
+        )
+        market_receive_total = float(target.player.ktc_value)
+        personal_receive_total = _personal_war(target)
+
+        if not _passes_value_constraints(
+            market_send_total=market_send_total,
+            market_receive_total=market_receive_total,
+            personal_send_total=personal_send_total,
+            personal_receive_total=personal_receive_total,
+        ):
+            used_sell_ids.update(
+                item.player.player_id for item in package
+            )
+            continue
+
         used_sell_ids.update(
             item.player.player_id for item in package
         )
@@ -236,13 +260,10 @@ async def _build_league_candidates(
                 counterparty_name=counterparty_name,
                 send=[_to_ref(i) for i in package],
                 receive=[_to_ref(target)],
-                market_send_total=_sum_ktc(package),
-                market_receive_total=float(target.player.ktc_value),
-                personal_send_total=_sum_or_none(
-                    package,
-                    _personal_war,
-                ),
-                personal_receive_total=_personal_war(target),
+                market_send_total=market_send_total,
+                market_receive_total=market_receive_total,
+                personal_send_total=personal_send_total,
+                personal_receive_total=personal_receive_total,
             ),
         )
         made_for_this_league += 1
@@ -270,6 +291,14 @@ def _match_package(
     target_ktc: float,
     used_player_ids: set[str] | None = None,
 ):
+    """Picks our send package for a target player.
+
+    The package's KTC total must land in
+    [COUNTERPARTY_KTC_MIN_RATIO, COUNTERPARTY_KTC_MAX_RATIO] of the
+    target's KTC so the counterparty never loses market value. Among
+    valid singles we prefer the SMALLEST qualifying ratio — convincing
+    without reckless overpay.
+    """
     used_player_ids = used_player_ids or set()
     candidates = [
         item
@@ -280,24 +309,26 @@ def _match_package(
         return None
 
     best_single = None
-    best_gap = None
+    best_ratio = None
 
     for item in candidates:
-        gap = abs(float(item.player.ktc_value) - target_ktc)
         ratio = float(item.player.ktc_value) / target_ktc
 
         if not (
-            KTC_MATCH_MIN_RATIO <= ratio <= KTC_MATCH_MAX_RATIO
+            COUNTERPARTY_KTC_MIN_RATIO
+            <= ratio
+            <= COUNTERPARTY_KTC_MAX_RATIO
         ):
             continue
 
-        if best_gap is None or gap < best_gap:
-            best_gap = gap
+        if best_ratio is None or ratio < best_ratio:
+            best_ratio = ratio
             best_single = [item]
 
     if best_single is not None:
         return best_single
 
+    pairs = []
     for i in range(len(candidates)):
         for j in range(i + 1, len(candidates)):
             pair_total = float(
@@ -307,13 +338,47 @@ def _match_package(
             ratio = pair_total / target_ktc
 
             if (
-                KTC_MATCH_MIN_RATIO
+                COUNTERPARTY_KTC_MIN_RATIO
                 <= ratio
-                <= KTC_MATCH_MAX_RATIO
+                <= COUNTERPARTY_KTC_MAX_RATIO
             ):
-                return [candidates[i], candidates[j]]
+                pairs.append((ratio, [candidates[i], candidates[j]]))
+
+    if pairs:
+        pairs.sort(key=lambda entry: entry[0])
+        return pairs[0][1]
 
     return None
+
+
+def _passes_value_constraints(
+    *,
+    market_send_total: float,
+    market_receive_total: float,
+    personal_send_total: float | None,
+    personal_receive_total: float | None,
+) -> bool:
+    """Enforces the two-sided acceptance rules from the advisor spec.
+
+    1. Counterparty-convincing: they receive at least even market value.
+    2. We win or tie on OUR value system (never lose personally).
+    """
+    if (
+        market_send_total
+        < market_receive_total - PERSONAL_EDGE_TOLERANCE
+    ):
+        return False
+
+    if (
+        personal_send_total is None
+        or personal_receive_total is None
+    ):
+        return False
+
+    return (
+        personal_receive_total
+        >= personal_send_total - PERSONAL_EDGE_TOLERANCE
+    )
 
 
 def _sum_ktc(items: list[PersonalValuePoolItem]) -> float:

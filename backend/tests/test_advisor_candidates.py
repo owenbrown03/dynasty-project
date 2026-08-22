@@ -1,134 +1,128 @@
-from app.schemas.advisor import AdvisorProposal
-from app.schemas.personal_values import (
-    PersonalValueMetrics,
-    PersonalValuePlayer,
-    PersonalValuePoolItem,
-)
+from types import SimpleNamespace
+
 from app.services.advisor.candidates import (
+    COUNTERPARTY_KTC_MAX_RATIO,
+    COUNTERPARTY_KTC_MIN_RATIO,
     _match_package,
-    _sum_ktc,
+    _passes_value_constraints,
 )
 
 
-def _item(
-    player_id: str,
-    ktc: float,
-    delta: float = 0.0,
-) -> PersonalValuePoolItem:
-    return PersonalValuePoolItem(
-        player=PersonalValuePlayer(
+def _item(player_id: str, ktc: float, personal_war: float):
+    return SimpleNamespace(
+        player=SimpleNamespace(
             player_id=player_id,
-            name=f"Player {player_id}",
-            position="RB",
             ktc_value=ktc,
         ),
-        market_values=PersonalValueMetrics(
-            dynasty_roster_war=2.0,
-        ),
-        custom_values=PersonalValueMetrics(
-            dynasty_roster_war=2.0 + delta,
-        ),
-        delta_values=PersonalValueMetrics(
-            dynasty_roster_war=delta,
+        custom_values=SimpleNamespace(
+            dynasty_roster_war=personal_war,
+            redraft_roster_war=None,
         ),
     )
 
 
-def test_match_package_prefers_closest_single():
-    pool = [
-        _item("a", 3000),
-        _item("b", 2100),
-        _item("c", 2000),
+def _personal_war(item):
+    return item.custom_values.dynasty_roster_war
+
+
+def test_match_package_rejects_underpay():
+    sell_pool = [_item("a", 800.0, 1.0)]
+
+    package = _match_package(
+        sell_pool,
+        target_ktc=2000.0,
+    )
+
+    assert package is None
+
+
+def test_match_package_prefers_smallest_convincing_ratio():
+    sell_pool = [
+        _item("overpay", 2600.0, 1.0),
+        _item("even", 2100.0, 1.0),
     ]
 
-    package = _match_package(pool, target_ktc=2000)
+    package = _match_package(
+        sell_pool,
+        target_ktc=2000.0,
+    )
 
-    assert package is not None
-    assert len(package) == 1
-    assert package[0].player.player_id in {"b", "c"}
+    assert [i.player.player_id for i in package] == ["even"]
 
 
-def test_match_package_falls_back_to_pair():
-    pool = [
-        _item("a", 1200),
-        _item("b", 1100),
+def test_match_package_pair_fallback_within_band():
+    sell_pool = [
+        _item("a", 1200.0, 1.0),
+        _item("b", 1100.0, 1.0),
     ]
 
-    package = _match_package(pool, target_ktc=2300)
+    package = _match_package(
+        sell_pool,
+        target_ktc=1500.0,
+    )
 
     assert package is not None
-    assert len(package) == 2
+    ratio = sum(i.player.ktc_value for i in package) / 1500.0
+    assert COUNTERPARTY_KTC_MIN_RATIO <= ratio
+    assert ratio <= COUNTERPARTY_KTC_MAX_RATIO
 
 
 def test_match_package_respects_used_ids():
-    pool = [_item("a", 2000)]
+    used = {"even"}
+    sell_pool = [
+        _item("even", 2100.0, 1.0),
+        _item("other", 2400.0, 1.0),
+    ]
 
     package = _match_package(
-        pool,
-        target_ktc=2000,
-        used_player_ids={"a"},
+        sell_pool,
+        target_ktc=2000.0,
+        used_player_ids=used,
     )
 
-    assert package is None
+    assert [i.player.player_id for i in package] == ["other"]
 
 
-def test_match_package_rejects_out_of_band():
-    pool = [_item("a", 500)]
-
-    package = _match_package(pool, target_ktc=2000)
-
-    assert package is None
-
-
-def test_sum_ktc_handles_missing_values():
-    total = _sum_ktc([_item("a", 1500), _item("b", None)])
-
-    assert total == 1500
+def test_value_constraints_accept_counterparty_win_and_personal_win():
+    assert _passes_value_constraints(
+        market_send_total=2300.0,
+        market_receive_total=2000.0,
+        personal_send_total=1.0,
+        personal_receive_total=2.5,
+    )
 
 
-def test_proposal_asymmetry_win_win():
-    proposal = AdvisorProposal(
-        league_id="l1",
-        league_name="League",
-        counterparty_id="u2",
-        counterparty_name="Other",
-        send=[],
-        receive=[],
-        market_send_total=1000,
-        market_receive_total=950,
+def test_value_constraints_accept_ties():
+    assert _passes_value_constraints(
+        market_send_total=2000.0,
+        market_receive_total=2000.0,
         personal_send_total=2.0,
+        personal_receive_total=2.0,
+    )
+
+
+def test_value_constraints_reject_counterparty_loss():
+    assert not _passes_value_constraints(
+        market_send_total=1800.0,
+        market_receive_total=2000.0,
+        personal_send_total=1.0,
         personal_receive_total=3.0,
     )
 
-    assert proposal.asymmetry == "win_win"
-    assert proposal.personal_gain() == 1.0
 
-
-def test_proposal_asymmetry_value_trap():
-    proposal = AdvisorProposal(
-        league_id="l1",
-        league_name="League",
-        counterparty_id="u2",
-        counterparty_name="Other",
-        send=[],
-        receive=[],
-        market_send_total=1000,
-        market_receive_total=600,
-        personal_send_total=2.0,
-        personal_receive_total=3.0,
+def test_value_constraints_reject_personal_loss():
+    assert not _passes_value_constraints(
+        market_send_total=2300.0,
+        market_receive_total=2000.0,
+        personal_send_total=3.0,
+        personal_receive_total=2.5,
     )
 
-    assert proposal.asymmetry == "value_trap"
 
-
-def test_proposal_asymmetry_none_without_totals():
-    proposal = AdvisorProposal(
-        league_id="l1",
-        league_name="League",
-        counterparty_id="u2",
-        counterparty_name="Other",
-        send=[],
-        receive=[],
+def test_value_constraints_reject_missing_personal_values():
+    assert not _passes_value_constraints(
+        market_send_total=2300.0,
+        market_receive_total=2000.0,
+        personal_send_total=None,
+        personal_receive_total=2.5,
     )
-
-    assert proposal.asymmetry is None
