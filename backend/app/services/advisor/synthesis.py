@@ -68,18 +68,22 @@ async def synthesize_recommendations(
         )
 
     prompt = _build_prompt(dossier, preferences)
-
-    cached = await _cache_get(redis, prompt)
     model = gemini.config.model
+    has_dossier_content = bool(
+        dossier.proposals or dossier.roster_contexts
+    )
 
-    if cached is not None:
-        return _parse_response(
-            cached,
-            dossier=dossier,
-            generated_at=None,
-            model=model,
-            cached=True,
-        )
+    if has_dossier_content:
+        cached = await _cache_get(redis, prompt)
+
+        if cached is not None:
+            return _parse_response(
+                cached,
+                dossier=dossier,
+                generated_at=None,
+                model=model,
+                cached=True,
+            )
 
     await quota.consume_quota(
         redis,
@@ -99,7 +103,8 @@ async def synthesize_recommendations(
         await quota.refund_quota(redis)
         raise
 
-    await _cache_set(redis, prompt, text)
+    if has_dossier_content:
+        await _cache_set(redis, prompt, text)
 
     return _parse_response(
         text,
