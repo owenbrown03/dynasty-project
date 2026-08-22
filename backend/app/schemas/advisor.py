@@ -82,6 +82,7 @@ class AdvisorDossier(Base):
     proposals: list[AdvisorProposal]
     roster_contexts: list[AdvisorRosterContext]
     signals: AdvisorSignalSummary
+    scope_league_id: str | None = None
 
 
 class AdvisorRecommendation(Base):

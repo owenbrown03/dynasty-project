@@ -134,6 +134,7 @@ async def build_advisor_dossier(
         proposals=proposals,
         roster_contexts=roster_contexts,
         signals=signals,
+        scope_league_id=league_id,
     )
 
 

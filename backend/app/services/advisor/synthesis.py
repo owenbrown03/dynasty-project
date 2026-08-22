@@ -47,6 +47,33 @@ recommendations rather than inventing content.
 """
 
 
+def _cache_identity(
+    dossier: AdvisorDossier,
+    preferences: AdvisorPreferenceSummary | None,
+) -> str:
+    """Stable cache identity for an advisor scope.
+
+    Keyed by user, league scope, and preference settings — NOT by the
+    dossier bytes. Underlying data refreshes (WAR merges, KTC syncs)
+    change dossier numbers constantly; those must not invalidate a
+    cached recommendation. Users refresh explicitly via Regenerate.
+    """
+    preferences_part = (
+        json.dumps(preferences.model_dump(), sort_keys=True)
+        if preferences is not None
+        else "none"
+    )
+
+    return (
+        f"advisor-scope\n"
+        f"{settings.GEMINI_MODEL}\n"
+        f"{SYSTEM_PROMPT}\n"
+        f"{dossier.username}\n"
+        f"{dossier.scope_league_id or 'all'}\n"
+        f"{preferences_part}"
+    )
+
+
 async def peek_cached_recommendations(
     *,
     gemini: GeminiClient | None,
@@ -67,8 +94,9 @@ async def peek_cached_recommendations(
         if gemini is not None
         else settings.GEMINI_MODEL
     )
+    cache_identity = _cache_identity(dossier, preferences)
 
-    cached = await _cache_get(redis, prompt)
+    cached = await _cache_get(redis, cache_identity)
 
     if cached is None:
         return None
@@ -107,9 +135,10 @@ async def synthesize_recommendations(
     has_dossier_content = bool(
         dossier.proposals or dossier.roster_contexts
     )
+    cache_identity = _cache_identity(dossier, preferences)
 
     if has_dossier_content:
-        cached = await _cache_get(redis, prompt)
+        cached = await _cache_get(redis, cache_identity)
 
         if cached is not None:
             text, generated_at = _cached_envelope(cached)
@@ -141,7 +170,7 @@ async def synthesize_recommendations(
         raise
 
     if has_dossier_content:
-        await _cache_set(redis, prompt, text)
+        await _cache_set(redis, cache_identity, text)
 
     return _parse_response(
         text,

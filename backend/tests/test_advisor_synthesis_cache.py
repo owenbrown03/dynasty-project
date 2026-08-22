@@ -41,7 +41,7 @@ class FakeGemini:
         self.read = FakeRead(text)
 
 
-def _dossier() -> AdvisorDossier:
+def _dossier(market_send_total: float = 100.0) -> AdvisorDossier:
     return AdvisorDossier(
         username="testuser",
         proposals=[
@@ -52,7 +52,7 @@ def _dossier() -> AdvisorDossier:
                 counterparty_name="Rival",
                 send=[],
                 receive=[],
-                market_send_total=100.0,
+                market_send_total=market_send_total,
                 market_receive_total=90.0,
                 personal_send_total=1.0,
                 personal_receive_total=2.0,
@@ -146,3 +146,58 @@ def test_peek_miss_returns_none():
     )
 
     assert peeked is None
+
+
+def test_cache_hit_survives_dossier_value_drift():
+    redis = FakeRedis()
+    gemini = FakeGemini(_llm_payload())
+
+    asyncio.run(
+        synthesis.synthesize_recommendations(
+            gemini=gemini,
+            redis=redis,
+            dossier=_dossier(market_send_total=100.0),
+        )
+    )
+
+    drifted = asyncio.run(
+        synthesis.synthesize_recommendations(
+            gemini=gemini,
+            redis=redis,
+            dossier=_dossier(market_send_total=99999.0),
+        )
+    )
+
+    assert drifted.cached is True
+    assert gemini.read.calls == 1
+
+
+def test_different_league_scopes_do_not_share_cache():
+    redis = FakeRedis()
+    gemini = FakeGemini(_llm_payload())
+
+    scoped = _dossier().model_copy(
+        update={"scope_league_id": "league-a"}
+    )
+
+    asyncio.run(
+        synthesis.synthesize_recommendations(
+            gemini=gemini,
+            redis=redis,
+            dossier=scoped,
+        )
+    )
+
+    other = _dossier().model_copy(
+        update={"scope_league_id": "league-b"}
+    )
+    fresh = asyncio.run(
+        synthesis.synthesize_recommendations(
+            gemini=gemini,
+            redis=redis,
+            dossier=other,
+        )
+    )
+
+    assert fresh.cached is False
+    assert gemini.read.calls == 2
