@@ -5,6 +5,7 @@ import { useAdvisorRecommendations } from '@/hooks/sleeper/useAdvisor';
 import { useAdvisorFeedback } from '@/hooks/sleeper/useAdvisorFeedback';
 import { useSendAdvisorOffer } from '@/hooks/sleeper/useSendAdvisorOffer';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import { notify } from '@/utils/notify';
 import type {
   AdvisorFeedbackTag,
@@ -123,6 +124,63 @@ function buildIssueText(
   lines.push('', '_Auto-drafted from AI advisor feedback._');
 
   return lines.join('\n');
+}
+
+function AdvisorCardSkeleton() {
+  return (
+    <article className="advisor-card">
+      <header className="advisor-card-header">
+        <Skeleton width="70%" variant="title" />
+        <Skeleton width={54} height={18} radius={999} />
+      </header>
+      <Skeleton width="100%" variant="text" />
+      <Skeleton width="92%" variant="text" />
+      <Skeleton width="96%" variant="text" />
+      <div className="advisor-proposal-grid">
+        <div className="advisor-proposal-side">
+          <Skeleton width={90} variant="text" />
+          <Skeleton width={140} height={34} radius={6} />
+        </div>
+        <div className="advisor-proposal-side">
+          <Skeleton width={110} variant="text" />
+          <Skeleton width={140} height={34} radius={6} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function AdvisorPanelSkeleton({
+  label,
+}: {
+  label: string;
+}) {
+  return (
+    <section
+      className="advisor-panel"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="skeleton-sr-label">{label}</span>
+
+      <header className="advisor-panel-header">
+        <div>
+          <Skeleton width={70} variant="text" />
+          <Skeleton
+            width={240}
+            variant="title"
+          />
+        </div>
+      </header>
+
+      <Skeleton width="min(560px, 100%)" variant="text" />
+
+      <div className="advisor-cards">
+        <AdvisorCardSkeleton />
+        <AdvisorCardSkeleton />
+      </div>
+    </section>
+  );
 }
 
 function SendTradeSection({
@@ -456,23 +514,16 @@ export const AdvisorPanel = ({
 
   if (loading) {
     return (
-      <section className="advisor-panel" aria-live="polite">
-        <header className="advisor-panel-header">
-          <p className="page-eyebrow">AI Advisor</p>
-          <h3 className="trades-section-title">
-            Generating recommendations...
-          </h3>
-        </header>
-        <p className="page-description">
-          Analyzing your roster, your valuations vs. the market, and
-          leaguemate trade history in {leagueName}.
-        </p>
-      </section>
+      <AdvisorPanelSkeleton label="Generating recommendations..." />
     );
   }
 
   if (cachedLoading && !recommendations) {
-    return null;
+    return (
+      <AdvisorPanelSkeleton
+        label="Checking for saved recommendations..."
+      />
+    );
   }
 
   if (!recommendations) {
