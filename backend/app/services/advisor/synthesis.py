@@ -75,10 +75,12 @@ async def peek_cached_recommendations(
     if cached is None:
         return None
 
+    text, generated_at = _cached_envelope(cached)
+
     return _parse_response(
-        cached,
+        text,
         dossier=dossier,
-        generated_at=None,
+        generated_at=generated_at,
         model=model,
         cached=True,
     )
@@ -112,10 +114,12 @@ async def synthesize_recommendations(
         cached = await _cache_get(redis, prompt)
 
         if cached is not None:
+            text, generated_at = _cached_envelope(cached)
+
             return _parse_response(
-                cached,
+                text,
                 dossier=dossier,
-                generated_at=None,
+                generated_at=generated_at,
                 model=model,
                 cached=True,
             )
@@ -144,7 +148,7 @@ async def synthesize_recommendations(
     return _parse_response(
         text,
         dossier=dossier,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(timezone.utc).isoformat(),
         model=model,
         cached=False,
     )
@@ -192,15 +196,19 @@ def _build_prompt(
 
 
 def _parse_response(
-    raw_text: str,
+    raw_text: str | None,
     *,
     dossier: AdvisorDossier,
-    generated_at,
-    model: str,
+    generated_at: str | None,
+    model: str | None,
     cached: bool,
 ) -> AdvisorSynthesisResponse:
     try:
-        payload = json.loads(raw_text)
+        payload = (
+            json.loads(raw_text)
+            if isinstance(raw_text, str)
+            else {}
+        )
     except json.JSONDecodeError:
         logger.warning("Advisor synthesis returned invalid JSON")
         payload = {}
@@ -235,11 +243,9 @@ def _parse_response(
             )
         )
 
-    timestamp = (
-        generated_at.isoformat()
-        if generated_at
-        else datetime.now(timezone.utc).isoformat()
-    )
+    timestamp = generated_at or datetime.now(
+        timezone.utc
+    ).isoformat()
 
     return AdvisorSynthesisResponse(
         summary=payload.get("summary", ""),
@@ -251,7 +257,26 @@ def _parse_response(
     )
 
 
-async def _cache_get(redis, prompt: str) -> str | None:
+def _cached_envelope(cached) -> tuple[str | None, str | None]:
+    """Normalizes cache entries to (text, generated_at iso string).
+
+    Entries written before timestamp tracking stored a bare LLM text
+    string; newer entries store {"text", "generated_at"} envelopes.
+    """
+    if isinstance(cached, dict):
+        generated_at = cached.get("generated_at")
+
+        return (
+            cached.get("text"),
+            generated_at
+            if isinstance(generated_at, str)
+            else None,
+        )
+
+    return cached, None
+
+
+async def _cache_get(redis, prompt: str):
     if redis is None:
         return None
 
@@ -272,5 +297,11 @@ async def _cache_set(redis, prompt: str, text: str) -> None:
         model=settings.GEMINI_MODEL,
         system_instruction=SYSTEM_PROMPT,
         prompt=prompt,
-        payload=text,
+        payload={
+            "text": text,
+            "generated_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+        },
     )
+

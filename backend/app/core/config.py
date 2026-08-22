@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     GEMINI_TIMEOUT_SECONDS: int = 45
     GEMINI_RPM_LIMIT: int = 10
     GEMINI_DAILY_LIMIT: int = 250
-    GEMINI_CACHE_TTL_SECONDS: int = 3600
+    GEMINI_CACHE_TTL_SECONDS: int = 604800
 
     model_config = SettingsConfigDict(
         env_file=".env",
