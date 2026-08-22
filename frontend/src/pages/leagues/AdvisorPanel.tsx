@@ -321,6 +321,7 @@ export const AdvisorPanel = ({
     username,
     recommendations,
     loading,
+    errorMessage,
     generate,
     reset,
   } = useAdvisorRecommendations({ leagueId });
@@ -363,9 +364,16 @@ export const AdvisorPanel = ({
           pitch you can send.
         </p>
 
+        {errorMessage && (
+          <div className="advisor-error-banner" role="alert">
+            {errorMessage}
+          </div>
+        )}
+
         <button
           type="button"
           className="button-secondary"
+          disabled={loading}
           onClick={() => generate()}
         >
           Generate AI trade recommendations for this league
@@ -392,6 +400,12 @@ export const AdvisorPanel = ({
 
       {recommendations.summary && (
         <p className="page-description">{recommendations.summary}</p>
+      )}
+
+      {errorMessage && (
+        <div className="advisor-error-banner" role="alert">
+          {errorMessage}
+        </div>
       )}
 
       {hasContent ? (
@@ -442,6 +456,7 @@ export const AdvisorPanel = ({
         <button
           type="button"
           className="button-secondary"
+          disabled={loading}
           onClick={() => generate()}
         >
           Regenerate

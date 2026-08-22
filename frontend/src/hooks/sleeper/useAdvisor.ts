@@ -9,6 +9,18 @@ import type {
 } from '@/types';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
+function extractErrorDetail(
+  error: Error,
+): string | null {
+  const response = (
+    error as unknown as {
+      response?: { data?: { detail?: string } };
+    }
+  ).response;
+
+  return response?.data?.detail ?? null;
+}
+
 export function useAdvisorRecommendations(
   options?: {
     leagueId?: string;
@@ -43,6 +55,12 @@ export function useAdvisorRecommendations(
         data,
       );
     },
+    onError: (error) => {
+      notify.error(
+        extractErrorDetail(error)
+          ?? 'AI advisor could not generate recommendations. Try again shortly.',
+      );
+    },
   });
 
   return {
@@ -50,6 +68,10 @@ export function useAdvisorRecommendations(
     recommendations: mutation.data ?? null,
     loading: mutation.isPending,
     error: mutation.error,
+    errorMessage: mutation.error
+      ? extractErrorDetail(mutation.error)
+        ?? 'AI advisor could not generate recommendations. Try again shortly.'
+      : null,
     generate: () => mutation.mutate(),
     reset: () => mutation.reset(),
   };

@@ -16,6 +16,14 @@
   flex-wrap: wrap;
 }
 
+.advisor-error-banner {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgba(214, 79, 79, 0.4);
+  border-radius: 8px;
+  background: rgba(214, 79, 79, 0.1);
+  font-size: 0.85rem;
+}
+
 .advisor-cached-badge {
   font-size: 0.7rem;
   text-transform: uppercase;
