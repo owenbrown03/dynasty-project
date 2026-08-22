@@ -61,7 +61,7 @@ def test_generate_text_parses_parts_and_usage():
     )
 
     assert text == "Hello world"
-    assert "models/gemini-2.5-flash:generateContent" in captured["url"]
+    assert "models/gemini-flash-latest:generateContent" in captured["url"]
     assert "key=test-key" in captured["url"]
     assert (
         captured["body"]["systemInstruction"]["parts"][0]["text"]

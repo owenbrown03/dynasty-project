@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     ADP_SNAPSHOT_MAX_AGE_SECONDS: int = 21600
 
     GEMINI_API_KEY: str | None = None
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-flash-latest"
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
     GEMINI_TIMEOUT_SECONDS: int = 60
     GEMINI_RPM_LIMIT: int = 10
