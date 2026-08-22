@@ -1282,3 +1282,45 @@ export interface TradeCalculatorPickValueResponse {
   fc_value: number | null;
   rookie_war_value: number | null;
 }
+
+export interface AdvisorPlayerRef {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  ktc_value: number | null;
+  personal_war: number | null;
+  market_war: number | null;
+  delta_war: number | null;
+}
+
+export interface AdvisorProposal {
+  league_id: string;
+  league_name: string;
+  counterparty_id: string;
+  counterparty_name: string;
+  send: AdvisorPlayerRef[];
+  receive: AdvisorPlayerRef[];
+  market_send_total: number | null;
+  market_receive_total: number | null;
+  personal_send_total: number | null;
+  personal_receive_total: number | null;
+}
+
+export interface AdvisorRecommendation {
+  headline: string;
+  pitch: string;
+  reasoning: string;
+  confidence: string;
+  proposal: AdvisorProposal | null;
+}
+
+export interface AdvisorSynthesisResponse {
+  summary: string;
+  recommendations: AdvisorRecommendation[];
+  roster_advice: AdvisorRecommendation[];
+  generated_at: string;
+  model: string;
+  cached: boolean;
+}

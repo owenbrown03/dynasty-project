@@ -8,6 +8,7 @@ import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { TradeCards } from './TradeCards';
+import { AdvisorPanel } from './AdvisorPanel';
 import { useTrades } from '@/hooks/sleeper/useTrades';
 
 type TradeSettingsFilterKey =
@@ -502,6 +503,8 @@ export const TradeResearchTab = () => {
   if (Array.isArray(trades.data) && trades.data.length > 0) {
     return (
       <div className="trades-container">
+        <AdvisorPanel />
+
         <div className="trades-section-header">
           <div>
             <p className="page-eyebrow">Research</p>

@@ -80,6 +80,12 @@ export const queryKeys = {
       ] as const,
   },
 
+  advisor: {
+    recommendations: (
+      username: string | null | undefined,
+    ) => ['advisor-recommendations', username ?? null] as const,
+  },
+
   trades: {
     signals: (
       username: string | null | undefined,
