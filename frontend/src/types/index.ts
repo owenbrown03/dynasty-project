@@ -992,6 +992,7 @@ export interface WaiverRecentlyDroppedResponse {
   total_players: number;
 
   players: WaiverRecentlyDroppedPlayer[];
+  is_cheap_data?: boolean;
 }
 
 export interface WaiverClaimRequest {

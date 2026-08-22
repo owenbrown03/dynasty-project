@@ -242,6 +242,7 @@ async def recent_waiver_drops(
         default="recency",
         description="Sort by player value or by drop recency.",
     ),
+    cheap: bool = False,
 ) -> WaiverRecentlyDroppedResponse:
     require_sleeper_connection(
         ctx,
@@ -279,6 +280,7 @@ async def recent_waiver_drops(
             page=page,
             page_size=page_size,
             sort_by=sort_by,
+            cheap=cheap,
         )
 
 

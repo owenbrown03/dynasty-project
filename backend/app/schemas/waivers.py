@@ -193,6 +193,7 @@ class WaiverRecentlyDroppedResponse(Base):
     players: list[WaiverRecentlyDroppedPlayer] = Field(
         default_factory=list,
     )
+    is_cheap_data: bool = False
 
 
 class BulkWaiverPlayerSearchResult(Base):

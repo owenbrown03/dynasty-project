@@ -108,6 +108,7 @@ export function useRecentlyDroppedPlayers(
   page: number,
   pageSize: number,
   sortBy: 'value' | 'recency',
+  cheap = false,
 ) {
   const {
     username,
@@ -121,6 +122,7 @@ export function useRecentlyDroppedPlayers(
       page,
       pageSize,
       sortBy,
+      cheap,
     ),
 
     queryFn: async ({ signal }) => {
@@ -130,6 +132,7 @@ export function useRecentlyDroppedPlayers(
           page,
           pageSize,
           sortBy,
+          cheap,
           signal,
         )
         .then((res) => res.data);

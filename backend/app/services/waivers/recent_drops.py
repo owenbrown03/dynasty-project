@@ -173,6 +173,7 @@ async def get_recently_dropped_players(
     page: int = 1,
     page_size: int = 50,
     sort_by: RecentDropsSortBy = "value",
+    cheap: bool = False,
 ) -> WaiverRecentlyDroppedResponse:
     if not connection.sleeper_user_id:
         return WaiverRecentlyDroppedResponse(
@@ -308,21 +309,39 @@ async def get_recently_dropped_players(
 
     selected_value_by_key: dict[tuple[str, str], float | None] = {}
     player_value_by_key: dict[tuple[str, str], object] = {}
-    redraft_war_by_league_id = (
-        await build_shared_redraft_war_by_league_id(
-            db=db,
-            redis=redis,
-            leagues=list(
-                league_by_id.values()
-            ),
-            war_service=war_service,
+    effective_value_basis = value_basis
+    if cheap and value_basis not in {ValueBasis.KTC, ValueBasis.FANTASYCALC}:
+        effective_value_basis = ValueBasis.KTC
+
+    if cheap:
+        redraft_war_by_league_id = defaultdict(list)
+    else:
+        redraft_war_by_league_id = (
+            await build_shared_redraft_war_by_league_id(
+                db=db,
+                redis=redis,
+                leagues=list(
+                    league_by_id.values()
+                ),
+                war_service=war_service,
+            )
         )
-    )
 
     async def process_league_drops(league_id, entries):
         league = league_by_id.get(league_id)
         if league is None:
             return []
+
+        if cheap:
+            player_ids = [player.player_id for _, _, player in entries]
+            async with AsyncSessionLocal() as task_db:
+                player_values = await get_player_values(
+                    db=task_db,
+                    player_ids=player_ids,
+                    redraft_war_players=[],
+                    dynasty_war_by_player_id={},
+                )
+            return [(league_id, pv) for pv in player_values]
 
         redraft_war_players = redraft_war_by_league_id[league_id]
         redraft_by_player_id = {
@@ -384,12 +403,12 @@ async def get_recently_dropped_players(
                 player=player_value,
                 basis=(
                     ValueBasis.SLEEPER_WAR
-                    if value_basis == ValueBasis.MY_WAR
-                    else value_basis
+                    if effective_value_basis == ValueBasis.MY_WAR
+                    else effective_value_basis
                 ),
                 war_value_settings=(
                     coarse_settings
-                    if value_basis == ValueBasis.MY_WAR
+                    if effective_value_basis == ValueBasis.MY_WAR
                     else war_value_settings
                 ),
             )
@@ -418,7 +437,7 @@ async def get_recently_dropped_players(
             )
         )
 
-    if value_basis == ValueBasis.MY_WAR and valid_drop_items:
+    if value_basis == ValueBasis.MY_WAR and valid_drop_items and not cheap:
         end_index = page * page_size
         candidate_count = min(
             len(valid_drop_items),
@@ -589,6 +608,7 @@ async def get_recently_dropped_players(
         total_pages=total_pages,
         total_players=total_players,
         players=players,
+        is_cheap_data=cheap,
     )
 
 
