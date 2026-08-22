@@ -45,6 +45,7 @@ async def _load_preferences(ctx: ContextDep):
 async def get_advisor_recommendations_endpoint(
     username: str,
     ctx: ContextDep,
+    league_id: str | None = None,
 ) -> AdvisorSynthesisResponse:
     if ctx.site_user is None or ctx.connection is None:
         raise HTTPException(
@@ -55,7 +56,11 @@ async def get_advisor_recommendations_endpoint(
             ),
         )
 
-    dossier = await build_advisor_dossier(ctx, username)
+    dossier = await build_advisor_dossier(
+        ctx,
+        username,
+        league_id=league_id,
+    )
     preferences = await _load_preferences(ctx)
 
     try:

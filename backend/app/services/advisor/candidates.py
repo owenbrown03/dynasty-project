@@ -76,6 +76,7 @@ def _to_ref(item: PersonalValuePoolItem) -> AdvisorPlayerRef:
 async def build_advisor_dossier(
     ctx: ContextDep,
     username: str,
+    league_id: str | None = None,
 ) -> AdvisorDossier:
     main_user_id = await get_userid_by_username(
         ctx.db,
@@ -89,6 +90,14 @@ async def build_advisor_dossier(
         site_user_id=ctx.site_user.id if ctx.site_user else None,
         include_hidden=False,
     )
+
+    if league_id is not None:
+        owned_rows = [
+            row
+            for row in owned_rows
+            if row.league.league_id == league_id
+        ]
+
     selected = owned_rows[:MAX_LEAGUES]
 
     proposals: list[AdvisorProposal] = []
