@@ -141,14 +141,13 @@ class GeminiTransport:
 
         for model in self.config.model_chain:
             for attempt in range(max(1, self.config.max_attempts)):
-                response = await self.http.post(
-                    self._url(model, "generateContent"),
-                    params={"key": self.config.api_key},
-                    json=body,
-                    timeout=self.config.timeout_seconds,
-                )
-
                 try:
+                    response = await self.http.post(
+                        self._url(model, "generateContent"),
+                        params={"key": self.config.api_key},
+                        json=body,
+                        timeout=self.config.timeout_seconds,
+                    )
                     response.raise_for_status()
                 except httpx.HTTPStatusError as exc:
                     last_error = exc
@@ -194,6 +193,17 @@ class GeminiTransport:
                         wait = server_delay
 
                     await asyncio.sleep(wait)
+                except (httpx.TimeoutException, httpx.TransportError) as exc:
+                    # Timeouts are costly (a full timeout window each), so
+                    # unlike retryable statuses they advance straight to the
+                    # next model instead of burning the attempt budget.
+                    last_error = exc
+                    logger.warning(
+                        "Gemini model %s failed with %s; trying next fallback",
+                        model,
+                        type(exc).__name__,
+                    )
+                    break
                 else:
                     return _parse_generate_response(
                         response.json(),

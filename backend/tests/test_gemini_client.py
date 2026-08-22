@@ -266,6 +266,26 @@ def test_per_minute_429_retries_same_model():
     assert seen_models == ["gemini-3.5-flash", "gemini-3.5-flash"]
 
 
+def test_timeout_advances_to_next_model_and_succeeds():
+    seen_models: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_models.append(_request_model(request))
+        if len(seen_models) == 1:
+            raise httpx.ReadTimeout("timed out", request=request)
+        return httpx.Response(200, json=_gemini_ok_payload())
+
+    client = _client_with_handler(handler)
+
+    text = asyncio.run(client.read.generate_text("hi"))
+
+    assert text == "Hello world"
+    assert seen_models == [
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
+    ]
+
+
 def test_non_retryable_error_raises_without_retry():
     calls: list[int] = []
 
