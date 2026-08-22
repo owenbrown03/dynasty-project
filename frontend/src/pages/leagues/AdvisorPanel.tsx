@@ -190,7 +190,6 @@ function RecommendationCard({
         </span>
       </header>
 
-      <p className="advisor-pitch">“{recommendation.pitch}”</p>
       <p className="advisor-reasoning">{recommendation.reasoning}</p>
 
       {proposal && (
@@ -390,8 +389,8 @@ export const AdvisorPanel = ({
         <p className="page-description">
           The AI advisor cross-references your roster, your personal
           valuations vs. market prices, and how your leaguemates in this
-          league actually trade — then proposes specific offers with a
-          pitch you can send.
+          league actually trade — then proposes specific offers with the
+          reasoning behind each one.
         </p>
 
         {errorMessage && (

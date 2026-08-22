@@ -86,7 +86,6 @@ class AdvisorDossier(Base):
 
 class AdvisorRecommendation(Base):
     headline: str
-    pitch: str
     reasoning: str
     confidence: str
     proposal: AdvisorProposal | None = None

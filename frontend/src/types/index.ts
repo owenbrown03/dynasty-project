@@ -1310,7 +1310,6 @@ export interface AdvisorProposal {
 
 export interface AdvisorRecommendation {
   headline: string;
-  pitch: string;
   reasoning: string;
   confidence: string;
   proposal: AdvisorProposal | null;

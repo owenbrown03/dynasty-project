@@ -26,8 +26,7 @@ Respond with ONLY a JSON object (no markdown fences) shaped exactly like:
   "recommendations": [
     {
       "headline": "short title for the recommendation",
-      "pitch": "one-line message the manager could send to the counterparty",
-      "reasoning": "why this trade makes sense using ONLY the provided numbers",
+      "reasoning": "why this trade makes sense for both sides, using ONLY the provided numbers: why the counterparty accepts (their KTC gain) and why our manager wins on personal value",
       "confidence": "high|medium|low",
       "proposal_index": <index into the proposals array, or null>
     }
@@ -35,7 +34,6 @@ Respond with ONLY a JSON object (no markdown fences) shaped exactly like:
   "roster_advice": [
     {
       "headline": "short title",
-      "pitch": "one-line actionable takeaway",
       "reasoning": "roster construction reasoning using ONLY provided numbers",
       "confidence": "high|medium|low",
       "proposal_index": null
@@ -224,7 +222,6 @@ def _parse_response(
         recommendations.append(
             AdvisorRecommendation(
                 headline=item.get("headline", ""),
-                pitch=item.get("pitch", ""),
                 reasoning=item.get("reasoning", ""),
                 confidence=item.get("confidence", "medium"),
                 proposal=proposal,
@@ -236,7 +233,6 @@ def _parse_response(
         roster_advice.append(
             AdvisorRecommendation(
                 headline=item.get("headline", ""),
-                pitch=item.get("pitch", ""),
                 reasoning=item.get("reasoning", ""),
                 confidence=item.get("confidence", "medium"),
                 proposal=None,
