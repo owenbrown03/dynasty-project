@@ -154,7 +154,9 @@ def test_synthesis_handles_invalid_json():
 
 
 def test_synthesis_requires_client():
-    with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as exc:
         asyncio.run(
             synthesis.synthesize_recommendations(
                 gemini=None,
@@ -162,6 +164,8 @@ def test_synthesis_requires_client():
                 dossier=_dossier(),
             )
         )
+
+    assert exc.value.status_code == 503
 
 
 def test_prompt_contains_data_blocks_and_rules():

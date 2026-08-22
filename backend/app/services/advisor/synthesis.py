@@ -57,9 +57,14 @@ async def synthesize_recommendations(
     preferences: AdvisorPreferenceSummary | None = None,
 ) -> AdvisorSynthesisResponse:
     if gemini is None:
-        raise RuntimeError(
-            "Gemini is not configured "
-            "(set GEMINI_API_KEY)"
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "AI advisor is not configured "
+                "(missing GEMINI_API_KEY)."
+            ),
         )
 
     prompt = _build_prompt(dossier, preferences)

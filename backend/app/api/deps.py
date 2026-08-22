@@ -141,18 +141,12 @@ async def get_fc_client() -> FantasyCalcClient:
 
 
 async def get_gemini_client() -> GeminiClient | None:
-    from app.integrations.gemini import build_gemini_config
+    from app.integrations.gemini import factory as gemini_factory
 
-    config = build_gemini_config()
-
-    if not config.api_key:
+    if not gemini_factory.build_gemini_config().api_key:
         return None
 
-    http_client = await HTTPClientManager.get()
-    return GeminiClient(
-        http=http_client,
-        config=config,
-    )
+    return await gemini_factory.get_gemini_client()
 
 
 async def get_context(

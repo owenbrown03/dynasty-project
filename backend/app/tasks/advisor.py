@@ -18,7 +18,9 @@ async def generate_advisor_digest_task(username: str):
         get_site_user_connection_by_sleeper_user_id,
     )
     from app.crud.sleeper.user import get_userid_by_username
-    from app.integrations.gemini import get_gemini_client
+    from app.integrations.gemini.factory import (
+        get_gemini_client,
+    )
     from app.integrations.sleeper.singleton import (
         get_worker_sleeper_client,
     )
