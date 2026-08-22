@@ -9,6 +9,51 @@ from .schemas import GeminiGenerateResponse, GeminiUsageMetadata
 logger = logging.getLogger(__name__)
 
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503}
+_MAX_SERVER_RETRY_DELAY_SECONDS = 10.0
+
+
+def _server_retry_delay_seconds(
+    exc: httpx.HTTPStatusError,
+) -> float | None:
+    """
+    Extracts a server-provided wait hint from a failed Gemini response.
+
+    Prefers the Retry-After header, then falls back to a google.rpc.RetryInfo
+    detail entry carrying retryDelay (e.g. "26s") as returned for 429s.
+    """
+    retry_after = exc.response.headers.get("Retry-After")
+
+    if retry_after:
+        try:
+            return min(float(retry_after), _MAX_SERVER_RETRY_DELAY_SECONDS)
+        except ValueError:
+            pass
+
+    try:
+        payload = exc.response.json()
+    except Exception:
+        return None
+
+    error_payload = payload.get("error")
+
+    if not isinstance(error_payload, dict):
+        return None
+
+    for detail in error_payload.get("details") or []:
+        if not isinstance(detail, dict):
+            continue
+
+        if not str(detail.get("@type", "")).endswith("RetryInfo"):
+            continue
+
+        raw = str(detail.get("retryDelay", "")).removesuffix("s")
+
+        try:
+            return min(float(raw), _MAX_SERVER_RETRY_DELAY_SECONDS)
+        except ValueError:
+            continue
+
+    return None
 
 
 class GeminiTransport:
@@ -75,9 +120,17 @@ class GeminiTransport:
                     self.config.max_attempts,
                     exc.response.status_code,
                 )
-                await asyncio.sleep(
-                    self.config.retry_backoff_seconds * (attempt + 1)
-                )
+                wait = self.config.retry_backoff_seconds * (attempt + 1)
+                server_delay = _server_retry_delay_seconds(exc)
+
+                if server_delay is not None and server_delay > wait:
+                    logger.info(
+                        "Gemini requested retry delay of %.1fs",
+                        server_delay,
+                    )
+                    wait = server_delay
+
+                await asyncio.sleep(wait)
             else:
                 return _parse_generate_response(
                     response.json(),

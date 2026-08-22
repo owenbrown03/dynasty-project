@@ -71,12 +71,20 @@ async def get_advisor_recommendations_endpoint(
             preferences=preferences,
         )
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=(
+        if exc.response.status_code == 429:
+            detail = (
+                "Gemini is rate limiting requests right now (free tier). "
+                "Please try again in a minute."
+            )
+        else:
+            detail = (
                 "AI advisor upstream is temporarily unavailable. "
                 "Please try again shortly."
-            ),
+            )
+
+        raise HTTPException(
+            status_code=503,
+            detail=detail,
         ) from exc
 
 

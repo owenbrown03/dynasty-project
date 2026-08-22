@@ -187,3 +187,68 @@ def test_gives_up_after_max_attempts():
         asyncio.run(client.read.generate_text("hi"))
 
     assert len(calls) == 2
+
+
+def test_honors_retry_after_header():
+    import time
+
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(time.monotonic())
+        if len(calls) == 1:
+            return httpx.Response(
+                429,
+                json={"error": {"status": "RESOURCE_EXHAUSTED"}},
+                headers={"Retry-After": "1"},
+            )
+        return httpx.Response(200, json=_gemini_ok_payload())
+
+    client = _client_with_handler(
+        handler,
+        max_attempts=2,
+    )
+
+    text = asyncio.run(client.read.generate_text("hi"))
+
+    assert text == "Hello world"
+    assert len(calls) == 2
+    waited = calls[1] - calls[0]
+    assert waited >= 0.9
+
+
+def test_honors_retry_info_detail_delay():
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        if len(calls) == 1:
+            return httpx.Response(
+                429,
+                json={
+                    "error": {
+                        "code": 429,
+                        "status": "RESOURCE_EXHAUSTED",
+                        "details": [
+                            {
+                                "@type": (
+                                    "type.googleapis.com/"
+                                    "google.rpc.RetryInfo"
+                                ),
+                                "retryDelay": "1s",
+                            }
+                        ],
+                    }
+                },
+            )
+        return httpx.Response(200, json=_gemini_ok_payload())
+
+    client = _client_with_handler(
+        handler,
+        max_attempts=2,
+    )
+
+    text = asyncio.run(client.read.generate_text("hi"))
+
+    assert text == "Hello world"
+    assert len(calls) == 2
