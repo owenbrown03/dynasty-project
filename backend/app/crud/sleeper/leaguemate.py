@@ -41,6 +41,7 @@ async def sync_leaguemates(
     db: AsyncSession,
     sleeper: SleeperClient,
     username: str,
+    force: bool = False,
 ):
     state = await sleeper.read.get_nfl_state()
     season = state.season
@@ -82,10 +83,13 @@ async def sync_leaguemates(
     if not leagues:
         return {"status": "skipped", "reason": "no_leagues"}
 
+    # Always use force=False for leaguemates to prevent a massive API rate-limiting storm
+    # across hundreds of external leagues. They will still sync if they haven't been updated today.
     return await sync_leagues(
         db,
         leagues,
         curr_week,
         sleeper,
+        force=False,
         existing_refresh="transactions_only",
     )

@@ -50,6 +50,7 @@ from app.services.reminders import (
 )
 from app.services.values.basis import ValueBasis
 from app.tasks.user import sync_user_data_task
+from app.tasks.trade import sync_leaguemates_task
 
 router = APIRouter()
 
@@ -58,6 +59,7 @@ async def sync_user_data_endpoint(
     username: str,
 ):
     await sync_user_data_task.kiq(username)
+    await sync_leaguemates_task.kiq(username, force=True)
     return {"status": "sync_initiated"}
 
 @router.get("/{username}/rosters")

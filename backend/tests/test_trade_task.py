@@ -119,6 +119,7 @@ def test_sync_leaguemates_task_releases_lock_after_success(
         db,
         sleeper,
         username,
+        force=False,
     ):
         del db, sleeper
         sync_calls.append(

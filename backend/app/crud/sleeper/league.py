@@ -495,10 +495,12 @@ async def fetch_league_bundle(
         and (datetime.now(UTC) - last_synced_utc) < timedelta(minutes=RECENT_ACTIVITY_SYNC_INTERVAL_MINUTES)
     )
 
-    needs_refresh = (
-        full_refresh_due
-        or not was_synced_today(sync_state)
-    ) and not (recently_synced and not is_new)
+    needs_refresh = force or (
+        (
+            full_refresh_due
+            or not was_synced_today(sync_state)
+        ) and not (recently_synced and not is_new)
+    )
 
     should_fetch_brackets = (
         getattr(

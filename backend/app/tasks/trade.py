@@ -60,7 +60,7 @@ async def _release_leaguemate_sync_lock(
 
 
 @broker.task
-async def sync_leaguemates_task(username: str):
+async def sync_leaguemates_task(username: str, force: bool = False):
     lock_token = await _acquire_leaguemate_sync_lock(
         username,
     )
@@ -84,6 +84,7 @@ async def sync_leaguemates_task(username: str):
                 db,
                 sleeper,
                 username,
+                force=force,
             )
 
             await db.commit()

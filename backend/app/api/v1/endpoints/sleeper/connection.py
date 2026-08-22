@@ -15,7 +15,7 @@ async def upsert_endpoint(
     ctx: ContextDep,
 ):
     await sync_user_data_task.kiq(body.sleeper_username)
-    await sync_leaguemates_task.kiq(body.sleeper_username)
+    await sync_leaguemates_task.kiq(body.sleeper_username, force=True)
     return await upsert(ctx, sleeper_username=body.sleeper_username)
 
 @router.post("/reconcile")
