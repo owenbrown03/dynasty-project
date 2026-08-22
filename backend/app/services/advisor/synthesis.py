@@ -49,6 +49,41 @@ recommendations rather than inventing content.
 """
 
 
+async def peek_cached_recommendations(
+    *,
+    gemini: GeminiClient | None,
+    redis,
+    dossier: AdvisorDossier,
+    preferences: AdvisorPreferenceSummary | None = None,
+) -> AdvisorSynthesisResponse | None:
+    """Returns the cached synthesis for this dossier without generating.
+
+    Never consumes quota or calls Gemini; returns None on cache miss.
+    """
+    if not (dossier.proposals or dossier.roster_contexts):
+        return None
+
+    prompt = _build_prompt(dossier, preferences)
+    model = (
+        gemini.config.model
+        if gemini is not None
+        else settings.GEMINI_MODEL
+    )
+
+    cached = await _cache_get(redis, prompt)
+
+    if cached is None:
+        return None
+
+    return _parse_response(
+        cached,
+        dossier=dossier,
+        generated_at=None,
+        model=model,
+        cached=True,
+    )
+
+
 async def synthesize_recommendations(
     *,
     gemini: GeminiClient | None,

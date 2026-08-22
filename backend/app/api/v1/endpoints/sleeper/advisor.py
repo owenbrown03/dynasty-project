@@ -1,5 +1,5 @@
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from app.api.deps import ContextDep
 from app.schemas.advisor import (
@@ -14,6 +14,7 @@ from app.services.advisor.feedback import (
     record_feedback,
 )
 from app.services.advisor.synthesis import (
+    peek_cached_recommendations,
     synthesize_recommendations,
 )
 from app.services.advisor.digest import get_or_queue_digest
@@ -86,6 +87,48 @@ async def get_advisor_recommendations_endpoint(
             status_code=503,
             detail=detail,
         ) from exc
+
+
+@router.get(
+    "/{username}/recommendations",
+    response_model=AdvisorSynthesisResponse | None,
+)
+async def peek_advisor_recommendations_endpoint(
+    username: str,
+    ctx: ContextDep,
+    league_id: str | None = None,
+) -> AdvisorSynthesisResponse | Response:
+    """Returns the cached recommendations for this scope, or 204 if none.
+
+    Never triggers generation and never consumes Gemini quota.
+    """
+    if ctx.site_user is None or ctx.connection is None:
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "Sign in with a linked Sleeper account to view "
+                "AI trade recommendations."
+            ),
+        )
+
+    dossier = await build_advisor_dossier(
+        ctx,
+        username,
+        league_id=league_id,
+    )
+    preferences = await _load_preferences(ctx)
+
+    cached = await peek_cached_recommendations(
+        gemini=ctx.gemini,
+        redis=ctx.redis,
+        dossier=dossier,
+        preferences=preferences,
+    )
+
+    if cached is None:
+        return Response(status_code=204)
+
+    return cached
 
 
 @router.post("/feedback", response_model=AdvisorFeedbackResponse)

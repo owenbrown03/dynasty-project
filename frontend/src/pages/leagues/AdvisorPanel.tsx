@@ -320,6 +320,7 @@ export const AdvisorPanel = ({
   const {
     username,
     recommendations,
+    cachedLoading,
     loading,
     errorMessage,
     generate,
@@ -346,6 +347,10 @@ export const AdvisorPanel = ({
         </p>
       </section>
     );
+  }
+
+  if (cachedLoading && !recommendations) {
+    return null;
   }
 
   if (!recommendations) {

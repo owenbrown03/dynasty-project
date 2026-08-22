@@ -29,6 +29,26 @@ export const advisorEndpoints = (
       },
     ),
 
+  getCachedRecommendations: async (
+    username: string,
+    options?: {
+      leagueId?: string;
+      signal?: AbortSignal;
+    },
+  ) => {
+    const response = await client.get<AdvisorSynthesisResponse>(
+      `${prefix}/${username}/recommendations`,
+      {
+        params: options?.leagueId
+          ? { league_id: options.leagueId }
+          : undefined,
+        signal: options?.signal,
+      },
+    );
+
+    return response.data ?? null;
+  },
+
   recordFeedback: (
     payload: AdvisorFeedbackRequest,
   ) => client.post(`${prefix}/feedback`, payload),

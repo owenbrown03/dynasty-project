@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { queryKeys } from '@/api/query-keys';
 import { appQueryClient } from '@/api/query-client';
@@ -29,6 +29,22 @@ export function useAdvisorRecommendations(
   const { username } = useSleeperConnection();
   const leagueId = options?.leagueId;
 
+  const cachedQuery = useQuery({
+    queryKey: queryKeys.advisor.cachedRecommendations(
+      username,
+      leagueId,
+    ),
+    queryFn: async () => {
+      if (!username) return null;
+      return api.advisor.getCachedRecommendations(username, {
+        leagueId,
+      });
+    },
+    enabled: !!username,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
   const mutation = useMutation<
     AdvisorSynthesisResponse,
     Error,
@@ -54,6 +70,13 @@ export function useAdvisorRecommendations(
         ),
         data,
       );
+      appQueryClient.setQueryData(
+        queryKeys.advisor.cachedRecommendations(
+          username,
+          leagueId,
+        ),
+        data,
+      );
     },
     onError: (error) => {
       notify.error(
@@ -65,7 +88,9 @@ export function useAdvisorRecommendations(
 
   return {
     username,
-    recommendations: mutation.data ?? null,
+    recommendations: mutation.data
+      ?? (cachedQuery.data ?? null),
+    cachedLoading: cachedQuery.isLoading,
     loading: mutation.isPending,
     error: mutation.error,
     errorMessage: mutation.error
@@ -73,6 +98,14 @@ export function useAdvisorRecommendations(
         ?? 'AI advisor could not generate recommendations. Try again shortly.'
       : null,
     generate: () => mutation.mutate(),
-    reset: () => mutation.reset(),
+    reset: () => {
+      mutation.reset();
+      appQueryClient.removeQueries({
+        queryKey: queryKeys.advisor.cachedRecommendations(
+          username,
+          leagueId,
+        ),
+      });
+    },
   };
 }
