@@ -1,4 +1,5 @@
-from fastapi import APIRouter
+import httpx
+from fastapi import APIRouter, HTTPException
 
 from app.api.deps import ContextDep
 from app.schemas.advisor import (
@@ -45,15 +46,33 @@ async def get_advisor_recommendations_endpoint(
     username: str,
     ctx: ContextDep,
 ) -> AdvisorSynthesisResponse:
+    if ctx.site_user is None or ctx.connection is None:
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "Sign in with a linked Sleeper account to generate "
+                "AI trade recommendations."
+            ),
+        )
+
     dossier = await build_advisor_dossier(ctx, username)
     preferences = await _load_preferences(ctx)
 
-    return await synthesize_recommendations(
-        gemini=ctx.gemini,
-        redis=ctx.redis,
-        dossier=dossier,
-        preferences=preferences,
-    )
+    try:
+        return await synthesize_recommendations(
+            gemini=ctx.gemini,
+            redis=ctx.redis,
+            dossier=dossier,
+            preferences=preferences,
+        )
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "AI advisor upstream is temporarily unavailable. "
+                "Please try again shortly."
+            ),
+        ) from exc
 
 
 @router.post("/feedback", response_model=AdvisorFeedbackResponse)
