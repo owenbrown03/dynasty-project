@@ -1324,3 +1324,28 @@ export interface AdvisorSynthesisResponse {
   model: string;
   cached: boolean;
 }
+
+export type AdvisorFeedbackSentiment = 'like' | 'dislike';
+
+export const ADVISOR_FEEDBACK_TAGS = [
+  'avoid_injured',
+  'roster_limit_concern',
+  'calculator_not_bible',
+  'prefer_picks',
+  'avoid_player',
+  'position_need',
+  'age_window',
+] as const;
+
+export type AdvisorFeedbackTag = (typeof ADVISOR_FEEDBACK_TAGS)[number];
+
+export interface AdvisorFeedbackRequest {
+  sentiment: AdvisorFeedbackSentiment;
+  reason?: string | null;
+  tags?: string[];
+  league_id?: string | null;
+  counterparty_id?: string | null;
+  player_ids?: string[];
+  proposal_snapshot?: Record<string, unknown>;
+  action_taken?: string | null;
+}

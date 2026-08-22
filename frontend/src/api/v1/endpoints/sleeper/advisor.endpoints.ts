@@ -1,6 +1,6 @@
 import { type AxiosInstance } from 'axios';
 
-import type { AdvisorSynthesisResponse } from '@/types';
+import type { AdvisorFeedbackRequest, AdvisorSynthesisResponse } from '@/types';
 
 export const advisorEndpoints = (
   client: AxiosInstance,
@@ -15,4 +15,8 @@ export const advisorEndpoints = (
       null,
       { signal, timeout: 120000 },
     ),
+
+  recordFeedback: (
+    payload: AdvisorFeedbackRequest,
+  ) => client.post(`${prefix}/feedback`, payload),
 });

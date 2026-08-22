@@ -961,3 +961,66 @@
   display: flex;
   gap: 0.5rem;
 }
+
+/* Advisor feedback */
+
+.advisor-feedback-row {
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-color, #e2e2e2);
+}
+
+.advisor-feedback-btn {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  margin-right: 0.4rem;
+}
+
+.advisor-feedback-thanks {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.advisor-feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.advisor-feedback-reason {
+  width: 100%;
+  resize: vertical;
+  font-size: 0.84rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e2e2);
+  background: transparent;
+  color: inherit;
+}
+
+.advisor-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.advisor-tag-chip {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, #e2e2e2);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.advisor-tag-active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.advisor-feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
