@@ -35,14 +35,16 @@ async def get_player_tiers_endpoint(
     league_id: str | None = Query(
         default=None,
     ),
+    cheap: bool = False,
 ):
     t0 = time.monotonic()
     log.info(
-        "TIER_REQUEST_START basis=%s league=%s has_connection=%s user=%s",
+        "TIER_REQUEST_START basis=%s league=%s has_connection=%s user=%s cheap=%s",
         value_basis,
         league_id,
         ctx.connection is not None,
         ctx.site_user.id if ctx.site_user else None,
+        cheap,
     )
     try:
         async with cancel_on_disconnect(request):
@@ -50,6 +52,7 @@ async def get_player_tiers_endpoint(
                 ctx=ctx,
                 value_basis=value_basis,
                 league_id=league_id,
+                cheap=cheap,
             )
             log.info(
                 "TIER_REQUEST_OK basis=%s league=%s elapsed=%.2fs",

@@ -29,3 +29,4 @@ class PlayerTierBoardResponse(Base):
     war_league_id: str | None = None
     war_league_name: str | None = None
     tiers: list[TierGroup]
+    is_cheap_data: bool = False

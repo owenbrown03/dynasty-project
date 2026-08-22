@@ -497,6 +497,7 @@ export interface TierBoard {
   war_league_id: string | null;
   war_league_name: string | null;
   tiers: TierBoardGroup[];
+  is_cheap_data?: boolean;
 }
 
 export interface PersonalValueSearchResult {
