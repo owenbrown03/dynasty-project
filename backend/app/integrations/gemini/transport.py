@@ -1,7 +1,14 @@
+import asyncio
+import logging
+
 import httpx
 
 from .config import GeminiConfig
 from .schemas import GeminiGenerateResponse, GeminiUsageMetadata
+
+logger = logging.getLogger(__name__)
+
+_RETRYABLE_STATUS_CODES = {429, 500, 502, 503}
 
 
 class GeminiTransport:
@@ -42,18 +49,41 @@ class GeminiTransport:
         if generation_config:
             body["generationConfig"] = generation_config
 
-        response = await self.http.post(
-            self._url("generateContent"),
-            params={"key": self.config.api_key},
-            json=body,
-            timeout=self.config.timeout_seconds,
-        )
+        last_error: httpx.HTTPStatusError | None = None
 
-        response.raise_for_status()
+        for attempt in range(max(1, self.config.max_attempts)):
+            response = await self.http.post(
+                self._url("generateContent"),
+                params={"key": self.config.api_key},
+                json=body,
+                timeout=self.config.timeout_seconds,
+            )
 
-        return _parse_generate_response(
-            response.json(),
-        )
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                is_last_attempt = attempt == self.config.max_attempts - 1
+                if (
+                    exc.response.status_code not in _RETRYABLE_STATUS_CODES
+                    or is_last_attempt
+                ):
+                    raise
+                last_error = exc
+                logger.warning(
+                    "Gemini generate attempt %d/%d failed status=%d",
+                    attempt + 1,
+                    self.config.max_attempts,
+                    exc.response.status_code,
+                )
+                await asyncio.sleep(
+                    self.config.retry_backoff_seconds * (attempt + 1)
+                )
+            else:
+                return _parse_generate_response(
+                    response.json(),
+                )
+
+        raise last_error  # pragma: no cover - loop always returns or raises
 
 
 def _parse_generate_response(payload: dict) -> GeminiGenerateResponse:
