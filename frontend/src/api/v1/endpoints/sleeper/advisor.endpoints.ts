@@ -1,6 +1,10 @@
 import { type AxiosInstance } from 'axios';
 
-import type { AdvisorFeedbackRequest, AdvisorSynthesisResponse } from '@/types';
+import type {
+  AdvisorDigestResponse,
+  AdvisorFeedbackRequest,
+  AdvisorSynthesisResponse,
+} from '@/types';
 
 export const advisorEndpoints = (
   client: AxiosInstance,
@@ -19,4 +23,13 @@ export const advisorEndpoints = (
   recordFeedback: (
     payload: AdvisorFeedbackRequest,
   ) => client.post(`${prefix}/feedback`, payload),
+
+  getDigest: (
+    username: string,
+    signal?: AbortSignal,
+  ) =>
+    client.get<AdvisorDigestResponse>(
+      `${prefix}/${username}/digest`,
+      { signal },
+    ),
 });

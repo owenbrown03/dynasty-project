@@ -1349,3 +1349,11 @@ export interface AdvisorFeedbackRequest {
   proposal_snapshot?: Record<string, unknown>;
   action_taken?: string | null;
 }
+
+export interface AdvisorDigestResponse {
+  report: AdvisorSynthesisResponse | null;
+  queued: boolean;
+  generated_at?: string | null;
+  model?: string | null;
+  reason?: string;
+}

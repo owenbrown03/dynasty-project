@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 
-import { useAdvisorRecommendations } from '@/hooks/sleeper/useAdvisor';
+import { useAdvisorRecommendations, useAdvisorDigest } from '@/hooks/sleeper/useAdvisor';
 import { useAdvisorFeedback } from '@/hooks/sleeper/useAdvisorFeedback';
 import { notify } from '@/utils/notify';
 import type {
@@ -314,6 +314,7 @@ export const AdvisorPanel = () => {
     generate,
     reset,
   } = useAdvisorRecommendations();
+  const { digest, loading: digestLoading } = useAdvisorDigest();
   const [dismissed, setDismissed] = useState(false);
 
   if (!username || dismissed) {
@@ -336,7 +337,9 @@ export const AdvisorPanel = () => {
     );
   }
 
-  if (!recommendations) {
+  const digestReport = !recommendations ? digest?.report ?? null : null;
+
+  if (!recommendations && !digestReport) {
     return (
       <section className="advisor-panel">
         <header className="advisor-panel-header">
@@ -348,6 +351,17 @@ export const AdvisorPanel = () => {
         <p className="page-description">
           The AI advisor cross-references your rosters, your personal valuations vs. market prices, and how your leaguemates actually trade — then proposes specific offers with a pitch you can send.
         </p>
+
+        {digestLoading && (
+          <p className="no-results-text">Checking for your weekly digest...</p>
+        )}
+
+        {digest?.queued && !digest.report && (
+          <p className="no-results-text">
+            Your weekly digest is being prepared in the background — check back in a few minutes.
+          </p>
+        )}
+
         <button
           type="button"
           className="button-secondary"
@@ -359,30 +373,38 @@ export const AdvisorPanel = () => {
     );
   }
 
+  const active = recommendations ?? digestReport;
+
+  if (!active) {
+    return null;
+  }
+
+  const isDigestView = !recommendations && !!digestReport;
+
   const hasContent =
-    recommendations.recommendations.length > 0 ||
-    recommendations.roster_advice.length > 0;
+    active.recommendations.length > 0 ||
+    active.roster_advice.length > 0;
 
   return (
     <section className="advisor-panel">
       <header className="advisor-panel-header">
         <p className="page-eyebrow">AI Advisor</p>
         <h3 className="trades-section-title">
-          Your recommendations
+          {isDigestView ? 'Your weekly digest' : 'Your recommendations'}
         </h3>
-        {recommendations.cached && (
+        {(recommendations?.cached || isDigestView) && (
           <span className="advisor-cached-badge">cached</span>
         )}
       </header>
 
-      {recommendations.summary && (
-        <p className="page-description">{recommendations.summary}</p>
+      {active.summary && (
+        <p className="page-description">{active.summary}</p>
       )}
 
       {hasContent ? (
         <>
           <div className="advisor-cards">
-            {recommendations.recommendations.map((rec, index) => (
+            {active.recommendations.map((rec, index) => (
               <RecommendationCard
                 key={`trade-${index}`}
                 recommendation={rec}
@@ -390,13 +412,13 @@ export const AdvisorPanel = () => {
             ))}
           </div>
 
-          {recommendations.roster_advice.length > 0 && (
+          {active.roster_advice.length > 0 && (
             <>
               <h4 className="advisor-subheading">
                 Roster construction notes
               </h4>
               <div className="advisor-cards">
-                {recommendations.roster_advice.map((rec, index) => (
+                {active.roster_advice.map((rec, index) => (
                   <RecommendationCard
                     key={`roster-${index}`}
                     recommendation={rec}

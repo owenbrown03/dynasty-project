@@ -84,6 +84,9 @@ export const queryKeys = {
     recommendations: (
       username: string | null | undefined,
     ) => ['advisor-recommendations', username ?? null] as const,
+    digest: (
+      username: string | null | undefined,
+    ) => ['advisor-digest', username ?? null] as const,
   },
 
   trades: {
