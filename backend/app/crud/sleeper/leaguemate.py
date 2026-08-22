@@ -41,6 +41,7 @@ async def sync_leaguemates(
     db: AsyncSession,
     sleeper: SleeperClient,
     username: str,
+    force: bool = False,
 ):
     state = await sleeper.read.get_nfl_state()
     season = state.season
@@ -87,5 +88,6 @@ async def sync_leaguemates(
         leagues,
         curr_week,
         sleeper,
+        force=force,
         existing_refresh="transactions_only",
     )
