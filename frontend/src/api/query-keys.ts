@@ -104,11 +104,13 @@ export const queryKeys = {
     overview: (
       username: string | null | undefined,
       valueBasis: ValueBasis,
+      cheap = false,
     ) =>
       [
         'waiver-overview',
         username ?? null,
         valueBasis,
+        cheap,
       ] as const,
     overviewRoot: ['waiver-overview'] as const,
     recentDrops: (

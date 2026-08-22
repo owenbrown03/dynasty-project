@@ -79,7 +79,20 @@ export const WaiversOverviewTab = ({
   valueBasis,
   onOpenAvailableLeague,
 }: WaiversOverviewTabProps) => {
-  const waivers = useWaiverOverview(valueBasis);
+  const cheapWaivers = useWaiverOverview(valueBasis, true);
+  const fullWaivers = useWaiverOverview(valueBasis, false);
+
+  const displayData = fullWaivers.data ?? cheapWaivers.data;
+  const isLoading = cheapWaivers.loading;
+  const isFetching = fullWaivers.fetching;
+  const hasError = fullWaivers.error || cheapWaivers.error;
+
+  const waivers = {
+    loading: isLoading,
+    fetching: isFetching,
+    error: hasError,
+    data: displayData,
+  };
 
   if (waivers.loading) {
     return (

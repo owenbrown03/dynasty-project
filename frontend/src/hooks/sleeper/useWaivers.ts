@@ -25,6 +25,7 @@ import type {
 
 export function useWaiverOverview(
   valueBasis: ValueBasis,
+  cheap = false,
 ) {
   const {
     username,
@@ -35,11 +36,12 @@ export function useWaiverOverview(
     queryKey: queryKeys.waivers.overview(
       username,
       valueBasis,
+      cheap,
     ),
 
     queryFn: async ({ signal }) => {
       return api.waivers
-        .getOverview(valueBasis, signal)
+        .getOverview(valueBasis, cheap, signal)
         .then((res) => res.data);
     },
 

@@ -951,11 +951,13 @@ export interface WaiverLeagueOverview {
   value_gain: number | null;
 
   can_submit_claim: boolean;
+  is_cheap_data?: boolean;
 }
 
 export interface WaiverOverviewResponse {
   sleeper_username: string | null;
   leagues: WaiverLeagueOverview[];
+  is_cheap_data?: boolean;
 }
 
 export interface WaiverRecentlyDroppedPlayer extends PlayerValue {

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import type { WaiverLeagueOverview } from '@/types';
 
 import { formatSelectedValue } from './waiver.formatters';
@@ -43,7 +44,7 @@ export const WaiverLeagueCard = ({
           )
         } players over capacity. Remove players before claiming.`
       )
-      : league.value_gain === null
+      : league.value_gain === null && !league.is_cheap_data
         ? 'No positive waiver swap available right now.'
       : undefined
   );
@@ -85,12 +86,14 @@ export const WaiverLeagueCard = ({
           </span>
 
           <strong>
-            +{
-              formatSelectedValue(
+            {league.is_cheap_data ? (
+              <Skeleton variant="text" width="40px" height="18px" />
+            ) : (
+              `+${formatSelectedValue(
                 league.value_gain,
                 league.value_basis,
-              )
-            }
+              )}`
+            )}
           </strong>
         </div>
       </div>
@@ -165,6 +168,7 @@ export const WaiverLeagueCard = ({
           valueBasis={league.value_basis}
           variant="add"
           emptyMessage="No positive add recommended right now."
+          isCheap={league.is_cheap_data}
         />
 
         <div className="waiver-swap-arrow">
@@ -178,6 +182,7 @@ export const WaiverLeagueCard = ({
           valueBasis={league.value_basis}
           variant="drop"
           emptyMessage="No drop needed for a positive swap right now."
+          isCheap={league.is_cheap_data}
         />
       </div>
 

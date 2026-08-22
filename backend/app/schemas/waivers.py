@@ -34,6 +34,7 @@ class WaiverLeagueOverview(Base):
     value_gain: float | None = None
 
     can_submit_claim: bool
+    is_cheap_data: bool = False
 
 
 class WaiverOverviewResponse(Base):
@@ -42,6 +43,7 @@ class WaiverOverviewResponse(Base):
     leagues: list[WaiverLeagueOverview] = Field(
         default_factory=list
     )
+    is_cheap_data: bool = False
 
 
 class WaiverClaimRequest(Base):

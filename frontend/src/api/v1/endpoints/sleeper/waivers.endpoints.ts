@@ -22,6 +22,7 @@ export const waiversEndpoints = (
 ) => ({
   getOverview: (
     valueBasis: ValueBasis,
+    cheap = false,
     signal?: AbortSignal,
   ) => {
     return client.get<WaiverOverviewResponse>(
@@ -29,6 +30,7 @@ export const waiversEndpoints = (
       {
         params: {
           value_basis: valueBasis,
+          cheap,
         },
         signal,
       },

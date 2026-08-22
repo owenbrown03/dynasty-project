@@ -67,6 +67,7 @@ async def waiver_overview(
             "and suggested drops."
         ),
     ),
+    cheap: bool = False,
 ) -> WaiverOverviewResponse:
     if ctx.connection is None:
         return WaiverOverviewResponse()
@@ -80,6 +81,7 @@ async def waiver_overview(
             connection=ctx.connection,
             war_service=war_service,
             value_basis=value_basis,
+            cheap=cheap,
         )
 
 

@@ -159,6 +159,7 @@ async def get_waiver_overview(
     connection: SleeperConnection,
     war_service: WARService,
     value_basis: ValueBasis,
+    cheap: bool = False,
 ) -> WaiverOverviewResponse:
     """
     Builds one waiver overview card for every league owned by the
@@ -225,19 +226,56 @@ async def get_waiver_overview(
     )
 
     overview_cards: list[WaiverLeagueOverview] = []
-    redraft_war_by_league_id = (
-        await build_shared_redraft_war_by_league_id(
-            db=db,
-            redis=redis,
-            leagues=[
-                league
-                for _, league in owned_roster_rows
-            ],
-            war_service=war_service,
+    if cheap:
+        redraft_war_by_league_id = defaultdict(list)
+    else:
+        redraft_war_by_league_id = (
+            await build_shared_redraft_war_by_league_id(
+                db=db,
+                redis=redis,
+                leagues=[
+                    league
+                    for _, league in owned_roster_rows
+                ],
+                war_service=war_service,
+            )
         )
-    )
 
     async def _build_league_waiver_card(roster, league):
+        if cheap:
+            faab_budget = league.waiver_budget
+            faab_remaining = roster.faab_remaining(league)
+            faab_percent_remaining = 0.0
+            if faab_budget > 0:
+                faab_percent_remaining = round(
+                    (faab_remaining / faab_budget) * 100,
+                    1,
+                )
+            roster_capacity = roster.claimable_roster_capacity(league)
+            return WaiverLeagueOverview(
+                league_id=league.league_id,
+                league_name=league.name,
+                league_avatar=league.avatar,
+                roster_id=roster.roster_id,
+                roster_size=roster.roster_size,
+                roster_capacity=roster_capacity,
+                roster_spots_available=roster.open_roster_spots(league),
+                faab_budget=faab_budget,
+                faab_used=roster.waiver_budget_used,
+                faab_remaining=faab_remaining,
+                faab_percent_remaining=faab_percent_remaining,
+                available_player_count=0,
+                value_basis=value_basis,
+                value_label=get_value_label(value_basis, war_value_settings),
+                suggested_add=None,
+                suggested_drop=None,
+                suggested_add_value=None,
+                suggested_drop_value=None,
+                value_gain=None,
+                can_submit_claim=bool(connection.encrypted_token and connection.encrypted_token.strip()),
+                is_cheap_data=True,
+            )
+
         redraft_war_players = redraft_war_by_league_id[
             league.league_id
         ]
@@ -519,6 +557,7 @@ async def get_waiver_overview(
             can_submit_claim=bool(
                 connection.encrypted_token
             ),
+            is_cheap_data=False,
         )
 
     sem = asyncio.Semaphore(10)
@@ -536,4 +575,5 @@ async def get_waiver_overview(
     return WaiverOverviewResponse(
         sleeper_username=connection.sleeper_username,
         leagues=list(overview_cards),
+        is_cheap_data=cheap,
     )
