@@ -78,6 +78,7 @@ def test_generate_text_parses_parts_and_usage():
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["url"] = str(request.url)
+        captured["headers"] = dict(request.headers)
         captured["body"] = json.loads(request.content)
 
         return httpx.Response(200, json=_gemini_ok_payload())
@@ -93,7 +94,8 @@ def test_generate_text_parses_parts_and_usage():
 
     assert text == "Hello world"
     assert "models/gemini-3.5-flash:generateContent" in captured["url"]
-    assert "key=test-key" in captured["url"]
+    assert "test-key" not in captured["url"]
+    assert captured["headers"]["x-goog-api-key"] == "test-key"
     assert (
         captured["body"]["systemInstruction"]["parts"][0]["text"]
         == "Be terse"

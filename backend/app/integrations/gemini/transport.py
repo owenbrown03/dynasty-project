@@ -144,7 +144,9 @@ class GeminiTransport:
                 try:
                     response = await self.http.post(
                         self._url(model, "generateContent"),
-                        params={"key": self.config.api_key},
+                        headers={
+                            "x-goog-api-key": self.config.api_key,
+                        },
                         json=body,
                         timeout=self.config.timeout_seconds,
                     )
