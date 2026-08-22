@@ -9,7 +9,7 @@ import type {
 } from '@/types';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
-function extractErrorDetail(
+export function extractErrorDetail(
   error: Error,
 ): string | null {
   const response = (

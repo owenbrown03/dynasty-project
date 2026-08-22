@@ -1306,6 +1306,8 @@ export interface AdvisorProposal {
   market_receive_total: number | null;
   personal_send_total: number | null;
   personal_receive_total: number | null;
+  your_roster_id?: number | null;
+  counterparty_roster_id?: number | null;
 }
 
 export interface AdvisorRecommendation {

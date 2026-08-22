@@ -26,6 +26,8 @@ class AdvisorProposal(Base):
     market_receive_total: float | None = None
     personal_send_total: float | None = None
     personal_receive_total: float | None = None
+    your_roster_id: int | None = None
+    counterparty_roster_id: int | None = None
 
     @property
     def asymmetry(self) -> str | None:

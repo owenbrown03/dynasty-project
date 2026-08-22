@@ -3,10 +3,13 @@ import { Link } from 'react-router';
 
 import { useAdvisorRecommendations } from '@/hooks/sleeper/useAdvisor';
 import { useAdvisorFeedback } from '@/hooks/sleeper/useAdvisorFeedback';
+import { useSendAdvisorOffer } from '@/hooks/sleeper/useSendAdvisorOffer';
+import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { notify } from '@/utils/notify';
 import type {
   AdvisorFeedbackTag,
   AdvisorPlayerRef,
+  AdvisorProposal,
   AdvisorRecommendation,
 } from '@/types';
 import { ADVISOR_FEEDBACK_TAGS } from '@/types';
@@ -120,6 +123,99 @@ function buildIssueText(
   lines.push('', '_Auto-drafted from AI advisor feedback._');
 
   return lines.join('\n');
+}
+
+function SendTradeSection({
+  proposal,
+}: {
+  proposal: AdvisorProposal;
+}) {
+  const { canWrite } = useSleeperConnection();
+  const { sendOffer, sending } = useSendAdvisorOffer();
+  const [confirming, setConfirming] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  if (sent) {
+    return (
+      <p className="advisor-sent-note">
+        Offer sent to {proposal.counterparty_name} — manage
+        it on Sleeper.
+      </p>
+    );
+  }
+
+  if (!canWrite) {
+    return (
+      <p className="advisor-send-hint">
+        Verify your Sleeper account in settings to send
+        offers directly from here.
+      </p>
+    );
+  }
+
+  if (
+    proposal.your_roster_id == null
+    || proposal.counterparty_roster_id == null
+  ) {
+    return (
+      <p className="advisor-send-hint">
+        Hit Regenerate to enable one-click sending for
+        this recommendation.
+      </p>
+    );
+  }
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        className="button-secondary advisor-send-btn"
+        onClick={() => setConfirming(true)}
+      >
+        Send this trade
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="advisor-send-confirm"
+      role="alertdialog"
+      aria-label="Confirm trade offer"
+    >
+      <p>
+        This sends a real offer on Sleeper to{' '}
+        <strong>{proposal.counterparty_name}</strong>:{' '}
+        you give{' '}
+        {proposal.send.map((p) => p.name).join(', ')} and
+        receive{' '}
+        {proposal.receive.map((p) => p.name).join(', ')}.
+      </p>
+
+      <div className="advisor-send-actions">
+        <button
+          type="button"
+          className="button-secondary"
+          disabled={sending}
+          onClick={() => setConfirming(false)}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="button-primary"
+          disabled={sending}
+          onClick={() =>
+            sendOffer(proposal, {
+              onSuccess: () => setSent(true),
+            })
+          }
+        >
+          {sending ? 'Sending...' : 'Confirm & send'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function RecommendationCard({
@@ -242,6 +338,8 @@ function RecommendationCard({
           </span>
         </footer>
       )}
+
+      {proposal && <SendTradeSection proposal={proposal} />}
 
       <footer className="advisor-feedback-row">
         {submitted ? (

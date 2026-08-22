@@ -39,6 +39,39 @@
   margin-top: -4px;
 }
 
+.advisor-send-btn {
+  margin-top: 8px;
+}
+
+.advisor-send-hint {
+  margin: 6px 0 0;
+  font-size: 0.76rem;
+  opacity: 0.6;
+}
+
+.advisor-sent-note {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+}
+
+.advisor-send-confirm {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(127, 127, 127, 0.1);
+  font-size: 0.84rem;
+}
+
+.advisor-send-confirm p {
+  margin: 0 0 8px;
+}
+
+.advisor-send-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .advisor-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

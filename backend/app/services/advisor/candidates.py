@@ -207,14 +207,16 @@ async def _build_league_candidates(
         if made_for_this_league >= MAX_PROPOSALS_PER_LEAGUE:
             break
 
-        owner_id = _find_owner_of_player(
+        target_roster = _find_roster_of_player(
             league_rosters,
             target.player.player_id,
             exclude_owner=my_roster.owner_id,
         )
 
-        if owner_id is None:
+        if target_roster is None:
             continue
+
+        owner_id = target_roster.owner_id
 
         package = _match_package(
             sell_pool,
@@ -265,23 +267,25 @@ async def _build_league_candidates(
                 market_receive_total=market_receive_total,
                 personal_send_total=personal_send_total,
                 personal_receive_total=personal_receive_total,
+                your_roster_id=my_roster.roster_id,
+                counterparty_roster_id=target_roster.roster_id,
             ),
         )
         made_for_this_league += 1
 
 
-def _find_owner_of_player(
+def _find_roster_of_player(
     league_rosters,
     player_id: str,
     *,
     exclude_owner: str | None,
-) -> str | None:
+):
     for _, roster in league_rosters:
         if roster.owner_id == exclude_owner:
             continue
 
         if player_id in (roster.players or []):
-            return roster.owner_id
+            return roster
 
     return None
 
