@@ -12,12 +12,21 @@ export const advisorEndpoints = (
 ) => ({
   getRecommendations: (
     username: string,
-    signal?: AbortSignal,
+    options?: {
+      leagueId?: string;
+      signal?: AbortSignal;
+    },
   ) =>
     client.post<AdvisorSynthesisResponse>(
       `${prefix}/${username}/recommendations`,
       null,
-      { signal, timeout: 120000 },
+      {
+        params: options?.leagueId
+          ? { league_id: options.leagueId }
+          : undefined,
+        signal: options?.signal,
+        timeout: 120000,
+      },
     ),
 
   recordFeedback: (

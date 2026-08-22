@@ -1,0 +1,205 @@
+/* AI Advisor panel */
+
+.advisor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color, #e2e2e2);
+  border-radius: 12px;
+}
+
+.advisor-panel-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.advisor-cached-badge {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.15);
+}
+
+.advisor-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.9rem;
+}
+
+.advisor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.95rem;
+  border: 1px solid var(--border-color, #e2e2e2);
+  border-radius: 10px;
+}
+
+.advisor-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.advisor-headline {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.advisor-confidence {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.advisor-confidence-high {
+  background: rgba(48, 164, 108, 0.18);
+  color: #1f7a4d;
+}
+
+.advisor-confidence-medium {
+  background: rgba(214, 158, 46, 0.18);
+  color: #8a6414;
+}
+
+.advisor-confidence-low {
+  background: rgba(127, 127, 127, 0.16);
+}
+
+.advisor-pitch {
+  margin: 0;
+  font-style: italic;
+}
+
+.advisor-reasoning {
+  margin: 0;
+  font-size: 0.86rem;
+  opacity: 0.85;
+}
+
+.advisor-proposal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.advisor-proposal-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.advisor-player-chip {
+  display: flex;
+  flex-direction: column;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  margin-top: 0.35rem;
+}
+
+.advisor-chip-send {
+  background: rgba(214, 79, 79, 0.12);
+}
+
+.advisor-chip-receive {
+  background: rgba(48, 164, 108, 0.14);
+}
+
+.advisor-chip-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.advisor-chip-meta {
+  font-size: 0.74rem;
+  opacity: 0.8;
+}
+
+.advisor-totals {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.advisor-subheading {
+  margin: 0.5rem 0 0;
+}
+
+.advisor-panel-footer {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Advisor feedback */
+
+.advisor-feedback-row {
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-color, #e2e2e2);
+}
+
+.advisor-feedback-btn {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  margin-right: 0.4rem;
+}
+
+.advisor-feedback-thanks {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.advisor-feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.advisor-feedback-reason {
+  width: 100%;
+  resize: vertical;
+  font-size: 0.84rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e2e2);
+  background: transparent;
+  color: inherit;
+}
+
+.advisor-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.advisor-tag-chip {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, #e2e2e2);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.advisor-tag-active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.advisor-feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}

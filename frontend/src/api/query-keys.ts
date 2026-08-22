@@ -83,7 +83,12 @@ export const queryKeys = {
   advisor: {
     recommendations: (
       username: string | null | undefined,
-    ) => ['advisor-recommendations', username ?? null] as const,
+      leagueId?: string | null,
+    ) => [
+      'advisor-recommendations',
+      username ?? null,
+      leagueId ?? null,
+    ] as const,
     digest: (
       username: string | null | undefined,
     ) => ['advisor-digest', username ?? null] as const,

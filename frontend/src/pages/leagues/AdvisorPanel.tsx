@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 
-import { useAdvisorRecommendations, useAdvisorDigest } from '@/hooks/sleeper/useAdvisor';
+import { useAdvisorRecommendations } from '@/hooks/sleeper/useAdvisor';
 import { useAdvisorFeedback } from '@/hooks/sleeper/useAdvisorFeedback';
 import { notify } from '@/utils/notify';
 import type {
@@ -10,6 +10,8 @@ import type {
   AdvisorRecommendation,
 } from '@/types';
 import { ADVISOR_FEEDBACK_TAGS } from '@/types';
+
+import './AdvisorPanel.css';
 
 const TAG_LABELS: Record<AdvisorFeedbackTag, string> = {
   avoid_injured: 'Avoid injured players',
@@ -306,15 +308,22 @@ function RecommendationCard({
   );
 }
 
-export const AdvisorPanel = () => {
+interface AdvisorPanelProps {
+  leagueId: string;
+  leagueName: string;
+}
+
+export const AdvisorPanel = ({
+  leagueId,
+  leagueName,
+}: AdvisorPanelProps) => {
   const {
     username,
     recommendations,
     loading,
     generate,
     reset,
-  } = useAdvisorRecommendations();
-  const { digest, loading: digestLoading } = useAdvisorDigest();
+  } = useAdvisorRecommendations({ leagueId });
   const [dismissed, setDismissed] = useState(false);
 
   if (!username || dismissed) {
@@ -331,80 +340,64 @@ export const AdvisorPanel = () => {
           </h3>
         </header>
         <p className="page-description">
-          Analyzing your rosters, your valuations vs. the market, and leaguemate trade history across your leagues.
+          Analyzing your roster, your valuations vs. the market, and
+          leaguemate trade history in {leagueName}.
         </p>
       </section>
     );
   }
 
-  const digestReport = !recommendations ? digest?.report ?? null : null;
-
-  if (!recommendations && !digestReport) {
+  if (!recommendations) {
     return (
       <section className="advisor-panel">
         <header className="advisor-panel-header">
           <p className="page-eyebrow">AI Advisor</p>
           <h3 className="trades-section-title">
-            Trade recommendations for you
+            Trade recommendations for {leagueName}
           </h3>
         </header>
         <p className="page-description">
-          The AI advisor cross-references your rosters, your personal valuations vs. market prices, and how your leaguemates actually trade — then proposes specific offers with a pitch you can send.
+          The AI advisor cross-references your roster, your personal
+          valuations vs. market prices, and how your leaguemates in this
+          league actually trade — then proposes specific offers with a
+          pitch you can send.
         </p>
-
-        {digestLoading && (
-          <p className="no-results-text">Checking for your weekly digest...</p>
-        )}
-
-        {digest?.queued && !digest.report && (
-          <p className="no-results-text">
-            Your weekly digest is being prepared in the background — check back in a few minutes.
-          </p>
-        )}
 
         <button
           type="button"
           className="button-secondary"
           onClick={() => generate()}
         >
-          Generate AI trade recommendations
+          Generate AI trade recommendations for this league
         </button>
       </section>
     );
   }
 
-  const active = recommendations ?? digestReport;
-
-  if (!active) {
-    return null;
-  }
-
-  const isDigestView = !recommendations && !!digestReport;
-
   const hasContent =
-    active.recommendations.length > 0 ||
-    active.roster_advice.length > 0;
+    recommendations.recommendations.length > 0 ||
+    recommendations.roster_advice.length > 0;
 
   return (
     <section className="advisor-panel">
       <header className="advisor-panel-header">
         <p className="page-eyebrow">AI Advisor</p>
         <h3 className="trades-section-title">
-          {isDigestView ? 'Your weekly digest' : 'Your recommendations'}
+          Your recommendations
         </h3>
-        {(recommendations?.cached || isDigestView) && (
+        {recommendations.cached && (
           <span className="advisor-cached-badge">cached</span>
         )}
       </header>
 
-      {active.summary && (
-        <p className="page-description">{active.summary}</p>
+      {recommendations.summary && (
+        <p className="page-description">{recommendations.summary}</p>
       )}
 
       {hasContent ? (
         <>
           <div className="advisor-cards">
-            {active.recommendations.map((rec, index) => (
+            {recommendations.recommendations.map((rec, index) => (
               <RecommendationCard
                 key={`trade-${index}`}
                 recommendation={rec}
@@ -412,13 +405,13 @@ export const AdvisorPanel = () => {
             ))}
           </div>
 
-          {active.roster_advice.length > 0 && (
+          {recommendations.roster_advice.length > 0 && (
             <>
               <h4 className="advisor-subheading">
                 Roster construction notes
               </h4>
               <div className="advisor-cards">
-                {active.roster_advice.map((rec, index) => (
+                {recommendations.roster_advice.map((rec, index) => (
                   <RecommendationCard
                     key={`roster-${index}`}
                     recommendation={rec}
@@ -430,7 +423,8 @@ export const AdvisorPanel = () => {
         </>
       ) : (
         <p className="no-results-text">
-          The advisor didn't find enough data for concrete recommendations yet — keep your leagues synced and check back.
+          The advisor didn't find enough data in this league for concrete
+          recommendations yet — keep the league synced and check back.
         </p>
       )}
 

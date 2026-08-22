@@ -8,7 +8,6 @@ import { PaginationToolbar } from '@/components/controls/PaginationToolbar';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { TradeCards } from './TradeCards';
-import { AdvisorPanel } from './AdvisorPanel';
 import { useTrades } from '@/hooks/sleeper/useTrades';
 
 type TradeSettingsFilterKey =
@@ -59,7 +58,7 @@ const FILTER_KEYS: TradeSettingsFilterKey[] = [
   'tep',
 ];
 
-function TradeResearchSkeleton() {
+function TradeSignalsSkeleton() {
   return (
     <div
       className="trades-container trade-research-skeleton"
@@ -275,7 +274,7 @@ function getTradeSettingsFilterValue(
   return parsed?.value ?? '';
 }
 
-export const TradeResearchTab = () => {
+export const TradeSignalsTab = () => {
   const cheapTrades = useTrades(true);
   const fullTrades = useTrades(false);
 
@@ -496,18 +495,16 @@ export const TradeResearchTab = () => {
 
   if (trades.loading) {
     return (
-      <TradeResearchSkeleton />
+      <TradeSignalsSkeleton />
     );
   }
 
   if (Array.isArray(trades.data) && trades.data.length > 0) {
     return (
       <div className="trades-container">
-        <AdvisorPanel />
-
         <div className="trades-section-header">
           <div>
-            <p className="page-eyebrow">Research</p>
+            <p className="page-eyebrow">Trade signals</p>
             <h2 className="trades-section-title">Trade database</h2>
             <p className="page-description">
               Latest actionable trades from your synced Sleeper trade history, filtered by league settings and asset search.

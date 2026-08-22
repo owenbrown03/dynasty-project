@@ -7,7 +7,7 @@ import {
   TradeCalculatorTab,
   type TradeCalculatorBulkOfferSeed,
 } from './TradeCalculatorTab';
-import { TradeResearchTab } from './TradeResearchTab';
+import { TradeSignalsTab } from './TradeSignalsTab';
 
 import './TradesPage.css';
 
@@ -15,7 +15,7 @@ import './TradesPage.css';
 type TradesTab =
   | 'bulk-offers'
   | 'calculator'
-  | 'research';
+  | 'signals';
 
 
 export const TradesPage = () => {
@@ -70,16 +70,16 @@ export const TradesPage = () => {
 
         <button
           className={
-            activeTab === 'research'
+            activeTab === 'signals'
               ? 'trades-tab-button active'
               : 'trades-tab-button'
           }
           onClick={() => {
-            setActiveTab('research');
+            setActiveTab('signals');
           }}
           type="button"
         >
-          Trade Research
+          Trade Signals
         </button>
       </div>
 
@@ -95,7 +95,7 @@ export const TradesPage = () => {
                 }}
               />
             )
-            : <TradeResearchTab />
+            : <TradeSignalsTab />
       }
     </main>
   );
