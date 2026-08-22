@@ -297,3 +297,35 @@ class UserLeagueNote(SQLModel, table=True):
         ),
     )
 
+
+class AdvisorFeedback(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    site_user_id: uuid.UUID = Field(
+        sa_type=UUID(as_uuid=True),
+        foreign_key="siteuser.id",
+        index=True,
+    )
+    league_id: str | None = Field(
+        default=None,
+        foreign_key="league.league_id",
+        index=True,
+    )
+    counterparty_id: str | None = Field(default=None)
+    player_ids: list[str] = Field(
+        default_factory=list,
+        sa_type=JSON,
+    )
+    sentiment: str = Field(index=True)
+    reason: str | None = None
+    tags: list[str] = Field(
+        default_factory=list,
+        sa_type=JSON,
+    )
+    proposal_snapshot: dict = Field(
+        default_factory=dict,
+        sa_type=JSON,
+    )
+    action_taken: str | None = None
+    resolved: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+

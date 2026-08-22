@@ -99,3 +99,46 @@ class AdvisorSynthesisResponse(Base):
     generated_at: str
     model: str
     cached: bool = False
+
+
+ALLOWED_FEEDBACK_SENTIMENTS = {"like", "dislike"}
+
+ALLOWED_FEEDBACK_TAGS = {
+    "avoid_injured",
+    "roster_limit_concern",
+    "calculator_not_bible",
+    "prefer_picks",
+    "avoid_player",
+    "position_need",
+    "age_window",
+}
+
+ACTION_VALUES_DOWNGRADE = "values_downgrade_requested"
+ACTION_GITHUB_ISSUE = "github_issue_drafted"
+
+
+class AdvisorFeedbackRequest(Base):
+    sentiment: str
+    reason: str | None = None
+    tags: list[str] = []
+    league_id: str | None = None
+    counterparty_id: str | None = None
+    player_ids: list[str] = []
+    proposal_snapshot: dict = {}
+    action_taken: str | None = None
+
+
+class AdvisorFeedbackResponse(Base):
+    id: int
+    sentiment: str
+    reason: str | None = None
+    tags: list[str] = []
+    resolved: bool
+    created_at: str
+
+
+class AdvisorPreferenceSummary(Base):
+    likes: list[str] = []
+    dislikes: list[str] = []
+    tags: dict[str, int] = {}
+    notes: list[str] = []

@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.integrations.gemini.client import GeminiClient
 from app.schemas.advisor import (
     AdvisorDossier,
+    AdvisorPreferenceSummary,
     AdvisorRecommendation,
     AdvisorSynthesisResponse,
 )
@@ -53,6 +54,7 @@ async def synthesize_recommendations(
     gemini: GeminiClient | None,
     redis,
     dossier: AdvisorDossier,
+    preferences: AdvisorPreferenceSummary | None = None,
 ) -> AdvisorSynthesisResponse:
     if gemini is None:
         raise RuntimeError(
@@ -60,7 +62,7 @@ async def synthesize_recommendations(
             "(set GEMINI_API_KEY)"
         )
 
-    prompt = _build_prompt(dossier)
+    prompt = _build_prompt(dossier, preferences)
 
     cached = await _cache_get(redis, prompt)
     model = gemini.config.model
@@ -103,7 +105,10 @@ async def synthesize_recommendations(
     )
 
 
-def _build_prompt(dossier: AdvisorDossier) -> str:
+def _build_prompt(
+    dossier: AdvisorDossier,
+    preferences: AdvisorPreferenceSummary | None = None,
+) -> str:
     blocks = [
         render_data_block(
             "Trade proposals (deterministic candidates)",
@@ -118,6 +123,19 @@ def _build_prompt(dossier: AdvisorDossier) -> str:
             dossier.signals.model_dump(),
         ),
     ]
+
+    if preferences is not None and (
+        preferences.likes
+        or preferences.dislikes
+        or preferences.tags
+    ):
+        blocks.append(
+            render_data_block(
+                "Manager preference memory (feedback on past "
+                "recommendations — respect these when ranking)",
+                preferences.model_dump(),
+            )
+        )
 
     return (
         "You are advising a fantasy manager with Sleeper username "
