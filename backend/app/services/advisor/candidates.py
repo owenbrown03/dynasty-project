@@ -2,10 +2,7 @@ import logging
 from collections import defaultdict
 
 from app.api.deps import ContextDep
-from app.crud.sleeper.league import (
-    get_league_with_rosters,
-    get_owned_leagues_by_sleeper_user_id,
-)
+from app.crud.sleeper.league import get_league_with_rosters
 from app.crud.sleeper.player import get_player_map_for_ids
 from app.crud.sleeper.trade import (
     get_trade_signals,
@@ -21,6 +18,9 @@ from app.schemas.advisor import (
 )
 from app.schemas.personal_values import PersonalValuePoolItem
 from app.services.personal_values import get_personal_value_pool
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_sleeper_user_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -83,20 +83,20 @@ async def build_advisor_dossier(
         username,
     )
 
-    owned = await get_owned_leagues_by_sleeper_user_id(
-        ctx.db,
-        main_user_id,
+    owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
+        db=ctx.db,
+        sleeper_user_id=main_user_id,
+        site_user_id=ctx.site_user.id if ctx.site_user else None,
+        include_hidden=False,
     )
-    owned.sort(
-        key=lambda pair: pair[0].season or 0,
-        reverse=True,
-    )
-    selected = owned[:MAX_LEAGUES]
+    selected = owned_rows[:MAX_LEAGUES]
 
     proposals: list[AdvisorProposal] = []
     roster_contexts: list[AdvisorRosterContext] = []
 
-    for league, my_roster in selected:
+    for row in selected:
+        league = row.league
+        my_roster = row.roster
         try:
             await _build_league_candidates(
                 ctx,
