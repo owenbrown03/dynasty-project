@@ -33,12 +33,17 @@ def _gemini_ok_payload() -> dict:
 def _client_with_handler(
     handler,
     api_key: str | None = "test-key",
+    **config_kwargs,
 ) -> GeminiClient:
     return GeminiClient(
         http=httpx.AsyncClient(
             transport=httpx.MockTransport(handler),
         ),
-        config=GeminiConfig(api_key=api_key),
+        config=GeminiConfig(
+            api_key=api_key,
+            retry_backoff_seconds=0,
+            **config_kwargs,
+        ),
     )
 
 
@@ -126,3 +131,59 @@ def test_http_error_propagates():
 
     with pytest.raises(httpx.HTTPStatusError):
         asyncio.run(client.read.generate_text("hi"))
+
+
+def test_retries_transient_errors_then_succeeds():
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        if len(calls) < 3:
+            return httpx.Response(503, json={"error": "overloaded"})
+        return httpx.Response(200, json=_gemini_ok_payload())
+
+    client = _client_with_handler(
+        handler,
+        max_attempts=3,
+    )
+
+    text = asyncio.run(client.read.generate_text("hi"))
+
+    assert text == "Hello world"
+    assert len(calls) == 3
+
+
+def test_non_retryable_error_raises_without_retry():
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(400, json={"error": "bad request"})
+
+    client = _client_with_handler(
+        handler,
+        max_attempts=3,
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        asyncio.run(client.read.generate_text("hi"))
+
+    assert len(calls) == 1
+
+
+def test_gives_up_after_max_attempts():
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(503, json={"error": "overloaded"})
+
+    client = _client_with_handler(
+        handler,
+        max_attempts=2,
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        asyncio.run(client.read.generate_text("hi"))
+
+    assert len(calls) == 2
