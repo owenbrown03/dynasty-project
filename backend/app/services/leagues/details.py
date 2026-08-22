@@ -89,6 +89,7 @@ def build_league_details_cache_key(
     draft_pick_projection_settings: (
         dict[str, object] | None
     ),
+    cheap: bool = False,
 ) -> str:
     return (
         f"league-details:{LEAGUE_DETAILS_CACHE_VERSION}:"
@@ -105,6 +106,7 @@ def build_league_details_cache_key(
                 "draft_pick_projection_settings": (
                     draft_pick_projection_settings or {}
                 ),
+                "cheap": cheap,
             },
             sort_keys=True,
             default=str,
@@ -647,6 +649,7 @@ class LeagueDetails:
         league_id: str,
         site_user_id: UUID | None = None,
         draft_pick_projection_settings: dict[str, object] | None = None,
+        cheap: bool = False,
     ):
         leagues = await get_league_with_rosters(
             db,
@@ -699,6 +702,7 @@ class LeagueDetails:
             draft_pick_projection_settings=(
                 draft_pick_projection_settings
             ),
+            cheap=cheap,
         )
 
         if redis is not None:
@@ -713,52 +717,13 @@ class LeagueDetails:
                     )
                 )
 
-        async with heavy_work_semaphore:
-            shared = await self.war_service.load_shared_data(
-                db,
-                int(league.season),
-            )
-            roster_construction_seasonal_results = (
-                await self.build_roster_construction_seasonal_results(
-                    db=db,
-                    redis=redis,
-                    league=league,
-                    players=shared.players,
-                    current_shared=shared,
-                )
-            )
-            war_position_history = await self.build_war_position_history(
-                db=db,
-                redis=redis,
-                league=league,
-                players=shared.players,
-                current_shared=shared,
-            )
-            war_player_history = await self.build_war_player_history(
-                db=db,
-                redis=redis,
-                league=league,
-                players=shared.players,
-                current_shared=shared,
-            )
-
-            war_players = await self.war_service.calculate_with_shared_cache(
-                redis=redis,
-                league=league,
-                shared=shared,
-            )
-
-            war_lookup = {
-                player.player_id: player
-                for player in war_players
-            }
-
-            dynasty_war_by_player_id = (
-                await build_cached_dynasty_projections_by_player_id(
-                    redis=redis,
-                    player_wars=war_players,
-                )
-            )
+        if cheap:
+            roster_construction_seasonal_results = []
+            war_position_history = []
+            war_player_history = []
+            war_players = []
+            dynasty_war_by_player_id = {}
+            war_lookup = {}
 
             player_ids = set()
             owner_ids = set()
@@ -776,16 +741,83 @@ class LeagueDetails:
             player_values = await get_player_values(
                 db,
                 player_ids,
-                war_players,
-                dynasty_war_by_player_id=dynasty_war_by_player_id,
+                redraft_war_players=[],
+                dynasty_war_by_player_id={},
             )
-            player_values = await hydrate_personal_player_values(
-                db=db,
-                site_user_id=site_user_id,
-                league=league,
-                player_values=player_values,
-                redis=redis,
-            )
+        else:
+            async with heavy_work_semaphore:
+                shared = await self.war_service.load_shared_data(
+                    db,
+                    int(league.season),
+                )
+                roster_construction_seasonal_results = (
+                    await self.build_roster_construction_seasonal_results(
+                        db=db,
+                        redis=redis,
+                        league=league,
+                        players=shared.players,
+                        current_shared=shared,
+                    )
+                )
+                war_position_history = await self.build_war_position_history(
+                    db=db,
+                    redis=redis,
+                    league=league,
+                    players=shared.players,
+                    current_shared=shared,
+                )
+                war_player_history = await self.build_war_player_history(
+                    db=db,
+                    redis=redis,
+                    league=league,
+                    players=shared.players,
+                    current_shared=shared,
+                )
+
+                war_players = await self.war_service.calculate_with_shared_cache(
+                    redis=redis,
+                    league=league,
+                    shared=shared,
+                )
+
+                war_lookup = {
+                    player.player_id: player
+                    for player in war_players
+                }
+
+                dynasty_war_by_player_id = (
+                    await build_cached_dynasty_projections_by_player_id(
+                        redis=redis,
+                        player_wars=war_players,
+                    )
+                )
+
+                player_ids = set()
+                owner_ids = set()
+
+                for roster in roster_rows:
+                    player_ids.update(roster.players or [])
+                    if roster.owner_id:
+                        owner_ids.add(roster.owner_id)
+
+                users = await get_users(
+                    db,
+                    owner_ids,
+                )
+
+                player_values = await get_player_values(
+                    db,
+                    player_ids,
+                    war_players,
+                    dynasty_war_by_player_id=dynasty_war_by_player_id,
+                )
+                player_values = await hydrate_personal_player_values(
+                    db=db,
+                    site_user_id=site_user_id,
+                    league=league,
+                    player_values=player_values,
+                    redis=redis,
+                )
 
         player_map = {
             player.player_id: player
@@ -945,24 +977,32 @@ class LeagueDetails:
             db,
             [league_id],
         )
-        projected_pick_slots_by_roster_id = (
-            await build_cached_projected_pick_slots_by_roster_id(
-                redis=redis,
-                league=league,
-                rosters=roster_rows,
-                current_week=current_week,
-                projected_points_by_roster_id=(
-                    projected_points_by_roster_id
-                ),
-                redraft_starter_war_by_roster_id=(
-                    redraft_starter_war_by_roster_id
-                ),
-                redraft_roster_war_by_roster_id=(
-                    redraft_roster_war_by_roster_id
-                ),
-                settings=draft_pick_projection_settings,
+        if cheap:
+            from types import SimpleNamespace
+            projected_pick_slots_by_roster_id = SimpleNamespace(
+                slots_by_roster_id={},
+                method_used="none",
+                fallback_from_method=None
             )
-        )
+        else:
+            projected_pick_slots_by_roster_id = (
+                await build_cached_projected_pick_slots_by_roster_id(
+                    redis=redis,
+                    league=league,
+                    rosters=roster_rows,
+                    current_week=current_week,
+                    projected_points_by_roster_id=(
+                        projected_points_by_roster_id
+                    ),
+                    redraft_starter_war_by_roster_id=(
+                        redraft_starter_war_by_roster_id
+                    ),
+                    redraft_roster_war_by_roster_id=(
+                        redraft_roster_war_by_roster_id
+                    ),
+                    settings=draft_pick_projection_settings,
+                )
+            )
         projected_pick_season = get_first_future_pick_season(
             league,
             drafts=drafts_by_league_id.get(league_id, []),
@@ -1023,38 +1063,43 @@ class LeagueDetails:
             for pick in picks
         ]
 
-        fc_pick_values_by_key = await get_resolved_pick_values_by_key(
-            db,
-            picks=all_pick_assets,
-            value_basis=ValueBasis.FANTASYCALC,
-            league_num_qbs=num_qbs,
-            league_total_rosters=league.total_rosters,
-            league_ppr=ppr,
-        )
+        if cheap:
+            fc_pick_values_by_key = {}
+            ktc_pick_values_by_key = {}
+            rookie_war_pick_values_by_key = {}
+        else:
+            fc_pick_values_by_key = await get_resolved_pick_values_by_key(
+                db,
+                picks=all_pick_assets,
+                value_basis=ValueBasis.FANTASYCALC,
+                league_num_qbs=num_qbs,
+                league_total_rosters=league.total_rosters,
+                league_ppr=ppr,
+            )
 
-        ktc_pick_values_by_key = await get_resolved_pick_values_by_key(
-            db,
-            picks=all_pick_assets,
-            value_basis=ValueBasis.KTC,
-            league_num_qbs=num_qbs,
-            league_total_rosters=league.total_rosters,
-            league_ppr=ppr,
-        )
-        rookie_war_pick_values_by_key = await get_resolved_pick_values_by_key(
-            db,
-            picks=all_pick_assets,
-            value_basis=ValueBasis.ROOKIE_PICK_WAR,
-            league_num_qbs=num_qbs,
-            league_total_rosters=league.total_rosters,
-            league_ppr=ppr,
-            league_scoring_settings=dict(
-                league.scoring_settings or {},
-            ),
-            league_roster_positions=list(
-                league.roster_positions or [],
-            ),
-            redis=redis,
-        )
+            ktc_pick_values_by_key = await get_resolved_pick_values_by_key(
+                db,
+                picks=all_pick_assets,
+                value_basis=ValueBasis.KTC,
+                league_num_qbs=num_qbs,
+                league_total_rosters=league.total_rosters,
+                league_ppr=ppr,
+            )
+            rookie_war_pick_values_by_key = await get_resolved_pick_values_by_key(
+                db,
+                picks=all_pick_assets,
+                value_basis=ValueBasis.ROOKIE_PICK_WAR,
+                league_num_qbs=num_qbs,
+                league_total_rosters=league.total_rosters,
+                league_ppr=ppr,
+                league_scoring_settings=dict(
+                    league.scoring_settings or {},
+                ),
+                league_roster_positions=list(
+                    league.roster_positions or [],
+                ),
+                redis=redis,
+            )
 
         rosters: list[LeagueRoster] = []
 
@@ -1276,6 +1321,7 @@ class LeagueDetails:
             war_position_history=war_position_history,
             war_player_history=war_player_history,
             rosters=rosters,
+            is_cheap_data=cheap,
         )
 
         if redis is not None:

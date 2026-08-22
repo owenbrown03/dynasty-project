@@ -47,11 +47,13 @@ export const queryKeys = {
     details: (
       leagueId: string | undefined,
       viewerKey: string | null | undefined,
+      cheap = false,
     ) =>
       [
         'league-details',
         leagueId ?? null,
         viewerKey ?? null,
+        cheap,
       ] as const,
     dashboard: (
       username: string | null | undefined,

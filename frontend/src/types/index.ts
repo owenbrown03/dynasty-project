@@ -396,6 +396,7 @@ export interface LeagueDetails {
   war_position_history: LeagueWarPositionSeason[];
   war_player_history: LeagueWarPlayerSeason[];
   rosters: LeagueRoster[];
+  is_cheap_data?: boolean;
 }
 
 export interface DashboardLeague {

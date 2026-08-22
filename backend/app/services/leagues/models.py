@@ -103,6 +103,7 @@ class LeagueDetailsResponse(BaseModel):
     war_position_history: list["LeagueWarPositionSeason"] = []
     war_player_history: list["LeagueWarPlayerSeason"] = []
     rosters: list[LeagueRoster]
+    is_cheap_data: bool = False
 
 
 class LeagueWarPositionValue(BaseModel):

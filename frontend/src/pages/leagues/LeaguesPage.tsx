@@ -132,9 +132,18 @@ export const LeaguesPage = () => {
   );
   const visibility = useLeagueVisibility();
 
-  const details = useLeagueDetails(
-    debouncedSelectedLeague
+  const cheapDetails = useLeagueDetails(
+    debouncedSelectedLeague,
+    true,
   );
+  const fullDetails = useLeagueDetails(
+    debouncedSelectedLeague,
+    false,
+  );
+
+  const displayData = fullDetails.data ?? cheapDetails.data;
+  const isLoading = cheapDetails.loading;
+  const isFetching = fullDetails.fetching;
 
   const selectedLeagueEntry =
     overview.data.find(
@@ -208,7 +217,7 @@ export const LeaguesPage = () => {
             Review roster strength, WAR distribution, and player composition for
             each synced league.
           </p>
-          {details.fetching && !details.loading && (
+          {isFetching && !isLoading && (
             <LoadingState label="Updating league details..." inline className="leagues-refresh-indicator" />
           )}
         </div>
@@ -281,16 +290,16 @@ export const LeaguesPage = () => {
       </section>
 
       {
-        details.data &&
+        displayData &&
         <LeagueDashboard
           league={
-            details.data
+            displayData
           }
         />
       }
 
       {
-        selectedLeague && details.loading && !details.data
+        selectedLeague && isLoading && !displayData
           ? <LeagueDetailsSkeleton />
           : null
       }

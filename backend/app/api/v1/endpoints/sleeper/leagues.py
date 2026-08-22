@@ -53,6 +53,7 @@ async def details_endpoint(
     request: Request,
     league_id: str,
     ctx: ContextDep,
+    cheap: bool = False,
 ):
     async with cancel_on_disconnect(request):
         return await LeagueDetails().get_league_details(
@@ -73,6 +74,7 @@ async def details_endpoint(
                     ctx.session,
                 )
             ),
+            cheap=cheap,
         )
 
 @router.get("/dashboard/{username}")

@@ -121,7 +121,7 @@ export function useLeagueVisibility() {
 }
 
 
-export function useLeagueDetails(league_id?: string) {
+export function useLeagueDetails(league_id?: string, cheap = false) {
   const bootstrap = useBootstrap();
   const viewerKey =
     buildLeagueDetailsViewerKey(
@@ -132,6 +132,7 @@ export function useLeagueDetails(league_id?: string) {
     queryKey: queryKeys.leagues.details(
       league_id,
       viewerKey,
+      cheap,
     ),
 
     queryFn: async ({ signal }) => {
@@ -140,7 +141,7 @@ export function useLeagueDetails(league_id?: string) {
       }
 
       return api.leagues
-        .getDetails(league_id, signal)
+        .getDetails(league_id, cheap, signal)
         .then(res => res.data);
     },
 

@@ -35,11 +35,15 @@ export const leaguesEndpoints = (
 
   getDetails: (
     league_id: string,
+    cheap = false,
     signal?: AbortSignal,
   ) =>
     client.get<LeagueDetails>(
       `${prefix}/details/${league_id}`,
-      { signal },
+      {
+        params: { cheap },
+        signal,
+      },
     ),
 
 
