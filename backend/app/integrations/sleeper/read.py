@@ -238,3 +238,22 @@ class SleeperRead:
             f"v1/stats/nfl/regular/{season}",
             alt=True,
         )
+
+    async def get_league_players_status(
+        self,
+        league_id: str,
+    ) -> list[dict]:
+        """Fetches per-league player status rows via Sleeper GraphQL.
+
+        Public (unauthenticated) read. Each row carries a player_id
+        or a comma-separated draft-pick id ("round,season,og_roster")
+        plus settings that include the trade-block marker ("otb")
+        when a roster has placed the asset on its block.
+        """
+        query = (
+            'query league_players { league_players('
+            f'league_id: "{league_id}") {{ '
+            "league_id player_id settings } }"
+        )
+        data = await self.transport.post(query, {})
+        return data.get("league_players") or []
