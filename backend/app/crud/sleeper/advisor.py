@@ -1,7 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.models.db.sleeper.personal import AdvisorFeedback
+from app.models.db.sleeper.personal import (
+    AdvisorFeedback,
+    AdvisorReport,
+)
 
 
 async def create_feedback(
@@ -76,3 +79,64 @@ async def resolve_feedback(
     await db.commit()
 
     return True
+
+
+async def save_report(
+    db: AsyncSession,
+    *,
+    site_user_id,
+    username: str,
+    payload: dict,
+    model: str | None,
+) -> AdvisorReport:
+    report = AdvisorReport(
+        site_user_id=site_user_id,
+        username=username,
+        payload=payload,
+        model=model,
+    )
+
+    db.add(report)
+    await db.commit()
+    await db.refresh(report)
+
+    return report
+
+
+async def get_latest_report(
+    db: AsyncSession,
+    *,
+    site_user_id,
+) -> AdvisorReport | None:
+    result = await db.execute(
+        select(AdvisorReport)
+        .where(AdvisorReport.site_user_id == site_user_id)
+        .order_by(AdvisorReport.generated_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_site_user_connection_by_sleeper_user_id(
+    db: AsyncSession,
+    *,
+    sleeper_user_id: str,
+):
+    from app.models.db.auth import SiteUser
+    from app.models.db.sleeper.connection import (
+        SleeperConnection,
+    )
+
+    result = await db.execute(
+        select(SiteUser, SleeperConnection)
+        .join(
+            SleeperConnection,
+            SleeperConnection.site_user_id == SiteUser.id,
+        )
+        .where(
+            SleeperConnection.sleeper_user_id
+            == sleeper_user_id
+        )
+        .limit(1)
+    )
+    return result.first()

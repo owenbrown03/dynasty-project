@@ -15,6 +15,7 @@ from app.services.advisor.feedback import (
 from app.services.advisor.synthesis import (
     synthesize_recommendations,
 )
+from app.services.advisor.digest import get_or_queue_digest
 from app.crud.sleeper.advisor import get_active_feedback_by_site_user
 from app.services.advisor.feedback import build_preference_summary
 
@@ -68,3 +69,11 @@ async def get_advisor_preferences_endpoint(
     ctx: ContextDep,
 ) -> AdvisorPreferenceSummary:
     return await list_preferences(ctx)
+
+
+@router.get("/{username}/digest")
+async def get_advisor_digest_endpoint(
+    username: str,
+    ctx: ContextDep,
+):
+    return await get_or_queue_digest(ctx, username)

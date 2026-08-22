@@ -329,3 +329,18 @@ class AdvisorFeedback(SQLModel, table=True):
     resolved: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+
+class AdvisorReport(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    site_user_id: uuid.UUID = Field(
+        sa_type=UUID(as_uuid=True),
+        foreign_key="siteuser.id",
+        index=True,
+    )
+    username: str = Field(index=True)
+    payload: dict = Field(
+        default_factory=dict,
+        sa_type=JSON,
+    )
+    model: str | None = None
+    generated_at: datetime = Field(default_factory=datetime.utcnow)

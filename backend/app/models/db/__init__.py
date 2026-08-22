@@ -28,6 +28,7 @@ from .sleeper.personal import(
     PersonalRankCurve,
     UserLeagueNote,
     AdvisorFeedback,
+    AdvisorReport,
 )
 from .ktc.models import(
     KTCPlayerMap,
