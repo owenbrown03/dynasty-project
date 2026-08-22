@@ -9,6 +9,7 @@ from app.integrations.sleeper.client import SleeperClient
 from app.integrations.underdog.client import UnderdogClient
 from app.integrations.ktc.client import KTCClient
 from app.integrations.fc.client import FantasyCalcClient
+from app.integrations.gemini.client import GeminiClient
 from app.infrastructure.redis.client import RedisClient
 
 
@@ -23,6 +24,7 @@ class Context:
     underdog: Optional[UnderdogClient]
     ktc: Optional[KTCClient]
     fc: Optional[FantasyCalcClient]
+    gemini: Optional[GeminiClient]
     redis: Optional[RedisClient]
 
     @property
