@@ -124,7 +124,11 @@ def _market_war(item: PersonalValuePoolItem) -> float | None:
     return war
 
 
-def _to_ref(item: PersonalValuePoolItem) -> AdvisorPlayerRef:
+def _to_ref(
+    item: PersonalValuePoolItem,
+    *,
+    on_block: bool = False,
+) -> AdvisorPlayerRef:
     return AdvisorPlayerRef(
         player_id=item.player.player_id,
         name=item.player.name,
@@ -135,6 +139,7 @@ def _to_ref(item: PersonalValuePoolItem) -> AdvisorPlayerRef:
         personal_war=_personal_war(item),
         market_war=_market_war(item),
         delta_war=_delta_war(item),
+        on_block=on_block,
     )
 
 
@@ -418,9 +423,9 @@ async def _build_league_candidates(
             target.player.player_id in snapshot.player_ids
         )
 
-        receive_refs = [_to_ref(target)]
-        if target_on_block:
-            receive_refs[0].on_block = True
+        receive_refs = [
+            _to_ref(target, on_block=target_on_block)
+        ]
 
         proposals.append(
             AdvisorProposal(
