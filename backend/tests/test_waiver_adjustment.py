@@ -6,20 +6,21 @@ from app.services.trades.waiver import (
 
 
 def _ladder():
-    # 10 rostered players in a 2-team league; values descend.
-    ranked = [5000 - i * 100 for i in range(50)]
+    # 400 ranked players keyed by FC's own overall_rank; the
+    # cutline anchors at FC's fixed reference rank 300.
+    values_by_rank = {
+        rank + 1: 6000 - rank * 10 for rank in range(400)
+    }
     return build_waiver_credit_ladder(
-        ranked,
-        num_teams=2,
-        roster_slots=5,
+        values_by_rank=values_by_rank,
     )
 
 
 def test_ladder_first_slot_is_cutline_player():
     ladder = _ladder()
 
-    # cutline = 2*5 + 2 = 12 -> value 5000 - 1200 = 3800
-    assert ladder[0] == 3800.0
+    # anchor rank 300 -> value 6000 - 2990 = 3010
+    assert ladder[0] == 3010.0
 
 
 def test_ladder_increases_per_extra_slot():
@@ -27,7 +28,8 @@ def test_ladder_increases_per_extra_slot():
 
     assert len(ladder) >= 2
     assert ladder[1] > ladder[0]
-    assert ladder[1] == ladder[0] + (5000 - (12 - 10) * 100)
+    # second slot steps 10 ranks up: rank 290 -> 6000 - 2890 = 3110
+    assert ladder[1] == ladder[0] + 3110.0
 
 
 def test_even_trade_gets_no_credit():

@@ -58,7 +58,7 @@ export function useAdvisorRecommendations(
       if (!username) throw notify.error('Missing username!');
       const response = await api.advisor.getRecommendations(
         username,
-        { leagueId },
+        { leagueId, force: true },
       );
       return response.data;
     },

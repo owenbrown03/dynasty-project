@@ -14,6 +14,7 @@ export const advisorEndpoints = (
     username: string,
     options?: {
       leagueId?: string;
+      force?: boolean;
       signal?: AbortSignal;
     },
   ) =>
@@ -21,9 +22,12 @@ export const advisorEndpoints = (
       `${prefix}/${username}/recommendations`,
       null,
       {
-        params: options?.leagueId
-          ? { league_id: options.leagueId }
-          : undefined,
+        params: {
+          ...(options?.leagueId
+            ? { league_id: options.leagueId }
+            : {}),
+          ...(options?.force ? { force: true } : {}),
+        },
         signal: options?.signal,
         timeout: 120000,
       },

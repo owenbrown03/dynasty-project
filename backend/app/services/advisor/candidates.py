@@ -38,7 +38,7 @@ from app.services.advisor.trade_block import (
     get_trade_block_snapshot,
 )
 from app.services.trades.waiver import (
-    build_waiver_credit_ladder,
+    load_waiver_ladder,
     split_waiver_credits,
 )
 from app.services.leagues.selection import (
@@ -52,7 +52,8 @@ MAX_LEAGUES = 6
 # should invalidate cached syntheses (value bases, constraint math,
 # package shapes). The synthesis cache identity includes this.
 ADVISOR_ENGINE_VERSION = 4
-ANCHOR_POOL_SIZE = 8
+ANCHOR_POOL_SIZE = 8  # kept for sell-pool context sizing
+TARGET_POOL_SIZE = 60
 MAX_PROPOSALS_PER_LEAGUE = 6
 # Market value is FantasyCalc: unlike KTC it has no imbalance adder,
 # so multi-asset package totals stay additive. A proposal must be
@@ -335,11 +336,15 @@ async def _build_league_candidates(
         buy=buy_pool,
         blocked_ids=set(snapshot.player_ids),
     )
-    sell_pool = sell_pool[:ANCHOR_POOL_SIZE]
-    buy_pool = buy_pool[:ANCHOR_POOL_SIZE]
 
     if not sell_pool or not buy_pool:
         return
+
+    # The whole league is a candidate market: every rostered player
+    # elsewhere is a potential target and every valued own asset a
+    # potential chip. Strategy ordering decides who gets explored
+    # first; hard truncation here was strangling proposal counts.
+    targets = buy_pool[:TARGET_POOL_SIZE]
 
     my_picks = sorted(
         (
@@ -356,29 +361,31 @@ async def _build_league_candidates(
 
     # Waiver-adjustment ladder: FC-style credit for the bench spot
     # a side loses when it ships more players than it receives.
-    waiver_ladder = build_waiver_credit_ladder(
-        sorted(
-            (
-                float(i.player.fc_value)
-                for i in items_by_player_id.values()
-                if i.player.fc_value is not None
-            ),
-            reverse=True,
-        ),
-        num_teams=pool.context.total_rosters,
-        roster_slots=max(
-            len(league.roster_positions or []) or 10, 1
-        ),
-    )
-
-    used_pick_keys: set[tuple[int, str, int]] = set()
+    try:
+        waiver_ladder = await load_waiver_ladder(
+            ctx.db,
+            total_rosters=pool.context.total_rosters,
+            num_qbs=_league_num_qbs(league),
+            ppr=_league_ppr(league),
+        )
+    except Exception:
+        logger.exception(
+            "Advisor waiver-ladder load failed league=%s",
+            league.league_id,
+        )
+        waiver_ladder = []
 
     made_for_this_league = 0
-    used_sell_ids: set[str] = set()
+    seen_target_ids: set[str] = set()
 
-    for target in buy_pool:
+    for target in targets:
         if made_for_this_league >= MAX_PROPOSALS_PER_LEAGUE:
             break
+
+        if target.player.player_id in seen_target_ids:
+            continue
+
+        seen_target_ids.add(target.player.player_id)
 
         target_roster = _find_roster_of_player(
             league_rosters,
@@ -399,15 +406,12 @@ async def _build_league_candidates(
             p
             for p in chests.get(target_roster.roster_id, [])
             if p.value is not None
-            and p.key not in used_pick_keys
         ]
 
         package_players, package_picks = _match_package(
             sell_pool,
             my_picks,
             target_market=_market_value(target),
-            used_player_ids=used_sell_ids,
-            used_pick_keys=used_pick_keys,
         )
 
         if package_players is None:
@@ -456,21 +460,8 @@ async def _build_league_candidates(
             personal_send_total=personal_send_total,
             personal_receive_total=personal_receive_total,
         ):
-            used_sell_ids.update(
-                item.player.player_id for item in package_players
-            )
-            used_pick_keys.update(
-                p.key for p in package_picks
-            )
             continue
 
-        used_sell_ids.update(
-            item.player.player_id for item in package_players
-        )
-        used_pick_keys.update(p.key for p in package_picks)
-
-        if extra_receive_pick is not None:
-            used_pick_keys.add(extra_receive_pick.key)
 
         counterparty_name = owner_names.get(owner_id, {}).get(
             "name",
@@ -784,10 +775,7 @@ async def _detect_league_strategy(
 ) -> LeagueStrategy:
     basis, _phase = await _season_phase(ctx.sleeper)
 
-    starters = max(
-        len(league.roster_positions or []) or 10,
-        1,
-    )
+    starters = max(league.starter_slots, 1)
 
     if basis == BASIS_PROJECTED_WAR:
         # Preseason/offseason: rank every roster by its best

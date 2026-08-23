@@ -462,9 +462,31 @@ function RecommendationCard({
           <span>
             Market (FC) total:{' '}
             <strong>
-              {formatValue(proposal.market_send_total)} →{' '}
-              {formatValue(proposal.market_receive_total)}
+              {formatValue(
+                (proposal.my_waiver_credit
+                  ? (proposal.market_send_total ?? 0)
+                    + proposal.my_waiver_credit
+                  : proposal.market_send_total),
+              )} →{' '}
+              {formatValue(
+                (proposal.their_waiver_credit
+                  ? (proposal.market_receive_total ?? 0)
+                    + proposal.their_waiver_credit
+                  : proposal.market_receive_total),
+              )}
             </strong>
+            {proposal.their_waiver_credit ? (
+              <span className="advisor-waiver-inline">
+                {' '}incl. +{Math.round(proposal.their_waiver_credit)}{' '}
+                waiver to them
+              </span>
+            ) : null}
+            {proposal.my_waiver_credit ? (
+              <span className="advisor-waiver-inline">
+                {' '}incl. +{Math.round(proposal.my_waiver_credit)}{' '}
+                waiver to you
+              </span>
+            ) : null}
           </span>
           <span>
             Your WAR total:{' '}

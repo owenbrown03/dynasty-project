@@ -203,11 +203,6 @@ async def trade_calculator_waiver_adjustment_endpoint(
         ge=0,
         le=2,
     ),
-    roster_slots: int = Query(
-        default=27,
-        ge=1,
-        le=40,
-    ),
     my_players_out: int = Query(
         default=0,
         ge=0,
@@ -224,7 +219,6 @@ async def trade_calculator_waiver_adjustment_endpoint(
         total_rosters=total_rosters,
         num_qbs=num_qbs,
         ppr=ppr,
-        roster_slots=roster_slots,
         my_players_out=my_players_out,
         their_players_out=their_players_out,
     )

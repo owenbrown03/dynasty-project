@@ -47,6 +47,7 @@ async def get_advisor_recommendations_endpoint(
     username: str,
     ctx: ContextDep,
     league_id: str | None = None,
+    force: bool = False,
 ) -> AdvisorSynthesisResponse:
     if ctx.site_user is None or ctx.connection is None:
         raise HTTPException(
@@ -70,6 +71,7 @@ async def get_advisor_recommendations_endpoint(
             redis=ctx.redis,
             dossier=dossier,
             preferences=preferences,
+            force=force,
         )
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 429:
