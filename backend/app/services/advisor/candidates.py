@@ -51,7 +51,7 @@ MAX_LEAGUES = 6
 # Bumped whenever candidate-engine semantics change in a way that
 # should invalidate cached syntheses (value bases, constraint math,
 # package shapes). The synthesis cache identity includes this.
-ADVISOR_ENGINE_VERSION = 3
+ADVISOR_ENGINE_VERSION = 4
 ANCHOR_POOL_SIZE = 5
 MAX_PROPOSALS_PER_LEAGUE = 4
 # Market value is FantasyCalc: unlike KTC it has no imbalance adder,
@@ -174,6 +174,30 @@ async def build_advisor_dossier(
 
     selected = owned_rows[:MAX_LEAGUES]
 
+    league_notes: dict[str, str] = {}
+    if ctx.site_user is not None:
+        try:
+            from app.crud.sleeper.personal import (
+                get_user_notes_by_league_id,
+            )
+
+            notes = await get_user_notes_by_league_id(
+                db=ctx.db,
+                site_user_id=ctx.site_user.id,
+                league_ids=[
+                    row.league.league_id for row in selected
+                ],
+            )
+            league_notes = {
+                league_id: note.note
+                for league_id, note in notes.items()
+                if note.note
+            }
+        except Exception:
+            logger.exception(
+                "Advisor league-notes fetch failed",
+            )
+
     proposals: list[AdvisorProposal] = []
     roster_contexts: list[AdvisorRosterContext] = []
 
@@ -185,6 +209,9 @@ async def build_advisor_dossier(
                 ctx,
                 league=league,
                 my_roster=my_roster,
+                manager_note=league_notes.get(
+                    league.league_id,
+                ),
                 proposals=proposals,
                 roster_contexts=roster_contexts,
             )
@@ -212,6 +239,7 @@ async def _build_league_candidates(
     *,
     league,
     my_roster,
+    manager_note: str | None = None,
     proposals: list[AdvisorProposal],
     roster_contexts: list[AdvisorRosterContext],
 ) -> None:
@@ -284,6 +312,7 @@ async def _build_league_candidates(
             pool_context=pool.context,
             my_items=my_items,
             strategy=strategy,
+            manager_note=manager_note,
         ),
     )
 
@@ -1123,6 +1152,7 @@ async def _build_roster_context(
     pool_context,
     my_items: list[PersonalValuePoolItem],
     strategy: LeagueStrategy | None = None,
+    manager_note: str | None = None,
 ) -> AdvisorRosterContext:
     player_ids = list(my_roster.players or [])
     player_map = await get_player_map_for_ids(
@@ -1162,6 +1192,7 @@ async def _build_roster_context(
         strategy_reason=(
             strategy.reason if strategy else None
         ),
+        manager_note=manager_note,
     )
 
 

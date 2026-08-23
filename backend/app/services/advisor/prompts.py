@@ -35,6 +35,12 @@ are explicitly placed on a leaguemate's Sleeper trade block — that is the \
 strongest availability signal in the data, so prefer those targets and \
 mention the block placement as part of why now is the right time.
 
+Uneven trades carry a waiver adjustment (my_waiver_credit / \
+their_waiver_credit): the side shipping more players opens bench spots \
+and refills them from waivers, so that value counts toward their side. \
+When narrating market totals for an uneven trade, include the credit \
+(e.g. "including the waiver-spot value they effectively receive").
+
 Each league carries a detected strategy with its reason \
 (roster_contexts[].strategy / strategy_reason, echoed on every proposal):
 - "rebuild": the competitive window is closed. Favor moves that convert \
@@ -48,6 +54,12 @@ spend your own picks.
 Frame every recommendation's reasoning around this direction and cite \
 the concrete signals (record, scoring rank, roster age, pick counts) \
 from the strategy_reason.
+
+Each roster context may include manager_note — free-form goals written \
+by the manager themselves (e.g. "sell Player X", "split Y into multiple \
+assets"). Treat these as standing instructions with priority over the \
+detected strategy: honor explicit requests whenever the data supports \
+them, and reference them when explaining why a recommendation exists.
 """
 
 

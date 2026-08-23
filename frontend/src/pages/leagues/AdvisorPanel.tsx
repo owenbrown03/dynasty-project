@@ -476,6 +476,20 @@ function RecommendationCard({
         </footer>
       )}
 
+      {proposal
+        && (proposal.my_waiver_credit
+          || proposal.their_waiver_credit) && (
+        <p className="advisor-waiver-note">
+          Incl. waiver-spot credit{' '}
+          {proposal.my_waiver_credit
+            ? `to you (+${Math.round(proposal.my_waiver_credit)})`
+            : `to ${proposal.counterparty_name} (+${Math.round(
+                proposal.their_waiver_credit ?? 0,
+              )})`}
+          {' '}for the uneven asset count.
+        </p>
+      )}
+
       {proposal && <SendTradeSection proposal={proposal} />}
 
       <footer className="advisor-feedback-row">

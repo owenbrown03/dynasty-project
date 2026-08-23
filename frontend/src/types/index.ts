@@ -1325,6 +1325,8 @@ export interface AdvisorProposal {
   your_roster_id?: number | null;
   counterparty_roster_id?: number | null;
   strategy?: string | null;
+  my_waiver_credit?: number | null;
+  their_waiver_credit?: number | null;
 }
 
 export interface AdvisorRecommendation {
