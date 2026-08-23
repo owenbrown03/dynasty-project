@@ -70,7 +70,7 @@ def test_get_trade_block_snapshot_uses_cache():
         async def get(self, key):
             return self.store.get(key)
 
-        async def set(self, key, value, ex=None):
+        async def set(self, key, value, ttl_seconds=None):
             self.store[key] = value
 
     class Ctx:

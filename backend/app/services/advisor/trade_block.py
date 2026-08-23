@@ -87,7 +87,7 @@ async def get_trade_block_snapshot(
         await ctx.redis.set(
             cache_key,
             _snapshot_to_json(snapshot),
-            ex=TRADE_BLOCK_CACHE_TTL_SECONDS,
+            ttl_seconds=TRADE_BLOCK_CACHE_TTL_SECONDS,
         )
 
     return snapshot
