@@ -28,6 +28,7 @@ def _pick(
     season: str = "2027",
     round_: int = 1,
     value: float = 500.0,
+    war_value: float | None = None,
 ):
     return PickAsset(
         season=season,
@@ -35,6 +36,9 @@ def _pick(
         og_roster_id=og,
         owner_roster_id=og,
         value=value,
+        war_value=war_value
+        if war_value is not None
+        else value / 250.0,
     )
 
 

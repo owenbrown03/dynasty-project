@@ -53,13 +53,19 @@ PICK_SEASON_WINDOW = 3
 
 @dataclass
 class PickAsset:
-    """One original draft pick with its current owner and value."""
+    """One original draft pick with its current owner and value.
+
+    value is the FantasyCalc market price; war_value is the same
+    pick on the personal-WAR scale so picks can be compared with
+    players inside personal totals.
+    """
 
     season: str
     round: int
     og_roster_id: int
     owner_roster_id: int
     value: float | None = None
+    war_value: float | None = None
     on_block: bool = False
 
     @property
@@ -528,6 +534,51 @@ async def _build_pick_chests(
             ),
         )
 
+    # Personal-side values: picks must enter personal totals on the
+    # WAR scale players use, not their FC price scale.
+    try:
+        from app.services.draft.rookie_war import (
+            get_rookie_pick_war_values_by_key,
+        )
+
+        all_picks = [
+            DraftPickAsset(
+                season=p.season,
+                round=p.round,
+                og_roster_id=p.og_roster_id,
+                current_owner_roster_id=p.owner_roster_id,
+                label="",
+            )
+            for picks in chests.values()
+            for p in picks
+        ]
+        war_values = await get_rookie_pick_war_values_by_key(
+            ctx.db,
+            picks=all_picks,
+            league_total_rosters=total_rosters,
+            league_scoring_settings=(
+                league.scoring_settings or {}
+            ),
+            league_roster_positions=(
+                league.roster_positions or []
+            ),
+            redis=ctx.redis,
+        )
+
+        for picks in chests.values():
+            for p in picks:
+                aggregate = war_values.get(
+                    (p.season, p.round, p.og_roster_id),
+                )
+                if aggregate is not None:
+                    p.war_value = aggregate.roster_war
+    except Exception:
+        logger.exception(
+            "Advisor rookie-WAR pick valuation failed "
+            "league=%s",
+            league.league_id,
+        )
+
     return dict(chests)
 
 
@@ -561,14 +612,15 @@ def _personal_total_with_picks(
     players: list[PersonalValuePoolItem],
     picks: list[PickAsset],
 ) -> float | None:
-    """Personal totals treat picks as worth their market value."""
+    """Personal totals: players on WAR scale, picks on their
+    rookie-WAR valuation so the two are commensurable."""
     player_total = _sum_or_none(players, _personal_war)
 
     if player_total is None:
         return None
 
     return player_total + sum(
-        p.value or 0.0 for p in picks
+        p.war_value or 0.0 for p in picks
     )
 
 
@@ -603,14 +655,18 @@ def _fix_with_extra_receive_pick(
 
     for pick in sorted(
         their_picks,
-        key=lambda p: p.value or 0.0,
+        key=lambda p: p.war_value or 0.0,
     ):
-        value = pick.value or 0.0
+        # The personal deficit closes on the WAR scale while the
+        # counterparty's ratio band stays on the FC market scale.
+        war_gain = pick.war_value or 0.0
 
-        if value < deficit:
+        if war_gain < deficit:
             continue
 
-        new_receive = market_receive_total + value
+        new_receive = market_receive_total + (
+            pick.value or 0.0
+        )
 
         ratio = market_send_total / new_receive
 
