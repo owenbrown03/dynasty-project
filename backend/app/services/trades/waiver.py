@@ -14,10 +14,12 @@ _SLOT_STEP = 10
 
 # FantasyCalc's documented anchor: the implicit waiver replacement
 # for the first lost bench spot is the ~300th best player, stepping
-# up the ranking per additional spot. Empirically confirmed against
-# a live calculator result: ranks 300 + 290 = 248 + 277 = 525,
-# matching FC's displayed +525 for a picks-for-player trade.
+# up the ranking per additional spot lost. Empirically confirmed:
+# ranks 300 + 290 = 248 + 277 = 525, matching FC's displayed +525
+# for a picks-for-player trade in a 12-team SF league.
 _REFERENCE_RANK = 300
+
+_MAX_EXTRA_SPOTS = 4
 
 
 def build_waiver_credit_ladder(
@@ -27,10 +29,9 @@ def build_waiver_credit_ladder(
     """Builds cumulative credit for 1..N extra bench spots lost.
 
     values_by_rank maps FantasyCalc's own overall_rank to value.
-    Keying by published rank (instead of positional order) keeps
-    the cutline honest even when some players fail to sync. The
-    cutline sits near the worst rostered player on FC's scale
-    (see _REFERENCE_SLOTS_PER_TEAM).
+    Keying by published rank (instead of positional sort order) keeps
+    the cutline honest even when some players fail name-match during
+    sync. The cutline anchors at FC's documented ~300th-best player.
     """
     cutline = _REFERENCE_RANK
 
@@ -95,9 +96,6 @@ async def load_waiver_ladder(
     return build_waiver_credit_ladder(
         values_by_rank=values_by_rank,
     )
-
-
-_MAX_EXTRA_SPOTS = 4
 
 
 def waiver_credit_for(
