@@ -62,6 +62,7 @@ async def get_advisor_recommendations_endpoint(
         ctx,
         username,
         league_id=league_id,
+        force=force,
     )
     preferences = await _load_preferences(ctx)
 

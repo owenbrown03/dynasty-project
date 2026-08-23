@@ -1,4 +1,5 @@
 import logging
+import random
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -152,6 +153,7 @@ async def build_advisor_dossier(
     ctx: ContextDep,
     username: str,
     league_id: str | None = None,
+    force: bool = False,
 ) -> AdvisorDossier:
     main_user_id = await get_userid_by_username(
         ctx.db,
@@ -215,6 +217,7 @@ async def build_advisor_dossier(
                 ),
                 proposals=proposals,
                 roster_contexts=roster_contexts,
+                force=force,
             )
         except Exception:
             logger.exception(
@@ -243,6 +246,7 @@ async def _build_league_candidates(
     manager_note: str | None = None,
     proposals: list[AdvisorProposal],
     roster_contexts: list[AdvisorRosterContext],
+    force: bool = False,
 ) -> None:
     pool = await get_personal_value_pool(
         ctx=ctx,
@@ -344,7 +348,18 @@ async def _build_league_candidates(
     # elsewhere is a potential target and every valued own asset a
     # potential chip. Strategy ordering decides who gets explored
     # first; hard truncation here was strangling proposal counts.
-    targets = buy_pool[:TARGET_POOL_SIZE]
+    #
+    # On forced regeneration, shuffle within a wider pool so different
+    # candidates surface and Gemini genuinely gets new proposals to
+    # write about — not just the same ranked list reworded.
+    if force:
+        shuffle_window = buy_pool[: TARGET_POOL_SIZE * 2]
+        random.shuffle(shuffle_window)
+        targets = shuffle_window[:TARGET_POOL_SIZE]
+    else:
+        targets = buy_pool[:TARGET_POOL_SIZE]
+
+
 
     my_picks = sorted(
         (
