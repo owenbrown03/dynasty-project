@@ -52,8 +52,8 @@ MAX_LEAGUES = 6
 # should invalidate cached syntheses (value bases, constraint math,
 # package shapes). The synthesis cache identity includes this.
 ADVISOR_ENGINE_VERSION = 4
-ANCHOR_POOL_SIZE = 5
-MAX_PROPOSALS_PER_LEAGUE = 4
+ANCHOR_POOL_SIZE = 8
+MAX_PROPOSALS_PER_LEAGUE = 6
 # Market value is FantasyCalc: unlike KTC it has no imbalance adder,
 # so multi-asset package totals stay additive. A proposal must be
 # convincing for the COUNTERPARTY: we always send at least even

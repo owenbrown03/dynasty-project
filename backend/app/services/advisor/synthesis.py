@@ -11,6 +11,9 @@ from app.schemas.advisor import (
     AdvisorSynthesisResponse,
 )
 from app.services.advisor import quota
+from app.services.advisor.candidates import (
+    ADVISOR_ENGINE_VERSION,
+)
 from app.services.advisor.prompts import (
     SYSTEM_PROMPT,
     render_data_block,
@@ -66,6 +69,7 @@ def _cache_identity(
 
     return (
         f"advisor-scope\n"
+        f"{ADVISOR_ENGINE_VERSION}\n"
         f"{settings.GEMINI_MODEL}\n"
         f"{SYSTEM_PROMPT}\n"
         f"{dossier.username}\n"
@@ -118,6 +122,7 @@ async def synthesize_recommendations(
     redis,
     dossier: AdvisorDossier,
     preferences: AdvisorPreferenceSummary | None = None,
+    force: bool = False,
 ) -> AdvisorSynthesisResponse:
     if gemini is None:
         from fastapi import HTTPException
@@ -137,7 +142,7 @@ async def synthesize_recommendations(
     )
     cache_identity = _cache_identity(dossier, preferences)
 
-    if has_dossier_content:
+    if has_dossier_content and not force:
         cached = await _cache_get(redis, cache_identity)
 
         if cached is not None:
@@ -162,7 +167,10 @@ async def synthesize_recommendations(
             system_instruction=SYSTEM_PROMPT,
             generation_config={
                 "responseMimeType": "application/json",
-                "temperature": 0.4,
+                # Explicit regenerations should offer genuinely
+                # different takes on the same data, so sample
+                # hotter than the initial generation.
+                "temperature": 0.95 if force else 0.4,
             },
         )
     except Exception:
