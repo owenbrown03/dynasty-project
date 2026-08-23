@@ -344,21 +344,19 @@ async def _build_league_candidates(
     if not sell_pool or not buy_pool:
         return
 
-    # The whole league is a candidate market: every rostered player
-    # elsewhere is a potential target and every valued own asset a
-    # potential chip. Strategy ordering decides who gets explored
-    # first; hard truncation here was strangling proposal counts.
+    # Search every rostered non-mine player as a potential target.
+    # The loop is pure local math (WAR/value constraints, no API
+    # calls) so there is no cost to being exhaustive. The token
+    # budget is controlled by MAX_PROPOSALS_PER_LEAGUE which caps
+    # how many proposals actually reach Gemini.
     #
-    # On forced regeneration, shuffle within a wider pool so different
-    # candidates surface and Gemini genuinely gets new proposals to
-    # write about — not just the same ranked list reworded.
+    # On forced regeneration, shuffle the full buy_pool so a
+    # different ordering explores candidates in a different sequence,
+    # producing genuinely different proposals instead of the same
+    # top-ranked set reworded with a hotter temperature.
+    targets = list(buy_pool)
     if force:
-        shuffle_window = buy_pool[: TARGET_POOL_SIZE * 2]
-        random.shuffle(shuffle_window)
-        targets = shuffle_window[:TARGET_POOL_SIZE]
-    else:
-        targets = buy_pool[:TARGET_POOL_SIZE]
-
+        random.shuffle(targets)
 
 
     my_picks = sorted(
