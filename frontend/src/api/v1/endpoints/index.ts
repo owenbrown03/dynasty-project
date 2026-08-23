@@ -1,5 +1,6 @@
 import { client } from '../client';
 import { adpEndpoints } from './adp.endpoints';
+import { advisorEndpoints } from './sleeper/advisor.endpoints';
 import { authEndpoints } from './auth.endpoints';
 import { bootstrapEndpoints } from './bootstrap.endpoints';
 import { authEndpoints as sleeperAuthEndpoints } from './sleeper/auth.endpoints';
@@ -13,6 +14,7 @@ import { waiversEndpoints } from './sleeper/waivers.endpoints';
 
 export const api = {
   adp: adpEndpoints(client, '/adp'),
+  advisor: advisorEndpoints(client, '/sleeper/advisor'),
   auth: authEndpoints(client, '/auth'),
   bootstrap: bootstrapEndpoints(client, '/bootstrap'),
   sleeper_auth: sleeperAuthEndpoints(client, '/sleeper/auth'),

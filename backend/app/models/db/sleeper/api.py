@@ -56,7 +56,20 @@ class League(SQLModel, table=True):
     
     @property
     def roster_size(self) -> int:
-        return len(self.roster_positions)
+        """Effective roster size: starters plus bench.
+
+        Sleeper lists IR and taxi slots in settings for best ball
+        leagues, but those slots do not actually exist there - only
+        lineup leagues really carry them.
+        """
+        if self.is_best_ball:
+            return sum(
+                1
+                for pos in self.roster_positions or []
+                if pos not in {"IR", "TAXI"}
+            )
+
+        return len(self.roster_positions or [])
 
     @property
     def starter_slots(self) -> int:

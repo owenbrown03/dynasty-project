@@ -58,7 +58,7 @@ const FILTER_KEYS: TradeSettingsFilterKey[] = [
   'tep',
 ];
 
-function TradeResearchSkeleton() {
+function TradeSignalsSkeleton() {
   return (
     <div
       className="trades-container trade-research-skeleton"
@@ -274,7 +274,7 @@ function getTradeSettingsFilterValue(
   return parsed?.value ?? '';
 }
 
-export const TradeResearchTab = () => {
+export const TradeSignalsTab = () => {
   const cheapTrades = useTrades(true);
   const fullTrades = useTrades(false);
 
@@ -495,7 +495,7 @@ export const TradeResearchTab = () => {
 
   if (trades.loading) {
     return (
-      <TradeResearchSkeleton />
+      <TradeSignalsSkeleton />
     );
   }
 
@@ -504,7 +504,7 @@ export const TradeResearchTab = () => {
       <div className="trades-container">
         <div className="trades-section-header">
           <div>
-            <p className="page-eyebrow">Research</p>
+            <p className="page-eyebrow">Trade signals</p>
             <h2 className="trades-section-title">Trade database</h2>
             <p className="page-description">
               Latest actionable trades from your synced Sleeper trade history, filtered by league settings and asset search.

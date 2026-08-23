@@ -8,6 +8,7 @@ import type {
   BulkTradeProposalRequest,
   BulkTradeProposalResponse,
   TradeCalculatorPickValueResponse,
+  TradeCalculatorWaiverAdjustmentResponse,
 } from '@/types';
 
 export const tradeEndpoints = (
@@ -57,6 +58,27 @@ export const tradeEndpoints = (
   ) => client.post<BulkTradeProposalResponse>(
     `${prefix}/bulk/propose`,
     payload,
+  ),
+
+  getTradeCalculatorWaiverAdjustment: (
+    totalRosters: number,
+    numQbs: number,
+    ppr: number,
+    myPlayersOut: number,
+    theirPlayersOut: number,
+    signal?: AbortSignal,
+  ) => client.get<TradeCalculatorWaiverAdjustmentResponse>(
+    `${prefix}/calculator/waiver-adjustment`,
+    {
+      params: {
+        total_rosters: totalRosters,
+        num_qbs: numQbs,
+        ppr,
+        my_players_out: myPlayersOut,
+        their_players_out: theirPlayersOut,
+      },
+      signal,
+    },
   ),
 
   getTradeCalculatorPickValue: (

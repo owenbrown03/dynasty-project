@@ -1195,6 +1195,7 @@ async def build_dashboard_finance_metrics_by_league_id(
         underdog=None,
         ktc=None,
         fc=None,
+        gemini=None,
         redis=redis,
     )
 

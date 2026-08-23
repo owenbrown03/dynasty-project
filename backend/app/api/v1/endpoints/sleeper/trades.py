@@ -11,6 +11,7 @@ from app.api.deps import (
 )
 from app.crud.sleeper.trade import get_trade_signals
 from app.schemas.trades import (
+    TradeCalculatorWaiverAdjustmentResponse,
     BulkTradeAvailabilityRequest,
     BulkTradeAvailabilityResponse,
     BulkTradePlayerSearchResult,
@@ -25,6 +26,9 @@ from app.services.trades.bulk import (
 )
 from app.services.trades.calculator import (
     get_trade_calculator_pick_value,
+)
+from app.services.trades.waiver import (
+    get_waiver_adjustment,
 )
 from app.tasks.trade import sync_leaguemates_task
 
@@ -175,4 +179,51 @@ async def trade_calculator_pick_value_endpoint(
         total_rosters=total_rosters,
         num_qbs=num_qbs,
         ppr=ppr,
+    )
+
+
+@router.get(
+    "/calculator/waiver-adjustment",
+    response_model=TradeCalculatorWaiverAdjustmentResponse,
+)
+async def trade_calculator_waiver_adjustment_endpoint(
+    ctx: ContextDep,
+    total_rosters: int = Query(
+        default=12,
+        ge=8,
+        le=32,
+    ),
+    num_qbs: int = Query(
+        default=2,
+        ge=1,
+        le=2,
+    ),
+    ppr: int = Query(
+        default=1,
+        ge=0,
+        le=2,
+    ),
+    my_players_out: int = Query(
+        default=0,
+        ge=0,
+        le=8,
+    ),
+    their_players_out: int = Query(
+        default=0,
+        ge=0,
+        le=8,
+    ),
+) -> TradeCalculatorWaiverAdjustmentResponse:
+    my_credit, their_credit = await get_waiver_adjustment(
+        ctx.db,
+        total_rosters=total_rosters,
+        num_qbs=num_qbs,
+        ppr=ppr,
+        my_players_out=my_players_out,
+        their_players_out=their_players_out,
+    )
+
+    return TradeCalculatorWaiverAdjustmentResponse(
+        my_credit=my_credit,
+        their_credit=their_credit,
     )

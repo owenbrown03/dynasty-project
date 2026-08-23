@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import adp, auth, bootstrap, sync, test
 from app.api.v1.endpoints.sleeper import auth as sleeper_auth
 from app.api.v1.endpoints.sleeper import (
+    advisor,
     connection,
     drafts,
     leagues,
@@ -26,6 +27,7 @@ api_router.include_router(leagues.router, prefix="/sleeper/leagues", tags=["leag
 api_router.include_router(personal_values.router, prefix="/sleeper/personal-values", tags=["personal values"])
 api_router.include_router(players.router, prefix="/sleeper/players", tags=["players"])
 api_router.include_router(trades.router, prefix="/sleeper/trades", tags=["trades"])
+api_router.include_router(advisor.router, prefix="/sleeper/advisor", tags=["advisor"])
 api_router.include_router(users.router, prefix="/sleeper/users", tags=["users"])
 api_router.include_router(waivers.router, prefix="/sleeper/waivers", tags=["waivers"])
 

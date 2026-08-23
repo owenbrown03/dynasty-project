@@ -194,3 +194,8 @@ class TradeCalculatorPickValueResponse(Base):
     ktc_value: float | None = None
     fc_value: float | None = None
     rookie_war_value: float | None = None
+
+
+class TradeCalculatorWaiverAdjustmentResponse(Base):
+    my_credit: float | None = None
+    their_credit: float | None = None

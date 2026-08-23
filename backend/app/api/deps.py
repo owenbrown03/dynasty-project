@@ -11,6 +11,7 @@ from app.integrations.sleeper.client import SleeperClient
 from app.integrations.underdog.client import UnderdogClient
 from app.integrations.ktc.client import KTCClient
 from app.integrations.fc.client import FantasyCalcClient
+from app.integrations.gemini.client import GeminiClient
 from app.infrastructure.http.manager import HTTPClientManager
 from app.infrastructure.redis.client import RedisClient
 from app.core.context import Context
@@ -139,6 +140,15 @@ async def get_fc_client() -> FantasyCalcClient:
     return FantasyCalcClient(http=http_client)
 
 
+async def get_gemini_client() -> GeminiClient | None:
+    from app.integrations.gemini import factory as gemini_factory
+
+    if not gemini_factory.build_gemini_config().api_key:
+        return None
+
+    return await gemini_factory.get_gemini_client()
+
+
 async def get_context(
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -149,6 +159,7 @@ async def get_context(
     underdog: UnderdogClient | None = Depends(get_underdog_client),
     ktc: KTCClient | None = Depends(get_ktc_client),
     fc: FantasyCalcClient | None = Depends(get_fc_client),
+    gemini: GeminiClient | None = Depends(get_gemini_client),
     redis: RedisClient | None = Depends(get_redis_client),
 ) -> Context:
     return Context(
@@ -161,6 +172,7 @@ async def get_context(
         underdog=underdog,
         ktc=ktc,
         fc=fc,
+        gemini=gemini,
         redis=redis,
     )
 

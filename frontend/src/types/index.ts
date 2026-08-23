@@ -1271,6 +1271,11 @@ export interface BulkTradeProposalResponse {
   results: BulkTradeProposalResult[];
 }
 
+export interface TradeCalculatorWaiverAdjustmentResponse {
+  my_credit: number | null;
+  their_credit: number | null;
+}
+
 export interface TradeCalculatorPickValueResponse {
   season: string;
   round: number;
@@ -1281,4 +1286,94 @@ export interface TradeCalculatorPickValueResponse {
   ktc_value: number | null;
   fc_value: number | null;
   rookie_war_value: number | null;
+}
+
+export interface AdvisorPlayerRef {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  age: number | null;
+  personal_war: number | null;
+  market_war: number | null;
+  delta_war: number | null;
+  market_value: number | null;
+  on_block?: boolean;
+}
+
+export interface AdvisorPickRef {
+  season: string;
+  round: number;
+  og_roster_id: number;
+  market_value: number | null;
+  on_block?: boolean;
+}
+
+export interface AdvisorProposal {
+  league_id: string;
+  league_name: string;
+  counterparty_id: string;
+  counterparty_name: string;
+  send: AdvisorPlayerRef[];
+  receive: AdvisorPlayerRef[];
+  send_picks?: AdvisorPickRef[];
+  receive_picks?: AdvisorPickRef[];
+  market_send_total: number | null;
+  market_receive_total: number | null;
+  personal_send_total: number | null;
+  personal_receive_total: number | null;
+  your_roster_id?: number | null;
+  counterparty_roster_id?: number | null;
+  strategy?: string | null;
+  my_waiver_credit?: number | null;
+  their_waiver_credit?: number | null;
+}
+
+export interface AdvisorRecommendation {
+  headline: string;
+  reasoning: string;
+  confidence: string;
+  proposal: AdvisorProposal | null;
+}
+
+export interface AdvisorSynthesisResponse {
+  summary: string;
+  recommendations: AdvisorRecommendation[];
+  roster_advice: AdvisorRecommendation[];
+  generated_at: string;
+  model: string;
+  cached: boolean;
+}
+
+export type AdvisorFeedbackSentiment = 'like' | 'dislike';
+
+export const ADVISOR_FEEDBACK_TAGS = [
+  'avoid_injured',
+  'roster_limit_concern',
+  'calculator_not_bible',
+  'prefer_picks',
+  'avoid_player',
+  'position_need',
+  'age_window',
+] as const;
+
+export type AdvisorFeedbackTag = (typeof ADVISOR_FEEDBACK_TAGS)[number];
+
+export interface AdvisorFeedbackRequest {
+  sentiment: AdvisorFeedbackSentiment;
+  reason?: string | null;
+  tags?: string[];
+  league_id?: string | null;
+  counterparty_id?: string | null;
+  player_ids?: string[];
+  proposal_snapshot?: Record<string, unknown>;
+  action_taken?: string | null;
+}
+
+export interface AdvisorDigestResponse {
+  report: AdvisorSynthesisResponse | null;
+  queued: boolean;
+  generated_at?: string | null;
+  model?: string | null;
+  reason?: string;
 }

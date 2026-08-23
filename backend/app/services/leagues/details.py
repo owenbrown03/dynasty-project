@@ -404,7 +404,7 @@ def determine_target_roster_size(
     ]
 
     if not roster_sizes:
-        return len(league.roster_positions or [])
+        return league.roster_size
 
     return max(roster_sizes)
 

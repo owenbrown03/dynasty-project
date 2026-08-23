@@ -9,6 +9,7 @@ import './LeagueDashboard.css';
 
 import { LeagueCard } from './LeagueCard';
 import { LeagueWarSeasonChart } from './LeagueWarSeasonChart';
+import { AdvisorPanel } from './AdvisorPanel';
 
 
 interface Props {
@@ -17,7 +18,8 @@ interface Props {
 
 type LeagueDashboardTab =
   | 'overview'
-  | 'analytics';
+  | 'analytics'
+  | 'advisor';
 
 function normalizeLeagueSortBasis(
   valueBasis: ValueBasis,
@@ -80,6 +82,20 @@ export function LeagueDashboard({
           >
             Analytics
           </button>
+
+          <button
+            type="button"
+            className={
+              activeTab === 'advisor'
+                ? 'league-dashboard-tab active'
+                : 'league-dashboard-tab'
+            }
+            onClick={() => {
+              setActiveTab('advisor');
+            }}
+          >
+            AI Advisor
+          </button>
         </div>
 
       </div>
@@ -102,11 +118,18 @@ export function LeagueDashboard({
               }}
             />
           )
-          : (
-            <LeagueWarSeasonChart
-              league={league}
-            />
-          )
+          : activeTab === 'analytics'
+            ? (
+              <LeagueWarSeasonChart
+                league={league}
+              />
+            )
+            : (
+              <AdvisorPanel
+                leagueId={league.league_id}
+                leagueName={league.league_name}
+              />
+            )
       }
     </div>
   );

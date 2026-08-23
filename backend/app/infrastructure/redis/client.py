@@ -44,3 +44,18 @@ class RedisClient:
 
         if keys:
             await self.redis.delete(*keys)
+
+    async def incr_with_ttl(
+        self,
+        key: str,
+        ttl_seconds: int,
+    ) -> int:
+        value = await self.redis.incr(key)
+
+        if value == 1:
+            await self.redis.expire(
+                key,
+                ttl_seconds,
+            )
+
+        return value
