@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/feedback/Skeleton';
 import { notify } from '@/utils/notify';
 import type {
   AdvisorFeedbackTag,
+  AdvisorPickRef,
   AdvisorPlayerRef,
   AdvisorProposal,
   AdvisorRecommendation,
@@ -79,15 +80,42 @@ function PlayerChip({
     >
       <span className="advisor-chip-name">
         {player.name}
+        {player.on_block ? (
+          <span className="advisor-otb-badge">ON BLOCK</span>
+        ) : null}
       </span>
       <span className="advisor-chip-meta">
         {[
           player.position ?? '?',
           player.team ?? null,
-          `KTC ${formatValue(player.ktc_value)}`,
+          `FC ${formatValue(player.market_value)}`,
         ]
           .filter(Boolean)
           .join(' · ')}
+      </span>
+    </div>
+  );
+}
+
+function PickChip({
+  pick,
+  direction,
+}: {
+  pick: AdvisorPickRef;
+  direction: 'send' | 'receive';
+}) {
+  return (
+    <div
+      className={`advisor-player-chip advisor-pick-chip advisor-chip-${direction}`}
+    >
+      <span className="advisor-chip-name">
+        {pick.season} Rd {pick.round}
+        {pick.on_block ? (
+          <span className="advisor-otb-badge">ON BLOCK</span>
+        ) : null}
+      </span>
+      <span className="advisor-chip-meta">
+        FC {formatValue(pick.market_value)}
       </span>
     </div>
   );
@@ -112,13 +140,28 @@ function buildIssueText(
   }
 
   if (proposal) {
+    const pickBits = (picks?: AdvisorPickRef[]) =>
+      (picks ?? [])
+        .map((x) => `${x.season} Rd ${x.round}`)
+        .join(', ');
+
     lines.push(
       '',
       `**League:** ${proposal.league_name}`,
       `**Send:** ${proposal.send.map((p) => p.name).join(', ')}`,
       `**Receive:** ${proposal.receive.map((p) => p.name).join(', ')}`,
-      `**KTC totals:** ${proposal.market_send_total ?? '?'} → ${proposal.market_receive_total ?? '?'}`,
+      `**Market totals:** ${proposal.market_send_total ?? '?'} → ${proposal.market_receive_total ?? '?'}`,
     );
+
+    if (proposal.send_picks?.length) {
+      lines.push(`**Picks sent:** ${pickBits(proposal.send_picks)}`);
+    }
+
+    if (proposal.receive_picks?.length) {
+      lines.push(
+        `**Picks received:** ${pickBits(proposal.receive_picks)}`,
+      );
+    }
   }
 
   lines.push('', '_Auto-drafted from AI advisor feedback._');
@@ -360,6 +403,14 @@ function RecommendationCard({
                 direction="send"
               />
             ))}
+
+            {(proposal.send_picks ?? []).map((pick) => (
+              <PickChip
+                key={`send-pick-${pick.season}-${pick.round}-${pick.og_roster_id}`}
+                pick={pick}
+                direction="send"
+              />
+            ))}
           </div>
 
           <div className="advisor-proposal-side">
@@ -374,6 +425,14 @@ function RecommendationCard({
                 direction="receive"
               />
             ))}
+
+            {(proposal.receive_picks ?? []).map((pick) => (
+              <PickChip
+                key={`receive-pick-${pick.season}-${pick.round}-${pick.og_roster_id}`}
+                pick={pick}
+                direction="receive"
+              />
+            ))}
           </div>
         </div>
       )}
@@ -381,7 +440,7 @@ function RecommendationCard({
       {proposal && (
         <footer className="advisor-totals">
           <span>
-            KTC total:{' '}
+            Market (FC) total:{' '}
             <strong>
               {formatValue(proposal.market_send_total)} →{' '}
               {formatValue(proposal.market_receive_total)}

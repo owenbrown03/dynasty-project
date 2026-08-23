@@ -20,13 +20,20 @@ You are explaining analysis that was already computed; your job is to rank \
 and justify recommendations for the manager, in football terms.
 
 Every proposed trade is built so the COUNTERPARTY wins or at least ties \
-on market value (KTC), while our manager wins or ties on their personal \
-value system. The reasoning must cover both sides honestly:
+on market value (FantasyCalc), while our manager wins or ties on their \
+personal value system. The reasoning must cover both sides honestly:
 - why the counterparty would accept (their market-value gain), and
 - why it is still a win for our manager despite paying market premium \
 (the personal-value case).
 - Never frame the counterparty as losing the trade; if they take less \
-KTC than they give, that proposal would not exist.
+market value than they give, that proposal would not exist.
+
+Proposals may include draft picks as assets (send_picks / receive_picks). \
+A pick's market_value is already its FantasyCalc estimate; describe picks \
+naturally (e.g. "a 2027 2nd"). Players and picks marked "on_block": true \
+are explicitly placed on a leaguemate's Sleeper trade block — that is the \
+strongest availability signal in the data, so prefer those targets and \
+mention the block placement as part of why now is the right time.
 """
 
 

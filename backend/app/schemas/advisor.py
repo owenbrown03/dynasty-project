@@ -9,10 +9,30 @@ class AdvisorPlayerRef(Base):
     position: str | None = None
     team: str | None = None
     age: float | None = None
-    ktc_value: float | None = None
     personal_war: float | None = None
     market_war: float | None = None
     delta_war: float | None = None
+    market_value: float | None = None
+    on_block: bool = False
+
+
+class AdvisorPickRef(Base):
+    """A draft pick participating in a proposal.
+
+    Identity is the original-pick triple; value is the FantasyCalc
+    market estimate at league shape. Personal value is intentionally
+    treated as equal to market value for picks.
+    """
+
+    season: str
+    round: int
+    og_roster_id: int
+    market_value: float | None = None
+    on_block: bool = False
+
+    @property
+    def label(self) -> str:
+        return f"{self.season} Round {self.round}"
 
 
 class AdvisorProposal(Base):
@@ -22,6 +42,8 @@ class AdvisorProposal(Base):
     counterparty_name: str
     send: list[AdvisorPlayerRef]
     receive: list[AdvisorPlayerRef]
+    send_picks: list[AdvisorPickRef] = []
+    receive_picks: list[AdvisorPickRef] = []
     market_send_total: float | None = None
     market_receive_total: float | None = None
     personal_send_total: float | None = None

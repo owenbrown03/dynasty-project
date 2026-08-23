@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { api } from '@/api/v1/endpoints';
 import { notify } from '@/utils/notify';
 import type {
+  AdvisorPickRef,
   AdvisorProposal,
   BulkTradeProposalRequest,
 } from '@/types';
@@ -11,6 +12,13 @@ import { extractErrorDetail } from './useAdvisor';
 function buildOfferPayload(
   proposal: AdvisorProposal,
 ): BulkTradeProposalRequest {
+  const toPickRefs = (picks: AdvisorPickRef[] = []) =>
+    picks.map((pick) => ({
+      season: pick.season,
+      round: pick.round,
+      og_roster_id: pick.og_roster_id,
+    }));
+
   return {
     offers: [
       {
@@ -21,11 +29,13 @@ function buildOfferPayload(
         send_player_ids: proposal.send.map(
           (player) => player.player_id,
         ),
-        send_picks: [],
+        send_picks: toPickRefs(proposal.send_picks),
         receive_player_ids: proposal.receive.map(
           (player) => player.player_id,
         ),
-        receive_picks: [],
+        receive_picks: toPickRefs(
+          proposal.receive_picks,
+        ),
       },
     ],
   };

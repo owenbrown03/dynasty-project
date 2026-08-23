@@ -1,7 +1,9 @@
 import logging
 from collections import defaultdict
+from dataclasses import dataclass
 
 from app.api.deps import ContextDep
+from app.crud.fc.picks import get_fantasycalc_pick_values
 from app.crud.sleeper.league import get_league_with_rosters
 from app.crud.sleeper.player import get_player_map_for_ids
 from app.crud.sleeper.trade import (
@@ -11,13 +13,21 @@ from app.crud.sleeper.trade import (
 from app.crud.sleeper.user import get_userid_by_username
 from app.schemas.advisor import (
     AdvisorDossier,
+    AdvisorPickRef,
     AdvisorPlayerRef,
     AdvisorProposal,
     AdvisorRosterContext,
     AdvisorSignalSummary,
 )
+from app.schemas.draft import DraftPickAsset
 from app.schemas.personal_values import PersonalValuePoolItem
+from app.services.draft.values import (
+    resolve_fantasycalc_pick_value,
+)
 from app.services.personal_values import get_personal_value_pool
+from app.services.advisor.trade_block import (
+    get_trade_block_snapshot,
+)
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
@@ -26,15 +36,46 @@ logger = logging.getLogger(__name__)
 
 MAX_LEAGUES = 6
 ANCHOR_POOL_SIZE = 5
-MAX_PROPOSALS_PER_LEAGUE = 2
-# A proposal must be convincing for the COUNTERPARTY: we always send at
-# least even market (KTC) value, ideally more, so the other manager has
-# a reason to accept. Our edge comes solely from the personal value
-# system (see _passes_value_constraints).
-COUNTERPARTY_KTC_MIN_RATIO = 1.0
-COUNTERPARTY_KTC_MAX_RATIO = 2.0
+MAX_PROPOSALS_PER_LEAGUE = 4
+# Market value is FantasyCalc: unlike KTC it has no imbalance adder,
+# so multi-asset package totals stay additive. A proposal must be
+# convincing for the COUNTERPARTY: we always send at least even
+# market value, ideally more, so the other manager has a reason to
+# accept. Our edge comes solely from the personal value system (see
+# _passes_value_constraints).
+COUNTERPARTY_MARKET_MIN_RATIO = 1.0
+COUNTERPARTY_MARKET_MAX_RATIO = 2.0
 PERSONAL_EDGE_TOLERANCE = 1e-9
 SIGNAL_SUMMARY_LIMIT = 15
+PICK_ROUNDS = 4
+PICK_SEASON_WINDOW = 3
+
+
+@dataclass
+class PickAsset:
+    """One original draft pick with its current owner and value."""
+
+    season: str
+    round: int
+    og_roster_id: int
+    owner_roster_id: int
+    value: float | None = None
+    on_block: bool = False
+
+    @property
+    def key(self) -> tuple[int, str, int]:
+        return (self.round, self.season, self.og_roster_id)
+
+
+def _market_value(
+    item: PersonalValuePoolItem,
+) -> float | None:
+    value = item.player.fc_value
+
+    if value is None:
+        return None
+
+    return float(value)
 
 
 def _delta_war(item: PersonalValuePoolItem) -> float | None:
@@ -71,7 +112,7 @@ def _to_ref(item: PersonalValuePoolItem) -> AdvisorPlayerRef:
         position=item.player.position,
         team=item.player.team,
         age=item.player.age,
-        ktc_value=item.player.ktc_value,
+        market_value=_market_value(item),
         personal_war=_personal_war(item),
         market_war=_market_war(item),
         delta_war=_delta_war(item),
@@ -177,7 +218,7 @@ async def _build_league_candidates(
     )
 
     sell_pool = sorted(
-        (item for item in my_items if item.player.ktc_value),
+        (item for item in my_items if _market_value(item)),
         key=lambda i: _delta_war(i) or 0.0,
     )[:ANCHOR_POOL_SIZE]
 
@@ -185,7 +226,7 @@ async def _build_league_candidates(
         (
             item
             for pid, item in items_by_player_id.items()
-            if pid not in my_player_ids and item.player.ktc_value
+            if pid not in my_player_ids and _market_value(item)
         ),
         key=lambda i: _delta_war(i) or 0.0,
         reverse=True,
@@ -199,6 +240,51 @@ async def _build_league_candidates(
         league.league_id,
     )
     owner_names = await get_user_meta_map(ctx.db)
+
+    try:
+        snapshot = await get_trade_block_snapshot(
+            ctx,
+            league.league_id,
+        )
+    except Exception:
+        logger.exception(
+            "Advisor trade-block fetch failed league=%s",
+            league.league_id,
+        )
+        from app.services.advisor.trade_block import (
+            TradeBlockSnapshot,
+        )
+
+        snapshot = TradeBlockSnapshot()
+
+    chests = await _build_pick_chests(
+        ctx,
+        league=league,
+        season=pool.context.season,
+        total_rosters=pool.context.total_rosters,
+        league_rosters=league_rosters,
+        blocked_pick_keys=set(snapshot.picks.keys()),
+    )
+
+    # Trade-block signal first: a leaguemate explicitly shopping an
+    # asset is the strongest availability marker we have.
+    buy_pool = sorted(
+        buy_pool,
+        key=lambda i: (
+            i.player.player_id not in snapshot.player_ids,
+            -(_delta_war(i) or 0.0),
+        ),
+    )
+
+    my_picks = sorted(
+        (
+            p
+            for p in chests.get(my_roster.roster_id, [])
+            if p.value is not None
+        ),
+        key=lambda p: p.value or 0.0,
+    )
+    used_pick_keys: set[tuple[int, str, int]] = set()
 
     made_for_this_league = 0
     used_sell_ids: set[str] = set()
@@ -216,24 +302,58 @@ async def _build_league_candidates(
         if target_roster is None:
             continue
 
-        owner_id = target_roster.owner_id
+        target_market = _market_value(target)
 
-        package = _match_package(
-            sell_pool,
-            target_ktc=target.player.ktc_value,
-            used_player_ids=used_sell_ids,
-        )
-
-        if package is None:
+        if target_market is None:
             continue
 
-        market_send_total = _sum_ktc(package)
-        personal_send_total = _sum_or_none(
-            package,
-            _personal_war,
+        owner_id = target_roster.owner_id
+        their_picks = [
+            p
+            for p in chests.get(target_roster.roster_id, [])
+            if p.value is not None
+            and p.key not in used_pick_keys
+        ]
+
+        package_players, package_picks = _match_package(
+            sell_pool,
+            my_picks,
+            target_market=_market_value(target),
+            used_player_ids=used_sell_ids,
+            used_pick_keys=used_pick_keys,
         )
-        market_receive_total = float(target.player.ktc_value)
+
+        if package_players is None:
+            continue
+
+        market_send_total = _sum_market(package_players) + sum(
+            p.value or 0.0 for p in package_picks
+        )
+        personal_send_total = _personal_total_with_picks(
+            package_players,
+            package_picks,
+        )
+        market_receive_total = float(target_market)
         personal_receive_total = _personal_war(target)
+
+        extra_receive_pick = _fix_with_extra_receive_pick(
+            their_picks=their_picks,
+            market_send_total=market_send_total,
+            market_receive_total=market_receive_total,
+            personal_send_total=personal_send_total,
+            personal_receive_total=personal_receive_total,
+        )
+
+        if extra_receive_pick is not None:
+            market_receive_total += (
+                extra_receive_pick.value or 0.0
+            )
+            personal_receive_total = (
+                personal_receive_total
+                + (extra_receive_pick.value or 0.0)
+                if personal_receive_total is not None
+                else None
+            )
 
         if not _passes_value_constraints(
             market_send_total=market_send_total,
@@ -242,18 +362,33 @@ async def _build_league_candidates(
             personal_receive_total=personal_receive_total,
         ):
             used_sell_ids.update(
-                item.player.player_id for item in package
+                item.player.player_id for item in package_players
+            )
+            used_pick_keys.update(
+                p.key for p in package_picks
             )
             continue
 
         used_sell_ids.update(
-            item.player.player_id for item in package
+            item.player.player_id for item in package_players
         )
+        used_pick_keys.update(p.key for p in package_picks)
+
+        if extra_receive_pick is not None:
+            used_pick_keys.add(extra_receive_pick.key)
 
         counterparty_name = owner_names.get(owner_id, {}).get(
             "name",
             "Unknown",
         )
+
+        target_on_block = (
+            target.player.player_id in snapshot.player_ids
+        )
+
+        receive_refs = [_to_ref(target)]
+        if target_on_block:
+            receive_refs[0].on_block = True
 
         proposals.append(
             AdvisorProposal(
@@ -261,8 +396,18 @@ async def _build_league_candidates(
                 league_name=pool.context.league_name,
                 counterparty_id=owner_id,
                 counterparty_name=counterparty_name,
-                send=[_to_ref(i) for i in package],
-                receive=[_to_ref(target)],
+                send=[
+                    _to_ref(i) for i in package_players
+                ],
+                receive=receive_refs,
+                send_picks=[
+                    _to_pick_ref(p) for p in package_picks
+                ],
+                receive_picks=(
+                    [_to_pick_ref(extra_receive_pick)]
+                    if extra_receive_pick is not None
+                    else []
+                ),
                 market_send_total=market_send_total,
                 market_receive_total=market_receive_total,
                 personal_send_total=personal_send_total,
@@ -272,6 +417,118 @@ async def _build_league_candidates(
             ),
         )
         made_for_this_league += 1
+
+
+def _league_num_qbs(league) -> int:
+    return (
+        2
+        if "SUPER_FLEX" in (league.roster_positions or [])
+        else 1
+    )
+
+
+def _league_ppr(league) -> int:
+    return int(
+        round(
+            float(
+                (league.scoring_settings or {}).get(
+                    "rec",
+                    1,
+                )
+                or 1
+            )
+        )
+    )
+
+
+async def _build_pick_chests(
+    ctx: ContextDep,
+    *,
+    league,
+    season: int,
+    total_rosters: int,
+    league_rosters,
+    blocked_pick_keys: set[tuple[int, str, int]],
+) -> dict[int, list[PickAsset]]:
+    """Derives every roster's tradable future-pick chest.
+
+    Ownership model mirrors the bulk-trade send path: baseline is
+    each roster owning its own original picks for the next
+    PICK_SEASON_WINDOW seasons and PICK_ROUNDS rounds, overridden by
+    Sleeper's live traded_picks state. Values are FantasyCalc pick
+    values at the league's shape; picks without a value are kept but
+    unusable in packages.
+    """
+    seasons = [str(season + i) for i in range(1, PICK_SEASON_WINDOW + 1)]
+    rounds = list(range(1, PICK_ROUNDS + 1))
+
+    owners: dict[tuple[int, str, int], int] = {
+        (roster.roster_id, season_str, round_): roster.roster_id
+        for _, roster in league_rosters
+        for season_str in seasons
+        for round_ in rounds
+    }
+
+    try:
+        traded = await ctx.sleeper.read.get_traded_picks(
+            league.league_id,
+        )
+    except Exception:
+        logger.exception(
+            "Advisor pick-chest fetch failed league=%s",
+            league.league_id,
+        )
+        return {}
+
+    for row in traded or []:
+        key = (
+            int(row.roster_id),
+            str(row.season),
+            int(row.round),
+        )
+
+        if key in owners and row.owner_id is not None:
+            owners[key] = int(row.owner_id)
+
+    fc_rows = await get_fantasycalc_pick_values(
+        ctx.db,
+        is_dynasty=True,
+        num_qbs=_league_num_qbs(league),
+        num_teams=total_rosters,
+        ppr=_league_ppr(league),
+        seasons=seasons,
+        rounds=rounds,
+    )
+
+    chests: dict[int, list[PickAsset]] = defaultdict(list)
+
+    for (og_roster_id, season_str, round_), owner_id in owners.items():
+        pick = DraftPickAsset(
+            season=season_str,
+            round=round_,
+            og_roster_id=og_roster_id,
+            current_owner_roster_id=owner_id,
+            label="",
+        )
+        resolved = resolve_fantasycalc_pick_value(
+            pick=pick,
+            rows=fc_rows.get((season_str, round_), []),
+        )
+        chests[owner_id].append(
+            PickAsset(
+                season=season_str,
+                round=round_,
+                og_roster_id=og_roster_id,
+                owner_roster_id=owner_id,
+                value=resolved.value,
+                on_block=(
+                    (round_, season_str, og_roster_id)
+                    in blocked_pick_keys
+                ),
+            ),
+        )
+
+    return dict(chests)
 
 
 def _find_roster_of_player(
@@ -290,70 +547,172 @@ def _find_roster_of_player(
     return None
 
 
+def _to_pick_ref(pick: PickAsset) -> AdvisorPickRef:
+    return AdvisorPickRef(
+        season=pick.season,
+        round=pick.round,
+        og_roster_id=pick.og_roster_id,
+        market_value=pick.value,
+        on_block=pick.on_block,
+    )
+
+
+def _personal_total_with_picks(
+    players: list[PersonalValuePoolItem],
+    picks: list[PickAsset],
+) -> float | None:
+    """Personal totals treat picks as worth their market value."""
+    player_total = _sum_or_none(players, _personal_war)
+
+    if player_total is None:
+        return None
+
+    return player_total + sum(
+        p.value or 0.0 for p in picks
+    )
+
+
+def _fix_with_extra_receive_pick(
+    *,
+    their_picks: list[PickAsset],
+    market_send_total: float,
+    market_receive_total: float,
+    personal_send_total: float | None,
+    personal_receive_total: float | None,
+) -> PickAsset | None:
+    """Crafty-shape fallback: sweeten OUR receive side.
+
+    When a package would leave us personally underwater, adding one
+    small pick from the counterparty can flip it into a personal win
+    while still keeping their KTC gain inside the convincing band.
+    """
+    if (
+        personal_send_total is None
+        or personal_receive_total is None
+    ):
+        return None
+
+    deficit = (
+        personal_send_total
+        - PERSONAL_EDGE_TOLERANCE
+        - personal_receive_total
+    )
+
+    if deficit <= 0:
+        return None
+
+    for pick in sorted(
+        their_picks,
+        key=lambda p: p.value or 0.0,
+    ):
+        value = pick.value or 0.0
+
+        if value < deficit:
+            continue
+
+        new_receive = market_receive_total + value
+
+        ratio = market_send_total / new_receive
+
+        if (
+            COUNTERPARTY_MARKET_MIN_RATIO
+            <= ratio
+            <= COUNTERPARTY_MARKET_MAX_RATIO
+        ):
+            return pick
+
+    return None
+
+
 def _match_package(
     sell_pool: list[PersonalValuePoolItem],
+    my_picks: list[PickAsset],
     *,
-    target_ktc: float,
+    target_market: float,
     used_player_ids: set[str] | None = None,
+    used_pick_keys: set[tuple[int, str, int]] | None = None,
 ):
     """Picks our send package for a target player.
 
-    The package's KTC total must land in
-    [COUNTERPARTY_KTC_MIN_RATIO, COUNTERPARTY_KTC_MAX_RATIO] of the
-    target's KTC so the counterparty never loses market value. Among
-    valid singles we prefer the SMALLEST qualifying ratio — convincing
-    without reckless overpay.
+    Tiers, from most to least conventional: player single, player
+    pair, player+pick, and pick-only. Within a tier the KTC total
+    must land in [COUNTERPARTY_MARKET_MIN_RATIO, COUNTERPARTY_MARKET_MAX_RATIO]
+    of the target's KTC and we prefer the SMALLEST qualifying ratio —
+    convincing without reckless overpay.
     """
     used_player_ids = used_player_ids or set()
-    candidates = [
+    used_pick_keys = used_pick_keys or set()
+
+    players = [
         item
         for item in sell_pool
         if item.player.player_id not in used_player_ids
     ]
-    if not candidates:
-        return None
+    picks = [
+        p
+        for p in my_picks
+        if p.key not in used_pick_keys
+        and p.value is not None
+    ]
 
-    best_single = None
-    best_ratio = None
+    best: tuple[float, list, list] | None = None
 
-    for item in candidates:
-        ratio = float(item.player.ktc_value) / target_ktc
+    def consider(
+        candidate_players: list,
+        candidate_picks: list,
+    ) -> None:
+        nonlocal best
+
+        total = _sum_market(candidate_players) + sum(
+            p.value or 0.0 for p in candidate_picks
+        )
+        ratio = total / target_market
 
         if not (
-            COUNTERPARTY_KTC_MIN_RATIO
+            COUNTERPARTY_MARKET_MIN_RATIO
             <= ratio
-            <= COUNTERPARTY_KTC_MAX_RATIO
+            <= COUNTERPARTY_MARKET_MAX_RATIO
         ):
-            continue
+            return
 
-        if best_ratio is None or ratio < best_ratio:
-            best_ratio = ratio
-            best_single = [item]
+        if best is None or ratio < best[0]:
+            best = (ratio, candidate_players, candidate_picks)
 
-    if best_single is not None:
-        return best_single
+    for item in players:
+        consider([item], [])
 
-    pairs = []
-    for i in range(len(candidates)):
-        for j in range(i + 1, len(candidates)):
-            pair_total = float(
-                candidates[i].player.ktc_value
-            ) + float(candidates[j].player.ktc_value)
+    if best is not None:
+        return best[1], best[2]
 
-            ratio = pair_total / target_ktc
+    for i in range(len(players)):
+        for j in range(i + 1, len(players)):
+            consider([players[i], players[j]], [])
 
-            if (
-                COUNTERPARTY_KTC_MIN_RATIO
-                <= ratio
-                <= COUNTERPARTY_KTC_MAX_RATIO
-            ):
-                pairs.append((ratio, [candidates[i], candidates[j]]))
+    if best is not None:
+        return best[1], best[2]
 
-    if pairs:
-        pairs.sort(key=lambda entry: entry[0])
-        return pairs[0][1]
+    for item in players:
+        for pick in picks:
+            consider([item], [pick])
 
-    return None
+        for i in range(len(picks)):
+            for j in range(i + 1, len(picks)):
+                consider([item], [picks[i], picks[j]])
+
+    if best is not None:
+        return best[1], best[2]
+
+    for pick in picks:
+        consider([], [pick])
+
+    for i in range(len(picks)):
+        for j in range(i + 1, len(picks)):
+            consider([], [picks[i], picks[j]])
+
+    if best is not None:
+        return best[1], best[2]
+
+    return None, []
 
 
 def _passes_value_constraints(
@@ -386,9 +745,9 @@ def _passes_value_constraints(
     )
 
 
-def _sum_ktc(items: list[PersonalValuePoolItem]) -> float:
+def _sum_market(items: list[PersonalValuePoolItem]) -> float:
     return sum(
-        float(item.player.ktc_value or 0)
+        _market_value(item) or 0.0
         for item in items
     )
 

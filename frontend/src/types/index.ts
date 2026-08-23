@@ -1289,10 +1289,19 @@ export interface AdvisorPlayerRef {
   position: string | null;
   team: string | null;
   age: number | null;
-  ktc_value: number | null;
   personal_war: number | null;
   market_war: number | null;
   delta_war: number | null;
+  market_value: number | null;
+  on_block?: boolean;
+}
+
+export interface AdvisorPickRef {
+  season: string;
+  round: number;
+  og_roster_id: number;
+  market_value: number | null;
+  on_block?: boolean;
 }
 
 export interface AdvisorProposal {
@@ -1302,6 +1311,8 @@ export interface AdvisorProposal {
   counterparty_name: string;
   send: AdvisorPlayerRef[];
   receive: AdvisorPlayerRef[];
+  send_picks?: AdvisorPickRef[];
+  receive_picks?: AdvisorPickRef[];
   market_send_total: number | null;
   market_receive_total: number | null;
   personal_send_total: number | null;

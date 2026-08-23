@@ -245,3 +245,20 @@
   flex-wrap: wrap;
   gap: 0.4rem;
 }
+
+.advisor-otb-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(255, 152, 0, 0.18);
+  color: #ef8b17;
+  vertical-align: middle;
+}
+
+.advisor-pick-chip {
+  opacity: 0.92;
+}
