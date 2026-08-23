@@ -1271,6 +1271,11 @@ export interface BulkTradeProposalResponse {
   results: BulkTradeProposalResult[];
 }
 
+export interface TradeCalculatorWaiverAdjustmentResponse {
+  my_credit: number | null;
+  their_credit: number | null;
+}
+
 export interface TradeCalculatorPickValueResponse {
   season: string;
   round: number;

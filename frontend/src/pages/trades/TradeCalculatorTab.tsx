@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react';
 
+import { api } from '@/api/v1/endpoints';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
@@ -190,6 +191,56 @@ export function TradeCalculatorTab({
     );
   }, [valueBasis]);
 
+  const [waiverCredits, setWaiverCredits] = useState<{
+    a: number | null;
+    b: number | null;
+  } | null>(null);
+
+  useEffect(() => {
+    const aOut = teamBReceives.filter(
+      (asset) => asset.type !== 'pick',
+    ).length;
+    const bOut = teamAReceives.filter(
+      (asset) => asset.type !== 'pick',
+    ).length;
+
+    if (aOut === 0 && bOut === 0) {
+      setWaiverCredits(null);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    api.trades
+      .getTradeCalculatorWaiverAdjustment(
+        totalRosters,
+        numQbs,
+        ppr,
+        aOut,
+        bOut,
+        controller.signal,
+      )
+      .then((response) => {
+        setWaiverCredits({
+          a: response.data.my_credit,
+          b: response.data.their_credit,
+        });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setWaiverCredits(null);
+        }
+      });
+
+    return () => controller.abort();
+  }, [
+    teamAReceives,
+    teamBReceives,
+    totalRosters,
+    numQbs,
+    ppr,
+  ]);
+
   const addAssetToSide = (
     side: CalculatorSide,
     asset: CalculatorAsset,
@@ -235,12 +286,19 @@ export function TradeCalculatorTab({
     [teamBReceives, valueBasis],
   );
 
-  const rosterSpotAdjustmentA = (
+  const flatAdjustmentA = (
     teamBReceives.length - teamAReceives.length
   ) * waiverValue;
-  const rosterSpotAdjustmentB = (
+  const flatAdjustmentB = (
     teamAReceives.length - teamBReceives.length
   ) * waiverValue;
+
+  // Real FantasyCalc-style ladder credits when available; the flat
+  // per-spot constant is only a fallback while loading.
+  const rosterSpotAdjustmentA =
+    waiverCredits?.a ?? flatAdjustmentA;
+  const rosterSpotAdjustmentB =
+    waiverCredits?.b ?? flatAdjustmentB;
   const teamANet = teamATotal + rosterSpotAdjustmentA;
   const teamBNet = teamBTotal + rosterSpotAdjustmentB;
   const bulkOfferSeed = useMemo(

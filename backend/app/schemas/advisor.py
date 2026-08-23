@@ -51,6 +51,8 @@ class AdvisorProposal(Base):
     your_roster_id: int | None = None
     counterparty_roster_id: int | None = None
     strategy: str | None = None
+    my_waiver_credit: float | None = None
+    their_waiver_credit: float | None = None
 
     @property
     def asymmetry(self) -> str | None:

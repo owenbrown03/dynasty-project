@@ -37,6 +37,10 @@ from app.services.advisor.strategy import (
 from app.services.advisor.trade_block import (
     get_trade_block_snapshot,
 )
+from app.services.trades.waiver import (
+    build_waiver_credit_ladder,
+    split_waiver_credits,
+)
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
@@ -321,6 +325,23 @@ async def _build_league_candidates(
     if strategy and strategy.strategy == HOARD_PICKS:
         my_picks = []
 
+    # Waiver-adjustment ladder: FC-style credit for the bench spot
+    # a side loses when it ships more players than it receives.
+    waiver_ladder = build_waiver_credit_ladder(
+        sorted(
+            (
+                float(i.player.fc_value)
+                for i in items_by_player_id.values()
+                if i.player.fc_value is not None
+            ),
+            reverse=True,
+        ),
+        num_teams=pool.context.total_rosters,
+        roster_slots=max(
+            len(league.roster_positions or []) or 10, 1
+        ),
+    )
+
     used_pick_keys: set[tuple[int, str, int]] = set()
 
     made_for_this_league = 0
@@ -392,9 +413,17 @@ async def _build_league_candidates(
                 else None
             )
 
+        my_credit, their_credit = split_waiver_credits(
+            my_players_out=len(package_players),
+            their_players_out=1,
+            ladder=waiver_ladder,
+        )
+
         if not _passes_value_constraints(
-            market_send_total=market_send_total,
-            market_receive_total=market_receive_total,
+            market_send_total=market_send_total
+            + (my_credit or 0.0),
+            market_receive_total=market_receive_total
+            + (their_credit or 0.0),
             personal_send_total=personal_send_total,
             personal_receive_total=personal_receive_total,
         ):
@@ -454,6 +483,8 @@ async def _build_league_candidates(
                 strategy=(
                     strategy.strategy if strategy else None
                 ),
+                my_waiver_credit=my_credit,
+                their_waiver_credit=their_credit,
             ),
         )
         made_for_this_league += 1
