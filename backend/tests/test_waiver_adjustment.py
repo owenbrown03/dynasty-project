@@ -7,12 +7,13 @@ from app.services.trades.waiver import (
 
 def _ladder():
     # 400 ranked players keyed by FC's own overall_rank; the
-    # cutline anchors at FC's fixed reference rank 300.
+    # cutline anchors at rank 300 (FC's average 11.3t x 26.7s league).
     values_by_rank = {
         rank + 1: 6000 - rank * 10 for rank in range(400)
     }
     return build_waiver_credit_ladder(
         values_by_rank=values_by_rank,
+        cutline=300,
     )
 
 

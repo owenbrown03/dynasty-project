@@ -367,6 +367,7 @@ async def _build_league_candidates(
             total_rosters=pool.context.total_rosters,
             num_qbs=_league_num_qbs(league),
             ppr=_league_ppr(league),
+            roster_slots=league.roster_size,
         )
     except Exception:
         logger.exception(
@@ -374,6 +375,7 @@ async def _build_league_candidates(
             league.league_id,
         )
         waiver_ladder = []
+
 
     made_for_this_league = 0
     seen_target_ids: set[str] = set()

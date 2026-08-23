@@ -13,11 +13,11 @@ each additional spot lost assumes a slightly better replacement.
 _SLOT_STEP = 10
 
 # FantasyCalc's documented anchor: the implicit waiver replacement
-# for the first lost bench spot is the ~300th best player, stepping
-# up the ranking per additional spot lost. Empirically confirmed:
-# ranks 300 + 290 = 248 + 277 = 525, matching FC's displayed +525
-# for a picks-for-player trade in a 12-team SF league.
-_REFERENCE_RANK = 300
+# for the first lost bench spot is the ~300th best player in their
+# average 11.3-team × 26.7-spot league. We scale to the actual
+# league's rostered count (num_teams × effective roster_size) so
+# deeper leagues correctly see a thinner waiver wire.
+_FC_AVERAGE_ROSTER_SLOTS = 27
 
 _MAX_EXTRA_SPOTS = 4
 
@@ -25,16 +25,16 @@ _MAX_EXTRA_SPOTS = 4
 def build_waiver_credit_ladder(
     *,
     values_by_rank: dict[int, float],
+    cutline: int,
 ) -> list[float]:
     """Builds cumulative credit for 1..N extra bench spots lost.
 
     values_by_rank maps FantasyCalc's own overall_rank to value.
     Keying by published rank (instead of positional sort order) keeps
     the cutline honest even when some players fail name-match during
-    sync. The cutline anchors at FC's documented ~300th-best player.
+    sync. cutline is the worst rostered player's rank in this league
+    (num_teams × effective roster_size).
     """
-    cutline = _REFERENCE_RANK
-
     ladder: list[float] = []
     running = 0.0
 
@@ -67,13 +67,20 @@ async def load_waiver_ladder(
     total_rosters: int,
     num_qbs: int = 2,
     ppr: int = 1,
+    roster_slots: int = _FC_AVERAGE_ROSTER_SLOTS,
 ) -> list[float]:
-    """Loads the FC ranking at league shape and builds the ladder."""
+    """Loads the FC ranking at league shape and builds the ladder.
+
+    roster_slots should be the league's effective roster size (starters
+    + bench, excluding IR/TAXI on best-ball). Defaults to FC's average
+    of ~27 so the manual calculator still works without a league object.
+    """
     from sqlalchemy import select
 
     from app.models.db.fc.models import FantasyCalcValue
 
-    depth = _REFERENCE_RANK + 100
+    cutline = total_rosters * roster_slots
+    depth = cutline + 100
     result = await db.execute(
         select(
             FantasyCalcValue.overall_rank,
@@ -95,6 +102,7 @@ async def load_waiver_ladder(
 
     return build_waiver_credit_ladder(
         values_by_rank=values_by_rank,
+        cutline=cutline,
     )
 
 
