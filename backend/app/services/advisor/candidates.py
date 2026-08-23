@@ -25,6 +25,13 @@ from app.services.draft.values import (
     resolve_fantasycalc_pick_value,
 )
 from app.services.personal_values import get_personal_value_pool
+from app.services.advisor.strategy import (
+    HOARD_PICKS,
+    REBUILD,
+    WIN_NOW,
+    LeagueStrategy,
+    detect_strategy,
+)
 from app.services.advisor.trade_block import (
     get_trade_block_snapshot,
 )
@@ -35,6 +42,10 @@ from app.services.leagues.selection import (
 logger = logging.getLogger(__name__)
 
 MAX_LEAGUES = 6
+# Bumped whenever candidate-engine semantics change in a way that
+# should invalidate cached syntheses (value bases, constraint math,
+# package shapes). The synthesis cache identity includes this.
+ADVISOR_ENGINE_VERSION = 3
 ANCHOR_POOL_SIZE = 5
 MAX_PROPOSALS_PER_LEAGUE = 4
 # Market value is FantasyCalc: unlike KTC it has no imbalance adder,
@@ -213,34 +224,6 @@ async def _build_league_candidates(
         if pid in items_by_player_id
     ]
 
-    roster_contexts.append(
-        await _build_roster_context(
-            ctx,
-            league=league,
-            my_roster=my_roster,
-            pool_context=pool.context,
-            my_items=my_items,
-        ),
-    )
-
-    sell_pool = sorted(
-        (item for item in my_items if _market_value(item)),
-        key=lambda i: _delta_war(i) or 0.0,
-    )[:ANCHOR_POOL_SIZE]
-
-    buy_pool = sorted(
-        (
-            item
-            for pid, item in items_by_player_id.items()
-            if pid not in my_player_ids and _market_value(item)
-        ),
-        key=lambda i: _delta_war(i) or 0.0,
-        reverse=True,
-    )[:ANCHOR_POOL_SIZE]
-
-    if not sell_pool or not buy_pool:
-        return
-
     league_rosters = await get_league_with_rosters(
         ctx.db,
         league.league_id,
@@ -272,15 +255,50 @@ async def _build_league_candidates(
         blocked_pick_keys=set(snapshot.picks.keys()),
     )
 
-    # Trade-block signal first: a leaguemate explicitly shopping an
-    # asset is the strongest availability marker we have.
-    buy_pool = sorted(
-        buy_pool,
-        key=lambda i: (
-            i.player.player_id not in snapshot.player_ids,
-            -(_delta_war(i) or 0.0),
+    strategy = _detect_league_strategy(
+        league=league,
+        my_roster=my_roster,
+        league_rosters=league_rosters,
+        my_items=my_items,
+        items_by_player_id=items_by_player_id,
+        chests=chests,
+    )
+
+    roster_contexts.append(
+        await _build_roster_context(
+            ctx,
+            league=league,
+            my_roster=my_roster,
+            pool_context=pool.context,
+            my_items=my_items,
+            strategy=strategy,
         ),
     )
+
+    # Trade-block signal first: a leaguemate explicitly shopping an
+    # asset is the strongest availability marker we have. Strategy
+    # then reshapes both pools (see _apply_strategy_ordering).
+    buy_pool = [
+        i
+        for p, i in items_by_player_id.items()
+        if p not in my_player_ids and _market_value(i)
+    ]
+    sell_pool_full = [
+        item
+        for item in my_items
+        if _market_value(item)
+    ]
+    sell_pool, buy_pool = _apply_strategy_ordering(
+        strategy=strategy.strategy if strategy else None,
+        sell=sell_pool_full,
+        buy=buy_pool,
+        blocked_ids=set(snapshot.player_ids),
+    )
+    sell_pool = sell_pool[:ANCHOR_POOL_SIZE]
+    buy_pool = buy_pool[:ANCHOR_POOL_SIZE]
+
+    if not sell_pool or not buy_pool:
+        return
 
     my_picks = sorted(
         (
@@ -290,6 +308,11 @@ async def _build_league_candidates(
         ),
         key=lambda p: p.value or 0.0,
     )
+
+    # Pick-hoarding never ships its own draft capital.
+    if strategy and strategy.strategy == HOARD_PICKS:
+        my_picks = []
+
     used_pick_keys: set[tuple[int, str, int]] = set()
 
     made_for_this_league = 0
@@ -420,6 +443,9 @@ async def _build_league_candidates(
                 personal_receive_total=personal_receive_total,
                 your_roster_id=my_roster.roster_id,
                 counterparty_roster_id=target_roster.roster_id,
+                strategy=(
+                    strategy.strategy if strategy else None
+                ),
             ),
         )
         made_for_this_league += 1
@@ -580,6 +606,136 @@ async def _build_pick_chests(
         )
 
     return dict(chests)
+
+
+def _starter_ages(
+    items: list[PersonalValuePoolItem],
+) -> float | None:
+    """Average age over each player's most valuable slice.
+
+    Uses the top half of the roster by personal WAR as a proxy for
+    the core that actually decides whether a team is contending.
+    """
+    valued = [
+        (item, _personal_war(item) or 0.0)
+        for item in items
+        if item.player.age is not None
+    ]
+
+    if not valued:
+        return None
+
+    valued.sort(key=lambda pair: pair[1], reverse=True)
+    core = valued[: max(1, len(valued) // 2)]
+
+    return sum(
+        item.player.age for item, _ in core
+    ) / len(core)
+
+
+def _detect_league_strategy(
+    *,
+    league,
+    my_roster,
+    league_rosters,
+    my_items: list[PersonalValuePoolItem],
+    items_by_player_id: dict[str, PersonalValuePoolItem],
+    chests: dict[int, list[PickAsset]],
+) -> LeagueStrategy:
+    all_points_for = [
+        float(roster.fpts)
+        for _, roster in league_rosters
+        if roster.fpts is not None
+    ]
+    league_items = [
+        item
+        for item in items_by_player_id.values()
+    ]
+    league_starter_age = _starter_ages(league_items)
+
+    return detect_strategy(
+        my_points_for=(
+            float(my_roster.fpts)
+            if my_roster.fpts is not None
+            else None
+        ),
+        all_points_for=all_points_for,
+        my_wins=my_roster.wins or 0,
+        my_losses=my_roster.losses or 0,
+        my_ties=my_roster.ties or 0,
+        my_starter_age=_starter_ages(my_items),
+        league_starter_age=league_starter_age,
+        my_pick_count=len(
+            chests.get(my_roster.roster_id, [])
+        ),
+        league_avg_pick_count=(
+            sum(len(v) for v in chests.values())
+            / max(len(chests), 1)
+        ),
+    )
+
+
+def _apply_strategy_ordering(
+    *,
+    strategy: str | None,
+    sell: list[PersonalValuePoolItem],
+    buy: list[PersonalValuePoolItem],
+    blocked_ids: set[str],
+):
+    """Reshapes candidate pools to serve the detected strategy.
+
+    rebuild: shed the oldest market-valued assets; target blocked
+      players first, then the youngest upside.
+    win_now: move young depth; target proven older producers whose
+      current WAR is real.
+    hoard_picks/compete: keep the delta-WAR logic with trade-block
+      priority on the buy side.
+    """
+    def age_or(item, default):
+        return (
+            item.player.age
+            if item.player.age is not None
+            else default
+        )
+
+    if strategy == REBUILD:
+        sell.sort(
+            key=lambda i: (
+                -age_or(i, 0.0),
+                -(_market_value(i) or 0.0),
+            ),
+        )
+        buy.sort(
+            key=lambda i: (
+                i.player.player_id not in blocked_ids,
+                age_or(i, 99.0),
+                -(_delta_war(i) or 0.0),
+            ),
+        )
+    elif strategy == WIN_NOW:
+        sell.sort(
+            key=lambda i: (
+                age_or(i, 99.0),
+                -(_delta_war(i) or 0.0),
+            ),
+        )
+        buy.sort(
+            key=lambda i: (
+                -age_or(i, 0.0),
+                i.player.player_id not in blocked_ids,
+                -(max(_personal_war(i) or 0.0, 0.0)),
+            ),
+        )
+    else:
+        sell.sort(key=lambda i: _delta_war(i) or 0.0)
+        buy.sort(
+            key=lambda i: (
+                i.player.player_id not in blocked_ids,
+                -(_delta_war(i) or 0.0),
+            ),
+        )
+
+    return sell, buy
 
 
 def _find_roster_of_player(
@@ -824,6 +980,7 @@ async def _build_roster_context(
     my_roster,
     pool_context,
     my_items: list[PersonalValuePoolItem],
+    strategy: LeagueStrategy | None = None,
 ) -> AdvisorRosterContext:
     player_ids = list(my_roster.players or [])
     player_map = await get_player_map_for_ids(
@@ -832,11 +989,15 @@ async def _build_roster_context(
     )
 
     position_counts: dict[str, int] = defaultdict(int)
+    ages: list[float] = []
     for pid in player_ids:
         meta = player_map.get(pid)
 
         if meta:
             position_counts[meta.get("position", "?")] += 1
+
+            if meta.get("age") is not None:
+                ages.append(float(meta["age"]))
 
     return AdvisorRosterContext(
         league_id=league.league_id,
@@ -852,7 +1013,13 @@ async def _build_roster_context(
             else None
         ),
         position_counts=dict(position_counts),
-        avg_age=None,
+        avg_age=(
+            sum(ages) / len(ages) if ages else None
+        ),
+        strategy=strategy.strategy if strategy else None,
+        strategy_reason=(
+            strategy.reason if strategy else None
+        ),
     )
 
 

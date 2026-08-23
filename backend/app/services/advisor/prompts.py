@@ -34,6 +34,20 @@ naturally (e.g. "a 2027 2nd"). Players and picks marked "on_block": true \
 are explicitly placed on a leaguemate's Sleeper trade block — that is the \
 strongest availability signal in the data, so prefer those targets and \
 mention the block placement as part of why now is the right time.
+
+Each league carries a detected strategy with its reason \
+(roster_contexts[].strategy / strategy_reason, echoed on every proposal):
+- "rebuild": the competitive window is closed. Favor moves that convert \
+aging veterans into young players, injured discounted players, and draft \
+picks — even when current-year scoring drops. Say so plainly.
+- "win_now": the window is open and the core is aging. Favor trading \
+young depth and picks for proven producers who raise this year's ceiling.
+- "hoard_picks": keep accumulating draft capital; proposals will not \
+spend your own picks.
+- "compete": improve as constructed without mortgaging either timeline.
+Frame every recommendation's reasoning around this direction and cite \
+the concrete signals (record, scoring rank, roster age, pick counts) \
+from the strategy_reason.
 """
 
 

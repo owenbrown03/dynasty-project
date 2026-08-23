@@ -319,6 +319,13 @@ function SendTradeSection({
   );
 }
 
+const STRATEGY_LABELS: Record<string, string> = {
+  rebuild: 'Rebuild',
+  win_now: 'Win now',
+  hoard_picks: 'Hoard picks',
+  compete: 'Compete',
+};
+
 function RecommendationCard({
   recommendation,
 }: {
@@ -382,8 +389,21 @@ function RecommendationCard({
         <h4 className="advisor-headline">
           {recommendation.headline}
         </h4>
-        <span className={`advisor-confidence ${confidenceClass}`}>
-          {recommendation.confidence}
+        <span className="advisor-header-badges">
+          {proposal?.strategy
+            ? (
+                STRATEGY_LABELS[proposal.strategy]
+                ?? proposal.strategy
+              ) && (
+                <span className={`advisor-strategy-badge advisor-strategy-${proposal.strategy}`}>
+                  {STRATEGY_LABELS[proposal.strategy]
+                    ?? proposal.strategy}
+                </span>
+              )
+            : null}
+          <span className={`advisor-confidence ${confidenceClass}`}>
+            {recommendation.confidence}
+          </span>
         </span>
       </header>
 

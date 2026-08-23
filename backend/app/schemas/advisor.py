@@ -50,6 +50,7 @@ class AdvisorProposal(Base):
     personal_receive_total: float | None = None
     your_roster_id: int | None = None
     counterparty_roster_id: int | None = None
+    strategy: str | None = None
 
     @property
     def asymmetry(self) -> str | None:
@@ -94,6 +95,8 @@ class AdvisorRosterContext(Base):
     points_for: float | None = None
     position_counts: dict[str, int] = {}
     avg_age: float | None = None
+    strategy: str | None = None
+    strategy_reason: str | None = None
 
 
 class AdvisorSignalSummary(Base):

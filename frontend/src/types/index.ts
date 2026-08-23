@@ -1319,6 +1319,7 @@ export interface AdvisorProposal {
   personal_receive_total: number | null;
   your_roster_id?: number | null;
   counterparty_roster_id?: number | null;
+  strategy?: string | null;
 }
 
 export interface AdvisorRecommendation {
