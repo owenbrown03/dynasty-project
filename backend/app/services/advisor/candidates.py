@@ -26,6 +26,8 @@ from app.services.draft.values import (
 )
 from app.services.personal_values import get_personal_value_pool
 from app.services.advisor.strategy import (
+    BASIS_ACTUAL_POINTS,
+    BASIS_PROJECTED_WAR,
     HOARD_PICKS,
     REBUILD,
     WIN_NOW,
@@ -255,7 +257,8 @@ async def _build_league_candidates(
         blocked_pick_keys=set(snapshot.picks.keys()),
     )
 
-    strategy = _detect_league_strategy(
+    strategy = await _detect_league_strategy(
+        ctx,
         league=league,
         my_roster=my_roster,
         league_rosters=league_rosters,
@@ -633,7 +636,79 @@ def _starter_ages(
     ) / len(core)
 
 
-def _detect_league_strategy(
+def _starter_war(item: PersonalValuePoolItem) -> float | None:
+    """Current-year projected strength for one player.
+
+    Redraft starter WAR is the same current-season projection the
+    dashboard's financial predictions use; dynasty starter WAR is
+    the fallback when redraft has not been computed.
+    """
+    metrics = item.market_values
+
+    war = metrics.redraft_starter_war
+    if war is None:
+        war = metrics.dynasty_starter_war
+
+    if war is None:
+        custom = item.custom_values
+        war = (
+            custom.redraft_starter_war
+            if custom.redraft_starter_war is not None
+            else custom.dynasty_starter_war
+        )
+
+    return war
+
+
+async def _season_phase(sleeper) -> tuple[str, str]:
+    """Returns (basis, label) for team-strength measurement.
+
+    Actual points only mean something once real games have been
+    played; before that we rank by projected starter WAR so the
+    advisor never declares "rank 1 with 0 points" nonsense.
+    """
+    try:
+        state = await sleeper.read.get_nfl_state()
+        season_type = (state.season_type or "").lower()
+        week = int(state.week or 0)
+
+        if season_type == "regular" and week >= 1:
+            return (
+                BASIS_ACTUAL_POINTS,
+                f"week {week}",
+            )
+    except Exception:
+        logger.exception(
+            "NFL state fetch failed; defaulting to "
+            "projected strength",
+        )
+
+    return (
+        BASIS_PROJECTED_WAR,
+        "preseason",
+    )
+
+
+def _projected_roster_strength(
+    player_ids: set[str],
+    items_by_player_id: dict[str, PersonalValuePoolItem],
+    starters: int,
+) -> float:
+    """Sums the best starters-sized slice of current-year WAR."""
+    wars = sorted(
+        (
+            war
+            for pid in player_ids
+            if (item := items_by_player_id.get(pid))
+            and (war := _starter_war(item)) is not None
+        ),
+        reverse=True,
+    )
+    return sum(wars[:starters])
+
+
+async def _detect_league_strategy(
+    ctx: ContextDep,
     *,
     league,
     my_roster,
@@ -642,24 +717,55 @@ def _detect_league_strategy(
     items_by_player_id: dict[str, PersonalValuePoolItem],
     chests: dict[int, list[PickAsset]],
 ) -> LeagueStrategy:
-    all_points_for = [
-        float(roster.fpts)
-        for _, roster in league_rosters
-        if roster.fpts is not None
+    basis, _phase = await _season_phase(ctx.sleeper)
+
+    starters = max(
+        len(league.roster_positions or []) or 10,
+        1,
+    )
+
+    if basis == BASIS_PROJECTED_WAR:
+        # Preseason/offseason: rank every roster by its best
+        # starters-sized slice of current-year projected WAR.
+        def strength(roster) -> float:
+            return _projected_roster_strength(
+                set(roster.players or []),
+                items_by_player_id,
+                starters,
+            )
+
+    else:
+        # In-season: actual points, ignoring rosters still at zero
+        # so an empty column can't read as dominance.
+        def strength(roster) -> float | None:
+            if roster.fpts is None:
+                return None
+
+            value = float(roster.fpts)
+            return value if value > 0 else None
+
+    all_strengths = [
+        strength(roster) for _, roster in league_rosters
     ]
-    league_items = [
-        item
-        for item in items_by_player_id.values()
-    ]
+    my_strength = next(
+        (
+            s
+            for (_, roster), s in zip(
+                league_rosters,
+                all_strengths,
+            )
+            if roster.roster_id == my_roster.roster_id
+        ),
+        None,
+    )
+
+    league_items = list(items_by_player_id.values())
     league_starter_age = _starter_ages(league_items)
 
     return detect_strategy(
-        my_points_for=(
-            float(my_roster.fpts)
-            if my_roster.fpts is not None
-            else None
-        ),
-        all_points_for=all_points_for,
+        my_strength=my_strength,
+        all_strengths=all_strengths,
+        basis=basis,
         my_wins=my_roster.wins or 0,
         my_losses=my_roster.losses or 0,
         my_ties=my_roster.ties or 0,
