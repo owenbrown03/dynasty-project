@@ -71,6 +71,7 @@ def test_get_league_overview_deduplicates_leagues(monkeypatch):
             "season": "2026",
             "total_rosters": 12,
             "is_hidden": False,
+            "is_focused": False,
         },
         {
             "league_id": "league-2",
@@ -79,6 +80,7 @@ def test_get_league_overview_deduplicates_leagues(monkeypatch):
             "season": "2026",
             "total_rosters": 10,
             "is_hidden": False,
+            "is_focused": False,
         },
     ]
 

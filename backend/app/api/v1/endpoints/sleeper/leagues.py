@@ -15,6 +15,8 @@ from app.services.dashboard.service import (
 from app.schemas.league import (
     LeagueOverviewItem,
     LeagueVisibilityItem,
+    LeagueFocusItem,
+    LeagueFocusUpdate,
     LeagueVisibilityUpdate,
     UserLeagueNoteUpdate,
     UserLeagueNoteResponse,
@@ -22,6 +24,7 @@ from app.schemas.league import (
 from app.services.leagues.details import LeagueDetails
 from app.services.leagues.overview import get_league_overview
 from app.services.leagues.visibility import (
+    set_league_focus,
     set_league_visibility,
 )
 from app.services.leagues.notes import save_user_note
@@ -120,6 +123,22 @@ async def visibility_endpoint(
         ctx=ctx,
         league_id=league_id,
         hidden=body.hidden,
+    )
+
+
+@router.put(
+    "/focus/{league_id}",
+    response_model=LeagueFocusItem,
+)
+async def focus_endpoint(
+    league_id: str,
+    body: LeagueFocusUpdate,
+    ctx: ContextDep,
+):
+    return await set_league_focus(
+        ctx=ctx,
+        league_id=league_id,
+        focused=body.focused,
     )
 
 

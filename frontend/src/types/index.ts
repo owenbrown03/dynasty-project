@@ -251,6 +251,7 @@ export interface LeagueOverview {
   season: string | null;
   total_rosters: number | null;
   is_hidden: boolean;
+  is_focused: boolean;
 }
 
 export interface LeagueVisibilityUpdate {
@@ -260,6 +261,15 @@ export interface LeagueVisibilityUpdate {
 export interface LeagueVisibilityItem {
   league_id: string;
   hidden: boolean;
+}
+
+export interface LeagueFocusUpdate {
+  focused: boolean;
+}
+
+export interface LeagueFocusItem {
+  league_id: string;
+  focused: boolean;
 }
 
 export interface LeagueOwner {

@@ -12,6 +12,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import {
   useLeagueDetails,
+  useLeagueFocus,
   useLeagueOverview,
   useLeagueVisibility,
 } from '@/hooks/sleeper/useLeagues';
@@ -70,6 +71,7 @@ export const LeaguesPage = () => {
     includeHidden
   );
   const visibility = useLeagueVisibility();
+  const focus = useLeagueFocus();
 
   const cheapDetails = useLeagueDetails(
     debouncedSelectedLeague,
@@ -89,6 +91,20 @@ export const LeaguesPage = () => {
       (league) =>
         league.league_id === selectedLeague
     ) ?? null;
+
+  const selectorLeagues = useMemo(
+    () => [
+      ...overview.data.filter(
+        (league) =>
+          league.is_focused
+      ),
+      ...overview.data.filter(
+        (league) =>
+          !league.is_focused
+      ),
+    ],
+    [overview.data],
+  );
 
   useEffect(() => {
     if (!overview.data.length) {
@@ -146,6 +162,35 @@ export const LeaguesPage = () => {
       }
     };
 
+  const handleFocusChange =
+    async (
+      focused: boolean
+    ) => {
+      if (!selectedLeagueEntry) {
+        return;
+      }
+
+      try {
+        await focus.setLeagueFocus({
+          leagueId:
+            selectedLeagueEntry.league_id,
+          payload: {
+            focused,
+          },
+        });
+
+        notify.success(
+          focused
+            ? 'League starred. It will float to the top of your selector.'
+            : 'League unstarred.',
+        );
+      } catch {
+        notify.error(
+          'Unable to update league focus.',
+        );
+      }
+    };
+
   return (
     <div className="leagues-container">
       <section className="page-header">
@@ -174,7 +219,7 @@ export const LeaguesPage = () => {
           <div className="leagues-selector-top-row">
             <LeagueSelector
               leagues={
-                overview.data
+                selectorLeagues
               }
               selectedLeague={
                 selectedLeague
@@ -204,6 +249,32 @@ export const LeaguesPage = () => {
                         : selectedLeagueEntry.is_hidden
                           ? 'Unhide league'
                           : 'Hide league'
+                    }
+                  </button>
+                )
+                : null
+            }
+
+            {
+              bootstrap.data?.authenticated
+              && selectedLeagueEntry
+                ? (
+                  <button
+                    type="button"
+                    className={`button-secondary leagues-focus-button${selectedLeagueEntry.is_focused ? ' is-focused' : ''}`}
+                    disabled={focus.saving}
+                    onClick={() => {
+                      void handleFocusChange(
+                        !selectedLeagueEntry.is_focused
+                      );
+                    }}
+                  >
+                    {
+                      focus.saving
+                        ? 'Saving...'
+                        : selectedLeagueEntry.is_focused
+                          ? '★ Unstar league'
+                          : '☆ Star league'
                     }
                   </button>
                 )

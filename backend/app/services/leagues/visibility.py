@@ -4,10 +4,15 @@ from fastapi import HTTPException, status
 
 from app.core.context import Context
 from app.crud.sleeper.personal import (
+    focus_league,
     hide_league,
+    unfocus_league,
     unhide_league,
 )
-from app.schemas.league import LeagueVisibilityItem
+from app.schemas.league import (
+    LeagueFocusItem,
+    LeagueVisibilityItem,
+)
 
 
 def _require_site_user(
@@ -46,4 +51,33 @@ async def set_league_visibility(
     return LeagueVisibilityItem(
         league_id=league_id,
         hidden=hidden,
+    )
+
+
+async def set_league_focus(
+    *,
+    ctx: Context,
+    league_id: str,
+    focused: bool,
+) -> LeagueFocusItem:
+    _require_site_user(
+        ctx,
+    )
+
+    if focused:
+        await focus_league(
+            db=ctx.db,
+            site_user_id=ctx.site_user.id,
+            league_id=league_id,
+        )
+    else:
+        await unfocus_league(
+            db=ctx.db,
+            site_user_id=ctx.site_user.id,
+            league_id=league_id,
+        )
+
+    return LeagueFocusItem(
+        league_id=league_id,
+        focused=focused,
     )

@@ -13,6 +13,7 @@ from app.models.db.sleeper.personal import (
     FinanceLeagueDefault,
     FinanceLeagueSeason,
     FinanceUserDefaults,
+    FocusLeague,
     HiddenLeague,
     PersonalProjection,
     PersonalProjectionOutcome,
@@ -599,6 +600,66 @@ async def unhide_league(
         site_user_id=site_user_id,
         league_id=league_id,
     )
+
+    if record is None:
+        return
+
+    await db.delete(record)
+    await db.commit()
+
+
+async def get_focused_league_ids(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+) -> set[str]:
+    results = await db.execute(
+        select(FocusLeague.league_id).where(
+            FocusLeague.site_user_id == site_user_id,
+        )
+    )
+    return set(results.scalars().all())
+
+
+async def focus_league(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str,
+) -> FocusLeague:
+    results = await db.execute(
+        select(FocusLeague).where(
+            FocusLeague.site_user_id == site_user_id,
+            FocusLeague.league_id == league_id,
+        )
+    )
+    record = results.scalar_one_or_none()
+
+    if record is None:
+        record = FocusLeague(
+            site_user_id=site_user_id,
+            league_id=league_id,
+        )
+
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def unfocus_league(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str,
+) -> None:
+    results = await db.execute(
+        select(FocusLeague).where(
+            FocusLeague.site_user_id == site_user_id,
+            FocusLeague.league_id == league_id,
+        )
+    )
+    record = results.scalar_one_or_none()
 
     if record is None:
         return

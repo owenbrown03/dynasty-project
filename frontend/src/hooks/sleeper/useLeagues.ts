@@ -11,6 +11,8 @@ import type {
   LeagueOverview,
   LeagueDetails,
   Dashboard,
+  LeagueFocusItem,
+  LeagueFocusUpdate,
   LeagueVisibilityItem,
   LeagueVisibilityUpdate,
   UserLeagueNoteUpdate,
@@ -120,6 +122,44 @@ export function useLeagueVisibility() {
   };
 }
 
+
+
+export function useLeagueFocus() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<
+    LeagueFocusItem,
+    Error,
+    {
+      leagueId: string;
+      payload: LeagueFocusUpdate;
+    }
+  >({
+    mutationFn: async ({
+      leagueId,
+      payload,
+    }) => {
+      return api.leagues
+        .setFocus(
+          leagueId,
+          payload,
+        )
+        .then((res) => res.data);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.leagues.overviewRoot,
+        }),
+      ]);
+    },
+  });
+
+  return {
+    setLeagueFocus: mutation.mutateAsync,
+    saving: mutation.isPending,
+  };
+}
 
 export function useLeagueDetails(league_id?: string, cheap = false) {
   const bootstrap = useBootstrap();
