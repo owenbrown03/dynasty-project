@@ -67,6 +67,8 @@ export function getValueBasisLabel(
       return 'ADP';
     case 'sleeper_war':
       return 'Sleeper WAR';
+    case 'sleeper_projection':
+      return 'Sleeper projected points';
     case 'my_war':
       return 'My WAR';
     case 'my_roster_war':
@@ -78,9 +80,9 @@ export function getValueBasisLabel(
     case 'redraft_roster_war':
       return 'Redraft Roster WAR';
     case 'dynasty_starter_war':
-      return 'Dynasty Starter WAR';
+      return 'Sleeper Projection Starter WAR';
     case 'dynasty_roster_war':
-      return 'Dynasty Roster WAR';
+      return 'Sleeper Projection Roster WAR';
     case 'ktc':
     default:
       return 'KTC';
@@ -99,6 +101,8 @@ export function getLeaguePlayerSelectedValue(
       return player.fc_value ?? null;
     case 'adp':
       return player.adp_value ?? null;
+    case 'sleeper_projection':
+      return player.projected_points ?? null;
     case 'redraft_starter_war':
       return player.redraft_starter_war ?? null;
     case 'redraft_roster_war':
@@ -140,6 +144,8 @@ export function getRosterSelectedAssetValue(
       return roster.total_asset_ktc_value;
     case 'fantasycalc':
       return roster.total_asset_fc_value;
+    case 'adp':
+      return sumPlayerMetric(roster.players, 'adp_value');
     case 'redraft_starter_war':
       return roster.total_redraft_starter_war;
     case 'redraft_roster_war':
@@ -154,6 +160,21 @@ export function getRosterSelectedAssetValue(
         getSleeperProjectionMetricName(
           warValueSettings.sleeper_projection,
         ),
+      );
+    case 'sleeper_projection':
+      return sumPlayerMetric(
+        roster.players,
+        'projected_points',
+      );
+    case 'my_roster_war':
+      return sumPlayerMetric(
+        roster.players,
+        'my_dynasty_roster_war',
+      );
+    case 'my_starter_war':
+      return sumPlayerMetric(
+        roster.players,
+        'my_dynasty_starter_war',
       );
     case 'my_war':
       return sumPlayerMetric(
@@ -177,6 +198,8 @@ export function getRosterSelectedPlayerValue(
       return roster.total_ktc_value;
     case 'fantasycalc':
       return roster.total_fc_value;
+    case 'adp':
+      return sumPlayerMetric(roster.players, 'adp_value');
     case 'redraft_starter_war':
       return roster.total_redraft_starter_war;
     case 'redraft_roster_war':
@@ -191,6 +214,21 @@ export function getRosterSelectedPlayerValue(
         getSleeperProjectionMetricName(
           warValueSettings.sleeper_projection,
         ),
+      );
+    case 'sleeper_projection':
+      return sumPlayerMetric(
+        roster.players,
+        'projected_points',
+      );
+    case 'my_roster_war':
+      return sumPlayerMetric(
+        roster.players,
+        'my_dynasty_roster_war',
+      );
+    case 'my_starter_war':
+      return sumPlayerMetric(
+        roster.players,
+        'my_dynasty_starter_war',
       );
     case 'my_war':
       return sumPlayerMetric(
@@ -219,6 +257,9 @@ export function getRosterSelectedPickValue(
     case 'dynasty_roster_war':
     case 'sleeper_war':
     case 'my_war':
+    case 'my_roster_war':
+    case 'my_starter_war':
+    case 'sleeper_projection':
       return roster.total_pick_rookie_war_value;
     default:
       return null;
@@ -266,6 +307,12 @@ export function getRosterSelectedAssetRank(
       return mySettings.scope === 'starter'
         ? roster.stat_ranks.total_dynasty_starter_war
         : roster.stat_ranks.total_dynasty_roster_war;
+    case 'my_roster_war':
+      return roster.stat_ranks.total_dynasty_roster_war;
+    case 'my_starter_war':
+      return roster.stat_ranks.total_dynasty_starter_war;
+    case 'sleeper_projection':
+      return roster.stat_ranks.projected_points;
     default:
       return undefined;
   }
@@ -298,6 +345,9 @@ export function getRosterSelectedPickRank(
     case 'dynasty_roster_war':
     case 'sleeper_war':
     case 'my_war':
+    case 'my_roster_war':
+    case 'my_starter_war':
+    case 'sleeper_projection':
       return roster.stat_ranks.total_pick_rookie_war_value;
     default:
       return undefined;
@@ -359,6 +409,8 @@ export function getDashboardLeagueSelectedValue(
     case 'dynasty_roster_war':
     case 'sleeper_war':
       return league.dynasty_roster_war;
+    case 'sleeper_projection':
+      return league.redraft_roster_war ?? null;
     case 'my_roster_war':
       return league.my_dynasty_roster_war ?? null;
     case 'my_starter_war':

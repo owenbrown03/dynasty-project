@@ -485,9 +485,7 @@ export type ValueBasis =
   | 'dynasty_starter_war'
   | 'dynasty_roster_war';
 
-export type TierBoardSource =
-  | ValueBasis
-  | 'league_war';
+export type TierBoardSource = ValueBasis;
 
 export interface TierBoardPlayer {
   player_id: string;

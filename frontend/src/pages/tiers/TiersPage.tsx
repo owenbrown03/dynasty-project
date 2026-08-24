@@ -11,7 +11,6 @@ import { usePlayerTiers } from '@/hooks/sleeper/usePlayerTiers';
 import type {
   TierBoardPlayer,
   TierBoardSource,
-  ValueBasis,
 } from '@/types';
 import { getPositionColor } from '@/utils/positions';
 import {
@@ -21,7 +20,6 @@ import {
 import {
   isLeagueContextValueBasis,
   TIER_SOURCE_OPTIONS,
-  WAR_ONLY_OPTIONS,
 } from './tier.constants';
 import './TiersPage.css';
 
@@ -134,19 +132,8 @@ export const TiersPage = () => {
   const navigate = useNavigate();
   const valuePreference = useValuePreference();
   const initialSource = valuePreference.preference;
-  const initialWarBasis: ValueBasis = isLeagueContextValueBasis(
-    initialSource,
-  )
-    ? initialSource
-    : 'sleeper_war';
   const [source, setSource] = useState<TierBoardSource>(
-    initialSource
-      && isLeagueContextValueBasis(initialSource)
-      ? 'league_war'
-      : initialSource,
-  );
-  const [warBasis, setWarBasis] = useState<ValueBasis>(
-    initialWarBasis,
+    initialSource,
   );
   const [leagueId, setLeagueId] = useState('');
   const debouncedLeagueId = useDebouncedValue(
@@ -155,18 +142,14 @@ export const TiersPage = () => {
   );
 
   const leagueOverview = useLeagueOverview();
-  const effectiveValueBasis = (
-    source === 'league_war'
-      ? warBasis
-      : source
-  ) as ValueBasis;
+  const effectiveValueBasis = source;
+  const needsLeagueSelection = isLeagueContextValueBasis(
+    source,
+  );
   const effectiveLeagueId = (
-    source === 'league_war'
+    needsLeagueSelection
       ? debouncedLeagueId || undefined
       : undefined
-  );
-  const needsLeagueSelection = (
-    source === 'league_war'
   );
   const canRequestBoard = (
     !needsLeagueSelection
@@ -275,29 +258,6 @@ export const TiersPage = () => {
                     </select>
                   </label>
 
-                  <label className="waivers-value-selector">
-                    <span>WAR Type</span>
-
-                    <select
-                      value={warBasis}
-                      onChange={(event) => {
-                        setWarBasis(
-                          event.target.value as ValueBasis,
-                        );
-                      }}
-                    >
-                      {
-                        WAR_ONLY_OPTIONS.map((option) => (
-                          <option
-                            key={option.value}
-                            value={option.value}
-                          >
-                            {option.label}
-                          </option>
-                        ))
-                      }
-                    </select>
-                  </label>
                 </>
               )
               : null
