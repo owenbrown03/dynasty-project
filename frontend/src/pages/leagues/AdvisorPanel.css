@@ -347,3 +347,84 @@
   background: rgba(230, 126, 34, 0.18);
   color: #e67e22;
 }
+
+
+/* --- #162 proposal matrix: aligned paired asset rows --- */
+.advisor-proposal-matrix {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.advisor-proposal-head {
+  display: contents;
+}
+
+.advisor-proposal-head .advisor-proposal-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.advisor-proposal-row {
+  display: contents;
+}
+
+.advisor-proposal-row > div {
+  min-width: 0;
+}
+
+.advisor-asset-empty {
+  min-height: 1px;
+}
+
+.advisor-waiver-chip {
+  display: flex;
+  flex-direction: column;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px dashed currentColor;
+  opacity: 0.95;
+}
+
+.advisor-total-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+}
+
+.advisor-total-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+
+.advisor-total-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.advisor-delta-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.advisor-delta-badge.positive {
+  background: rgba(48, 164, 108, 0.18);
+  color: #30a46c;
+}
+
+.advisor-delta-badge.negative {
+  background: rgba(214, 79, 79, 0.16);
+  color: #d64f4f;
+}

@@ -98,6 +98,9 @@ function PlayerChip({
           player.position ?? '?',
           player.team ?? null,
           `FC ${formatValue(player.market_value)}`,
+          player.personal_war != null
+            ? `${player.personal_war.toFixed(1)} W`
+            : null,
         ]
           .filter(Boolean)
           .join(' · ')}
@@ -126,6 +129,195 @@ function PickChip({
       <span className="advisor-chip-meta">
         FC {formatValue(pick.market_value)}
       </span>
+    </div>
+  );
+}
+
+type ProposalAsset =
+  | {
+      kind: 'player';
+      player: AdvisorPlayerRef;
+      direction: 'send' | 'receive';
+    }
+  | {
+      kind: 'pick';
+      pick: AdvisorPickRef;
+      direction: 'send' | 'receive';
+    }
+  | {
+      kind: 'waiver';
+      direction: 'send' | 'receive';
+      creditFc: number | null;
+      creditWar: number | null;
+    };
+
+function WaiverCreditChip({
+  direction,
+  creditFc,
+  creditWar,
+}: {
+  direction: 'send' | 'receive';
+  creditFc: number | null;
+  creditWar: number | null;
+}) {
+  return (
+    <div
+      className={`advisor-waiver-chip advisor-chip-${direction}`}
+    >
+      <span className="advisor-chip-name">
+        Waiver refill
+      </span>
+      <span className="advisor-chip-meta">
+        {[
+          creditFc
+            ? `+${Math.round(creditFc)} FC`
+            : null,
+          creditWar
+            ? `+${creditWar.toFixed(2)} W`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' \u00b7 ')}
+      </span>
+    </div>
+  );
+}
+
+function AssetCell({ asset }: { asset: ProposalAsset | null }) {
+  if (!asset) {
+    return <div className="advisor-asset-empty" />;
+  }
+
+  if (asset.kind === 'waiver') {
+    return (
+      <WaiverCreditChip
+        direction={asset.direction}
+        creditFc={asset.creditFc}
+        creditWar={asset.creditWar}
+      />
+    );
+  }
+
+  if (asset.kind === 'pick') {
+    return <PickChip pick={asset.pick} direction={asset.direction} />;
+  }
+
+  return (
+    <PlayerChip player={asset.player} direction={asset.direction} />
+  );
+}
+
+function buildProposalAssets(
+  proposal: AdvisorProposal,
+): { send: ProposalAsset[]; receive: ProposalAsset[] } {
+  const send: ProposalAsset[] = [
+    ...proposal.send.map(
+      (player) =>
+        ({
+          kind: 'player',
+          player,
+          direction: 'send',
+        } as ProposalAsset),
+    ),
+    ...(proposal.send_picks ?? []).map(
+      (pick) =>
+        ({
+          kind: 'pick',
+          pick,
+          direction: 'send',
+        } as ProposalAsset),
+    ),
+  ];
+
+  const receive: ProposalAsset[] = [
+    ...proposal.receive.map(
+      (player) =>
+        ({
+          kind: 'player',
+          player,
+          direction: 'receive',
+        } as ProposalAsset),
+    ),
+    ...(proposal.receive_picks ?? []).map(
+      (pick) =>
+        ({
+          kind: 'pick',
+          pick,
+          direction: 'receive',
+        } as ProposalAsset),
+    ),
+  ];
+
+  const myFc = proposal.my_waiver_credit ?? null;
+  const myWar = proposal.my_waiver_credit_war ?? null;
+  const theirFc = proposal.their_waiver_credit ?? null;
+  const theirWar = proposal.their_waiver_credit_war ?? null;
+
+  if (myFc || myWar) {
+    send.push({
+      kind: 'waiver',
+      direction: 'send',
+      creditFc: myFc,
+      creditWar: myWar,
+    });
+  }
+
+  if (theirFc || theirWar) {
+    receive.push({
+      kind: 'waiver',
+      direction: 'receive',
+      creditFc: theirFc,
+      creditWar: theirWar,
+    });
+  }
+
+  return { send, receive };
+}
+
+function DeltaBadge({ delta }: { delta: number | null }) {
+  if (delta === null || Number.isNaN(delta)) {
+    return null;
+  }
+
+  const positive = delta >= 0;
+
+  return (
+    <span
+      className={`advisor-delta-badge ${positive ? 'positive' : 'negative'}`}
+    >
+      {positive ? '+' : ''}
+      {Math.round(delta * 100) / 100}
+    </span>
+  );
+}
+
+function ProposalMatrix({
+  proposal,
+}: {
+  proposal: AdvisorProposal;
+}) {
+  const { send, receive } = buildProposalAssets(proposal);
+  const rowCount = Math.max(send.length, receive.length);
+
+  return (
+    <div className="advisor-proposal-matrix">
+      <div className="advisor-proposal-head">
+        <span className="advisor-proposal-label">
+          You send → {proposal.counterparty_name}
+        </span>
+        <span className="advisor-proposal-label">
+          You receive ← ({proposal.league_name})
+        </span>
+      </div>
+
+      {Array.from({ length: rowCount }).map((_, i) => (
+        <div className="advisor-proposal-row" key={i}>
+          <div>{send[i] ? <AssetCell asset={send[i]} /> : null}</div>
+          <div>
+            {receive[i] ? <AssetCell asset={receive[i]} /> : null}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -428,111 +620,44 @@ function RecommendationCard({
 
       <p className="advisor-reasoning">{recommendation.reasoning}</p>
 
-      {proposal && (
-        <div className="advisor-proposal-grid">
-          <div className="advisor-proposal-side">
-            <span className="advisor-proposal-label">
-              You send → {proposal.counterparty_name}
-            </span>
+      {proposal && <ProposalMatrix proposal={proposal} />}
 
-            {proposal.send.map((player) => (
-              <PlayerChip
-                key={`send-${player.player_id}`}
-                player={player}
-                direction="send"
-              />
-            ))}
+      {proposal && (() => {
+        const marketSendAdj =
+          (proposal.market_send_total ?? 0)
+          + (proposal.my_waiver_credit ?? 0);
+        const marketRecvAdj =
+          (proposal.market_receive_total ?? 0)
+          + (proposal.their_waiver_credit ?? 0);
+        const warSend =
+          proposal.personal_send_total ?? 0;
+        const warRecvAdj =
+          (proposal.personal_receive_total ?? 0)
+          + (proposal.my_waiver_credit_war ?? 0);
 
-            {(proposal.send_picks ?? []).map((pick) => (
-              <PickChip
-                key={`send-pick-${pick.season}-${pick.round}-${pick.og_roster_id}`}
-                pick={pick}
-                direction="send"
-              />
-            ))}
-          </div>
-
-          <div className="advisor-proposal-side">
-            <span className="advisor-proposal-label">
-              You receive ← ({proposal.league_name})
-            </span>
-
-            {proposal.receive.map((player) => (
-              <PlayerChip
-                key={`receive-${player.player_id}`}
-                player={player}
-                direction="receive"
-              />
-            ))}
-
-            {(proposal.receive_picks ?? []).map((pick) => (
-              <PickChip
-                key={`receive-pick-${pick.season}-${pick.round}-${pick.og_roster_id}`}
-                pick={pick}
-                direction="receive"
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {proposal && (
-        <footer className="advisor-totals">
-          <span>
-            Market (FC) total:{' '}
-            <strong>
-              {formatValue(
-                (proposal.my_waiver_credit
-                  ? (proposal.market_send_total ?? 0)
-                    + proposal.my_waiver_credit
-                  : proposal.market_send_total),
-              )} →{' '}
-              {formatValue(
-                (proposal.their_waiver_credit
-                  ? (proposal.market_receive_total ?? 0)
-                    + proposal.their_waiver_credit
-                  : proposal.market_receive_total),
-              )}
-            </strong>
-            {(proposal.my_waiver_credit
-              || proposal.their_waiver_credit) && (
-              <span className="advisor-waiver-inline">
-                {' '}incl. waiver credit{' '}
-                {proposal.my_waiver_credit
-                  ? `+${Math.round(proposal.my_waiver_credit)} to you`
-                  : `+${Math.round(proposal.their_waiver_credit ?? 0)} to them`}
+        return (
+          <footer className="advisor-totals">
+            <div className="advisor-total-block">
+              <span className="advisor-total-label">Market</span>
+              <span className="advisor-total-value">
+                {formatValue(marketSendAdj)}
+                {' \u2192 '}
+                {formatValue(marketRecvAdj)}
+                <DeltaBadge delta={marketRecvAdj - marketSendAdj} />
               </span>
-            )}
-          </span>
-          <span>
-            Your WAR total:{' '}
-            <strong>
-              {formatValue(
-                (proposal.my_waiver_credit_war
-                  ? (proposal.personal_send_total ?? 0)
-                  : proposal.personal_send_total),
-                ' W',
-              )} →{' '}
-              {formatValue(
-                (proposal.my_waiver_credit_war
-                  ? (proposal.personal_receive_total ?? 0)
-                    + proposal.my_waiver_credit_war
-                  : proposal.personal_receive_total),
-                ' W',
-              )}
-            </strong>
-            {(proposal.my_waiver_credit_war
-              || proposal.their_waiver_credit_war) && (
-              <span className="advisor-waiver-inline">
-                {' '}incl. waiver credit{' '}
-                {proposal.my_waiver_credit_war
-                  ? `+${proposal.my_waiver_credit_war.toFixed(2)} W to you`
-                  : `+${(proposal.their_waiver_credit_war ?? 0).toFixed(2)} W to them`}
+            </div>
+            <div className="advisor-total-block">
+              <span className="advisor-total-label">Mine</span>
+              <span className="advisor-total-value">
+                {formatValue(warSend, ' W')}
+                {' \u2192 '}
+                {formatValue(warRecvAdj, ' W')}
+                <DeltaBadge delta={warRecvAdj - warSend} />
               </span>
-            )}
-          </span>
-        </footer>
-      )}
+            </div>
+          </footer>
+        );
+      })()}
 
       {proposal && <SendTradeSection proposal={proposal} />}
 
