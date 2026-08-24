@@ -50,7 +50,7 @@ _SEL_ROUND_SLOT = 3
 
 
 def _sel_attr(selection, name: str):
-    if isinstance(selection, tuple):
+    if isinstance(selection, (tuple, list)):
         idx = {
             "player_id": _SEL_PLAYER_ID,
             "season": _SEL_SEASON,
@@ -77,7 +77,10 @@ async def _load_shared_data(
         if cached:
             data = json.loads(cached)
             return _SharedData(
-                selections=data["selections"],
+                selections=[
+                    tuple(s) if isinstance(s, list) else s
+                    for s in data["selections"]
+                ],
                 stat_seasons=data["stat_seasons"],
             )
 
