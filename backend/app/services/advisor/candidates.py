@@ -947,13 +947,38 @@ async def _detect_league_strategy(
     starters = max(league.starter_slots, 1)
 
     if basis == BASIS_PROJECTED_WAR:
-        # Preseason/offseason: rank every roster by its best
-        # starters-sized slice of current-year projected WAR.
+        # Preseason/offseason: no real production yet, so contention
+        # follows the manager's redraft projection setting - total
+        # redraft market value per roster (#165 phase 3).
+        from app.crud.auth.session import (
+            get_session_redraft_value_preference,
+        )
+        from app.crud.auth.user import get_redraft_value_preference
+        from app.services.draft.projection import (
+            build_redraft_value_by_roster_id,
+        )
+
+        if ctx.site_user is not None:
+            redraft_basis = get_redraft_value_preference(
+                ctx.site_user,
+            ).value
+        else:
+            redraft_basis = get_session_redraft_value_preference(
+                ctx.session,
+            ).value
+
+        redraft_value_by_roster_id = (
+            await build_redraft_value_by_roster_id(
+                ctx.db,
+                [roster for _, roster in league_rosters],
+                basis=redraft_basis,
+            )
+        )
+
         def strength(roster) -> float:
-            return _projected_roster_strength(
-                set(roster.players or []),
-                items_by_player_id,
-                starters,
+            return redraft_value_by_roster_id.get(
+                roster.roster_id,
+                0.0,
             )
 
     else:

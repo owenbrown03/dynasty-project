@@ -4,9 +4,11 @@ from app.api.cancellation import cancel_on_disconnect
 from app.api.deps import ContextDep
 from app.crud.auth.session import (
     get_session_draft_pick_projection_settings,
+    get_session_redraft_value_preference,
 )
 from app.crud.auth.user import (
     get_draft_pick_projection_settings,
+    get_redraft_value_preference,
 )
 from app.services.dashboard.service import (
     get_user_dashboard,
@@ -76,6 +78,15 @@ async def details_endpoint(
                 else get_session_draft_pick_projection_settings(
                     ctx.session,
                 )
+            ),
+            redraft_value_basis=(
+                get_redraft_value_preference(
+                    ctx.site_user,
+                ).value
+                if ctx.site_user is not None
+                else get_session_redraft_value_preference(
+                    ctx.session,
+                ).value
             ),
             cheap=cheap,
         )

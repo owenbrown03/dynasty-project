@@ -50,8 +50,22 @@ from app.models.db.sleeper.api import League, Roster
 from app.models.db.auth import SiteUser
 from app.services.draft.projection import (
     build_cached_projected_pick_slots_by_roster_id,
+    build_redraft_value_by_roster_id,
     resolve_finance_projection_settings,
 )
+from app.crud.auth.user import get_redraft_value_preference
+from app.crud.auth.session import get_session_redraft_value_preference
+
+
+def _redraft_basis(ctx) -> str:
+    if ctx.site_user is not None:
+        return get_redraft_value_preference(
+            ctx.site_user,
+        ).value
+
+    return get_session_redraft_value_preference(
+        ctx.session,
+    ).value
 from app.services.finance_math import (
     build_seed_finish_probabilities,
     calculate_expected_winnings_from_seed,
@@ -404,6 +418,13 @@ async def build_finance_projected_seed_by_league_roster(
             ),
             redraft_roster_war_by_roster_id=(
                 redraft_roster_war_by_roster_id
+            ),
+            redraft_value_by_roster_id=(
+                await build_redraft_value_by_roster_id(
+                    ctx.db,
+                    rosters,
+                    basis=_redraft_basis(ctx),
+                )
             ),
             settings=effective_projection_settings,
         )

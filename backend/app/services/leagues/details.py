@@ -41,6 +41,7 @@ from app.services.draft.projection import (
     build_draft_pick_projection_summary,
     build_cached_projected_pick_slots_by_roster_id,
     build_projected_slot_source_label,
+    build_redraft_value_by_roster_id,
 )
 from app.services.draft.values import get_resolved_pick_values_by_key
 from app.services.leagues.models import (
@@ -693,6 +694,7 @@ class LeagueDetails:
         league_id: str,
         site_user_id: UUID | None = None,
         draft_pick_projection_settings: dict[str, object] | None = None,
+        redraft_value_basis: str = "ktc",
         cheap: bool = False,
     ):
         leagues = await get_league_with_rosters(
@@ -1108,6 +1110,13 @@ class LeagueDetails:
                     ),
                     redraft_roster_war_by_roster_id=(
                         redraft_roster_war_by_roster_id
+                    ),
+                    redraft_value_by_roster_id=(
+                        await build_redraft_value_by_roster_id(
+                            db,
+                            roster_rows,
+                            basis=redraft_value_basis,
+                        )
                     ),
                     settings=draft_pick_projection_settings,
                 )

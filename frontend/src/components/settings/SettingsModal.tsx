@@ -33,6 +33,11 @@ const DRAFT_PICK_PROJECTION_METHOD_OPTIONS: Array<{
   description: string;
 }> = [
   {
+    value: 'redraft_value_system',
+    label: 'Redraft value system (recommended)',
+    description: 'Ranks rosters by total redraft market value from your redraft value system setting, then points for and projected points as tiebreakers.',
+  },
+  {
     value: 'max_pf',
     label: 'Reverse max PF',
     description: 'Uses cumulative potential points first, then points for and projected points as tiebreakers.',
@@ -535,31 +540,6 @@ export const SettingsModal = () => {
               </select>
             </label>
 
-            <label className="settings-field">
-              <span>Redraft value system</span>
-              <select
-                value={valuePreference.redraftPreference}
-                onChange={(event) => {
-                  void valuePreference.setRedraftPreference(
-                    event.target.value as ValueBasis,
-                  );
-                }}
-                disabled={valuePreference.isSaving}
-              >
-                {
-                  getRedraftValueBasisOptions().map(
-                    (option) => (
-                      <option
-                        key={option.value}
-                        value={option.value}
-                      >
-                        {option.label}
-                      </option>
-                    ),
-                  )
-                }
-              </select>
-            </label>
           </div>
         </section>
 
@@ -716,11 +696,6 @@ export const SettingsModal = () => {
                   key={option.value}
                   className="settings-method-option"
                 >
-                  <span
-                    className="settings-method-swatch"
-                    aria-hidden="true"
-                  />
-
                   <div>
                     <strong>{option.label}</strong>
                     <span>{option.description}</span>
@@ -728,6 +703,53 @@ export const SettingsModal = () => {
                 </div>
               ))
             }
+          </div>
+        </section>
+
+        <section className="settings-card">
+          <div className="settings-card-header">
+            <div>
+              <p>Valuation</p>
+              <h2>Redraft projection</h2>
+            </div>
+          </div>
+
+          <div className="settings-note">
+            Your redraft value system projects how rosters will finish in
+            redraft. It drives everything that projects a redraft finish:
+          </div>
+          <ul className="settings-applies-list">
+            <li>Advisor contention &amp; fringe-contender bands</li>
+            <li>Future pick projection (default method)</li>
+            <li>Season payout projection</li>
+          </ul>
+
+          <div className="settings-grid">
+            <label className="settings-field">
+              <span>Redraft value system</span>
+              <select
+                value={valuePreference.redraftPreference}
+                onChange={(event) => {
+                  void valuePreference.setRedraftPreference(
+                    event.target.value as ValueBasis,
+                  );
+                }}
+                disabled={valuePreference.isSaving}
+              >
+                {
+                  getRedraftValueBasisOptions().map(
+                    (option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    ),
+                  )
+                }
+              </select>
+            </label>
           </div>
         </section>
 

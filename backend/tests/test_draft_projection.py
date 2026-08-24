@@ -8,7 +8,7 @@ from app.services.draft.values import (
 )
 
 
-def test_build_projected_pick_slots_defaults_to_max_pf():
+def test_build_projected_pick_slots_uses_max_pf_when_requested():
     league = League(
         league_id="league-1",
         name="Test",
@@ -47,6 +47,7 @@ def test_build_projected_pick_slots_defaults_to_max_pf():
             2: 120,
             3: 145,
         },
+        settings={"from_week_method": "max_pf"},
     )
 
     assert result.method_used == "max_pf"
@@ -83,3 +84,57 @@ def test_get_effective_pick_slot_uses_projected_slot_when_needed():
     )
 
     assert get_effective_pick_slot(pick) == 2
+
+
+def test_default_method_is_redraft_value_system_and_falls_back():
+    league = League(
+        league_id="league-1",
+        name="Test",
+        season="2026",
+        status="in_season",
+        total_rosters=3,
+        draft_id="draft-1",
+        settings={"type": 2},
+        scoring_settings={},
+        roster_positions=["QB", "RB", "WR", "TE", "FLEX"],
+    )
+    rosters = [
+        Roster(
+            roster_id=1,
+            league_id="league-1",
+            settings={"wins": 5, "losses": 1, "fpts": 800, "ppts": 900},
+        ),
+        Roster(
+            roster_id=2,
+            league_id="league-1",
+            settings={"wins": 2, "losses": 4, "fpts": 700, "ppts": 650},
+        ),
+        Roster(
+            roster_id=3,
+            league_id="league-1",
+            settings={"wins": 2, "losses": 4, "fpts": 760, "ppts": 700},
+        ),
+    ]
+
+    # Default method is redraft_value_system; with no value map the
+    # projection falls back to the standings proxy.
+    result = build_projected_pick_slots_by_roster_id(
+        league=league,
+        rosters=rosters,
+        current_week=6,
+        projected_points_by_roster_id={1: 150, 2: 120, 3: 145},
+    )
+
+    assert result.method_used == "reverse_standings"
+    assert result.fallback_from_method == "redraft_value_system"
+
+    # With redraft value sums it ranks directly off them.
+    result = build_projected_pick_slots_by_roster_id(
+        league=league,
+        rosters=rosters,
+        current_week=6,
+        redraft_value_by_roster_id={1: 900.0, 2: 500.0, 3: 700.0},
+    )
+
+    assert result.method_used == "redraft_value_system"
+    assert result.slots_by_roster_id == {2: 1, 3: 2, 1: 3}

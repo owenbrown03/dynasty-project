@@ -101,7 +101,7 @@ class DraftPickProjectionSettings(Base):
         le=18,
     )
     before_week_method: DraftPickProjectionPhaseMethod = "none"
-    from_week_method: DraftPickProjectionMethod = "max_pf"
+    from_week_method: DraftPickProjectionMethod = "redraft_value_system"
 
 
 class DraftPickProjectionSettingsUpdate(Base):
