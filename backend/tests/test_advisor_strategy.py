@@ -189,21 +189,41 @@ def test_sell_low_phrase_does_not_trigger_rebuild():
     ) is None
 
 
-def test_mid_table_classified_fringe():
-    result = _detect(
-        my_strength=70.0,
-        all_strengths=[100.0, 90.0, 70.0, 60.0, 50.0, 40.0],
+def test_owner_fringe_band_upper_middle():
+    # Owner-confirmed band: e.g. ranks 7-10 of 12 -> 12-team strengths.
+    strengths_12 = [120, 110, 100, 95, 90, 85, 80, 75, 70, 65, 60, 55]
+
+    rank7 = _detect(
+        my_strength=80.0,
+        all_strengths=strengths_12,
         my_wins=1,
         my_losses=2,
         my_pick_count=4,
         league_avg_pick_count=4.0,
     )
+    rank11 = _detect(
+        my_strength=60.0,
+        all_strengths=strengths_12,
+        my_wins=0,
+        my_losses=3,
+        my_pick_count=4,
+        league_avg_pick_count=4.0,
+    )
+    rank5 = _detect(
+        my_strength=90.0,
+        all_strengths=strengths_12,
+        my_wins=2,
+        my_losses=1,
+        my_pick_count=4,
+        league_avg_pick_count=4.0,
+    )
 
-    # Rank 3 of 6: neither top third nor bottom third.
-    assert result.fringe is True
+    assert rank7.fringe is True
+    assert rank11.fringe is False and rank11.bottom_two is True
+    assert rank5.fringe is False
 
 
-def test_top_and_bottom_not_fringe():
+def test_top_not_fringe():
     top = _detect(
         my_strength=100.0,
         all_strengths=[100.0, 80.0, 60.0],
@@ -212,17 +232,8 @@ def test_top_and_bottom_not_fringe():
         my_pick_count=4,
         league_avg_pick_count=4.0,
     )
-    bottom = _detect(
-        my_strength=40.0,
-        all_strengths=[100.0, 80.0, 40.0],
-        my_wins=0,
-        my_losses=3,
-        my_pick_count=4,
-        league_avg_pick_count=4.0,
-    )
 
     assert top.fringe is False
-    assert bottom.fringe is False
 
 
 def test_season_altering_injury_mapping():

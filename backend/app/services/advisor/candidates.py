@@ -514,19 +514,40 @@ async def _build_league_candidates(
         market_receive_total = float(target_market)
         personal_receive_total = _personal_war(target)
 
-        # Rebuilders hoard draft capital; asking them to ship picks
-        # produces dead-on-arrival offers regardless of market math.
         counterparty_strategy = strategies_by_roster_id.get(
             target_roster.roster_id,
         )
-        requestable_their_picks = (
-            their_picks
-            if (
-                counterparty_strategy is None
-                or counterparty_strategy.strategy != REBUILD
+
+        # Rebuilders hoard draft capital; asking them to ship picks
+        # produces dead-on-arrival offers regardless of market math.
+        # Exception: bottom-ranked teams with an old, unsold core
+        # behave like contenders — their firsts are fair game.
+        rebuild_picks_locked = (
+            counterparty_strategy is not None
+            and counterparty_strategy.strategy == REBUILD
+            and not _rebuilder_behaves_like_contender(
+                strategy=counterparty_strategy,
+                target_roster=target_roster,
+                items_by_player_id=items_by_player_id,
+                blocked_ids=set(snapshot.player_ids),
             )
-            else []
         )
+
+        if counterparty_strategy is not None and (
+            counterparty_strategy.strategy == REBUILD
+        ):
+            requestable_their_picks = (
+                [] if rebuild_picks_locked else their_picks
+            )
+        elif counterparty_strategy is not None and (
+            counterparty_strategy.strategy == WIN_NOW
+        ):
+            # Real contenders rarely move firsts (and theirs are
+            # late). Soft downrank: skip pick-fixups against them;
+            # base all-player packages still proceed.
+            requestable_their_picks = []
+        else:
+            requestable_their_picks = their_picks
 
         extra_receive_pick = _fix_with_extra_receive_pick(
             their_picks=requestable_their_picks,
@@ -977,6 +998,48 @@ async def _detect_league_strategy(
         strategies_by_roster_id.get(my_roster.roster_id),
         strategies_by_roster_id,
     )
+
+
+def _rebuilder_behaves_like_contender(
+    *,
+    strategy: LeagueStrategy,
+    target_roster,
+    items_by_player_id: dict[str, PersonalValuePoolItem],
+    blocked_ids: set[str],
+) -> bool:
+    """Bottom-ranked team with an OLD core that is NOT for sale.
+
+    They think they can still compete because they are not selling,
+    so their firsts are fair game despite the rebuild label.
+    """
+    if not strategy.bottom_two:
+        return False
+
+    starter_items = [
+        items_by_player_id[pid]
+        for pid in (target_roster.starters or [])
+        if pid in items_by_player_id
+    ]
+
+    ages = [
+        item.player.age
+        for item in starter_items
+        if item.player.age is not None
+    ]
+    if not ages or sum(ages) / len(ages) < 28.0:
+        return False
+
+    top_ids = {
+        item.player.player_id
+        for item in sorted(
+            starter_items,
+            key=lambda i: -(_market_value(i) or 0.0),
+        )[:3]
+    }
+
+    # Unsold core: none of their top assets are on the block.
+    return not (top_ids & blocked_ids)
+
 
 
 def _counterparty_rank(

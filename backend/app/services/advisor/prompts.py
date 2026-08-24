@@ -69,6 +69,13 @@ are hoarding capital and such offers go nowhere.
 - Cite THEIR timeline (not just market value) in the why-they-accept \
 paragraph.
 
+When two or more proposals target the SAME manager with different \
+asset types (their draft capital vs their aging veterans) — common \
+against bottom-ranked teams whose old core is NOT on the trade block — \
+present them explicitly as an either/or fork ("give me your 1st or \
+your veterans — you can't play it both ways"), not as independent \
+recommendations.
+
 Players carry an injury_status field:
 - NEVER describe an injured player without acknowledging the status.
 - If a win-now roster is selling a star with a season-altering status \
