@@ -146,12 +146,35 @@ export function useLeagueFocus() {
         )
         .then((res) => res.data);
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.leagues.overviewRoot,
-        }),
-      ]);
+    onSuccess: (_response, variables) => {
+      // 1. Update League Overview queries in-place without refetching
+      queryClient.setQueriesData<LeagueOverview[]>(
+        { queryKey: queryKeys.leagues.overviewRoot },
+        (previous) =>
+          previous
+            ? previous.map((league) =>
+                league.league_id === variables.leagueId
+                  ? { ...league, is_focused: variables.payload.focused }
+                  : league,
+              )
+            : previous,
+      );
+
+      // 2. Update Dashboard queries in-place (both cheap and full variants) without expensive refetching
+      queryClient.setQueriesData<Dashboard>(
+        { queryKey: queryKeys.leagues.dashboardRoot },
+        (previous) =>
+          previous
+            ? {
+                ...previous,
+                leagues: previous.leagues.map((league) =>
+                  league.league_id === variables.leagueId
+                    ? { ...league, is_focused: variables.payload.focused }
+                    : league,
+                ),
+              }
+            : previous,
+      );
     },
   });
 
