@@ -36,6 +36,7 @@ from .cards import (
 from .crud import (
     get_all_league_rosters,
 )
+from app.crud.sleeper.personal import get_focused_league_ids
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
@@ -382,6 +383,21 @@ async def build_player_maps_by_league(
     return {league_id: player_map for league_id, player_map in results}
 
 
+def _apply_focus_flags(
+    response: dict,
+    focused_league_ids: set[str],
+) -> dict:
+    """Overlays starred-league flags post-cache so focus changes show
+    immediately without invalidating the dashboard cache."""
+    for card in response.get("leagues", []):
+        card["is_focused"] = (
+            card.get("league_id") in focused_league_ids
+        )
+
+    return response
+
+
+
 async def get_user_dashboard(
     db,
     redis,
@@ -444,6 +460,14 @@ async def get_user_dashboard(
     league_ids = list(
         leagues.keys(),
     )
+
+    focused_league_ids: set[str] = set()
+    if site_user_id is not None:
+        focused_league_ids = await get_focused_league_ids(
+            db=db,
+            site_user_id=site_user_id,
+        )
+
     dashboard_cache_key = build_dashboard_cache_key(
         user_id=user_id,
         site_user_id=site_user_id,
@@ -463,7 +487,10 @@ async def get_user_dashboard(
                 len(league_ids),
                 time.monotonic() - t_total,
             )
-            return json.loads(cached_payload)
+            return _apply_focus_flags(
+                json.loads(cached_payload),
+                focused_league_ids,
+            )
 
     if cheap:
         all_rosters = await get_all_league_rosters(
@@ -505,10 +532,13 @@ async def get_user_dashboard(
             ),
         )
 
-        response = {
-            "leagues": league_cards,
-            "is_cheap_data": True,
-        }
+        response = _apply_focus_flags(
+            {
+                "leagues": league_cards,
+                "is_cheap_data": True,
+            },
+            focused_league_ids,
+        )
 
         if redis is not None:
             await redis.set(
@@ -632,9 +662,12 @@ async def get_user_dashboard(
     )
     logger.info("Dashboard build_cards took %.2fs", time.monotonic() - t_cards)
 
-    response = {
-        "leagues": league_cards,
-    }
+    response = _apply_focus_flags(
+        {
+            "leagues": league_cards,
+        },
+        focused_league_ids,
+    )
 
     if redis is not None:
         await redis.set(

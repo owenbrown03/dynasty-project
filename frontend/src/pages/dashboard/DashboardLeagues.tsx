@@ -104,7 +104,12 @@ export function DashboardLeagues({
           <button
             key={league.league_id}
             type="button"
-            className="portfolio-league-row"
+            className={`portfolio-league-row${league.is_focused ? ' portfolio-league-row-focused' : ''}`}
+            title={
+              league.is_focused
+                ? 'Starred league'
+                : undefined
+            }
             onClick={() =>
               navigate('/leagues', {
                 state: {
@@ -122,6 +127,11 @@ export function DashboardLeagues({
 
               <div>
                 <h3 className="portfolio-league-title">
+                  {league.is_focused ? (
+                    <span className="portfolio-league-star">
+                      ★
+                    </span>
+                  ) : null}
                   {league.league_name}
                 </h3>
 

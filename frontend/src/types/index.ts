@@ -418,6 +418,7 @@ export interface LeagueDetails {
 export interface DashboardLeague {
   league_id: string;
   league_name: string;
+  is_focused?: boolean;
   avatar: string | null;
   league_size: number;
   wins: number;

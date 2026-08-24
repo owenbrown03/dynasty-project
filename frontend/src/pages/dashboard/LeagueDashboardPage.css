@@ -409,3 +409,13 @@
   color: var(--color-text-muted);
 }
 
+
+.portfolio-league-row-focused {
+  border-color: var(--color-accent);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.portfolio-league-star {
+  margin-right: 6px;
+  color: var(--color-accent);
+}
