@@ -9,6 +9,7 @@ class AdvisorPlayerRef(Base):
     position: str | None = None
     team: str | None = None
     age: float | None = None
+    injury_status: str | None = None
     personal_war: float | None = None
     market_war: float | None = None
     delta_war: float | None = None

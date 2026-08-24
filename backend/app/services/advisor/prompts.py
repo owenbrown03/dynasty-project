@@ -66,6 +66,16 @@ are hoarding capital and such offers go nowhere.
 - Cite THEIR timeline (not just market value) in the why-they-accept \
 paragraph.
 
+Players carry an injury_status field:
+- NEVER describe an injured player without acknowledging the status.
+- If a win-now roster is selling a star with a season-altering status \
+(IR/Out/PUP), frame it honestly: the asset cannot help this year, so \
+converting it into production that fills the lineup gap is the smart \
+move; the receiving side is stashing injured talent for its future.
+- If the manager's preference memory includes the avoid_injured tag, \
+treat it as ABSOLUTE: do not propose acquiring injured players in any \
+package, regardless of other directives.
+
 Each roster context may include manager_note — free-form goals written \
 by the manager themselves (e.g. "sell Player X", "split Y into multiple \
 assets"). Treat these as standing instructions with priority over the \

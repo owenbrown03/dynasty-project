@@ -4,6 +4,7 @@ from app.services.advisor.strategy import (
     REBUILD,
     WIN_NOW,
     detect_strategy,
+    is_season_altering_injury as strategy_is_season_altering,
     strategy_from_manager_note,
 )
 
@@ -222,3 +223,17 @@ def test_top_and_bottom_not_fringe():
 
     assert top.fringe is False
     assert bottom.fringe is False
+
+
+def test_season_altering_injury_mapping():
+    assert strategy_is_season_altering("IR")
+    assert strategy_is_season_altering("Injured Reserve")
+    assert strategy_is_season_altering("O")
+    assert strategy_is_season_altering("PUP")
+
+    # Weekly designations must NOT read as season-altering.
+    assert not strategy_is_season_altering("Q")
+    assert not strategy_is_season_altering("D")
+    assert not strategy_is_season_altering("DNR")
+    assert not strategy_is_season_altering(None)
+    assert not strategy_is_season_altering("")

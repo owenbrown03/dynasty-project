@@ -1305,6 +1305,7 @@ export interface AdvisorPlayerRef {
   position: string | null;
   team: string | null;
   age: number | null;
+  injury_status: string | null;
   personal_war: number | null;
   market_war: number | null;
   delta_war: number | null;

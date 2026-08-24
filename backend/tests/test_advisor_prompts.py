@@ -36,3 +36,11 @@ def test_system_prompt_encodes_counterparty_direction_rules():
     assert "never" in lowered
     assert "draft picks" in lowered
     assert "hoarding capital" in lowered
+
+
+def test_system_prompt_encodes_injury_rules():
+    lowered = prompts.SYSTEM_PROMPT.lower()
+
+    assert "injury_status" in lowered
+    assert "avoid_injured" in lowered
+    assert "absolute" in lowered

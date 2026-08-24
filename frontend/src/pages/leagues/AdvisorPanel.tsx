@@ -84,6 +84,11 @@ function PlayerChip({
     >
       <span className="advisor-chip-name">
         {player.name}
+        {player.injury_status ? (
+          <span className="advisor-injury-badge">
+            {player.injury_status.toUpperCase()}
+          </span>
+        ) : null}
         {player.on_block ? (
           <span className="advisor-otb-badge">ON BLOCK</span>
         ) : null}
@@ -625,7 +630,14 @@ function DirectiveDropChip({
 }) {
   return (
     <div className="advisor-player-chip advisor-chip-send">
-      <span className="advisor-chip-name">{player.name}</span>
+      <span className="advisor-chip-name">
+        {player.name}
+        {player.injury_status ? (
+          <span className="advisor-injury-badge">
+            {player.injury_status.toUpperCase()}
+          </span>
+        ) : null}
+      </span>
       <span className="advisor-chip-meta">
         {[
           player.position ?? '?',

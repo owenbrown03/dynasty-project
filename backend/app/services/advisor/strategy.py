@@ -255,3 +255,36 @@ def detect_strategy(
         + " — competitive as constructed; improve the roster "
         "without mortgaging either the present or the future.",
     )
+
+
+# Explicit Sleeper injury-status mapping. Season-altering designations
+# remove a player from the lineup for the rest of the year (or
+# indefinitely); weekly designations (Q/D/DNR) are day-to-day noise
+# and deliberately NOT treated as season-altering.
+SEASON_ALTERING_INJURY_STATUSES = {
+    "ir",
+    "injured reserve",
+    "ir-r",
+    "o",
+    "out",
+    "pup",
+    "nfi",
+}
+
+WEEKLY_INJURY_STATUSES = {
+    "q",
+    "questionable",
+    "d",
+    "doubtful",
+    "dnr",
+}
+
+
+def is_season_altering_injury(status: str | None) -> bool:
+    if not status:
+        return False
+
+    return (
+        status.strip().casefold()
+        in SEASON_ALTERING_INJURY_STATUSES
+    )

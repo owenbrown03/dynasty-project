@@ -28,6 +28,7 @@ from app.services.draft.values import (
 from app.services.personal_values import get_personal_value_pool
 from app.services.advisor.strategy import (
     BASIS_ACTUAL_POINTS,
+    is_season_altering_injury,
     BASIS_PROJECTED_WAR,
     COMPETE,
     HOARD_PICKS,
@@ -54,7 +55,11 @@ MAX_LEAGUES = 6
 # Bumped whenever candidate-engine semantics change in a way that
 # should invalidate cached syntheses (value bases, constraint math,
 # package shapes). The synthesis cache identity includes this.
-ADVISOR_ENGINE_VERSION = 5
+ADVISOR_ENGINE_VERSION = 6
+
+# How many of my top market-value players count as "stars" for the
+# contender-lost-a-star injury directive.
+CONTENDER_STAR_POOL = 3
 ANCHOR_POOL_SIZE = 8  # kept for sell-pool context sizing
 TARGET_POOL_SIZE = 60
 MAX_PROPOSALS_PER_LEAGUE = 6
@@ -143,6 +148,7 @@ def _to_ref(
         position=item.player.position,
         team=item.player.team,
         age=item.player.age,
+        injury_status=item.player.injury_status,
         market_value=_market_value(item),
         personal_war=_personal_war(item),
         market_war=_market_war(item),
@@ -351,6 +357,29 @@ async def _build_league_candidates(
         buy=buy_pool,
         blocked_ids=set(snapshot.player_ids),
     )
+
+    # Contender lost a star: a top asset with a season-altering injury
+    # is dead roster weight for a win-now push; surface packages that
+    # convert it into usable production first. Stable sort preserves
+    # the strategy ordering within each band.
+    if strategy is not None and strategy.strategy == WIN_NOW:
+        injured_star_ids = {
+            item.player.player_id
+            for item in sorted(
+                my_items,
+                key=lambda i: -(_market_value(i) or 0.0),
+            )[:CONTENDER_STAR_POOL]
+            if is_season_altering_injury(item.player.injury_status)
+        }
+
+        if injured_star_ids:
+            sell_pool.sort(
+                key=lambda i: (
+                    0
+                    if i.player.player_id in injured_star_ids
+                    else 1
+                ),
+            )
 
     if not sell_pool or not buy_pool:
         return

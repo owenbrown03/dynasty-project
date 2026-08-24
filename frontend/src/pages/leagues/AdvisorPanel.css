@@ -335,3 +335,15 @@
   font-size: 0.8rem;
   opacity: 0.75;
 }
+
+
+.advisor-injury-badge {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(230, 126, 34, 0.18);
+  color: #e67e22;
+}

@@ -48,6 +48,7 @@ class PersonalValuePlayer(Base):
     position: str
     team: str | None = None
     age: float | None = None
+    injury_status: str | None = None
     underdog_position_rank: str | None = None
     ktc_value: float | None = None
     fc_value: float | None = None
