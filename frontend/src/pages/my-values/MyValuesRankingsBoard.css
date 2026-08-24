@@ -49,7 +49,7 @@
 
 .my-values-ranking-row {
   display: grid;
-  grid-template-columns: 44px 1fr auto auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   padding: 7px 10px;
@@ -72,7 +72,17 @@
 }
 
 .my-values-rank-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 600;
+  min-width: 0;
+}
+
+.my-values-rank-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .my-values-rank-asterisk {
@@ -87,7 +97,17 @@
   white-space: nowrap;
 }
 
+.my-values-rank-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .my-values-rank-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   color: inherit;
@@ -95,15 +115,19 @@
   cursor: pointer;
   font-size: 0.95rem;
   padding: 2px 6px;
+  flex-shrink: 0;
 }
 
 .my-values-rank-reset:hover {
   opacity: 1;
 }
 
+@media (max-width: 640px) {
+  .my-values-ranking-row {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+  }
 
-.my-values-rank-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  .my-values-rank-meta {
+    display: none;
+  }
 }

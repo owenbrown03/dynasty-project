@@ -16,7 +16,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 180px;
+  flex-shrink: 0;
 }
 
 .navbar-brand-link {
@@ -73,7 +73,8 @@
 .navbar-status {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   gap: 8px 12px;
   min-height: 44px;
   padding: 8px 12px 8px 14px;
@@ -97,6 +98,8 @@
   margin-left: auto;
   padding: 7px 10px;
   font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .navbar-right {
@@ -104,6 +107,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0;
+  flex-shrink: 0;
 }
 
 .navbar-account-cluster {
@@ -163,37 +167,6 @@
   font-size: 13px;
   font-weight: 600;
   word-break: break-all;
-}
-
-@media (max-width: 980px) {
-  .navbar {
-    align-items: stretch;
-    flex-wrap: wrap;
-  }
-
-  .navbar-left,
-  .navbar-right {
-    min-width: 0;
-  }
-
-  .navbar-middle,
-  .navbar-right {
-    width: 100%;
-  }
-
-  .navbar-right {
-    justify-content: flex-start;
-  }
-
-  .navbar-account-cluster {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .navbar-account-menu {
-    left: 0;
-    right: auto;
-  }
 }
 
 @media (max-width: 640px) {

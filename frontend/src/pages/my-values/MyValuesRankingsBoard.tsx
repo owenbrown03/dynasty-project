@@ -207,7 +207,7 @@ export function MyValuesRankingsBoard({
             {ranked.map((entry) => (
               <li
                 key={entry.player_id}
-                className={`my-values-ranking-row${dragOverId === entry.player_id && dragIdRef.current !== null ? ' drag-target' : ''}`}
+                className={`my-values-ranking-row${dragOverId === entry.player_id ? ' drag-target' : ''}`}
                 draggable
                 onDragStart={(event) => {
                   event.dataTransfer.effectAllowed = 'move';
@@ -249,28 +249,30 @@ export function MyValuesRankingsBoard({
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
-                <button
-                  type="button"
-                  className="my-values-rank-reset"
-                  title="Edit outcomes in editor"
-                  onClick={() => onEditPlayer?.(entry.player_id)}
-                >
-                  ✎
-                </button>
-                <button
-                  type="button"
-                  className="my-values-rank-reset"
-                  title="Reset to Underdog defaults"
-                  disabled={reset.saving}
-                  onClick={() => {
-                    void handleResetPlayer(
-                      entry.player_id,
-                      entry.name,
-                    );
-                  }}
-                >
-                  ↺
-                </button>
+                <div className="my-values-rank-actions">
+                  <button
+                    type="button"
+                    className="my-values-rank-reset"
+                    title="Edit outcomes in editor"
+                    onClick={() => onEditPlayer?.(entry.player_id)}
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
+                    className="my-values-rank-reset"
+                    title="Reset to Underdog defaults"
+                    disabled={reset.saving}
+                    onClick={() => {
+                      void handleResetPlayer(
+                        entry.player_id,
+                        entry.name,
+                      );
+                    }}
+                  >
+                    ↺
+                  </button>
+                </div>
               </li>
             ))}
           </ol>

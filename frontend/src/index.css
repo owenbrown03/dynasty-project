@@ -635,7 +635,10 @@ th {
   border: 0;
   background: transparent;
   color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 13px;
   font-weight: 700;
+  cursor: pointer;
 }
 
 .page-tab:hover {

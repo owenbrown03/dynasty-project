@@ -782,7 +782,7 @@ export const MyValuesPage = () => {
           type="button"
           role="tab"
           aria-selected={viewMode === 'editor'}
-          className={`league-dashboard-tab${viewMode === 'editor' ? ' active' : ''}`}
+          className={`page-tab${viewMode === 'editor' ? ' active' : ''}`}
           onClick={() => setViewMode('editor')}
         >
           Editor
@@ -791,7 +791,7 @@ export const MyValuesPage = () => {
           type="button"
           role="tab"
           aria-selected={viewMode === 'rankings'}
-          className={`league-dashboard-tab${viewMode === 'rankings' ? ' active' : ''}`}
+          className={`page-tab${viewMode === 'rankings' ? ' active' : ''}`}
           onClick={() => setViewMode('rankings')}
         >
           Rankings board
