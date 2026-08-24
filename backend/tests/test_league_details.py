@@ -177,3 +177,39 @@ def test_get_waiver_move_counts_by_roster_id_empty_roster_ids():
     )
 
     assert counts == {}
+
+
+def _settings_league(settings: dict):
+    return SimpleNamespace(
+        season="2026",
+        total_rosters=12,
+        settings=settings,
+        scoring_settings={"rec": 1.0, "pass_td": 4.0},
+        roster_positions=["QB", "RB", "WR", "BN"],
+    )
+
+
+def test_settings_details_render_trade_deadline_week():
+    from app.services.leagues.settings import build_settings_details
+
+    details = {
+        detail.label: detail.value
+        for detail in build_settings_details(
+            _settings_league({"trade_deadline": 13})
+        )
+    }
+
+    assert details["Trade Deadline"] == "Week 13"
+
+
+def test_settings_details_render_trade_deadline_none_sentinel():
+    from app.services.leagues.settings import build_settings_details
+
+    details = {
+        detail.label: detail.value
+        for detail in build_settings_details(
+            _settings_league({"trade_deadline": 99})
+        )
+    }
+
+    assert details["Trade Deadline"] == "None"

@@ -70,7 +70,12 @@ def build_settings_details(league) -> list[LeagueSettingsDetail]:
 
     trade_deadline = settings.get("trade_deadline")
     if trade_deadline:
-        details.append(("Trade Deadline", str(trade_deadline)))
+        deadline_label = (
+            "None"
+            if int(trade_deadline) == 99
+            else f"Week {int(trade_deadline)}"
+        )
+        details.append(("Trade Deadline", deadline_label))
 
     return [
         LeagueSettingsDetail(label=label, value=value)
