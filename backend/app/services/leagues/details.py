@@ -449,6 +449,50 @@ async def get_trade_counts_by_roster_id(
     }
 
 
+async def get_waiver_move_counts_by_roster_id(
+    *,
+    db: AsyncSession,
+    league_id: str,
+    roster_ids: list[int],
+) -> dict[int, int]:
+    """
+    Counts waiver/free-agent ADD and DROP movements per roster.
+
+    Sleeper's roster settings counter (total_moves) no longer increments,
+    so move counts are derived from synced transaction movements instead.
+    """
+    if not roster_ids:
+        return {}
+
+    result = await db.execute(
+        select(
+            sleeper_model.Movement.roster_id,
+            func.count(sleeper_model.Movement.id),
+        )
+        .join(
+            sleeper_model.Transaction,
+            sleeper_model.Transaction.transaction_id
+            == sleeper_model.Movement.transaction_id,
+        )
+        .where(
+            sleeper_model.Transaction.league_id == league_id,
+            sleeper_model.Transaction.type.in_(
+                ["waiver", "free_agent"],
+            ),
+            sleeper_model.Movement.roster_id.in_(roster_ids),
+        )
+        .group_by(
+            sleeper_model.Movement.roster_id,
+        )
+    )
+
+    return {
+        int(roster_id): int(move_count)
+        for roster_id, move_count in result.all()
+        if roster_id is not None
+    }
+
+
 def build_league_roster_construction_targets(
     *,
     league,
@@ -663,6 +707,16 @@ class LeagueDetails:
         roster_rows = [roster for _, roster in leagues]
         trade_counts_by_roster_id = (
             await get_trade_counts_by_roster_id(
+                db=db,
+                league_id=league_id,
+                roster_ids=[
+                    roster.roster_id
+                    for roster in roster_rows
+                ],
+            )
+        )
+        waiver_move_counts_by_roster_id = (
+            await get_waiver_move_counts_by_roster_id(
                 db=db,
                 league_id=league_id,
                 roster_ids=[
@@ -1225,7 +1279,10 @@ class LeagueDetails:
                     ),
                     faab_remaining=roster.faab_remaining(league),
                     waiver_position=roster.waiver_position,
-                    total_moves=roster.total_moves,
+                    total_moves=waiver_move_counts_by_roster_id.get(
+                        roster.roster_id,
+                        0,
+                    ),
                     total_trades=trade_counts_by_roster_id.get(
                         roster.roster_id,
                         0,

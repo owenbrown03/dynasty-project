@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 
 from app.services.leagues.details import (
@@ -124,3 +125,55 @@ def test_build_league_roster_construction_targets_is_shared_and_exact():
     assert [target.target_count for target in targets] == [2, 2, 3, 3]
     assert sum(target.target_count for target in targets) == 10
     assert round(sum(target.war_share for target in targets), 1) == 100.0
+
+
+class _FakeResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def all(self):
+        return self._rows
+
+
+class _FakeDb:
+    def __init__(self, rows):
+        self._rows = rows
+
+    async def execute(self, stmt):
+        return _FakeResult(self._rows)
+
+
+def test_get_waiver_move_counts_by_roster_id_counts_adds_and_drops():
+    from app.services.leagues.details import (
+        get_waiver_move_counts_by_roster_id,
+    )
+
+    db = _FakeDb([(1, 5), (2, 0)])
+
+    counts = asyncio.run(
+        get_waiver_move_counts_by_roster_id(
+            db=db,
+            league_id="league-1",
+            roster_ids=[1, 2, 3],
+        )
+    )
+
+    assert counts == {1: 5, 2: 0}
+
+
+def test_get_waiver_move_counts_by_roster_id_empty_roster_ids():
+    from app.services.leagues.details import (
+        get_waiver_move_counts_by_roster_id,
+    )
+
+    db = _FakeDb([])
+
+    counts = asyncio.run(
+        get_waiver_move_counts_by_roster_id(
+            db=db,
+            league_id="league-1",
+            roster_ids=[],
+        )
+    )
+
+    assert counts == {}
