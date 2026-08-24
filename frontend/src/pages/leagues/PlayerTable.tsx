@@ -45,6 +45,7 @@ interface Props {
   players: LeaguePlayer[];
   emptyStarterSlots?: string[] | null;
   valueBasis: ValueBasis;
+  redraftValueBasis?: ValueBasis;
   warValueSettings: WarValueSettings;
 }
 
@@ -52,11 +53,15 @@ export function PlayerTable({
   players,
   emptyStarterSlots,
   valueBasis,
+  redraftValueBasis,
   warValueSettings,
 }: Props) {
   const valueLabel = getValueBasisLabel(
     valueBasis,
   );
+  const redraftLabel = redraftValueBasis
+    ? getValueBasisLabel(redraftValueBasis)
+    : null;
 
   const firstBenchIndex = players.findIndex(
     (player) => !player.is_starter,
@@ -73,6 +78,7 @@ export function PlayerTable({
           <th>Proj</th>
           <th>UD</th>
           <th>{valueLabel}</th>
+          {redraftLabel ? <th>{redraftLabel}</th> : null}
         </tr>
       </thead>
 
@@ -90,14 +96,14 @@ export function PlayerTable({
                   <td className="player-table-slot-cell">
                     {prettySlotLabel(slot)}
                   </td>
-                  <td colSpan={6}>
+                  <td colSpan={redraftLabel ? 7 : 6}>
                     Empty slot
                   </td>
                 </tr>
               ))}
             {index === firstBenchIndex && firstBenchIndex > 0 && (
               <tr className="player-table-divider">
-                <td colSpan={7}>Bench</td>
+                <td colSpan={redraftLabel ? 8 : 7}>Bench</td>
               </tr>
             )}
             <tr
@@ -161,6 +167,26 @@ export function PlayerTable({
                   )
                 }
               </td>
+              {redraftLabel ? (
+                <td>
+                  {
+                    formatNumber(
+                      getLeaguePlayerSelectedValue(
+                        player,
+                        redraftValueBasis as ValueBasis,
+                        warValueSettings,
+                      ),
+                      (
+                        redraftValueBasis === 'ktc'
+                        || redraftValueBasis === 'fantasycalc'
+                        || redraftValueBasis === 'adp'
+                      )
+                        ? 0
+                        : 2,
+                    )
+                  }
+                </td>
+              ) : null}
             </tr>
           </Fragment>
         ))}

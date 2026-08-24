@@ -145,6 +145,7 @@ describe('buildRosterConstructionRows', () => {
         delta: -1,
         projectedPoints: 0,
         selectedValue: 0,
+        redraftValue: 0,
         warShare: 28.4,
       },
       {
@@ -154,6 +155,7 @@ describe('buildRosterConstructionRows', () => {
         delta: -7,
         projectedPoints: 0,
         selectedValue: 0,
+        redraftValue: 0,
         warShare: 24.1,
       },
       {
@@ -163,6 +165,7 @@ describe('buildRosterConstructionRows', () => {
         delta: -8,
         projectedPoints: 0,
         selectedValue: 0,
+        redraftValue: 0,
         warShare: 38.6,
       },
       {
@@ -172,6 +175,7 @@ describe('buildRosterConstructionRows', () => {
         delta: -2,
         projectedPoints: 0,
         selectedValue: 0,
+        redraftValue: 0,
         warShare: 8.9,
       },
     ]);

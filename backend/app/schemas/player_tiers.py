@@ -11,6 +11,7 @@ class TierPlayer(Base):
     rank: int
     tier: str
     selected_value: float
+    secondary_value: float | None = None
     exposure_pct: float | None = None
     exposure_owned_leagues: int | None = None
     exposure_total_leagues: int | None = None

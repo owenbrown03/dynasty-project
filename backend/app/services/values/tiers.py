@@ -350,6 +350,55 @@ async def get_player_tier_board(
     if cheap and value_basis not in {ValueBasis.KTC, ValueBasis.FANTASYCALC}:
         effective_value_basis = ValueBasis.KTC
 
+    redraft_value_basis = None
+    if ctx.site_user is not None:
+        from app.crud.auth.user import (
+            get_redraft_value_preference,
+        )
+
+        redraft_value_basis = get_redraft_value_preference(
+            ctx.site_user,
+        )
+
+    # Side-by-side display: load the redraft value leg when it
+    # differs from the selected basis. Reuses the same league
+    # resolution and caching as the primary fetch.
+    secondary_values_by_player_id: dict[str, float] = {}
+
+    if (
+        not cheap
+        and redraft_value_basis is not None
+        and redraft_value_basis != effective_value_basis
+    ):
+        secondary_players = await load_player_values_for_basis(
+            db=ctx.db,
+            redis=ctx.redis,
+            value_basis=redraft_value_basis,
+            site_user_id=(
+                ctx.site_user.id if ctx.site_user else None
+            ),
+            war_value_settings=war_value_settings,
+            league=(
+                league
+                if league is not None
+                else build_canonical_war_league(season)
+            ),
+            season=effective_season,
+            cheap=False,
+        )
+
+        for player in secondary_players:
+            value = get_player_value(
+                player,
+                redraft_value_basis,
+                war_value_settings,
+            )
+
+            if value is not None:
+                secondary_values_by_player_id[
+                    player.player_id
+                ] = float(value)
+
     for player in player_values:
         selected_value = get_player_value(
             player,
@@ -360,10 +409,15 @@ async def get_player_tier_board(
         if selected_value is None:
             continue
 
+        secondary_value = secondary_values_by_player_id.get(
+            player.player_id,
+        )
+
         ranked_players.append(
             (
                 player,
                 float(selected_value),
+                secondary_value,
             )
         )
 
@@ -389,7 +443,11 @@ async def get_player_tier_board(
         for label in TIER_LABELS
     }
 
-    for index, (player, selected_value) in enumerate(
+    for index, (
+        player,
+        selected_value,
+        secondary_value,
+    ) in enumerate(
         ranked_players,
         start=1,
     ):
@@ -422,6 +480,11 @@ async def get_player_tier_board(
                 # Serialized at the same precision the frontend
                 # formats WAR-style values at.
                 selected_value=round(selected_value, 2),
+                secondary_value=(
+                    round(secondary_value, 2)
+                    if secondary_value is not None
+                    else None
+                ),
                 exposure_pct=(
                     exposure_pct
                     if exposure_denominator > 0

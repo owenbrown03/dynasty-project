@@ -21,6 +21,7 @@ export interface RosterConstructionRow {
   warShare: number;
   projectedPoints: number;
   selectedValue: number;
+  redraftValue: number;
 }
 
 export function buildRosterConstructionRows(
@@ -28,6 +29,7 @@ export function buildRosterConstructionRows(
   targets: LeagueRosterConstructionTarget[],
   valueSettings?: {
     valueBasis: ValueBasis;
+    redraftValueBasis?: ValueBasis;
     warValueSettings: WarValueSettings;
   },
 ): RosterConstructionRow[] {
@@ -39,6 +41,8 @@ export function buildRosterConstructionRows(
       ],
     ),
   );
+
+  const redraftValueBasis = valueSettings?.redraftValueBasis;
 
   return CORE_FANTASY_POSITIONS.map((position) => {
     const positionPlayers = roster.players.filter(
@@ -61,6 +65,21 @@ export function buildRosterConstructionRows(
           ),
         ),
       ),
+      redraftValue: redraftValueBasis
+        ? roundPercent(
+            sumValues(
+              positionPlayers.map(
+                player =>
+                  getLeaguePlayerSelectedValue(
+                    player,
+                    redraftValueBasis,
+                    valueSettings?.warValueSettings ??
+                    { sleeper_projection: { timeframe: 'dynasty', scope: 'roster' }, my: { timeframe: 'dynasty', scope: 'roster' } },
+                  ),
+              ),
+            ),
+          )
+        : 0,
       selectedValue: valueSettings
         ? roundPercent(
             sumValues(

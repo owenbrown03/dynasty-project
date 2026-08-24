@@ -14,6 +14,7 @@ import type {
 import { PlayerTable } from './PlayerTable';
 import { formatDollarAmount } from '@/utils/valueFormat';
 import { formatNumber } from '@/utils/format';
+import { useValuePreference } from '@/context/useValuePreference';
 import { buildRosterConstructionRows } from './rosterConstruction';
 import {
   getDraftPickColor,
@@ -151,13 +152,22 @@ export function RosterCard({
   isCheap = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const valuePreference = useValuePreference();
+  const redraftValueBasis = valuePreference.redraftPreference;
   const constructionRows = buildRosterConstructionRows(
     roster,
     rosterConstructionTargets,
-    { valueBasis, warValueSettings },
+    {
+      valueBasis,
+      redraftValueBasis,
+      warValueSettings,
+    },
   );
   const selectedValueLabel = getValueBasisLabel(
     valueBasis,
+  );
+  const redraftValueLabel = getValueBasisLabel(
+    redraftValueBasis,
   );
   const selectedAssetValue = getRosterSelectedAssetValue(
     roster,
@@ -361,6 +371,9 @@ export function RosterCard({
                           {selectedValueLabel} {row.selectedValue.toFixed(1)}
                         </span>
                         <span>
+                          {redraftValueLabel} {row.redraftValue.toFixed(1)}
+                        </span>
+                        <span>
                           {row.warShare.toFixed(1)}
                           % historical WAR share
                         </span>
@@ -388,6 +401,7 @@ export function RosterCard({
                   players={roster.players}
                   emptyStarterSlots={roster.empty_starter_slots}
                   valueBasis={valueBasis}
+                  redraftValueBasis={redraftValueBasis}
                   warValueSettings={warValueSettings}
                 />
               </section>

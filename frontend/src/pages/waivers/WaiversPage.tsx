@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
 import './WaiversPage.css';
@@ -13,14 +13,7 @@ import { BulkClaimsTab } from './BulkClaimsTab';
 
 export const WaiversPage = () => {
   const valuePreference = useValuePreference();
-  const [valueContext, setValueContext] = useState<
-    'dynasty' | 'redraft'
-  >('dynasty');
-  const valueBasis = (
-    valueContext === 'redraft'
-      ? valuePreference.redraftPreference
-      : valuePreference.preference
-  );
+  const valueBasis = valuePreference.preference;
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = useMemo(() => {
     const tab = searchParams.get('tab');
@@ -88,31 +81,6 @@ export const WaiversPage = () => {
         </div>
 
       </section>
-
-      <div className="page-tabs waivers-context-tabs" role="tablist" aria-label="Value context">
-        <button
-          type="button"
-          className={
-            valueContext === 'dynasty'
-              ? 'page-tab active'
-              : 'page-tab'
-          }
-          onClick={() => setValueContext('dynasty')}
-        >
-          Dynasty
-        </button>
-        <button
-          type="button"
-          className={
-            valueContext === 'redraft'
-              ? 'page-tab active'
-              : 'page-tab'
-          }
-          onClick={() => setValueContext('redraft')}
-        >
-          Redraft
-        </button>
-      </div>
 
       <WaiversTabs
         activeTab={activeTab}

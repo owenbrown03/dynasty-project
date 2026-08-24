@@ -13,6 +13,7 @@ import type {
   TierBoardSource,
 } from '@/types';
 import { getPositionColor } from '@/utils/positions';
+import { getValueBasisLabel } from '@/utils/valueBasis';
 import {
   formatSelectedValue as formatTierSelectedValue,
 } from '@/utils/valueFormat';
@@ -388,6 +389,17 @@ export const TiersPage = () => {
                                             )
                                           }
                                         </strong>
+                                        {player.secondary_value != null ? (
+                                          <span
+                                            className="tier-player-secondary"
+                                            title={`Redraft value (${getValueBasisLabel(valuePreference.redraftPreference)})`}
+                                          >
+                                            R {formatTierSelectedValue(
+                                              player.secondary_value,
+                                              valuePreference.redraftPreference,
+                                            )}
+                                          </span>
+                                        ) : null}
                                       </div>
                                     </div>
 

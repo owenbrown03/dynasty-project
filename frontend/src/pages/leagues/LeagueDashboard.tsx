@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useBootstrap } from '@/hooks/useBootstrap';
 import { useValuePreference } from '@/context/useValuePreference';
 import { LoadingState } from '@/components/feedback/LoadingState';
@@ -43,13 +42,8 @@ export function LeagueDashboard({
 }: Props) {
   const bootstrap = useBootstrap();
   const valuePreference = useValuePreference();
-  const [valueContext, setValueContext] = useState<
-    'dynasty' | 'redraft'
-  >('dynasty');
   const rosterSortBasis = normalizeLeagueSortBasis(
-    valueContext === 'redraft'
-      ? valuePreference.redraftPreference
-      : valuePreference.preference,
+    valuePreference.preference,
   );
 
   return (
@@ -105,34 +99,6 @@ export function LeagueDashboard({
           </button>
         </div>
 
-        {
-          activeTab === 'overview' && (
-            <div className="page-tabs" role="tablist" aria-label="Value context">
-              <button
-                type="button"
-                className={
-                  valueContext === 'dynasty'
-                    ? 'page-tab active'
-                    : 'page-tab'
-                }
-                onClick={() => setValueContext('dynasty')}
-              >
-                Dynasty
-              </button>
-              <button
-                type="button"
-                className={
-                  valueContext === 'redraft'
-                    ? 'page-tab active'
-                    : 'page-tab'
-                }
-                onClick={() => setValueContext('redraft')}
-              >
-                Redraft
-              </button>
-            </div>
-          )
-        }
       </div>
 
       {

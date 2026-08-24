@@ -36,6 +36,7 @@ def build_canonical_war_league(
     season: int,
 ) -> SimpleNamespace:
     return SimpleNamespace(
+        league_id="canonical",
         season=season,
         total_rosters=12,
         scoring_settings=CANONICAL_WAR_SCORING,

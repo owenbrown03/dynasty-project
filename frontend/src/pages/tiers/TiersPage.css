@@ -270,3 +270,11 @@
   border-color: var(--color-accent);
   transform: translateY(-1px);
 }
+
+
+.tier-player-secondary {
+  display: block;
+  font-size: 0.68rem;
+  opacity: 0.7;
+  font-weight: 500;
+}

@@ -500,6 +500,7 @@ export interface TierBoardPlayer {
   exposure_pct: number | null;
   exposure_owned_leagues: number | null;
   exposure_total_leagues: number | null;
+  secondary_value?: number | null;
 }
 
 export interface TierBoardGroup {
