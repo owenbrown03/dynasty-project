@@ -63,10 +63,12 @@ class AccentColorResponse(Base):
 
 class ValuePreferenceUpdate(Base):
     value_preference: ValueBasis
+    redraft_value_preference: ValueBasis | None = None
 
 
 class ValuePreferenceResponse(Base):
     value_preference: ValueBasis | None
+    redraft_value_preference: ValueBasis | None = None
 
 
 class WarValueConfig(Base):

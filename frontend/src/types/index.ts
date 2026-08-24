@@ -109,6 +109,7 @@ export interface Bootstrap {
   theme_preference: ThemePreference | null;
   accent_color: AccentColor | null;
   value_preference: ValueBasis | null;
+  redraft_value_preference: ValueBasis | null;
   war_value_settings: WarValueSettings;
   draft_pick_projection_settings: DraftPickProjectionSettings;
   finance_projection_settings: FinanceProjectionSettings;

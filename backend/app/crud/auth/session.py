@@ -149,6 +149,67 @@ async def set_session_accent_color(
     return session
 
 
+def get_session_redraft_value_preference(
+    session: UserSession | None,
+) -> ValueBasis | None:
+    if not session:
+        return None
+
+    value = (
+        (session.settings or {}).get(
+            "redraft_value_preference",
+        )
+    )
+
+    from app.crud.auth.user import (
+        DEFAULT_REDRAFT_VALUE_PREFERENCE,
+        REDRAFT_VALUE_PREFERENCES,
+    )
+
+    if value in REDRAFT_VALUE_PREFERENCES:
+        return ValueBasis(value)
+
+    return ValueBasis(DEFAULT_REDRAFT_VALUE_PREFERENCE)
+
+
+async def set_session_redraft_value_preference(
+    *,
+    session: UserSession,
+    redraft_value_preference: ValueBasis,
+    db: AsyncSession,
+) -> UserSession:
+    from app.crud.auth.user import REDRAFT_VALUE_PREFERENCES
+
+    if (
+        redraft_value_preference.value
+        not in REDRAFT_VALUE_PREFERENCES
+    ):
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Invalid redraft value system. Choose from "
+                f"{sorted(REDRAFT_VALUE_PREFERENCES)}."
+            ),
+        )
+
+    settings = dict(
+        session.settings or {}
+    )
+
+    settings["redraft_value_preference"] = (
+        redraft_value_preference.value
+    )
+    session.settings = settings
+
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+
 async def set_session_value_preference(
     *,
     session: UserSession,

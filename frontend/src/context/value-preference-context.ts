@@ -5,6 +5,8 @@ import type { ValueBasis } from '@/types';
 export type ValuePreferenceContextType = {
   preference: ValueBasis;
   setPreference: (next: ValueBasis) => Promise<void>;
+  redraftPreference: ValueBasis;
+  setRedraftPreference: (next: ValueBasis) => Promise<void>;
   isSaving: boolean;
 };
 

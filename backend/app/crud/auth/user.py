@@ -40,6 +40,16 @@ VALID_VALUE_PREFERENCES = {
     basis.value
     for basis in ValueBasis
 }
+
+# Phase 1 of the two-context value systems (#165): the redraft axis
+# only accepts redraft-meaningful market sources.
+REDRAFT_VALUE_PREFERENCES = {
+    "ktc",
+    "fantasycalc",
+    "adp",
+}
+DEFAULT_REDRAFT_VALUE_PREFERENCE = "ktc"
+
 EMAIL_VERIFICATION_TTL_HOURS = 48
 
 async def insert_user(
@@ -256,6 +266,60 @@ async def set_accent_color(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+def get_redraft_value_preference(
+    user: SiteUser | None,
+) -> ValueBasis | None:
+    if not user:
+        return None
+
+    value = (
+        (user.settings or {}).get(
+            "redraft_value_preference",
+        )
+    )
+
+    if value in REDRAFT_VALUE_PREFERENCES:
+        return ValueBasis(value)
+
+    return ValueBasis(DEFAULT_REDRAFT_VALUE_PREFERENCE)
+
+
+async def set_redraft_value_preference(
+    *,
+    user: SiteUser,
+    redraft_value_preference: ValueBasis,
+    db: AsyncSession,
+) -> SiteUser:
+    if (
+        redraft_value_preference.value
+        not in REDRAFT_VALUE_PREFERENCES
+    ):
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Invalid redraft value system. Choose from "
+                f"{sorted(REDRAFT_VALUE_PREFERENCES)}."
+            ),
+        )
+
+    settings = dict(
+        user.settings or {}
+    )
+
+    settings["redraft_value_preference"] = (
+        redraft_value_preference.value
+    )
+    user.settings = settings
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
 
 
 async def set_value_preference(

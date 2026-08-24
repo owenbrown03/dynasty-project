@@ -36,9 +36,15 @@ export const authEndpoints = (client: AxiosInstance, prefix: string) => ({
   ),
   updateValuePreference: (
     value_preference: ValueBasis,
+    redraft_value_preference?: ValueBasis,
   ) => client.post(
     `${prefix}/value`,
-    { value_preference },
+    {
+      value_preference,
+      ...(redraft_value_preference
+        ? { redraft_value_preference }
+        : {}),
+    },
   ),
   updateWarValueSettings: (
     settings: WarValueSettings,

@@ -32,3 +32,34 @@ export function getStoredValuePreference(): ValueBasis {
 
   return 'ktc';
 }
+
+
+export const REDRAFT_VALUE_PREFERENCE_STORAGE_KEY =
+  'dynasty-redraft-value-preference';
+
+const REDRAFT_VALUE_PREFERENCES: ValueBasis[] = [
+  'ktc',
+  'fantasycalc',
+  'adp',
+];
+
+export function getStoredRedraftValuePreference(): ValueBasis {
+  if (typeof window === 'undefined') {
+    return 'ktc';
+  }
+
+  const stored = window.localStorage.getItem(
+    REDRAFT_VALUE_PREFERENCE_STORAGE_KEY,
+  );
+
+  if (
+    stored
+    && REDRAFT_VALUE_PREFERENCES.includes(
+      stored as ValueBasis,
+    )
+  ) {
+    return stored as ValueBasis;
+  }
+
+  return 'ktc';
+}

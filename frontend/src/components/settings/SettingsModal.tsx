@@ -22,7 +22,10 @@ import type {
   WarValueTimeframe,
 } from '@/types';
 import { notify } from '@/utils/notify';
-import { getValueBasisOptions } from '@/pages/waivers/waiver.constants';
+import {
+  getRedraftValueBasisOptions,
+  getValueBasisOptions,
+} from '@/pages/waivers/waiver.constants';
 
 const DRAFT_PICK_PROJECTION_METHOD_OPTIONS: Array<{
   value: DraftPickProjectionMethod;
@@ -507,7 +510,7 @@ export const SettingsModal = () => {
             </div>
 
             <label className="settings-field">
-              <span>Default value basis</span>
+              <span>Dynasty value system</span>
               <select
                 value={valuePreference.preference}
                 onChange={(event) => {
@@ -528,6 +531,32 @@ export const SettingsModal = () => {
                       {option.label}
                     </option>
                   ))
+                }
+              </select>
+            </label>
+
+            <label className="settings-field">
+              <span>Redraft value system</span>
+              <select
+                value={valuePreference.redraftPreference}
+                onChange={(event) => {
+                  void valuePreference.setRedraftPreference(
+                    event.target.value as ValueBasis,
+                  );
+                }}
+                disabled={valuePreference.isSaving}
+              >
+                {
+                  getRedraftValueBasisOptions().map(
+                    (option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    ),
+                  )
                 }
               </select>
             </label>

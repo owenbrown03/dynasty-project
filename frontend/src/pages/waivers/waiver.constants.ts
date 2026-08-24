@@ -58,3 +58,23 @@ export function getValueBasisOptions(
     ),
   );
 }
+
+
+// Redraft-axis systems (#165 Phase 1): market sources that make sense
+// for redraft valuations. Dynasty-only systems (my_war, sleeper WAR)
+// deliberately excluded.
+const REDRAFT_VALUE_BASIS_OPTIONS: Array<{
+  value: ValueBasis;
+  label: string;
+}> = [
+  { value: 'ktc', label: 'KTC (redraft)' },
+  { value: 'fantasycalc', label: 'FantasyCalc (redraft)' },
+  { value: 'adp', label: 'ADP Value' },
+];
+
+export function getRedraftValueBasisOptions(): Array<{
+  value: ValueBasis;
+  label: string;
+}> {
+  return REDRAFT_VALUE_BASIS_OPTIONS;
+}
