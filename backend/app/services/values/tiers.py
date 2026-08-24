@@ -116,6 +116,7 @@ async def load_player_values_for_basis(
     league=None,
     season: int,
     cheap: bool = False,
+    value_context: str = "dynasty",
 ) -> list[PlayerValue]:
     # Bases flagged needs_league_context compute from a league's
     # redraft context; without a league there is nothing to compute
@@ -153,6 +154,7 @@ async def load_player_values_for_basis(
             player_ids=supported_player_ids,
             redraft_war_players=[],
             dynasty_war_by_player_id={},
+            value_context=value_context,
         )
 
     async with heavy_work_semaphore:
@@ -285,6 +287,7 @@ async def get_player_tier_board(
     value_basis: ValueBasis,
     league_id: str | None = None,
     cheap: bool = False,
+    value_context: str = "dynasty",
 ) -> PlayerTierBoardResponse:
     season = await get_latest_projection_season(
         ctx.db,
@@ -330,6 +333,7 @@ async def get_player_tier_board(
         league=league,
         season=effective_season,
         cheap=cheap,
+        value_context=value_context,
     )
     war_value_settings = (
         ctx.site_user.settings.get("war_value_settings")

@@ -8,9 +8,24 @@ import {
 import { VALUE_BASIS_OPTIONS } from '@/pages/waivers/waiver.constants';
 
 describe('tier board source lists', () => {
-  it('offers the exact settings pool as sources', () => {
-    // Selector-surface principle: same options as the settings picker.
-    expect(TIER_SOURCE_OPTIONS).toEqual(VALUE_BASIS_OPTIONS);
+  it('offers the settings pool plus the redraft value sources', () => {
+    // Selector-surface principle: the settings pool, extended with
+    // the redraft value sources (#165).
+    const poolValues = VALUE_BASIS_OPTIONS.map((o) => o.value);
+
+    for (const option of VALUE_BASIS_OPTIONS) {
+      expect(
+        TIER_SOURCE_OPTIONS.some((o) => o.value === option.value),
+      ).toBe(true);
+    }
+
+    expect(
+      TIER_SOURCE_OPTIONS.some((o) => o.value === 'redraft_roster_war'),
+    ).toBe(true);
+    expect(
+      TIER_SOURCE_OPTIONS.some((o) => o.value === 'redraft_starter_war'),
+    ).toBe(true);
+    expect(poolValues).not.toContain('redraft_roster_war');
   });
 
   it('flags the league-context bases for league selection', () => {

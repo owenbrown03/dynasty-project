@@ -26,3 +26,20 @@ export function getValueBasisOptions(
 }
 
 
+// Redraft Value assigns per-player redraft valuations (#165): the
+// redraft-meaningful projection/WAR sources.
+const REDRAFT_VALUE_BASIS_OPTIONS: Array<{
+  value: ValueBasis;
+  label: string;
+}> = [
+  { value: 'sleeper_projection', label: 'Sleeper projected points' },
+  { value: 'redraft_roster_war', label: 'Redraft Roster WAR' },
+  { value: 'redraft_starter_war', label: 'Redraft Starter WAR' },
+];
+
+export function getRedraftValueBasisOptions(): Array<{
+  value: ValueBasis;
+  label: string;
+}> {
+  return REDRAFT_VALUE_BASIS_OPTIONS;
+}

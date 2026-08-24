@@ -12,6 +12,8 @@ import { VALUE_BASIS_OPTIONS } from '@/pages/waivers/waiver.constants';
  */
 export const LEAGUE_CONTEXT_VALUE_BASES: ValueBasis[] = [
   'sleeper_war',
+  'redraft_roster_war',
+  'redraft_starter_war',
   'my_roster_war',
   'my_starter_war',
   'dynasty_roster_war',
@@ -30,5 +32,9 @@ export function isLeagueContextValueBasis(
 export const TIER_SOURCE_OPTIONS: Array<{
   value: TierBoardSource;
   label: string;
-}> = VALUE_BASIS_OPTIONS;
+}> = [
+  ...VALUE_BASIS_OPTIONS,
+  { value: 'redraft_roster_war', label: 'Redraft Roster WAR' },
+  { value: 'redraft_starter_war', label: 'Redraft Starter WAR' },
+];
 

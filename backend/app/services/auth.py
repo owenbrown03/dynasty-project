@@ -337,13 +337,9 @@ async def update_value_preference(
         db=ctx.db,
     )
 
-    # Single-picker UI: the redraft axis mirrors the main value
-    # system unless a redraft-specific value is explicitly provided.
-    effective_redraft = (
-        body.redraft_value_preference
-        if body.redraft_value_preference is not None
-        else body.value_preference
-    )
+    # The redraft axis is an independent setting (Redraft Value);
+    # only update it when explicitly provided.
+    effective_redraft = body.redraft_value_preference
 
     if effective_redraft is not None:
         session = await set_session_redraft_value_preference(

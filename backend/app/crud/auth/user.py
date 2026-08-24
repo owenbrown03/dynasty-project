@@ -41,9 +41,13 @@ VALID_VALUE_PREFERENCES = {
     for basis in ValueBasis
 }
 
-# The redraft axis mirrors the main value system in the
-# single-picker UI, so it accepts any valid basis.
-REDRAFT_VALUE_PREFERENCES = VALID_VALUE_PREFERENCES
+# Redraft Value assigns per-player redraft valuations; the pool is
+# the redraft-meaningful projection/WAR sources (#165).
+REDRAFT_VALUE_PREFERENCES = {
+    "sleeper_projection",
+    "redraft_roster_war",
+    "redraft_starter_war",
+}
 DEFAULT_REDRAFT_VALUE_PREFERENCE = "sleeper_projection"
 
 EMAIL_VERIFICATION_TTL_HOURS = 48

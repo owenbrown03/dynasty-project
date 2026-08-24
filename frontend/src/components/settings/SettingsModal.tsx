@@ -17,7 +17,10 @@ import type {
   ValueBasis,
 } from '@/types';
 import { notify } from '@/utils/notify';
-import { getValueBasisOptions } from '@/pages/waivers/waiver.constants';
+import {
+  getRedraftValueBasisOptions,
+  getValueBasisOptions,
+} from '@/pages/waivers/waiver.constants';
 
 const DRAFT_PICK_PROJECTION_METHOD_OPTIONS: Array<{
   value: DraftPickProjectionMethod;
@@ -273,6 +276,40 @@ export const SettingsModal = () => {
             <li>Future pick projection</li>
             <li>Season payout projection</li>
           </ul>
+
+          <div className="settings-grid">
+            <label className="settings-field">
+              <span>Redraft value</span>
+              <select
+                value={valuePreference.redraftPreference}
+                onChange={(event) => {
+                  void valuePreference.setRedraftPreference(
+                    event.target.value as ValueBasis,
+                  );
+                }}
+                disabled={valuePreference.isSaving}
+              >
+                {
+                  getRedraftValueBasisOptions().map(
+                    (option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    ),
+                  )
+                }
+              </select>
+            </label>
+          </div>
+
+          <div className="settings-note">
+            Redraft value prices individual players in redraft. The
+            league dashboard's Redraft context (roster table, position
+            breakdown) and the tier board's redraft sources use it.
+          </div>
 
           <div className="settings-grid">
             <label className="settings-field">

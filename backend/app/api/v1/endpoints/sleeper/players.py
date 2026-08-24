@@ -35,6 +35,7 @@ async def get_player_tiers_endpoint(
     league_id: str | None = Query(
         default=None,
     ),
+    value_context: str = Query(default="dynasty"),
     cheap: bool = False,
 ):
     t0 = time.monotonic()
@@ -52,6 +53,7 @@ async def get_player_tiers_endpoint(
                 ctx=ctx,
                 value_basis=value_basis,
                 league_id=league_id,
+                value_context=value_context,
                 cheap=cheap,
             )
             log.info(
