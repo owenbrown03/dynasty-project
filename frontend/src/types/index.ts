@@ -148,11 +148,13 @@ export interface WarValueSettings {
 }
 
 export type DraftPickProjectionMethod =
-  | 'reverse_standings'
+  | 'standings_proxy'
   | 'max_pf'
   | 'redraft_starter_war'
   | 'redraft_roster_war'
-  | 'redraft_value_system';
+  | 'sleeper_projection'
+  | 'ktc_redraft'
+  | 'fantasycalc_redraft';
 
 export type DraftPickProjectionPhaseMethod =
   | 'none'
@@ -474,6 +476,8 @@ export type ValueBasis =
   | 'fantasycalc'
   | 'adp'
   | 'sleeper_projection'
+  | 'my_roster_war'
+  | 'my_starter_war'
   | 'sleeper_war'
   | 'my_war'
   | 'redraft_starter_war'

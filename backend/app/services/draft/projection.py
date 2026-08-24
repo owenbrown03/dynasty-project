@@ -11,14 +11,16 @@ from app.models.db.sleeper.api import League, Roster
 DRAFT_PICK_PROJECTION_CACHE_TTL_SECONDS = (
     6 * 60 * 60
 )
-DRAFT_PICK_PROJECTION_CACHE_VERSION = "v1"
+DRAFT_PICK_PROJECTION_CACHE_VERSION = "v2"
 
 DRAFT_PICK_PROJECTION_METHODS = {
-    "reverse_standings",
+    "standings_proxy",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
-    "redraft_value_system",
+    "sleeper_projection",
+    "ktc_redraft",
+    "fantasycalc_redraft",
 }
 DRAFT_PICK_PROJECTION_PHASE_METHODS = {
     "none",
@@ -28,7 +30,7 @@ DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS = {
     "enabled": True,
     "switch_week": 4,
     "before_week_method": "none",
-    "from_week_method": "redraft_value_system",
+    "from_week_method": "sleeper_projection",
 }
 DEFAULT_FINANCE_PROJECTION_SETTINGS = {
     "same_as_draft_pick_projection": True,
@@ -40,11 +42,13 @@ MIN_DRAFT_PICK_PROJECTION_WEEK = 1
 MAX_DRAFT_PICK_PROJECTION_WEEK = 18
 
 DraftPickProjectionMethod = Literal[
-    "reverse_standings",
+    "standings_proxy",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
-    "redraft_value_system",
+    "sleeper_projection",
+    "ktc_redraft",
+    "fantasycalc_redraft",
 ]
 DraftPickProjectionPhaseMethod = Literal[
     "none",
@@ -234,9 +238,13 @@ def _format_method_label(
         return "redraft starter WAR"
     if method == "redraft_roster_war":
         return "redraft roster WAR"
-    if method == "redraft_value_system":
-        return "redraft value system"
-    return "reverse standings proxy"
+    if method == "sleeper_projection":
+        return "sleeper projected points"
+    if method == "ktc_redraft":
+        return "KTC (redraft)"
+    if method == "fantasycalc_redraft":
+        return "FantasyCalc (redraft)"
+    return "standings proxy"
 
 
 def build_projected_slot_source_label(
@@ -256,36 +264,50 @@ def build_projected_slot_source_label(
 
     if resolved_method == "max_pf":
         label = (
-            "Projected from reverse max PF through "
+            "Projected from max PF through "
             f"Week {current_week}, using cumulative "
             "potential points first, then points for, "
             "then projected points as tiebreakers"
         )
     elif resolved_method == "redraft_starter_war":
         label = (
-            "Projected from reverse redraft starter WAR "
+            "Projected from redraft starter WAR "
             f"through Week {current_week}, using lower starter "
             "WAR first, then points for, then projected points "
             "as tiebreakers"
         )
     elif resolved_method == "redraft_roster_war":
         label = (
-            "Projected from reverse redraft roster WAR "
+            "Projected from redraft roster WAR "
             f"through Week {current_week}, using lower roster "
             "WAR first, then points for, then projected points "
             "as tiebreakers"
         )
-    elif resolved_method == "redraft_value_system":
+    elif resolved_method == "sleeper_projection":
         label = (
-            "Projected from your redraft value system "
+            "Projected from sleeper projected points "
             f"through Week {current_week}, using lower total "
-            "redraft market value first, then points for, then "
+            "projection first, then points for, then "
+            "projected points as tiebreakers"
+        )
+    elif resolved_method == "ktc_redraft":
+        label = (
+            "Projected from KTC redraft values "
+            f"through Week {current_week}, using lower total "
+            "value first, then points for, then "
+            "projected points as tiebreakers"
+        )
+    elif resolved_method == "fantasycalc_redraft":
+        label = (
+            "Projected from FantasyCalc redraft values "
+            f"through Week {current_week}, using lower total "
+            "value first, then points for, then "
             "projected points as tiebreakers"
         )
     else:
         label = (
-            "Projected from the current reverse-order standings "
-            f"proxy through Week {current_week}, using record "
+            "Projected from the standings proxy "
+            f"through Week {current_week}, using record "
             "first, then points for, then projected points as "
             "tiebreakers"
         )
@@ -567,7 +589,7 @@ def build_projected_pick_slots_by_roster_id(
         )
         method_used = "redraft_roster_war"
     elif (
-        requested_method == "redraft_value_system"
+        requested_method in REDRAFT_MARKET_METHODS
         and _has_metric_values(redraft_value_by_roster_id)
     ):
         ordered_rosters = _sort_rosters_by_metric(
@@ -579,7 +601,7 @@ def build_projected_pick_slots_by_roster_id(
                 redraft_value_by_roster_id or {}
             ),
         )
-        method_used = "redraft_value_system"
+        method_used = requested_method
     else:
         if requested_method != "reverse_standings":
             fallback_from_method = requested_method
@@ -769,12 +791,34 @@ async def build_redraft_value_by_roster_id(
     }
 
 
+# Methods that rank rosters by a redraft market-source sum; each
+# maps to the basis build_redraft_value_by_roster_id should sum.
+REDRAFT_MARKET_METHODS = {
+    "sleeper_projection",
+    "ktc_redraft",
+    "fantasycalc_redraft",
+}
+
+
+def redraft_projection_basis_for_method(
+    method: str,
+) -> str | None:
+    if method == "sleeper_projection":
+        return "sleeper_projection"
+    if method == "ktc_redraft":
+        return "ktc"
+    if method == "fantasycalc_redraft":
+        return "fantasycalc"
+    return None
+
+
 def redraft_value_system_active(
     *,
     current_week: int,
     settings: dict[str, object] | None,
 ) -> bool:
-    """Whether the active phase method is the redraft value system.
+    """Whether the active phase method ranks by a redraft market
+    source.
 
     Callers use this to skip fetching redraft market sums when another
     method is active.
@@ -784,5 +828,5 @@ def redraft_value_system_active(
             current_week=current_week,
             settings=settings,
         )
-        == "redraft_value_system"
+        in REDRAFT_MARKET_METHODS
     )

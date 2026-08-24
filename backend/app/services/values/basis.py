@@ -18,6 +18,8 @@ class ValueBasis(StrEnum):
     SLEEPER_WAR = "sleeper_war"
     MY_WAR = "my_war"
     SLEEPER_PROJECTION = "sleeper_projection"
+    MY_ROSTER_WAR = "my_roster_war"
+    MY_STARTER_WAR = "my_starter_war"
 
     REDRAFT_STARTER_WAR = "redraft_starter_war"
     REDRAFT_ROSTER_WAR = "redraft_roster_war"
@@ -120,6 +122,12 @@ def get_player_value(
                 prefix="my",
                 config=normalized_war_settings["my"],
             )
+
+        case ValueBasis.MY_ROSTER_WAR:
+            return player.my_dynasty_roster_war
+
+        case ValueBasis.MY_STARTER_WAR:
+            return player.my_dynasty_starter_war
 
         case ValueBasis.REDRAFT_STARTER_WAR:
             return player.redraft_starter_war

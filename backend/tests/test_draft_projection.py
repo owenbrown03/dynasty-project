@@ -86,7 +86,7 @@ def test_get_effective_pick_slot_uses_projected_slot_when_needed():
     assert get_effective_pick_slot(pick) == 2
 
 
-def test_default_method_is_redraft_value_system_and_falls_back():
+def test_default_method_is_sleeper_projection_and_falls_back():
     league = League(
         league_id="league-1",
         name="Test",
@@ -126,7 +126,7 @@ def test_default_method_is_redraft_value_system_and_falls_back():
     )
 
     assert result.method_used == "reverse_standings"
-    assert result.fallback_from_method == "redraft_value_system"
+    assert result.fallback_from_method == "sleeper_projection"
 
     # With redraft value sums it ranks directly off them.
     result = build_projected_pick_slots_by_roster_id(
@@ -136,5 +136,5 @@ def test_default_method_is_redraft_value_system_and_falls_back():
         redraft_value_by_roster_id={1: 900.0, 2: 500.0, 3: 700.0},
     )
 
-    assert result.method_used == "redraft_value_system"
+    assert result.method_used == "sleeper_projection"
     assert result.slots_by_roster_id == {2: 1, 3: 2, 1: 3}

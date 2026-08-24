@@ -32,7 +32,9 @@ from app.services.draft.projection import (
     build_cached_projected_pick_slots_by_roster_id,
     build_projected_slot_source_label,
     build_redraft_value_by_roster_id,
+    redraft_projection_basis_for_method,
     redraft_value_system_active,
+    resolve_draft_pick_projection_method,
 )
 from app.services.draft.values import (
     get_resolved_pick_values_by_key,
@@ -443,9 +445,14 @@ async def get_commissioner_orphans(
                 await build_redraft_value_by_roster_id(
                     db,
                     rosters,
-                    basis=await _resolve_site_redraft_basis(
-                        db,
-                        site_user_id,
+                    basis=(
+                        redraft_projection_basis_for_method(
+                            resolve_draft_pick_projection_method(
+                                current_week=current_week,
+                                settings=None,
+                            )
+                        )
+                        or "sleeper_projection"
                     ),
                 )
             )

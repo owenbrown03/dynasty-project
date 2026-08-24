@@ -69,6 +69,10 @@ export function getValueBasisLabel(
       return 'Sleeper WAR';
     case 'my_war':
       return 'My WAR';
+    case 'my_roster_war':
+      return 'My Roster WAR';
+    case 'my_starter_war':
+      return 'My Starter WAR';
     case 'redraft_starter_war':
       return 'Redraft Starter WAR';
     case 'redraft_roster_war':
@@ -110,6 +114,10 @@ export function getLeaguePlayerSelectedValue(
           warValueSettings.sleeper_projection,
         ),
       );
+    case 'my_roster_war':
+      return player.my_dynasty_roster_war ?? null;
+    case 'my_starter_war':
+      return player.my_dynasty_starter_war ?? null;
     case 'my_war':
       return getNumericPlayerMetric(
         player,
@@ -351,6 +359,10 @@ export function getDashboardLeagueSelectedValue(
     case 'dynasty_roster_war':
     case 'sleeper_war':
       return league.dynasty_roster_war;
+    case 'my_roster_war':
+      return league.my_dynasty_roster_war ?? null;
+    case 'my_starter_war':
+      return league.my_dynasty_starter_war ?? null;
     case 'my_war':
       if (mySettings?.timeframe === 'redraft') {
         return mySettings.scope === 'starter'

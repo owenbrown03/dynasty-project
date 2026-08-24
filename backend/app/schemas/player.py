@@ -13,6 +13,8 @@ class PlayerValue(Base):
     fc_value: int | None = None
     adp_value: float | None = None
     projected_points: float | None = None
+    my_dynasty_roster_war: float | None = None
+    my_dynasty_starter_war: float | None = None
     underdog_position_rank: str | None = None
 
     redraft_starter_war: float | None = None

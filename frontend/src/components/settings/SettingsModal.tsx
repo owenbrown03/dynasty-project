@@ -25,28 +25,38 @@ const DRAFT_PICK_PROJECTION_METHOD_OPTIONS: Array<{
   description: string;
 }> = [
   {
-    value: 'redraft_value_system',
-    label: 'Redraft value system (recommended)',
-    description: 'Ranks rosters by total redraft market value from your redraft value system setting, then points for and projected points as tiebreakers.',
+    value: 'sleeper_projection',
+    label: 'Sleeper projected points',
+    description: 'Ranks rosters by total sleeper projected points, then points for and projected points as tiebreakers.',
+  },
+  {
+    value: 'ktc_redraft',
+    label: 'KTC (redraft)',
+    description: 'Ranks rosters by total KTC redraft value, then points for and projected points as tiebreakers.',
+  },
+  {
+    value: 'fantasycalc_redraft',
+    label: 'FantasyCalc (redraft)',
+    description: 'Ranks rosters by total FantasyCalc redraft value, then points for and projected points as tiebreakers.',
   },
   {
     value: 'max_pf',
-    label: 'Reverse max PF',
+    label: 'Max PF',
     description: 'Uses cumulative potential points first, then points for and projected points as tiebreakers.',
   },
   {
-    value: 'reverse_standings',
-    label: 'Reverse standings proxy',
+    value: 'standings_proxy',
+    label: 'Standings proxy',
     description: 'Uses record first, then points for and projected points as tiebreakers.',
   },
   {
     value: 'redraft_starter_war',
-    label: 'Reverse redraft starter WAR',
+    label: 'Redraft starter WAR',
     description: 'Projects earlier picks to rosters with lower total redraft starter WAR.',
   },
   {
     value: 'redraft_roster_war',
-    label: 'Reverse redraft roster WAR',
+    label: 'Redraft roster WAR',
     description: 'Projects earlier picks to rosters with lower total redraft roster WAR.',
   },
 ];
@@ -254,7 +264,9 @@ export const SettingsModal = () => {
           <div className="settings-note">
             Projects how rosters will finish in redraft, using the
             method you pick before the threshold week and after it.
-            Set both to the same method to always use one. This drives:
+            Set both to the same method to always use one. Future
+            picks apply the ranking in reverse — the weakest
+            projected roster picks first (1.01). This drives:
           </div>
           <ul className="settings-applies-list">
             <li>Advisor contention &amp; fringe-contender bands</li>
@@ -284,7 +296,7 @@ export const SettingsModal = () => {
                     ),
                     from_week_method: (
                       draftPickProjectionSettings?.from_week_method
-                      ?? 'redraft_value_system'
+                      ?? 'sleeper_projection'
                     ),
                   });
                 }}
@@ -313,7 +325,7 @@ export const SettingsModal = () => {
                     ),
                     from_week_method: (
                       draftPickProjectionSettings?.from_week_method
-                      ?? 'redraft_value_system'
+                      ?? 'sleeper_projection'
                     ),
                   });
                 }}

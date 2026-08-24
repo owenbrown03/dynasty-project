@@ -882,6 +882,14 @@ def _starter_war(item: PersonalValuePoolItem) -> float | None:
     return war
 
 
+async def _current_nfl_week(sleeper) -> int:
+    try:
+        state = await sleeper.read.get_nfl_state()
+        return int(state.week or 0)
+    except Exception:
+        return 0
+
+
 async def _season_phase(sleeper) -> tuple[str, str]:
     """Returns (basis, label) for team-strength measurement.
 
@@ -943,6 +951,7 @@ async def _detect_league_strategy(
     dict[int, LeagueStrategy],
 ]:
     basis, _phase = await _season_phase(ctx.sleeper)
+    _basis_week = await _current_nfl_week(ctx.sleeper)
 
     starters = max(league.starter_slots, 1)
 
@@ -950,22 +959,26 @@ async def _detect_league_strategy(
         # Preseason/offseason: no real production yet, so contention
         # follows the manager's redraft projection setting - total
         # redraft market value per roster (#165 phase 3).
-        from app.crud.auth.session import (
-            get_session_redraft_value_preference,
+        from app.crud.auth.user import (
+            get_draft_pick_projection_settings,
         )
-        from app.crud.auth.user import get_redraft_value_preference
         from app.services.draft.projection import (
             build_redraft_value_by_roster_id,
+            redraft_projection_basis_for_method,
+            resolve_draft_pick_projection_method,
         )
 
-        if ctx.site_user is not None:
-            redraft_basis = get_redraft_value_preference(
-                ctx.site_user,
-            ).value
-        else:
-            redraft_basis = get_session_redraft_value_preference(
-                ctx.session,
-            ).value
+        redraft_basis = (
+            redraft_projection_basis_for_method(
+                resolve_draft_pick_projection_method(
+                    current_week=_basis_week,
+                    settings=get_draft_pick_projection_settings(
+                        ctx.site_user,
+                    ),
+                ),
+            )
+            or "sleeper_projection"
+        )
 
         redraft_value_by_roster_id = (
             await build_redraft_value_by_roster_id(
