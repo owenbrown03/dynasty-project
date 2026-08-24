@@ -1,7 +1,6 @@
-import { useState } from 'react';
-
 import { useBootstrap } from '@/hooks/useBootstrap';
 import { useValuePreference } from '@/context/useValuePreference';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import type { LeagueDetails } from '@/types';
 import type { ValueBasis } from '@/types';
 
@@ -13,13 +12,16 @@ import { AdvisorPanel } from './AdvisorPanel';
 
 
 interface Props {
-  league: LeagueDetails;
+  league: LeagueDetails | null;
+  leagueFallback: {
+    league_id: string;
+    league_name: string;
+  };
+  activeTab: 'overview' | 'analytics' | 'advisor';
+  onTabChange: (
+    tab: 'overview' | 'analytics' | 'advisor',
+  ) => void;
 }
-
-type LeagueDashboardTab =
-  | 'overview'
-  | 'analytics'
-  | 'advisor';
 
 function normalizeLeagueSortBasis(
   valueBasis: ValueBasis,
@@ -43,10 +45,12 @@ function normalizeLeagueSortBasis(
 
 export function LeagueDashboard({
   league,
+  leagueFallback,
+  activeTab,
+  onTabChange,
 }: Props) {
   const bootstrap = useBootstrap();
   const valuePreference = useValuePreference();
-  const [activeTab, setActiveTab] = useState<LeagueDashboardTab>('overview');
   const rosterSortBasis = normalizeLeagueSortBasis(
     valuePreference.preference,
   );
@@ -63,7 +67,7 @@ export function LeagueDashboard({
                 : 'league-dashboard-tab'
             }
             onClick={() => {
-              setActiveTab('overview');
+              onTabChange('overview');
             }}
           >
             Overview
@@ -77,7 +81,7 @@ export function LeagueDashboard({
                 : 'league-dashboard-tab'
             }
             onClick={() => {
-              setActiveTab('analytics');
+              onTabChange('analytics');
             }}
           >
             Analytics
@@ -91,7 +95,7 @@ export function LeagueDashboard({
                 : 'league-dashboard-tab'
             }
             onClick={() => {
-              setActiveTab('advisor');
+              onTabChange('advisor');
             }}
           >
             AI Advisor
@@ -103,31 +107,43 @@ export function LeagueDashboard({
       {
         activeTab === 'overview'
           ? (
-            <LeagueCard
-              league={league}
-              rosterSortBasis={rosterSortBasis}
-              warValueSettings={bootstrap.data?.war_value_settings ?? {
-                sleeper_projection: {
-                  timeframe: 'dynasty',
-                  scope: 'roster',
-                },
-                my: {
-                  timeframe: 'dynasty',
-                  scope: 'roster',
-                },
-              }}
-            />
+            league
+              ? (
+                <LeagueCard
+                  league={league}
+                  rosterSortBasis={rosterSortBasis}
+                  warValueSettings={bootstrap.data?.war_value_settings ?? {
+                    sleeper_projection: {
+                      timeframe: 'dynasty',
+                      scope: 'roster',
+                    },
+                    my: {
+                      timeframe: 'dynasty',
+                      scope: 'roster',
+                    },
+                  }}
+                />
+              )
+              : <LoadingState label="Loading league details..." />
           )
           : activeTab === 'analytics'
             ? (
-              <LeagueWarSeasonChart
-                league={league}
-              />
+              league
+                ? (
+                  <LeagueWarSeasonChart
+                    league={league}
+                  />
+                )
+                : <LoadingState label="Loading league details..." />
             )
             : (
               <AdvisorPanel
-                leagueId={league.league_id}
-                leagueName={league.league_name}
+                leagueId={
+                  league?.league_id ?? leagueFallback.league_id
+                }
+                leagueName={
+                  league?.league_name ?? leagueFallback.league_name
+                }
               />
             )
       }
