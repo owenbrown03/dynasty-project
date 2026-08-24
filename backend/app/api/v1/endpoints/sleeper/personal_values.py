@@ -4,14 +4,22 @@ from app.api.deps import ContextDep
 from app.schemas.personal_values import (
     PersonalValueDetailResponse,
     PersonalValuePoolResponse,
+    PersonalValueRankingsResponse,
+    PersonalValueRankingsUpdateRequest,
+    PersonalValueRankingsUpdateResponse,
+    PersonalValueRankingsResetRequest,
+    PersonalValueRankingsResetResponse,
     PersonalValueSearchResult,
     PersonalValueUpdateRequest,
 )
 from app.services.personal_values import (
     get_personal_value_detail,
     get_personal_value_pool,
+    get_personal_value_rankings,
     save_personal_value_detail,
+    reset_personal_value_rankings,
     search_personal_value_players,
+    set_personal_value_rankings,
 )
 
 router = APIRouter()
@@ -81,3 +89,50 @@ async def save_personal_value_detail_endpoint(
         player_id=player_id,
         payload=body,
     )
+
+
+@router.get(
+    "/rankings",
+    response_model=PersonalValueRankingsResponse,
+)
+async def get_personal_value_rankings_endpoint(
+    league_id: str,
+    ctx: ContextDep,
+    position: str = Query(...),
+    scope: str = Query(default="current"),
+):
+    return await get_personal_value_rankings(
+        ctx=ctx,
+        league_id=league_id,
+        position=position,
+        scope=scope,
+    )
+
+
+@router.post(
+    "/rankings",
+    response_model=PersonalValueRankingsUpdateResponse,
+)
+async def set_personal_value_rankings_endpoint(
+    body: PersonalValueRankingsUpdateRequest,
+    ctx: ContextDep,
+):
+    return await set_personal_value_rankings(
+        ctx=ctx,
+        request=body,
+    )
+
+
+@router.post(
+    "/rankings/reset",
+    response_model=PersonalValueRankingsResetResponse,
+)
+async def reset_personal_value_rankings_endpoint(
+    body: PersonalValueRankingsResetRequest,
+    ctx: ContextDep,
+):
+    return await reset_personal_value_rankings(
+        ctx=ctx,
+        request=body,
+    )
+

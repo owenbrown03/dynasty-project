@@ -40,6 +40,7 @@ import {
 import { MyValuesMetricCard } from './MyValuesMetricCard';
 import { MyValuesPlayerHero } from './MyValuesPlayerHero';
 import { MyValuesPoolPanel } from './MyValuesPoolPanel';
+import { MyValuesRankingsBoard } from './MyValuesRankingsBoard';
 import { MyValuesSearchCard } from './MyValuesSearchCard';
 
 function getErrorMessage(
@@ -156,6 +157,9 @@ export const MyValuesPage = () => {
   const [editableSeasons, setEditableSeasons] = useState<
     PersonalProjectionSeasonItem[]
   >([]);
+  const [viewMode, setViewMode] = useState<
+    'editor' | 'rankings'
+  >('editor');
   const [futureProjectionMode, setFutureProjectionMode] =
     useState<FutureProjectionMode>('default');
   const [specificFutureYear, setSpecificFutureYear] = useState<
@@ -699,7 +703,39 @@ export const MyValuesPage = () => {
         </div>
       </section>
 
-      <section className="my-values-workspace">
+      <div className="my-values-view-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'editor'}
+          className={`my-values-view-tab${viewMode === 'editor' ? ' active' : ''}`}
+          onClick={() => setViewMode('editor')}
+        >
+          Editor
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'rankings'}
+          className={`my-values-view-tab${viewMode === 'rankings' ? ' active' : ''}`}
+          onClick={() => setViewMode('rankings')}
+        >
+          Rankings board
+        </button>
+      </div>
+
+      {viewMode === 'rankings' && (
+        <MyValuesRankingsBoard leagueId={leagueId || undefined} />
+      )}
+
+      <section
+        className="my-values-workspace"
+        style={
+          viewMode === 'rankings'
+            ? { display: 'none' }
+            : undefined
+        }
+      >
         <MyValuesPoolPanel
           leagueName={selectedLeagueName}
           fetching={pool.fetching}

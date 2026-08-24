@@ -55,6 +55,51 @@ class PersonalValuePlayer(Base):
     adp_value: float | None = None
 
 
+class PersonalValueRankingEntry(Base):
+    player_id: str
+    name: str
+    position: str
+    team: str | None = None
+    primary_rank: int | None = None
+    secondary_rank: int | None = None
+    is_customized: bool = False
+    has_divergent_future_years: bool = False
+
+
+class PersonalValueRankingsResponse(Base):
+    season: int
+    position: str
+    scope: str
+    entries: list[PersonalValueRankingEntry]
+
+
+class PersonalValueRankingUpdateEntry(Base):
+    player_id: str
+    primary_rank: int
+
+
+class PersonalValueRankingsUpdateRequest(Base):
+    league_id: str
+    position: str
+    scope: str
+    entries: list[PersonalValueRankingUpdateEntry]
+
+
+class PersonalValueRankingsUpdateResponse(Base):
+    updated: int
+
+
+class PersonalValueRankingsResetRequest(Base):
+    league_id: str
+    position: str | None = None
+    player_id: str | None = None
+
+
+class PersonalValueRankingsResetResponse(Base):
+    reset_players: int
+
+
+
 class PersonalValueDetailResponse(Base):
     context: PersonalValueLeagueContext
     player: PersonalValuePlayer

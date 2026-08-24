@@ -519,3 +519,24 @@
     align-items: start;
   }
 }
+
+
+.my-values-view-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.my-values-view-tab {
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+  background: transparent;
+  cursor: pointer;
+}
+
+.my-values-view-tab.active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 600;
+}

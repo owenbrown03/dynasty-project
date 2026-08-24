@@ -326,3 +326,44 @@ export function getPoolPlayerIds(
     poolItems.map((item) => item.player.player_id),
   );
 }
+
+
+export interface RankableEntry {
+  player_id: string;
+  primary_rank: number | null;
+}
+
+/**
+ * Moves the entry at fromIndex to toIndex within the ranked window,
+ * then reassigns the window's existing rank values in order so no
+ * other players' ranks change.
+ */
+export function moveRanking(
+  entries: RankableEntry[],
+  fromIndex: number,
+  toIndex: number,
+): RankableEntry[] {
+  if (
+    fromIndex === toIndex
+    || fromIndex < 0
+    || toIndex < 0
+    || fromIndex >= entries.length
+    || toIndex >= entries.length
+  ) {
+    return entries;
+  }
+
+  const next = [...entries];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+
+  const rankPool = entries
+    .map((entry) => entry.primary_rank)
+    .filter((rank): rank is number => rank !== null)
+    .sort((a, b) => a - b);
+
+  return next.map((entry, index) => ({
+    ...entry,
+    primary_rank: rankPool[index] ?? entry.primary_rank,
+  }));
+}

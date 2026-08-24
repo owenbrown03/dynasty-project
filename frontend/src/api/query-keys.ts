@@ -240,6 +240,17 @@ export const queryKeys = {
         playerId ?? null,
       ] as const,
     personalDetailRoot: ['personal-values-detail'] as const,
+    personalRankings: (
+      leagueId: string | undefined,
+      position: string,
+      scope: string,
+    ) =>
+      [
+        'personal-values-rankings',
+        leagueId ?? null,
+        position,
+        scope,
+      ] as const,
   },
 } as const;
 

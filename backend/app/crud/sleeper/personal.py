@@ -474,6 +474,37 @@ async def replace_personal_projection_outcomes(
     return new_rows
 
 
+async def delete_personal_projections(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    projection_ids: list[int],
+) -> int:
+    """Removes customization rows; absence means Underdog defaults."""
+    from sqlalchemy import delete
+
+    if not projection_ids:
+        return 0
+
+    await db.execute(
+        delete(PersonalProjectionOutcome).where(
+            PersonalProjectionOutcome.projection_id.in_(
+                projection_ids,
+            ),
+        ),
+    )
+    result = await db.execute(
+        delete(PersonalProjection).where(
+            PersonalProjection.id.in_(projection_ids),
+            PersonalProjection.site_user_id == site_user_id,
+        ),
+    )
+    await db.commit()
+
+    return result.rowcount or 0
+
+
+
 async def upsert_personal_projection(
     *,
     db: AsyncSession,

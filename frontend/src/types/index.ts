@@ -563,6 +563,51 @@ export interface PersonalValueLeagueContext {
   total_rosters: number;
 }
 
+export interface PersonalValueRankingEntry {
+  player_id: string;
+  name: string;
+  position: string;
+  team: string | null;
+  primary_rank: number | null;
+  secondary_rank: number | null;
+  is_customized: boolean;
+  has_divergent_future_years: boolean;
+}
+
+export interface PersonalValueRankingsResponse {
+  season: number;
+  position: string;
+  scope: string;
+  entries: PersonalValueRankingEntry[];
+}
+
+export interface PersonalValueRankingUpdateEntry {
+  player_id: string;
+  primary_rank: number;
+}
+
+export interface PersonalValueRankingsUpdateRequest {
+  league_id: string;
+  position: string;
+  scope: string;
+  entries: PersonalValueRankingUpdateEntry[];
+}
+
+export interface PersonalValueRankingsUpdateResponse {
+  updated: number;
+}
+
+export interface PersonalValueRankingsResetRequest {
+  league_id: string;
+  position?: string | null;
+  player_id?: string | null;
+}
+
+export interface PersonalValueRankingsResetResponse {
+  reset_players: number;
+}
+
+
 export interface PersonalValueDetail {
   context: PersonalValueLeagueContext;
   player: PersonalValuePlayer;
