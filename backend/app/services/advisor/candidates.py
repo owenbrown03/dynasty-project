@@ -38,6 +38,7 @@ from app.services.advisor.strategy import (
     detect_strategy,
     strategy_from_manager_note,
 )
+from app.services.trades.waiver import build_waiver_credit_ladder
 from app.services.advisor.trade_block import (
     get_trade_block_snapshot,
 )
@@ -55,7 +56,7 @@ MAX_LEAGUES = 6
 # Bumped whenever candidate-engine semantics change in a way that
 # should invalidate cached syntheses (value bases, constraint math,
 # package shapes). The synthesis cache identity includes this.
-ADVISOR_ENGINE_VERSION = 6
+ADVISOR_ENGINE_VERSION = 7
 
 # How many of my top market-value players count as "stars" for the
 # contender-lost-a-star injury directive.
@@ -454,6 +455,12 @@ async def _build_league_candidates(
         )
         waiver_ladder = []
 
+    war_ladder = _build_war_waiver_ladder(
+        items=list(items_by_player_id.values()),
+        total_rosters=pool.context.total_rosters,
+        roster_slots=league.roster_size,
+    )
+
 
     made_for_this_league = 0
     seen_target_ids: set[str] = set()
@@ -546,6 +553,12 @@ async def _build_league_candidates(
             ladder=waiver_ladder,
         )
 
+        my_credit_war, their_credit_war = split_waiver_credits(
+            my_players_out=len(package_players),
+            their_players_out=1,
+            ladder=war_ladder,
+        )
+
         if not _passes_value_constraints(
             market_send_total=market_send_total
             + (my_credit or 0.0),
@@ -553,6 +566,7 @@ async def _build_league_candidates(
             + (their_credit or 0.0),
             personal_send_total=personal_send_total,
             personal_receive_total=personal_receive_total,
+            my_waiver_credit_war=my_credit_war,
         ):
             continue
 
@@ -613,6 +627,8 @@ async def _build_league_candidates(
                 ),
                 my_waiver_credit=my_credit,
                 their_waiver_credit=their_credit,
+                my_waiver_credit_war=my_credit_war,
+                their_waiver_credit_war=their_credit_war,
             ),
         )
         made_for_this_league += 1
@@ -1257,11 +1273,13 @@ def _passes_value_constraints(
     market_receive_total: float,
     personal_send_total: float | None,
     personal_receive_total: float | None,
+    my_waiver_credit_war: float | None = None,
 ) -> bool:
     """Enforces the two-sided acceptance rules from the advisor spec.
 
     1. Counterparty-convincing: they receive at least even market value.
-    2. We win or tie on OUR value system (never lose personally).
+    2. We win or tie on OUR value system (never lose personally),
+       counting the bench-spot refill credit from our own value ladder.
     """
     if (
         market_send_total
@@ -1275,9 +1293,45 @@ def _passes_value_constraints(
     ):
         return False
 
+    personal_receive_adjusted = personal_receive_total + (
+        my_waiver_credit_war or 0.0
+    )
+
     return (
-        personal_receive_total
+        personal_receive_adjusted
         >= personal_send_total - PERSONAL_EDGE_TOLERANCE
+    )
+
+
+def _build_war_waiver_ladder(
+    *,
+    items: list[PersonalValuePoolItem],
+    total_rosters: int,
+    roster_slots: int,
+) -> list[float]:
+    """Waiver ladder denominated in the manager's own value system.
+
+    Same cutline and step semantics as the FC ladder, but ranks come
+    from personal-WAR ordering of the league's value pool instead of
+    FantasyCalc's published ranking.
+    """
+    values_by_rank: dict[int, float] = {}
+
+    ranked_items = sorted(
+        (
+            item
+            for item in items
+            if _personal_war(item) is not None
+        ),
+        key=lambda i: -(_personal_war(i) or 0.0),
+    )
+
+    for rank, item in enumerate(ranked_items, start=1):
+        values_by_rank[rank] = _personal_war(item)
+
+    return build_waiver_credit_ladder(
+        values_by_rank=values_by_rank,
+        cutline=total_rosters * roster_slots,
     )
 
 

@@ -494,41 +494,44 @@ function RecommendationCard({
                   : proposal.market_receive_total),
               )}
             </strong>
-            {proposal.their_waiver_credit ? (
+            {(proposal.my_waiver_credit
+              || proposal.their_waiver_credit) && (
               <span className="advisor-waiver-inline">
-                {' '}incl. +{Math.round(proposal.their_waiver_credit)}{' '}
-                waiver to them
+                {' '}incl. waiver credit{' '}
+                {proposal.my_waiver_credit
+                  ? `+${Math.round(proposal.my_waiver_credit)} to you`
+                  : `+${Math.round(proposal.their_waiver_credit ?? 0)} to them`}
               </span>
-            ) : null}
-            {proposal.my_waiver_credit ? (
-              <span className="advisor-waiver-inline">
-                {' '}incl. +{Math.round(proposal.my_waiver_credit)}{' '}
-                waiver to you
-              </span>
-            ) : null}
+            )}
           </span>
           <span>
             Your WAR total:{' '}
             <strong>
-              {formatValue(proposal.personal_send_total, ' W')} →{' '}
-              {formatValue(proposal.personal_receive_total, ' W')}
+              {formatValue(
+                (proposal.my_waiver_credit_war
+                  ? (proposal.personal_send_total ?? 0)
+                  : proposal.personal_send_total),
+                ' W',
+              )} →{' '}
+              {formatValue(
+                (proposal.my_waiver_credit_war
+                  ? (proposal.personal_receive_total ?? 0)
+                    + proposal.my_waiver_credit_war
+                  : proposal.personal_receive_total),
+                ' W',
+              )}
             </strong>
+            {(proposal.my_waiver_credit_war
+              || proposal.their_waiver_credit_war) && (
+              <span className="advisor-waiver-inline">
+                {' '}incl. waiver credit{' '}
+                {proposal.my_waiver_credit_war
+                  ? `+${proposal.my_waiver_credit_war.toFixed(2)} W to you`
+                  : `+${(proposal.their_waiver_credit_war ?? 0).toFixed(2)} W to them`}
+              </span>
+            )}
           </span>
         </footer>
-      )}
-
-      {proposal
-        && (proposal.my_waiver_credit
-          || proposal.their_waiver_credit) && (
-        <p className="advisor-waiver-note">
-          Incl. waiver-spot credit{' '}
-          {proposal.my_waiver_credit
-            ? `to you (+${Math.round(proposal.my_waiver_credit)})`
-            : `to ${proposal.counterparty_name} (+${Math.round(
-                proposal.their_waiver_credit ?? 0,
-              )})`}
-          {' '}for the uneven asset count.
-        </p>
       )}
 
       {proposal && <SendTradeSection proposal={proposal} />}

@@ -1336,6 +1336,8 @@ export interface AdvisorProposal {
   personal_receive_total: number | null;
   your_roster_id?: number | null;
   counterparty_roster_id?: number | null;
+  my_waiver_credit_war?: number | null;
+  their_waiver_credit_war?: number | null;
   strategy?: string | null;
   counterparty_strategy?: string | null;
   counterparty_strategy_reason?: string | null;

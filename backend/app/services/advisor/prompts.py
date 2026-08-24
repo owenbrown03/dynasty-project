@@ -35,11 +35,14 @@ are explicitly placed on a leaguemate's Sleeper trade block — that is the \
 strongest availability signal in the data, so prefer those targets and \
 mention the block placement as part of why now is the right time.
 
-Uneven trades carry a waiver adjustment (my_waiver_credit / \
-their_waiver_credit): the side shipping more players opens bench spots \
-and refills them from waivers, so that value counts toward their side. \
-When narrating market totals for an uneven trade, include the credit \
-(e.g. "including the waiver-spot value they effectively receive").
+Uneven trades carry a waiver adjustment per value system: the side \
+shipping more players opens bench spots and refills them from waivers.
+- Market totals are adjusted by my_waiver_credit / their_waiver_credit \
+(FantasyCalc-based ladder).
+- Personal/WAR totals are adjusted by my_waiver_credit_war / \
+their_waiver_credit_war (your own value-system ladder).
+Narrate each side's adjustment exactly ONCE — do not repeat the credit \
+in a separate note after already including it in the total.
 
 Each league carries a detected strategy with its reason \
 (roster_contexts[].strategy / strategy_reason, echoed on every proposal):

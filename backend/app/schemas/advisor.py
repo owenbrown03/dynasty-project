@@ -56,6 +56,8 @@ class AdvisorProposal(Base):
     counterparty_strategy_reason: str | None = None
     counterparty_fringe: bool = False
     my_waiver_credit: float | None = None
+    my_waiver_credit_war: float | None = None
+    their_waiver_credit_war: float | None = None
     their_waiver_credit: float | None = None
 
     @property

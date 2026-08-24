@@ -44,3 +44,10 @@ def test_system_prompt_encodes_injury_rules():
     assert "injury_status" in lowered
     assert "avoid_injured" in lowered
     assert "absolute" in lowered
+
+
+def test_system_prompt_describes_dual_waiver_ladders():
+    lowered = prompts.SYSTEM_PROMPT.lower()
+
+    assert "my_waiver_credit_war" in lowered
+    assert "once" in lowered
