@@ -382,6 +382,27 @@ async def _build_league_candidates(
                 ),
             )
 
+    # Rebuilder buy-low: season-altering injuries crater market prices
+    # on players whose dynasty value survives the year. Surface those
+    # discounted upside targets first when we are selling the present.
+    if strategy is not None and strategy.strategy == REBUILD:
+        injured_buy_ids = {
+            item.player.player_id
+            for item in buy_pool
+            if is_season_altering_injury(
+                item.player.injury_status,
+            )
+        }
+
+        if injured_buy_ids:
+            buy_pool.sort(
+                key=lambda i: (
+                    0
+                    if i.player.player_id in injured_buy_ids
+                    else 1
+                ),
+            )
+
     if not sell_pool or not buy_pool:
         return
 

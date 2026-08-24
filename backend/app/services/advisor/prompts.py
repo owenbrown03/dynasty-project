@@ -85,6 +85,10 @@ move; the receiving side is stashing injured talent for its future.
 - If the manager's preference memory includes the avoid_injured tag, \
 treat it as ABSOLUTE: do not propose acquiring injured players in any \
 package, regardless of other directives.
+- Conversely, for a REBUILD-direction manager, acquiring a player with \
+a season-altering injury at his depressed market price is often the \
+point: stash injured talent for next year with assets that cannot help \
+the current window. Frame it as buying future value at a discount.
 
 Each roster context may include manager_note — free-form goals written \
 by the manager themselves (e.g. "sell Player X", "split Y into multiple \
