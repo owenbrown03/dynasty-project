@@ -734,6 +734,8 @@ async def build_redraft_value_by_roster_id(
     def _basis_value(value) -> float:
         if basis == "fantasycalc":
             return value.fc_value or 0.0
+        if basis == "sleeper_projection":
+            return value.projected_points or 0.0
         if basis == "adp":
             return value.adp_value or 0.0
         return value.ktc_value or 0.0

@@ -17,6 +17,7 @@ class ValueBasis(StrEnum):
     ADP = "adp"
     SLEEPER_WAR = "sleeper_war"
     MY_WAR = "my_war"
+    SLEEPER_PROJECTION = "sleeper_projection"
 
     REDRAFT_STARTER_WAR = "redraft_starter_war"
     REDRAFT_ROSTER_WAR = "redraft_roster_war"

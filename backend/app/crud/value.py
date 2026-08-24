@@ -176,6 +176,12 @@ async def get_player_values(
                     else None
                 ),
 
+                projected_points=(
+                    redraft_war.projection
+                    if redraft_war is not None
+                    else None
+                ),
+
                 underdog_position_rank=(
                     underdog.position_rank
                     if underdog is not None

@@ -46,9 +46,9 @@ VALID_VALUE_PREFERENCES = {
 REDRAFT_VALUE_PREFERENCES = {
     "ktc",
     "fantasycalc",
-    "adp",
+    "sleeper_projection",
 }
-DEFAULT_REDRAFT_VALUE_PREFERENCE = "ktc"
+DEFAULT_REDRAFT_VALUE_PREFERENCE = "sleeper_projection"
 
 EMAIL_VERIFICATION_TTL_HOURS = 48
 

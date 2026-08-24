@@ -473,6 +473,7 @@ export type ValueBasis =
   | 'ktc'
   | 'fantasycalc'
   | 'adp'
+  | 'sleeper_projection'
   | 'sleeper_war'
   | 'my_war'
   | 'redraft_starter_war'

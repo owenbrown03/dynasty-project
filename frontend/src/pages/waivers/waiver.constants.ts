@@ -67,9 +67,9 @@ const REDRAFT_VALUE_BASIS_OPTIONS: Array<{
   value: ValueBasis;
   label: string;
 }> = [
+  { value: 'sleeper_projection', label: 'Sleeper projected points' },
   { value: 'ktc', label: 'KTC (redraft)' },
   { value: 'fantasycalc', label: 'FantasyCalc (redraft)' },
-  { value: 'adp', label: 'ADP Value' },
 ];
 
 export function getRedraftValueBasisOptions(): Array<{
