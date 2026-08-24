@@ -14,7 +14,6 @@ import type {
   DraftPickProjectionMethod,
   DraftPickProjectionPhaseMethod,
   DraftPickProjectionSettings,
-  FinanceProjectionSettings,
   ValueBasis,
   WarValueConfig,
   WarValueScope,
@@ -73,47 +72,6 @@ const DRAFT_PICK_PRE_SWITCH_OPTIONS: Array<{
   })),
 ];
 
-const FINANCE_PROJECTION_METHOD_OPTIONS: Array<{
-  value: DraftPickProjectionMethod;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'max_pf',
-    label: 'Max PF seed projection',
-    description: 'Projects stronger seeds to rosters with higher cumulative potential points, then uses points for and projected points as tiebreakers.',
-  },
-  {
-    value: 'reverse_standings',
-    label: 'Standings seed projection',
-    description: 'Projects stronger seeds from record first, then points for and projected points as tiebreakers.',
-  },
-  {
-    value: 'redraft_starter_war',
-    label: 'Starter WAR seed projection',
-    description: 'Projects stronger seeds to rosters with higher total redraft starter WAR.',
-  },
-  {
-    value: 'redraft_roster_war',
-    label: 'Roster WAR seed projection',
-    description: 'Projects stronger seeds to rosters with higher total redraft roster WAR.',
-  },
-];
-
-const FINANCE_PRE_SWITCH_OPTIONS: Array<{
-  value: DraftPickProjectionPhaseMethod;
-  label: string;
-}> = [
-  {
-    value: 'none',
-    label: 'No projection',
-  },
-  ...FINANCE_PROJECTION_METHOD_OPTIONS.map((option) => ({
-    value: option.value,
-    label: option.label,
-  })),
-];
-
 const DEFAULT_WAR_VALUE_SETTINGS: WarValueSettings = {
   sleeper_projection: {
     timeframe: 'dynasty',
@@ -123,18 +81,6 @@ const DEFAULT_WAR_VALUE_SETTINGS: WarValueSettings = {
     timeframe: 'dynasty',
     scope: 'roster',
   },
-};
-
-const DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS: DraftPickProjectionSettings = {
-  enabled: true,
-  switch_week: 4,
-  before_week_method: 'none',
-  from_week_method: 'max_pf',
-};
-
-const DEFAULT_FINANCE_PROJECTION_SETTINGS: FinanceProjectionSettings = {
-  same_as_draft_pick_projection: true,
-  settings: DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS,
 };
 
 const WAR_TIMEFRAME_OPTIONS: Array<{
@@ -203,10 +149,6 @@ export const SettingsModal = () => {
   const draftPickProjectionSettings = (
     bootstrap.data?.draft_pick_projection_settings
   );
-  const financeProjectionSettings = (
-    bootstrap.data?.finance_projection_settings
-    ?? DEFAULT_FINANCE_PROJECTION_SETTINGS
-  );
   const warValueSettings = (
     bootstrap.data?.war_value_settings
     ?? DEFAULT_WAR_VALUE_SETTINGS
@@ -262,31 +204,6 @@ export const SettingsModal = () => {
     },
   });
 
-  const updateFinanceProjectionSettings = useMutation({
-    mutationFn: api.auth.updateFinanceProjectionSettings,
-    onSuccess: async (response) => {
-      queryClient.setQueryData(
-        BOOTSTRAP_QUERY_KEY,
-        (current: Bootstrap | undefined | null) => {
-          if (!current) {
-            return current;
-          }
-
-          return {
-            ...current,
-            finance_projection_settings: response.data.settings,
-          };
-        },
-      );
-
-      await queryClient.invalidateQueries();
-      notify.success('Finance projection settings saved.');
-    },
-    onError: () => {
-      notify.error('Unable to save finance projection settings.');
-    },
-  });
-
   const saveDraftPickProjectionSettings = async (
     nextSettings: DraftPickProjectionSettings,
   ) => {
@@ -299,14 +216,6 @@ export const SettingsModal = () => {
     nextSettings: WarValueSettings,
   ) => {
     await updateWarValueSettings.mutateAsync(
-      nextSettings,
-    );
-  };
-
-  const saveFinanceProjectionSettings = async (
-    nextSettings: FinanceProjectionSettings,
-  ) => {
-    await updateFinanceProjectionSettings.mutateAsync(
       nextSettings,
     );
   };
@@ -514,6 +423,23 @@ export const SettingsModal = () => {
               </div>
             </div>
 
+          </div>
+        </section>
+
+        <section className="settings-card">
+          <div className="settings-card-header">
+            <div>
+              <p>Dynasty</p>
+              <h2>Dynasty value system</h2>
+            </div>
+          </div>
+
+          <div className="settings-note">
+            The market prices used for dynasty trades, waivers, and
+            roster valuation everywhere on the site.
+          </div>
+
+          <div className="settings-grid">
             <label className="settings-field">
               <span>Dynasty value system</span>
               <select
@@ -539,49 +465,29 @@ export const SettingsModal = () => {
                 }
               </select>
             </label>
-
           </div>
         </section>
 
         <section className="settings-card">
           <div className="settings-card-header">
             <div>
-              <p>Draft picks</p>
-              <h2>Future pick projection</h2>
+              <p>Redraft</p>
+              <h2>Redraft projection</h2>
             </div>
           </div>
 
           <div className="settings-note">
-            These rules determine whether next-year pick slots are projected, what method is used before a threshold week, and what method is used after that threshold.
+            Projects how rosters will finish in redraft, using the
+            method you pick before the threshold week and after it.
+            Set both to the same method to always use one. This drives:
           </div>
+          <ul className="settings-applies-list">
+            <li>Advisor contention &amp; fringe-contender bands</li>
+            <li>Future pick projection</li>
+            <li>Season payout projection</li>
+          </ul>
 
           <div className="settings-grid">
-            <label className="settings-field settings-toggle-field">
-              <span>Enable projections</span>
-              <input
-                type="checkbox"
-                checked={draftPickProjectionSettings?.enabled ?? true}
-                disabled={updateDraftPickProjectionSettings.isPending}
-                onChange={(event) => {
-                  void saveDraftPickProjectionSettings({
-                    enabled: event.target.checked,
-                    switch_week: (
-                      draftPickProjectionSettings?.switch_week
-                      ?? 4
-                    ),
-                    before_week_method: (
-                      draftPickProjectionSettings?.before_week_method
-                      ?? 'none'
-                    ),
-                    from_week_method: (
-                      draftPickProjectionSettings?.from_week_method
-                      ?? 'max_pf'
-                    ),
-                  });
-                }}
-              />
-            </label>
-
             <label className="settings-field">
               <span>Switch methods in week</span>
               <input
@@ -603,7 +509,7 @@ export const SettingsModal = () => {
                     ),
                     from_week_method: (
                       draftPickProjectionSettings?.from_week_method
-                      ?? 'max_pf'
+                      ?? 'redraft_value_system'
                     ),
                   });
                 }}
@@ -632,7 +538,7 @@ export const SettingsModal = () => {
                     ),
                     from_week_method: (
                       draftPickProjectionSettings?.from_week_method
-                      ?? 'max_pf'
+                      ?? 'redraft_value_system'
                     ),
                   });
                 }}
@@ -689,41 +595,6 @@ export const SettingsModal = () => {
             </label>
           </div>
 
-          <div className="settings-method-list">
-            {
-              DRAFT_PICK_PROJECTION_METHOD_OPTIONS.map((option) => (
-                <div
-                  key={option.value}
-                  className="settings-method-option"
-                >
-                  <div>
-                    <strong>{option.label}</strong>
-                    <span>{option.description}</span>
-                  </div>
-                </div>
-              ))
-            }
-          </div>
-        </section>
-
-        <section className="settings-card">
-          <div className="settings-card-header">
-            <div>
-              <p>Valuation</p>
-              <h2>Redraft projection</h2>
-            </div>
-          </div>
-
-          <div className="settings-note">
-            Your redraft value system projects how rosters will finish in
-            redraft. It drives everything that projects a redraft finish:
-          </div>
-          <ul className="settings-applies-list">
-            <li>Advisor contention &amp; fringe-contender bands</li>
-            <li>Future pick projection (default method)</li>
-            <li>Season payout projection</li>
-          </ul>
-
           <div className="settings-grid">
             <label className="settings-field">
               <span>Redraft value system</span>
@@ -751,181 +622,30 @@ export const SettingsModal = () => {
               </select>
             </label>
           </div>
-        </section>
 
-        <section className="settings-card">
-          <div className="settings-card-header">
-            <div>
-              <p>Finance</p>
-              <h2>Season payout projection</h2>
-            </div>
+          <div className="settings-note">
+            The redraft value system ranks rosters for the
+            &ldquo;Redraft value system&rdquo; method below.
           </div>
 
-          {
-            !(bootstrap.data?.authenticated ?? false)
-              ? (
-                <div className="settings-note">
-                  Sign in to make projection customizations.
+          <div className="settings-method-list">
+            {
+              DRAFT_PICK_PROJECTION_METHOD_OPTIONS.map((option) => (
+                <div
+                  key={option.value}
+                  className="settings-method-option"
+                >
+                  <div>
+                    <strong>{option.label}</strong>
+                    <span>{option.description}</span>
+                  </div>
                 </div>
-              )
-              : (
-                <>
-                  <div className="settings-note">
-                    Choose whether dashboard and finance projections should follow your future pick projection rules or use their own rule set. Draft picks use reverse ordering to decide `1.01`, while finance uses the same method family to project the strongest current-year seed and payout.
-                  </div>
-
-                  <div className="settings-grid">
-                    <label className="settings-field settings-toggle-field">
-                      <span>Same as future pick projection</span>
-                      <input
-                        type="checkbox"
-                        checked={financeProjectionSettings.same_as_draft_pick_projection}
-                        disabled={updateFinanceProjectionSettings.isPending}
-                        onChange={(event) => {
-                          void saveFinanceProjectionSettings({
-                            same_as_draft_pick_projection: event.target.checked,
-                            settings: financeProjectionSettings.settings,
-                          });
-                        }}
-                      />
-                    </label>
-                  </div>
-
-                  {
-                    financeProjectionSettings.same_as_draft_pick_projection
-                      ? null
-                      : (
-                        <>
-                          <div className="settings-grid">
-                            <label className="settings-field settings-toggle-field">
-                              <span>Enable projections</span>
-                              <input
-                                type="checkbox"
-                                checked={financeProjectionSettings.settings.enabled}
-                                disabled={updateFinanceProjectionSettings.isPending}
-                                onChange={(event) => {
-                                  void saveFinanceProjectionSettings({
-                                    same_as_draft_pick_projection: false,
-                                    settings: {
-                                      ...financeProjectionSettings.settings,
-                                      enabled: event.target.checked,
-                                    },
-                                  });
-                                }}
-                              />
-                            </label>
-
-                            <label className="settings-field">
-                              <span>Switch methods in week</span>
-                              <input
-                                type="number"
-                                min={1}
-                                max={18}
-                                value={financeProjectionSettings.settings.switch_week}
-                                disabled={updateFinanceProjectionSettings.isPending}
-                                onChange={(event) => {
-                                  void saveFinanceProjectionSettings({
-                                    same_as_draft_pick_projection: false,
-                                    settings: {
-                                      ...financeProjectionSettings.settings,
-                                      switch_week: Number(event.target.value),
-                                    },
-                                  });
-                                }}
-                              />
-                            </label>
-                          </div>
-
-                          <div className="settings-grid">
-                            <label className="settings-field">
-                              <span>Before week {financeProjectionSettings.settings.switch_week}</span>
-                              <select
-                                value={financeProjectionSettings.settings.before_week_method}
-                                disabled={updateFinanceProjectionSettings.isPending}
-                                onChange={(event) => {
-                                  void saveFinanceProjectionSettings({
-                                    same_as_draft_pick_projection: false,
-                                    settings: {
-                                      ...financeProjectionSettings.settings,
-                                      before_week_method: (
-                                        event.target.value as DraftPickProjectionPhaseMethod
-                                      ),
-                                    },
-                                  });
-                                }}
-                              >
-                                {
-                                  FINANCE_PRE_SWITCH_OPTIONS.map((option) => (
-                                    <option
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </option>
-                                  ))
-                                }
-                              </select>
-                            </label>
-
-                            <label className="settings-field">
-                              <span>Week {financeProjectionSettings.settings.switch_week} and later</span>
-                              <select
-                                value={financeProjectionSettings.settings.from_week_method}
-                                disabled={updateFinanceProjectionSettings.isPending}
-                                onChange={(event) => {
-                                  void saveFinanceProjectionSettings({
-                                    same_as_draft_pick_projection: false,
-                                    settings: {
-                                      ...financeProjectionSettings.settings,
-                                      from_week_method: (
-                                        event.target.value as DraftPickProjectionMethod
-                                      ),
-                                    },
-                                  });
-                                }}
-                              >
-                                {
-                                  FINANCE_PROJECTION_METHOD_OPTIONS.map((option) => (
-                                    <option
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </option>
-                                  ))
-                                }
-                              </select>
-                            </label>
-                          </div>
-
-                          <div className="settings-method-list">
-                            {
-                              FINANCE_PROJECTION_METHOD_OPTIONS.map((option) => (
-                                <div
-                                  key={option.value}
-                                  className="settings-method-option"
-                                >
-                                  <span
-                                    className="settings-method-swatch"
-                                    aria-hidden="true"
-                                  />
-
-                                  <div>
-                                    <strong>{option.label}</strong>
-                                    <span>{option.description}</span>
-                                  </div>
-                                </div>
-                              ))
-                            }
-                          </div>
-                        </>
-                      )
-                  }
-                </>
-              )
-          }
+              ))
+            }
+          </div>
         </section>
-      </div>
+
+              </div>
     </div>
   );
 };
