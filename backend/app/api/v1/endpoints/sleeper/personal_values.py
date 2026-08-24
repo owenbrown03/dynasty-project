@@ -52,10 +52,12 @@ async def search_personal_values_players_endpoint(
 async def get_personal_value_pool_endpoint(
     league_id: str,
     ctx: ContextDep,
+    value_context: str = Query(default="dynasty"),
 ):
     return await get_personal_value_pool(
         ctx=ctx,
         league_id=league_id,
+        value_context=value_context,
     )
 
 
@@ -67,11 +69,13 @@ async def get_personal_value_detail_endpoint(
     player_id: str,
     league_id: str,
     ctx: ContextDep,
+    value_context: str = Query(default="dynasty"),
 ):
     return await get_personal_value_detail(
         ctx=ctx,
         league_id=league_id,
         player_id=player_id,
+        value_context=value_context,
     )
 
 

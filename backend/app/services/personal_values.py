@@ -682,6 +682,7 @@ async def _load_market_values_by_player_id(
     ctx: Context,
     league,
     player_ids: list[str] | None = None,
+    value_context: str = "dynasty",
 ) -> dict[str, _MarketSnapshot]:
     shared = await war_service.load_shared_data(
         ctx.db,
@@ -722,6 +723,7 @@ async def _load_market_values_by_player_id(
         ],
         redraft_war_players=war_players,
         dynasty_war_by_player_id=dynasty_war_by_player_id,
+        value_context=value_context,
     )
 
     return {
@@ -1048,10 +1050,19 @@ async def get_personal_value_detail(
     ctx: Context,
     league_id: str,
     player_id: str,
+    value_context: str = "dynasty",
 ) -> PersonalValueDetailResponse:
     _require_personal_values_context(
         ctx,
     )
+
+    if value_context not in {"dynasty", "redraft"}:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail="value_context must be 'dynasty' or 'redraft'.",
+        )
 
     league = await _resolve_league_context(
         ctx=ctx,
@@ -1103,6 +1114,7 @@ async def get_personal_value_detail(
         ctx=ctx,
         league=league,
         player_ids=[player.player_id],
+        value_context=value_context,
     )
     market_snapshot = market_snapshots_by_player_id.get(
         player.player_id,
@@ -1149,10 +1161,19 @@ async def get_personal_value_pool(
     *,
     ctx: Context,
     league_id: str,
+    value_context: str = "dynasty",
 ) -> PersonalValuePoolResponse:
     _require_personal_values_context(
         ctx,
     )
+
+    if value_context not in {"dynasty", "redraft"}:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail="value_context must be 'dynasty' or 'redraft'.",
+        )
 
     league = await _resolve_league_context(
         ctx=ctx,
@@ -1167,6 +1188,7 @@ async def get_personal_value_pool(
     market_snapshots_by_player_id = await _load_market_values_by_player_id(
         ctx=ctx,
         league=league,
+        value_context=value_context,
     )
     player_ids = list(
         market_snapshots_by_player_id.keys(),
