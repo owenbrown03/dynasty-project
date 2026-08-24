@@ -12,7 +12,6 @@ import { VALUE_BASIS_OPTIONS } from '@/pages/waivers/waiver.constants';
  */
 export const LEAGUE_CONTEXT_VALUE_BASES: ValueBasis[] = [
   'sleeper_war',
-  'my_war',
   'my_roster_war',
   'my_starter_war',
   'dynasty_roster_war',
@@ -41,7 +40,6 @@ export const TIER_SOURCE_OPTIONS: Array<{
 
 const LEAGUE_CONTEXT_LABELS: Partial<Record<ValueBasis, string>> = {
   sleeper_war: 'Sleeper WAR',
-  my_war: 'My WAR',
   my_roster_war: 'My Roster WAR',
   my_starter_war: 'My Starter WAR',
   dynasty_roster_war: 'Sleeper Projection Roster WAR',
@@ -49,9 +47,9 @@ const LEAGUE_CONTEXT_LABELS: Partial<Record<ValueBasis, string>> = {
   sleeper_projection: 'Sleeper projected points',
 };
 
-// Built from the league-context set directly so legacy stored
-// preferences (sleeper_war / my_war) remain selectable even though
-// they are no longer part of the main picker pool.
+// Built from the league-context set directly so the legacy
+// sleeper_war basis remains selectable under League WAR even though
+// it is no longer part of the main picker pool.
 export const WAR_ONLY_OPTIONS = LEAGUE_CONTEXT_VALUE_BASES.map(
   (value) => ({
     value,

@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.war.redraft.singleton import war_service
+from app.services.values.basis import VALUE_BASIS_SPECS
 from app.core.concurrency import heavy_work_semaphore
 from app.core.context import Context
 from app.crud.sleeper.player import (
@@ -116,19 +117,13 @@ async def load_player_values_for_basis(
     season: int,
     cheap: bool = False,
 ) -> list[PlayerValue]:
-    # WAR-family bases are computed from a league's redraft context;
-    # without a league there is nothing to compute against.
-    league_context_bases = {
-        ValueBasis.SLEEPER_WAR,
-        ValueBasis.MY_WAR,
-        ValueBasis.MY_ROSTER_WAR,
-        ValueBasis.MY_STARTER_WAR,
-        ValueBasis.DYNASTY_ROSTER_WAR,
-        ValueBasis.DYNASTY_STARTER_WAR,
-        ValueBasis.SLEEPER_PROJECTION,
-    }
-
-    if league is None and value_basis in league_context_bases:
+    # Bases flagged needs_league_context compute from a league's
+    # redraft context; without a league there is nothing to compute
+    # against.
+    if (
+        league is None
+        and VALUE_BASIS_SPECS[value_basis].needs_league_context
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -174,12 +169,9 @@ async def load_player_values_for_basis(
 
         dynasty_war_by_player_id = {}
 
-        if value_basis in {
-            ValueBasis.DYNASTY_STARTER_WAR,
-            ValueBasis.DYNASTY_ROSTER_WAR,
-            ValueBasis.SLEEPER_WAR,
-            ValueBasis.MY_WAR,
-        }:
+        if (
+            VALUE_BASIS_SPECS[value_basis].needs_dynasty_projections
+        ):
             dynasty_war_by_player_id = (
                 await build_dynasty_values_by_player_id(
                     redis=redis,
@@ -194,7 +186,10 @@ async def load_player_values_for_basis(
             dynasty_war_by_player_id=dynasty_war_by_player_id,
         )
 
-        if value_basis == ValueBasis.MY_WAR and league is not None:
+        if (
+            VALUE_BASIS_SPECS[value_basis].needs_personal_hydration
+            and league is not None
+        ):
             player_values = await hydrate_personal_player_values(
                 db=db,
                 site_user_id=site_user_id,
@@ -305,14 +300,7 @@ async def get_player_tier_board(
     war_context = "global"
     league = None
 
-    if value_basis in {
-        ValueBasis.REDRAFT_STARTER_WAR,
-        ValueBasis.REDRAFT_ROSTER_WAR,
-        ValueBasis.DYNASTY_STARTER_WAR,
-        ValueBasis.DYNASTY_ROSTER_WAR,
-        ValueBasis.SLEEPER_WAR,
-        ValueBasis.MY_WAR,
-    }:
+    if VALUE_BASIS_SPECS[value_basis].needs_league_context:
         if league_id:
             league = await resolve_league_war_context(
                 ctx=ctx,
