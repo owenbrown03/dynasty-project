@@ -358,7 +358,7 @@ export function RosterCard({
                           Proj {row.projectedPoints.toFixed(1)}
                         </span>
                         <span>
-                          {valueLabel} {row.selectedValue.toFixed(1)}
+                          {selectedValueLabel} {row.selectedValue.toFixed(1)}
                         </span>
                         <span>
                           {row.warShare.toFixed(1)}
