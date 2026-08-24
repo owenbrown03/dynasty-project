@@ -43,12 +43,14 @@ function prettySlotLabel(slot: string | null | undefined): string {
 
 interface Props {
   players: LeaguePlayer[];
+  emptyStarterSlots?: string[] | null;
   valueBasis: ValueBasis;
   warValueSettings: WarValueSettings;
 }
 
 export function PlayerTable({
   players,
+  emptyStarterSlots,
   valueBasis,
   warValueSettings,
 }: Props) {
@@ -77,6 +79,22 @@ export function PlayerTable({
       <tbody>
         {players.map((player, index) => (
           <Fragment key={player.player_id}>
+            {index === firstBenchIndex
+              && firstBenchIndex > 0
+              && (emptyStarterSlots ?? []).length > 0
+              && (emptyStarterSlots ?? []).map((slot) => (
+                <tr
+                  key={`empty-${slot}`}
+                  className="player-table-row-empty"
+                >
+                  <td className="player-table-slot-cell">
+                    {prettySlotLabel(slot)}
+                  </td>
+                  <td colSpan={6}>
+                    Empty — fill this slot on Sleeper
+                  </td>
+                </tr>
+              ))}
             {index === firstBenchIndex && firstBenchIndex > 0 && (
               <tr className="player-table-divider">
                 <td colSpan={7}>Bench</td>

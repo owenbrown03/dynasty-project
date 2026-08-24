@@ -877,6 +877,7 @@ class LeagueDetails:
             player.player_id: player
             for player in player_values
         }
+        empty_starter_slots_by_roster_id: dict[int, list[str]] = {}
         roster_players_by_roster_id: dict[
             int,
             list[LeaguePlayer],
@@ -933,12 +934,42 @@ class LeagueDetails:
             reserve_ids = set(roster.reserve or [])
             taxi_ids = set(roster.taxi or [])
 
+            # Sleeper's starters array is NOT guaranteed to align with
+            # roster_positions order, and vacant lineup slots come back
+            # as a "0" placeholder. Assign slots by eligibility instead
+            # of raw index: exact position matches first, then flex.
+            open_slots = list(starting_slots)
+            slot_assignment: dict[str, str] = {}
+
+            for pid in roster.starters or []:
+                if pid == "0":
+                    continue
+                player = player_map.get(pid)
+                if player is None:
+                    continue
+                for i, slot in enumerate(open_slots):
+                    if slot == player.position:
+                        slot_assignment[pid] = slot
+                        open_slots.pop(i)
+                        break
+
+            for pid in roster.starters or []:
+                if pid in slot_assignment or pid == "0":
+                    continue
+                player = player_map.get(pid)
+                if player is None:
+                    continue
+                for i, slot in enumerate(open_slots):
+                    if is_slot_eligible(slot, player.position):
+                        slot_assignment[pid] = slot
+                        open_slots.pop(i)
+                        break
+
+            empty_starter_slots = list(open_slots)
+
             def _resolve_slot(player_id: str) -> str | None:
                 if player_id in starter_ids:
-                    index = starter_order.get(player_id)
-                    if index is not None and index < len(starting_slots):
-                        return starting_slots[index]
-                    return None
+                    return slot_assignment.get(player_id)
                 if player_id in reserve_ids:
                     return "IR"
                 if player_id in taxi_ids:
@@ -1002,6 +1033,9 @@ class LeagueDetails:
             roster_players_by_roster_id[
                 roster.roster_id
             ] = roster_players
+            empty_starter_slots_by_roster_id[
+                roster.roster_id
+            ] = empty_starter_slots
             projected_points_by_roster_id[
                 roster.roster_id
             ] = calculate_projected_starter_points(
@@ -1274,6 +1308,12 @@ class LeagueDetails:
 
             rosters.append(
                 LeagueRoster(
+                    empty_starter_slots=(
+                        empty_starter_slots_by_roster_id.get(
+                            roster.roster_id,
+                            [],
+                        )
+                    ),
                     roster_id=roster.roster_id,
                     owner=LeagueOwner(
                         user_id=owner.user_id if owner else None,

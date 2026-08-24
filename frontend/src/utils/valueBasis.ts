@@ -326,7 +326,7 @@ export function getPickValueLabel(
     case 'fantasycalc':
       return 'FantasyCalc Pick Value';
     default:
-      return 'Rookie Pick WAR';
+      return 'WAR';
   }
 }
 

@@ -134,14 +134,19 @@ export function useAdvisorRecommendations(
 }
 
 
-export function useAdvisorDirectives() {
+export function useAdvisorDirectives(options?: {
+  leagueId?: string;
+}) {
   const { username } = useSleeperConnection();
+  const leagueId = options?.leagueId;
 
   const query = useQuery({
-    queryKey: queryKeys.advisor.directives(username),
+    queryKey: [...queryKeys.advisor.directives(username), leagueId ?? null],
     queryFn: async () => {
       if (!username) return null;
-      const response = await api.advisor.getDirectives(username);
+      const response = await api.advisor.getDirectives(username, {
+        leagueId,
+      });
       return response.data;
     },
     enabled: !!username,

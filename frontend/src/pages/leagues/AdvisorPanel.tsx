@@ -654,8 +654,8 @@ function DirectiveDropChip({
   );
 }
 
-function AdvisorDirectives() {
-  const { directives, loading } = useAdvisorDirectives();
+function AdvisorDirectives({ leagueId }: { leagueId: string }) {
+  const { directives, loading } = useAdvisorDirectives({ leagueId });
 
   if (loading || directives.length === 0) {
     return null;
@@ -758,7 +758,7 @@ export const AdvisorPanel = ({
           </div>
         )}
 
-        <AdvisorDirectives />
+        <AdvisorDirectives leagueId={leagueId} />
 
         <button
           type="button"
@@ -808,7 +808,7 @@ export const AdvisorPanel = ({
         </div>
       )}
 
-      <AdvisorDirectives />
+      <AdvisorDirectives leagueId={leagueId} />
 
       {hasContent ? (
         <>

@@ -80,6 +80,9 @@ class LeagueRoster(BaseModel):
         default_factory=dict,
     )
     players: list[LeaguePlayer]
+    empty_starter_slots: list[str] = Field(
+        default_factory=list,
+    )
     picks: list[LeaguePick]
 
 

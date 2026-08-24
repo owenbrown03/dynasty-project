@@ -117,8 +117,6 @@ function PickList({
 
             <div className="league-pick-values">
               <span>
-                {getPickValueLabel(valueBasis)}
-                {' '}
                 {
                   formatNumber(
                     getPickSelectedValue(
@@ -133,6 +131,8 @@ function PickList({
                       : 2,
                   )
                 }
+                {' '}
+                {getPickValueLabel(valueBasis)}
               </span>
             </div>
           </div>
@@ -386,6 +386,7 @@ export function RosterCard({
 
                 <PlayerTable
                   players={roster.players}
+                  emptyStarterSlots={roster.empty_starter_slots}
                   valueBasis={valueBasis}
                   warValueSettings={warValueSettings}
                 />

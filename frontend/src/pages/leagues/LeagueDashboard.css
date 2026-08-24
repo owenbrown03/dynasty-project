@@ -112,3 +112,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.league-dashboard.focused {
+  border-color: var(--color-accent);
+}

@@ -384,6 +384,7 @@ export interface LeagueRoster {
 
   players: LeaguePlayer[];
   picks: LeaguePick[];
+  empty_starter_slots?: string[] | null;
 }
 
 export interface LeagueRosterConstructionTarget {

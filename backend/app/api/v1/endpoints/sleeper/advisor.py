@@ -70,7 +70,7 @@ async def _load_preferences(
 async def get_advisor_directives_endpoint(
     username: str,
     ctx: ContextDep,
-    value_basis: str = "ktc",
+    league_id: str | None = None,
 ) -> AdvisorDirectivesResponse:
     """Deterministic roster directives (over-limit alerts).
 
@@ -87,7 +87,7 @@ async def get_advisor_directives_endpoint(
     return await build_advisor_directives(
         ctx,
         username,
-        value_basis=value_basis,
+        league_id=league_id,
     )
 
 

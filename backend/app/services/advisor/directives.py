@@ -15,33 +15,19 @@ from app.services.personal_values import get_personal_value_pool
 
 logger = logging.getLogger(__name__)
 
-# Cheap deterministic drop-candidate ranking: prefer the requested
-# basis, fall back to the other market source, then to zero so a
-# player missing both values still sorts as a cut candidate rather
-# than crashing the directive.
-_VALUE_SOURCES = {
-    "ktc": lambda item: item.player.ktc_value,
-    "fantasycalc": lambda item: item.player.fc_value,
-}
+def _drop_value(item: PersonalValuePoolItem) -> float:
+    """Drop-candidate ranking: the manager's OWN value system.
 
+    Lowest personal WAR gets cut first. Players missing personal
+    values sort as pure cut candidates rather than crashing.
+    """
+    metrics = item.custom_values
 
-def _drop_value(
-    item: PersonalValuePoolItem,
-    value_basis: str,
-) -> float:
-    primary = _VALUE_SOURCES.get(value_basis, _VALUE_SOURCES["ktc"])
-    secondary = (
-        _VALUE_SOURCES["fantasycalc"]
-        if value_basis != "fantasycalc"
-        else _VALUE_SOURCES["ktc"]
-    )
+    war = getattr(metrics, "dynasty_roster_war", None)
+    if war is None:
+        war = getattr(metrics, "redraft_roster_war", None)
 
-    for source in (primary, secondary):
-        value = source(item)
-        if value is not None:
-            return float(value)
-
-    return 0.0
+    return float(war) if war is not None else 0.0
 
 
 def _to_ref(item: PersonalValuePoolItem) -> AdvisorPlayerRef:
@@ -63,7 +49,7 @@ async def build_advisor_directives(
     ctx,
     username: str,
     *,
-    value_basis: str = "ktc",
+    league_id: str | None = None,
 ) -> AdvisorDirectivesResponse:
     """Deterministic roster directives across the user's leagues.
 
@@ -84,6 +70,13 @@ async def build_advisor_directives(
             ctx.site_user.id if ctx.site_user else None
         ),
     )
+
+    if league_id is not None:
+        rows = [
+            row
+            for row in rows
+            if row.league.league_id == league_id
+        ]
 
     directives: list[AdvisorDirective] = []
 
@@ -133,7 +126,7 @@ async def build_advisor_directives(
         drops = sorted(
             candidates,
             key=lambda item: (
-                _drop_value(item, value_basis),
+                _drop_value(item),
                 item.player.name,
             ),
         )[:over_by]

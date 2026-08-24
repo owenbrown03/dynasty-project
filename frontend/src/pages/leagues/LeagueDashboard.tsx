@@ -13,6 +13,7 @@ import { AdvisorPanel } from './AdvisorPanel';
 
 interface Props {
   league: LeagueDetails | null;
+  isFocused?: boolean;
   leagueFallback: {
     league_id: string;
     league_name: string;
@@ -45,6 +46,7 @@ function normalizeLeagueSortBasis(
 
 export function LeagueDashboard({
   league,
+  isFocused,
   leagueFallback,
   activeTab,
   onTabChange,
@@ -56,7 +58,13 @@ export function LeagueDashboard({
   );
 
   return (
-    <div className="league-dashboard">
+    <div
+      className={
+        isFocused
+          ? 'league-dashboard focused'
+          : 'league-dashboard'
+      }
+    >
       <div className="league-dashboard-toolbar">
         <div className="league-dashboard-tabs" role="tablist" aria-label="League dashboard tabs">
           <button

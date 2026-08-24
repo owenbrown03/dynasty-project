@@ -77,3 +77,9 @@
     min-width: 140px;
   }
 }
+
+
+.player-table-row-empty td {
+  font-style: italic;
+  opacity: 0.65;
+}

@@ -14,7 +14,7 @@ export const advisorEndpoints = (
   getDirectives: (
     username: string,
     options?: {
-      valueBasis?: string;
+      leagueId?: string;
       signal?: AbortSignal;
     },
   ) =>
@@ -22,8 +22,8 @@ export const advisorEndpoints = (
       `${prefix}/${username}/directives`,
       {
         params: {
-          ...(options?.valueBasis
-            ? { value_basis: options.valueBasis }
+          ...(options?.leagueId
+            ? { league_id: options.leagueId }
             : {}),
         },
         signal: options?.signal,

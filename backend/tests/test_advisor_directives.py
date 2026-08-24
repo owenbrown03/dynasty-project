@@ -18,19 +18,18 @@ from app.services.advisor.directives import (
 def _item(
     player_id: str,
     name: str,
-    ktc=None,
-    fc=None,
+    war=None,
 ) -> PersonalValuePoolItem:
     return PersonalValuePoolItem(
         player=PersonalValuePlayer(
             player_id=player_id,
             name=name,
             position="RB",
-            ktc_value=ktc,
-            fc_value=fc,
         ),
         market_values=PersonalValueMetrics(),
-        custom_values=PersonalValueMetrics(),
+        custom_values=PersonalValueMetrics(
+            dynasty_roster_war=war,
+        ),
         delta_values=PersonalValueMetrics(),
     )
 
@@ -64,13 +63,10 @@ def _league(league_id: str, *, best_ball: bool, roster_size: int) -> League:
     )
 
 
-def test_drop_value_fallback_chain():
-    assert _drop_value(_item("1", "A", ktc=100, fc=90), "ktc") == 100
-    assert _drop_value(_item("2", "B", ktc=None, fc=90), "ktc") == 90
-    # Requesting fantasycalc falls back to ktc when fc missing.
-    assert _drop_value(_item("3", "C", ktc=55, fc=None), "fantasycalc") == 55
-    # Missing both values sorts as a cut candidate, not an error.
-    assert _drop_value(_item("4", "D", ktc=None, fc=None), "ktc") == 0.0
+def test_drop_value_uses_personal_war():
+    assert _drop_value(_item("1", "A", war=3.5)) == 3.5
+    # Missing personal values sort as cut candidates, not errors.
+    assert _drop_value(_item("2", "B", war=None)) == 0.0
 
 
 def _ctx() -> SimpleNamespace:
@@ -82,8 +78,8 @@ def _ctx() -> SimpleNamespace:
 
 
 def test_standard_league_excludes_parked_players_from_drops(monkeypatch):
-    low = _item("p-low", "Low Value Guy", ktc=10)
-    stash = _item("p-stash", "IR Stash Guy", ktc=200)
+    low = _item("p-low", "Low Value Guy", war=0.5)
+    stash = _item("p-stash", "IR Stash Guy", war=9.0)
 
     # Standard league: capacity = effective roster size (2) +
     # occupied reserve (1) = 3. Three rostered players -> NOT over
@@ -95,7 +91,7 @@ def test_standard_league_excludes_parked_players_from_drops(monkeypatch):
             roster=Roster(
                 roster_id=1,
                 league_id="standard-1",
-                players=["p-low", "p-mid-missing", "p-stash"],
+                players=["p-low", "p-unknown", "p-stash"],
                 reserve=["p-stash"],
             ),
         ),
@@ -126,9 +122,9 @@ def test_standard_league_excludes_parked_players_from_drops(monkeypatch):
 def test_best_ball_counts_parked_players_and_over_limit_drops_lowest(
     monkeypatch,
 ):
-    low = _item("p-low", "Low Value Guy", ktc=10)
-    mid = _item("p-mid", "Mid Guy", ktc=50)
-    high = _item("p-high", "High Guy", ktc=900)
+    low = _item("p-low", "Low Value Guy", war=0.5)
+    mid = _item("p-mid", "Mid Guy", war=2.0)
+    high = _item("p-high", "High Guy", war=12.0)
 
     # Best ball: capacity == roster_size regardless of reserve. With
     # roster_size 2 and three rostered players -> over by 1; the

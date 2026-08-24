@@ -92,20 +92,6 @@ export const LeaguesPage = () => {
         league.league_id === selectedLeague
     ) ?? null;
 
-  const selectorLeagues = useMemo(
-    () => [
-      ...overview.data.filter(
-        (league) =>
-          league.is_focused
-      ),
-      ...overview.data.filter(
-        (league) =>
-          !league.is_focused
-      ),
-    ],
-    [overview.data],
-  );
-
   useEffect(() => {
     if (!overview.data.length) {
       return;
@@ -219,7 +205,7 @@ export const LeaguesPage = () => {
           <div className="leagues-selector-top-row">
             <LeagueSelector
               leagues={
-                selectorLeagues
+                overview.data
               }
               selectedLeague={
                 selectedLeague
@@ -303,6 +289,7 @@ export const LeaguesPage = () => {
         debouncedSelectedLeague && (
           <LeagueDashboard
             league={displayData ?? null}
+            isFocused={selectedLeagueEntry?.is_focused ?? false}
             leagueFallback={{
               league_id: debouncedSelectedLeague,
               league_name:
