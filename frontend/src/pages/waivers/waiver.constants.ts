@@ -8,8 +8,8 @@ export const VALUE_BASIS_OPTIONS: Array<{
   { value: 'fantasycalc', label: 'FantasyCalc Value' },
   { value: 'adp', label: 'ADP Value' },
   { value: 'sleeper_projection', label: 'Sleeper projected points' },
-  { value: 'dynasty_roster_war', label: 'Sleeper Projection Roster WAR' },
-  { value: 'dynasty_starter_war', label: 'Sleeper Projection Starter WAR' },
+  { value: 'dynasty_roster_war', label: 'Dynasty Roster WAR' },
+  { value: 'dynasty_starter_war', label: 'Dynasty Starter WAR' },
   { value: 'my_roster_war', label: 'My Roster WAR' },
   { value: 'my_starter_war', label: 'My Starter WAR' },
 ];

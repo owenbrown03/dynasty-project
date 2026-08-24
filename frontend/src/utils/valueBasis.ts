@@ -80,9 +80,9 @@ export function getValueBasisLabel(
     case 'redraft_roster_war':
       return 'Redraft Roster WAR';
     case 'dynasty_starter_war':
-      return 'Sleeper Projection Starter WAR';
+      return 'Dynasty Starter WAR';
     case 'dynasty_roster_war':
-      return 'Sleeper Projection Roster WAR';
+      return 'Dynasty Roster WAR';
     case 'ktc':
     default:
       return 'KTC';
