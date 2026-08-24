@@ -415,7 +415,9 @@ async def get_player_tier_board(
                 age=player.age,
                 rank=index,
                 tier=tier_label,
-                selected_value=selected_value,
+                # Serialized at the same precision the frontend
+                # formats WAR-style values at.
+                selected_value=round(selected_value, 2),
                 exposure_pct=(
                     exposure_pct
                     if exposure_denominator > 0
