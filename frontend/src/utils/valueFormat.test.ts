@@ -20,8 +20,8 @@ describe('valueFormat', () => {
   it('formats selected values consistently by basis', () => {
     expect(formatSelectedValue(null, 'ktc')).toBe('—');
     expect(formatSelectedValue(1234.6, 'ktc')).toBe('1,235');
-    expect(formatSelectedValue(1.23456, 'my_war')).toBe('1.235');
-    expect(formatSelectedValue(-0.4101, 'dynasty_roster_war')).toBe('-0.410');
+    expect(formatSelectedValue(1.23456, 'my_war')).toBe('1.23');
+    expect(formatSelectedValue(-0.4101, 'dynasty_roster_war')).toBe('-0.41');
   });
 
   it('formats common value primitives', () => {
@@ -30,7 +30,7 @@ describe('valueFormat', () => {
     expect(formatMarketValue(undefined)).toBe('—');
     expect(formatMarketValue(9876.4)).toBe('9,876');
     expect(formatWar(null)).toBe('—');
-    expect(formatWar(1.23456)).toBe('1.235');
+    expect(formatWar(1.23456)).toBe('1.23');
     expect(formatDollarAmount(undefined)).toBe('--');
     expect(formatDollarAmount(1234.5)).toBe('$1,235');
   });

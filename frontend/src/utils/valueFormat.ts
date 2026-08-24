@@ -22,7 +22,7 @@ export function formatSelectedValue(
     return Math.round(value).toLocaleString();
   }
 
-  return value.toFixed(3);
+  return value.toFixed(2);
 }
 
 export function formatAge(
@@ -52,7 +52,7 @@ export function formatWar(
     return '—';
   }
 
-  return value.toFixed(3);
+  return value.toFixed(2);
 }
 
 export function formatDollarAmount(
