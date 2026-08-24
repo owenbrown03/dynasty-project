@@ -12,6 +12,7 @@ import type {
   WarValueSettings,
 } from '@/types';
 import { PlayerTable } from './PlayerTable';
+import { formatDollarAmount } from '@/utils/valueFormat';
 import { formatNumber } from '@/utils/format';
 import { buildRosterConstructionRows } from './rosterConstruction';
 import {
@@ -286,7 +287,7 @@ export function RosterCard({
         <div className="roster-summary-stat">
           <span>FAAB</span>
           <StatValue
-            value={roster.faab_remaining}
+            value={formatDollarAmount(roster.faab_remaining)}
             rank={roster.stat_ranks.faab_remaining}
           />
         </div>
