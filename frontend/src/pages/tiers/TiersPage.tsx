@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { Skeleton } from '@/components/feedback/Skeleton';
@@ -129,6 +130,7 @@ function getExposureTone(
 
 
 export const TiersPage = () => {
+  const navigate = useNavigate();
   const valuePreference = useValuePreference();
   const initialSource = valuePreference.preference;
   const initialWarBasis: ValueBasis = (
@@ -391,7 +393,13 @@ export const TiersPage = () => {
                             ? tier.players.map((player) => (
                                 <article
                                   key={player.player_id}
-                                  className="tier-player"
+                                  className="tier-player tier-player-clickable"
+                                  title="Edit this player's projections in My Values"
+                                  onClick={() => {
+                                    navigate(
+                                      `/my-values?player=${player.player_id}`,
+                                    );
+                                  }}
                                   style={{
                                     borderLeftColor: getPositionColor(
                                       player.position,
