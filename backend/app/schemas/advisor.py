@@ -99,6 +99,7 @@ class AdvisorRosterContext(Base):
     avg_age: float | None = None
     strategy: str | None = None
     strategy_reason: str | None = None
+    strategy_source: str | None = None
     manager_note: str | None = None
 
 

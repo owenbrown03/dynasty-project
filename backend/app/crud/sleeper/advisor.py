@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -5,6 +7,10 @@ from app.models.db.sleeper.personal import (
     AdvisorFeedback,
     AdvisorReport,
 )
+
+# Feedback older than this is treated as resolved at query time so a
+# stale dislike from months ago cannot keep steering recommendations.
+FEEDBACK_ACTIVE_TTL_DAYS = 180
 
 
 async def create_feedback(
@@ -43,16 +49,34 @@ async def get_active_feedback_by_site_user(
     db: AsyncSession,
     *,
     site_user_id,
-    limit: int = 50,
+    league_ids: list[str] | None = None,
+    active_within_days: int | None = FEEDBACK_ACTIVE_TTL_DAYS,
 ) -> list[AdvisorFeedback]:
-    result = await db.execute(
-        select(AdvisorFeedback)
-        .where(
-            AdvisorFeedback.site_user_id == site_user_id,
-            AdvisorFeedback.resolved == False,  # noqa: E712
+    """Active (unresolved, unexpired) feedback for a user.
+
+    When ``league_ids`` is provided, only feedback recorded in those
+    leagues is returned so memory earned in one league does not bleed
+    into another. Rows older than the TTL window are treated as
+    resolved at query time.
+    """
+    query = select(AdvisorFeedback).where(
+        AdvisorFeedback.site_user_id == site_user_id,
+        AdvisorFeedback.resolved == False,  # noqa: E712
+    )
+
+    if league_ids is not None:
+        query = query.where(
+            AdvisorFeedback.league_id.in_(league_ids),
         )
-        .order_by(AdvisorFeedback.created_at.desc())
-        .limit(limit)
+
+    if active_within_days is not None:
+        cutoff = datetime.utcnow() - timedelta(
+            days=active_within_days,
+        )
+        query = query.where(AdvisorFeedback.created_at >= cutoff)
+
+    result = await db.execute(
+        query.order_by(AdvisorFeedback.created_at.desc()).limit(50),
     )
     return list(result.scalars().all())
 

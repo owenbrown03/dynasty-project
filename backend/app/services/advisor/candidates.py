@@ -34,6 +34,7 @@ from app.services.advisor.strategy import (
     WIN_NOW,
     LeagueStrategy,
     detect_strategy,
+    strategy_from_manager_note,
 )
 from app.services.advisor.trade_block import (
     get_trade_block_snapshot,
@@ -299,15 +300,20 @@ async def _build_league_candidates(
         blocked_pick_keys=set(snapshot.picks.keys()),
     )
 
-    strategy = await _detect_league_strategy(
-        ctx,
-        league=league,
-        my_roster=my_roster,
-        league_rosters=league_rosters,
-        my_items=my_items,
-        items_by_player_id=items_by_player_id,
-        chests=chests,
-    )
+    # An explicit direction in the manager's note is ground truth;
+    # numeric detection only runs when the note declares nothing.
+    strategy = strategy_from_manager_note(manager_note)
+
+    if strategy is None:
+        strategy = await _detect_league_strategy(
+            ctx,
+            league=league,
+            my_roster=my_roster,
+            league_rosters=league_rosters,
+            my_items=my_items,
+            items_by_player_id=items_by_player_id,
+            chests=chests,
+        )
 
     roster_contexts.append(
         await _build_roster_context(
@@ -1194,6 +1200,9 @@ async def _build_roster_context(
         strategy=strategy.strategy if strategy else None,
         strategy_reason=(
             strategy.reason if strategy else None
+        ),
+        strategy_source=(
+            strategy.source if strategy else None
         ),
         manager_note=manager_note,
     )

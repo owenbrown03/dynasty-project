@@ -34,10 +34,12 @@ def is_report_stale(report) -> bool:
 async def build_preferences_for_site_user(
     db,
     site_user_id,
+    league_ids: list[str] | None = None,
 ) -> AdvisorPreferenceSummary:
     rows = await get_active_feedback_by_site_user(
         db,
         site_user_id=site_user_id,
+        league_ids=league_ids,
     )
 
     return build_preference_summary(rows)
@@ -54,9 +56,20 @@ async def generate_and_persist_digest(
 
     dossier = await build_advisor_dossier(ctx, username)
 
+    scope_ids = (
+        [dossier.scope_league_id]
+        if dossier.scope_league_id
+        else [
+            rc.league_id
+            for rc in dossier.roster_contexts
+            if rc.league_id
+        ]
+    )
+
     preferences = await build_preferences_for_site_user(
         ctx.db,
         ctx.site_user.id,
+        league_ids=scope_ids or None,
     )
 
     synthesis = await synthesize_recommendations(

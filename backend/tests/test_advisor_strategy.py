@@ -4,6 +4,7 @@ from app.services.advisor.strategy import (
     REBUILD,
     WIN_NOW,
     detect_strategy,
+    strategy_from_manager_note,
 )
 
 
@@ -135,3 +136,53 @@ def test_preseason_old_projected_contender_goes_win_now():
 
     assert result.strategy == WIN_NOW
     assert "projected" in result.reason.lower()
+
+
+def test_note_rebuild_declaration_pins_strategy():
+    result = strategy_from_manager_note(
+        "Selling everything, full rebuild for 2027 picks.",
+    )
+
+    assert result is not None
+    assert result.strategy == REBUILD
+    assert result.source == "manager_note"
+
+
+def test_note_win_now_declaration_pins_strategy():
+    result = strategy_from_manager_note("All in this year, win now.")
+
+    assert result is not None
+    assert result.strategy == WIN_NOW
+    assert result.source == "manager_note"
+
+
+def test_note_hoard_picks_declaration_pins_strategy():
+    result = strategy_from_manager_note(
+        "Just collecting picks for the draft capital war.",
+    )
+
+    assert result is not None
+    assert result.strategy == HOARD_PICKS
+    assert result.source == "manager_note"
+
+
+def test_note_without_direction_falls_back_to_detection():
+    assert strategy_from_manager_note("Great league, active traders.") is None
+    assert strategy_from_manager_note(None) is None
+    assert strategy_from_manager_note("") is None
+
+
+def test_earliest_direction_wins_in_mixed_note():
+    result = strategy_from_manager_note(
+        "Thinking win now but maybe rebuild next year.",
+    )
+
+    assert result is not None
+    assert result.strategy == WIN_NOW
+
+
+def test_sell_low_phrase_does_not_trigger_rebuild():
+    # "buy low sell high" trading chatter is not a teardown declaration.
+    assert strategy_from_manager_note(
+        "I like to buy low sell high on injured guys.",
+    ) is None

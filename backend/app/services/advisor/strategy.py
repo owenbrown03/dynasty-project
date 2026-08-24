@@ -16,6 +16,86 @@ BASIS_PROJECTED_WAR = "projected_war"
 class LeagueStrategy:
     strategy: str
     reason: str
+    source: str = "detected"
+
+
+# Explicit direction declarations a manager can write in their league
+# note. When one matches, it is treated as ground truth and overrides
+# the numeric strategy detection instead of merely informing the prompt.
+_NOTE_DIRECTION_KEYWORDS: list[tuple[str, list[str]]] = [
+    (
+        WIN_NOW,
+        [
+            "win now",
+            "win-now",
+            "all-in",
+            "all in",
+            "going for it",
+            "championship or bust",
+            "contending window",
+        ],
+    ),
+    (
+        REBUILD,
+        [
+            "rebuild",
+            "rebuilding",
+            "retool",
+            "tanking",
+            "tank for",
+            "sell everything",
+            "tear it down",
+            "reset roster",
+        ],
+    ),
+    (
+        HOARD_PICKS,
+        [
+            "hoard picks",
+            "stockpile picks",
+            "stockpiling picks",
+            "collect picks",
+            "accumulate picks",
+            "draft capital",
+        ],
+    ),
+]
+
+
+def strategy_from_manager_note(
+    note: str | None,
+) -> LeagueStrategy | None:
+    """Pins strategy to an explicit direction declared in the note.
+
+    Scans all keyword groups and returns the match that appears
+    earliest in the text so mixed notes honor the manager's first
+    stated intent.
+    """
+    if not note:
+        return None
+
+    text = note.lower()
+
+    best: tuple[int, str] | None = None
+    for strategy, keywords in _NOTE_DIRECTION_KEYWORDS:
+        for keyword in keywords:
+            index = text.find(keyword)
+            if index == -1:
+                continue
+            if best is None or index < best[0]:
+                best = (index, strategy)
+
+    if best is None:
+        return None
+
+    return LeagueStrategy(
+        strategy=best[1],
+        reason=(
+            "Pinned from your league note, overriding numeric "
+            "signals."
+        ),
+        source="manager_note",
+    )
 
 
 def detect_strategy(
