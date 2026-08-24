@@ -19,6 +19,7 @@ import {
 } from '@/utils/valueFormat';
 
 import {
+  isLeagueContextValueBasis,
   TIER_SOURCE_OPTIONS,
   WAR_ONLY_OPTIONS,
 } from './tier.constants';
@@ -133,15 +134,14 @@ export const TiersPage = () => {
   const navigate = useNavigate();
   const valuePreference = useValuePreference();
   const initialSource = valuePreference.preference;
-  const initialWarBasis: ValueBasis = (
-    initialSource === 'my_war'
-    || initialSource === 'sleeper_war'
+  const initialWarBasis: ValueBasis = isLeagueContextValueBasis(
+    initialSource,
   )
     ? initialSource
     : 'sleeper_war';
   const [source, setSource] = useState<TierBoardSource>(
-    initialSource === 'my_war'
-      || initialSource === 'sleeper_war'
+    initialSource
+      && isLeagueContextValueBasis(initialSource)
       ? 'league_war'
       : initialSource,
   );

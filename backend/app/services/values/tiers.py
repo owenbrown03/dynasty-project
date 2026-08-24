@@ -116,6 +116,28 @@ async def load_player_values_for_basis(
     season: int,
     cheap: bool = False,
 ) -> list[PlayerValue]:
+    # WAR-family bases are computed from a league's redraft context;
+    # without a league there is nothing to compute against.
+    league_context_bases = {
+        ValueBasis.SLEEPER_WAR,
+        ValueBasis.MY_WAR,
+        ValueBasis.MY_ROSTER_WAR,
+        ValueBasis.MY_STARTER_WAR,
+        ValueBasis.DYNASTY_ROSTER_WAR,
+        ValueBasis.DYNASTY_STARTER_WAR,
+        ValueBasis.SLEEPER_PROJECTION,
+    }
+
+    if league is None and value_basis in league_context_bases:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"{value_basis.value} is not a valid source "
+                "selection for the player tier board without a "
+                "league to get the WAR context from."
+            ),
+        )
+
     supported_player_ids = await get_supported_player_ids(
         db,
     )
