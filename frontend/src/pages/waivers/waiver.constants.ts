@@ -4,26 +4,15 @@ export const VALUE_BASIS_OPTIONS: Array<{
   value: ValueBasis;
   label: string;
 }> = [
-  {
-    value: 'ktc',
-    label: 'KTC Value',
-  },
-  {
-    value: 'fantasycalc',
-    label: 'FantasyCalc Value',
-  },
-  {
-    value: 'adp',
-    label: 'ADP Value',
-  },
-  {
-    value: 'sleeper_war',
-    label: 'Sleeper Projection WAR',
-  },
-  {
-    value: 'my_war',
-    label: 'My WAR',
-  },
+  { value: 'ktc', label: 'KTC Value' },
+  { value: 'fantasycalc', label: 'FantasyCalc Value' },
+  { value: 'adp', label: 'ADP Value' },
+  { value: 'sleeper_projection', label: 'Sleeper projected points' },
+  { value: 'dynasty_roster_war', label: 'Sleeper Projection Roster WAR' },
+  { value: 'dynasty_starter_war', label: 'Sleeper Projection Starter WAR' },
+  { value: 'my_war', label: 'My WAR' },
+  { value: 'redraft_roster_war', label: 'Redraft Roster WAR' },
+  { value: 'redraft_starter_war', label: 'Redraft Starter WAR' },
 ];
 
 export const LEGACY_WAR_BASIS_OPTIONS: Array<{
@@ -60,21 +49,3 @@ export function getValueBasisOptions(
 }
 
 
-// Redraft-axis systems (#165 Phase 1): market sources that make sense
-// for redraft valuations. Dynasty-only systems (my_war, sleeper WAR)
-// deliberately excluded.
-const REDRAFT_VALUE_BASIS_OPTIONS: Array<{
-  value: ValueBasis;
-  label: string;
-}> = [
-  { value: 'sleeper_projection', label: 'Sleeper projected points' },
-  { value: 'ktc', label: 'KTC (redraft)' },
-  { value: 'fantasycalc', label: 'FantasyCalc (redraft)' },
-];
-
-export function getRedraftValueBasisOptions(): Array<{
-  value: ValueBasis;
-  label: string;
-}> {
-  return REDRAFT_VALUE_BASIS_OPTIONS;
-}

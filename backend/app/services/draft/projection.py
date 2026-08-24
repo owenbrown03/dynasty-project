@@ -736,6 +736,18 @@ async def build_redraft_value_by_roster_id(
             return value.fc_value or 0.0
         if basis == "sleeper_projection":
             return value.projected_points or 0.0
+        if basis == "redraft_roster_war":
+            return value.redraft_roster_war or 0.0
+        if basis == "redraft_starter_war":
+            return value.redraft_starter_war or 0.0
+        if basis == "dynasty_roster_war":
+            return value.dynasty_roster_war or 0.0
+        if basis == "dynasty_starter_war":
+            return value.dynasty_starter_war or 0.0
+        # my_war / sleeper_war parameterized configs default to the
+        # dynasty roster WAR leg.
+        if basis in {"my_war", "sleeper_war"}:
+            return value.dynasty_roster_war or 0.0
         if basis == "adp":
             return value.adp_value or 0.0
         return value.ktc_value or 0.0

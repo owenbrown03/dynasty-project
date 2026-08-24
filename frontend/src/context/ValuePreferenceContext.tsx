@@ -23,21 +23,6 @@ import type {
   ValueBasis,
 } from '@/types';
 
-function normalizeVisiblePreference(
-  value: ValueBasis,
-): ValueBasis {
-  if (
-    value === 'redraft_starter_war'
-    || value === 'redraft_roster_war'
-    || value === 'dynasty_starter_war'
-    || value === 'dynasty_roster_war'
-  ) {
-    return 'sleeper_war';
-  }
-
-  return value;
-}
-
 export function ValuePreferenceProvider({
   children,
 }: {
@@ -68,7 +53,7 @@ export function ValuePreferenceProvider({
   const updatePreference = useMutation({
     mutationFn: (input: {
       value_preference: ValueBasis;
-      redraft_value_preference: ValueBasis;
+      redraft_value_preference?: ValueBasis;
     }) =>
       api.auth.updateValuePreference(
         input.value_preference,
@@ -104,10 +89,6 @@ export function ValuePreferenceProvider({
       bootstrapPreference
       ?? getStoredValuePreference()
     );
-    nextPreference = normalizeVisiblePreference(
-      nextPreference,
-    );
-
     if (
       nextPreference === 'my_war'
       && bootstrap.data?.authenticated !== true
@@ -158,7 +139,6 @@ export function ValuePreferenceProvider({
 
         await updatePreference.mutateAsync({
           value_preference: nextPreference,
-          redraft_value_preference: redraftPreference,
         });
       },
       setRedraftPreference: async (

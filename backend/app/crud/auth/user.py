@@ -41,13 +41,9 @@ VALID_VALUE_PREFERENCES = {
     for basis in ValueBasis
 }
 
-# Phase 1 of the two-context value systems (#165): the redraft axis
-# only accepts redraft-meaningful market sources.
-REDRAFT_VALUE_PREFERENCES = {
-    "ktc",
-    "fantasycalc",
-    "sleeper_projection",
-}
+# The redraft axis mirrors the main value system in the
+# single-picker UI, so it accepts any valid basis.
+REDRAFT_VALUE_PREFERENCES = VALID_VALUE_PREFERENCES
 DEFAULT_REDRAFT_VALUE_PREFERENCE = "sleeper_projection"
 
 EMAIL_VERIFICATION_TTL_HOURS = 48
