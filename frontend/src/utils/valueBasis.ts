@@ -72,9 +72,9 @@ export function getValueBasisLabel(
     case 'my_war':
       return 'My WAR';
     case 'my_roster_war':
-      return 'My Roster WAR';
+      return 'Dynasty Roster WAR';
     case 'my_starter_war':
-      return 'My Starter WAR';
+      return 'Dynasty Starter WAR';
     case 'redraft_starter_war':
       return 'Redraft Starter WAR';
     case 'redraft_roster_war':

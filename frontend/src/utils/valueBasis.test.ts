@@ -16,8 +16,8 @@ import type {
 const LEGACY_BASES: ValueBasis[] = [
   'sleeper_war',
   'my_war',
-  'redraft_roster_war',
-  'redraft_starter_war',
+  'dynasty_roster_war',
+  'dynasty_starter_war',
 ];
 
 const ALL_BASES: ValueBasis[] = [
