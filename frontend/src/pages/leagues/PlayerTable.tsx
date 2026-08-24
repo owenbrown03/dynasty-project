@@ -91,7 +91,7 @@ export function PlayerTable({
                     {prettySlotLabel(slot)}
                   </td>
                   <td colSpan={6}>
-                    Empty — fill this slot on Sleeper
+                    Empty slot
                   </td>
                 </tr>
               ))}

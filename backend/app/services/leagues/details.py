@@ -922,13 +922,6 @@ class LeagueDetails:
         }
 
         for roster in roster_rows:
-            starter_ids = set(roster.starters or [])
-
-            starter_order = {
-                player_id: index
-                for index, player_id in enumerate(roster.starters or [])
-            }
-
             starting_slots = [
                 slot
                 for slot in (league.roster_positions or [])
@@ -937,42 +930,68 @@ class LeagueDetails:
             reserve_ids = set(roster.reserve or [])
             taxi_ids = set(roster.taxi or [])
 
-            # Sleeper's starters array is NOT guaranteed to align with
-            # roster_positions order, and vacant lineup slots come back
-            # as a "0" placeholder. Assign slots by eligibility instead
-            # of raw index: exact position matches first, then flex.
+            # Starting lineup PREVIEW: slots fill with the best
+            # projected players per the redraft projection, not
+            # Sleeper's stored lineup - best-ball leagues never set
+            # optimal slots and lineup leagues may leave points on
+            # the bench. Exact-position slots fill first, then flex.
+            parked_ids = reserve_ids | taxi_ids
+
+            def _projection(player_id: str) -> float:
+                # Full data ranks by the redraft projection; cheap
+                # data (no WAR lookup yet) falls back to market value.
+                entry = war_lookup.get(player_id)
+
+                if entry is not None:
+                    return entry.projection
+
+                player = player_map.get(player_id)
+
+                if player is not None and player.ktc_value:
+                    return float(player.ktc_value)
+
+                return float("-inf")
+
+            lineup_pool = sorted(
+                (
+                    player_id
+                    for player_id in (roster.players or [])
+                    if player_id not in parked_ids
+                    and player_map.get(player_id) is not None
+                ),
+                key=_projection,
+                reverse=True,
+            )
+
             open_slots = list(starting_slots)
             slot_assignment: dict[str, str] = {}
 
-            for pid in roster.starters or []:
-                if pid == "0":
-                    continue
-                player = player_map.get(pid)
-                if player is None:
-                    continue
+            for player_id in lineup_pool:
+                position = player_map[player_id].position
+
                 for i, slot in enumerate(open_slots):
-                    if slot == player.position:
-                        slot_assignment[pid] = slot
+                    if slot == position:
+                        slot_assignment[player_id] = slot
                         open_slots.pop(i)
                         break
 
-            for pid in roster.starters or []:
-                if pid in slot_assignment or pid == "0":
+            for player_id in lineup_pool:
+                if player_id in slot_assignment:
                     continue
-                player = player_map.get(pid)
-                if player is None:
-                    continue
+
+                position = player_map[player_id].position
+
                 for i, slot in enumerate(open_slots):
-                    if is_slot_eligible(slot, player.position):
-                        slot_assignment[pid] = slot
+                    if is_slot_eligible(slot, position):
+                        slot_assignment[player_id] = slot
                         open_slots.pop(i)
                         break
 
             empty_starter_slots = list(open_slots)
 
             def _resolve_slot(player_id: str) -> str | None:
-                if player_id in starter_ids:
-                    return slot_assignment.get(player_id)
+                if player_id in slot_assignment:
+                    return slot_assignment[player_id]
                 if player_id in reserve_ids:
                     return "IR"
                 if player_id in taxi_ids:
@@ -1015,15 +1034,24 @@ class LeagueDetails:
                         my_redraft_roster_war=player.my_redraft_roster_war,
                         my_dynasty_starter_war=player.my_dynasty_starter_war,
                         my_dynasty_roster_war=player.my_dynasty_roster_war,
-                        is_starter=player_id in starter_ids,
+                        is_starter=player_id in slot_assignment,
                         slot=_resolve_slot(player_id),
                     )
                 )
 
+            slot_order = {
+                slot: index
+                for index, slot in enumerate(starting_slots)
+            }
+
             roster_players.sort(
                 key=lambda player: (
                     0 if player.is_starter else 1,
-                    starter_order.get(player.player_id, 999),
+                    (
+                        slot_order.get(player.slot, 999)
+                        if player.is_starter
+                        else 999
+                    ),
                     -(
                         player.projected_points
                         if player.projected_points is not None
