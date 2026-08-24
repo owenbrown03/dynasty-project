@@ -1347,6 +1347,21 @@ export interface AdvisorRecommendation {
   proposal: AdvisorProposal | null;
 }
 
+
+export interface AdvisorDirective {
+  league_id: string;
+  league_name: string;
+  season: string | null;
+  status: string | null;
+  total_rosters: number | null;
+  over_limit_by: number;
+  suggested_drops: AdvisorPlayerRef[];
+}
+
+export interface AdvisorDirectivesResponse {
+  directives: AdvisorDirective[];
+}
+
 export interface AdvisorSynthesisResponse {
   summary: string;
   recommendations: AdvisorRecommendation[];

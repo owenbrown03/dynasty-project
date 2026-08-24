@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 
-import { useAdvisorRecommendations } from '@/hooks/sleeper/useAdvisor';
+import {
+  useAdvisorDirectives,
+  useAdvisorRecommendations,
+} from '@/hooks/sleeper/useAdvisor';
 import { useAdvisorFeedback } from '@/hooks/sleeper/useAdvisorFeedback';
 import { useSendAdvisorOffer } from '@/hooks/sleeper/useSendAdvisorOffer';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -10,6 +13,7 @@ import { notify } from '@/utils/notify';
 import type {
   AdvisorFeedbackTag,
   AdvisorPickRef,
+  AdvisorDirective,
   AdvisorPlayerRef,
   AdvisorProposal,
   AdvisorRecommendation,
@@ -603,6 +607,72 @@ function RecommendationCard({
   );
 }
 
+
+function DirectiveDropChip({
+  player,
+}: {
+  player: AdvisorPlayerRef;
+}) {
+  return (
+    <div className="advisor-player-chip advisor-chip-send">
+      <span className="advisor-chip-name">{player.name}</span>
+      <span className="advisor-chip-meta">
+        {[
+          player.position ?? '?',
+          player.team ?? null,
+          `FC ${formatValue(player.market_value)}`,
+        ]
+          .filter(Boolean)
+          .join(' \u00b7 ')}
+      </span>
+    </div>
+  );
+}
+
+function AdvisorDirectives() {
+  const { directives, loading } = useAdvisorDirectives();
+
+  if (loading || directives.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="advisor-directives" role="alert">
+      {directives.map((directive: AdvisorDirective) => (
+        <div
+          key={directive.league_id}
+          className="advisor-directive-card"
+        >
+          <p className="advisor-directive-title">
+            {directive.league_name} is{' '}
+            <strong>
+              {directive.over_limit_by} player
+              {directive.over_limit_by === 1 ? '' : 's'}
+            </strong>{' '}
+            over its roster limit
+            {directive.status === 'pre_draft'
+              ? ' — fix this before your draft starts'
+              : ''}
+          </p>
+          {directive.suggested_drops.length > 0 && (
+            <div className="advisor-directive-drops">
+              <span className="advisor-directive-label">
+                Suggested drops:
+              </span>
+              {directive.suggested_drops.map((drop) => (
+                <DirectiveDropChip
+                  key={drop.player_id}
+                  player={drop}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface AdvisorPanelProps {
   leagueId: string;
   leagueName: string;
@@ -645,7 +715,7 @@ export const AdvisorPanel = ({
     return (
       <section className="advisor-panel">
         <header className="advisor-panel-header">
-          <p className="page-eyebrow">AI Advisor</p>
+          <p className="page-eyebrow">Roster Lab</p>
           <h3 className="trades-section-title">
             Trade recommendations for {leagueName}
           </h3>
@@ -662,6 +732,8 @@ export const AdvisorPanel = ({
             {errorMessage}
           </div>
         )}
+
+        <AdvisorDirectives />
 
         <button
           type="button"
@@ -682,7 +754,7 @@ export const AdvisorPanel = ({
   return (
     <section className="advisor-panel">
       <header className="advisor-panel-header">
-        <p className="page-eyebrow">AI Advisor</p>
+        <p className="page-eyebrow">Roster Lab</p>
         <h3 className="trades-section-title">
           Your recommendations
         </h3>
@@ -710,6 +782,8 @@ export const AdvisorPanel = ({
           {errorMessage}
         </div>
       )}
+
+      <AdvisorDirectives />
 
       {hasContent ? (
         <>

@@ -89,6 +89,12 @@ export const queryKeys = {
       username ?? null,
       leagueId ?? null,
     ] as const,
+    directives: (
+      username: string | null | undefined,
+    ) => [
+      'advisor-directives',
+      username ?? null,
+    ] as const,
     cachedRecommendations: (
       username: string | null | undefined,
       leagueId?: string | null,

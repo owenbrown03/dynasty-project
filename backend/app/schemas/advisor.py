@@ -123,6 +123,20 @@ class AdvisorRecommendation(Base):
     proposal: AdvisorProposal | None = None
 
 
+
+class AdvisorDirective(Base):
+    league_id: str
+    league_name: str
+    season: str | None = None
+    status: str | None = None
+    total_rosters: int | None = None
+    over_limit_by: int
+    suggested_drops: list[AdvisorPlayerRef] = []
+
+
+class AdvisorDirectivesResponse(Base):
+    directives: list[AdvisorDirective]
+
 class AdvisorSynthesisResponse(Base):
     summary: str
     recommendations: list[AdvisorRecommendation]

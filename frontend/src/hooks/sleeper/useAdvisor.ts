@@ -132,3 +132,26 @@ export function useAdvisorRecommendations(
     },
   };
 }
+
+
+export function useAdvisorDirectives() {
+  const { username } = useSleeperConnection();
+
+  const query = useQuery({
+    queryKey: queryKeys.advisor.directives(username),
+    queryFn: async () => {
+      if (!username) return null;
+      const response = await api.advisor.getDirectives(username);
+      return response.data;
+    },
+    enabled: !!username,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  return {
+    username,
+    directives: query.data?.directives ?? [],
+    loading: query.isLoading,
+  };
+}

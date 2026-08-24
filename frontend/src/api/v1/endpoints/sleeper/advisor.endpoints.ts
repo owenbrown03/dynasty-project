@@ -2,6 +2,7 @@ import { type AxiosInstance } from 'axios';
 
 import type {
   AdvisorDigestResponse,
+  AdvisorDirectivesResponse,
   AdvisorFeedbackRequest,
   AdvisorSynthesisResponse,
 } from '@/types';
@@ -10,6 +11,25 @@ export const advisorEndpoints = (
   client: AxiosInstance,
   prefix: string,
 ) => ({
+  getDirectives: (
+    username: string,
+    options?: {
+      valueBasis?: string;
+      signal?: AbortSignal;
+    },
+  ) =>
+    client.get<AdvisorDirectivesResponse>(
+      `${prefix}/${username}/directives`,
+      {
+        params: {
+          ...(options?.valueBasis
+            ? { value_basis: options.valueBasis }
+            : {}),
+        },
+        signal: options?.signal,
+      },
+    ),
+
   getRecommendations: (
     username: string,
     options?: {

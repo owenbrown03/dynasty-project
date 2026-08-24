@@ -98,7 +98,7 @@ export function LeagueDashboard({
               onTabChange('advisor');
             }}
           >
-            AI Advisor
+            Roster Lab
           </button>
         </div>
 

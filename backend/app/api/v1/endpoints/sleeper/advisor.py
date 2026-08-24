@@ -8,7 +8,9 @@ from app.schemas.advisor import (
     AdvisorPreferenceSummary,
     AdvisorSynthesisResponse,
 )
+from app.schemas.advisor import AdvisorDirectivesResponse
 from app.services.advisor.candidates import build_advisor_dossier
+from app.services.advisor.directives import build_advisor_directives
 from app.services.advisor.feedback import (
     list_preferences,
     record_feedback,
@@ -59,6 +61,34 @@ async def _load_preferences(
         return None
 
     return build_preference_summary(rows)
+
+
+@router.get(
+    "/{username}/directives",
+    response_model=AdvisorDirectivesResponse,
+)
+async def get_advisor_directives_endpoint(
+    username: str,
+    ctx: ContextDep,
+    value_basis: str = "ktc",
+) -> AdvisorDirectivesResponse:
+    """Deterministic roster directives (over-limit alerts).
+
+    No AI generation and no quota; reads normalized data only.
+    """
+    if ctx.connection is None:
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "Link a Sleeper account to check roster directives."
+            ),
+        )
+
+    return await build_advisor_directives(
+        ctx,
+        username,
+        value_basis=value_basis,
+    )
 
 
 @router.post(
