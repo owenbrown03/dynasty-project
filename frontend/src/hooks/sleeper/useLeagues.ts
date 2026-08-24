@@ -187,6 +187,7 @@ export function useLeagueDashboard(cheap = false) {
 
 export function useSaveUserNote() {
   const queryClient = useQueryClient();
+  const bootstrap = useBootstrap();
 
   const mutation = useMutation<
     UserLeagueNoteResponse,
@@ -198,10 +199,24 @@ export function useSaveUserNote() {
         .saveNote(payload)
         .then((res) => res.data);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.leagues.detailsRoot,
-      });
+    onSuccess: (response, variables) => {
+      const viewerKey = buildLeagueDetailsViewerKey(
+        bootstrap.data,
+      );
+
+      for (const cheap of [true, false]) {
+        queryClient.setQueryData<LeagueDetails>(
+          queryKeys.leagues.details(
+            variables.league_id,
+            viewerKey,
+            cheap,
+          ),
+          (previous) =>
+            previous
+              ? { ...previous, note: response.note }
+              : previous,
+        );
+      }
     },
   });
 
