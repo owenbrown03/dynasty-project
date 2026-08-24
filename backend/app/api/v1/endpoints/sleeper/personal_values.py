@@ -10,6 +10,7 @@ from app.schemas.personal_values import (
     PersonalValueRankingsResetRequest,
     PersonalValueRankingsResetResponse,
     PersonalValueSearchResult,
+    PersonalValueUnderdogSyncRequest,
     PersonalValueUpdateRequest,
 )
 from app.services.personal_values import (
@@ -20,6 +21,7 @@ from app.services.personal_values import (
     reset_personal_value_rankings,
     search_personal_value_players,
     set_personal_value_rankings,
+    sync_underdog_defaults,
 )
 
 router = APIRouter()
@@ -134,5 +136,20 @@ async def reset_personal_value_rankings_endpoint(
     return await reset_personal_value_rankings(
         ctx=ctx,
         request=body,
+    )
+
+
+@router.post(
+    "/rankings/sync-underdog",
+    response_model=PersonalValueRankingsResetResponse,
+)
+async def sync_underdog_defaults_endpoint(
+    body: PersonalValueUnderdogSyncRequest,
+    ctx: ContextDep,
+):
+    return await sync_underdog_defaults(
+        ctx=ctx,
+        league_id=body.league_id,
+        position=body.position,
     )
 

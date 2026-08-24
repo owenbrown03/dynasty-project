@@ -7,6 +7,7 @@ import type {
   PersonalValueRankingsResponse,
   PersonalValueRankingsUpdateRequest,
   PersonalValueRankingsUpdateResponse,
+  PersonalValueUnderdogSyncRequest,
   PersonalValuePoolResponse,
   PersonalValueSearchResult,
   PersonalValueUpdateRequest,
@@ -52,6 +53,13 @@ export const personalValuesEndpoints = (
     `${prefix}/rankings`,
     payload,
     { timeout: 120000 },
+  ),
+  syncUnderdog: (
+    payload: PersonalValueUnderdogSyncRequest,
+  ) => client.post<PersonalValueRankingsResetResponse>(
+    `${prefix}/rankings/sync-underdog`,
+    payload,
+    { timeout: 300000 },
   ),
   resetRankings: (
     payload: PersonalValueRankingsResetRequest,

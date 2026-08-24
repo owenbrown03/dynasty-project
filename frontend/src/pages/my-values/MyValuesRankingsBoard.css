@@ -33,10 +33,6 @@
   font-weight: 600;
 }
 
-.my-values-reset-all {
-  margin-left: auto;
-}
-
 .my-values-rankings-hint {
   margin: 0;
   font-size: 0.8rem;
@@ -103,4 +99,11 @@
 
 .my-values-rank-reset:hover {
   opacity: 1;
+}
+
+
+.my-values-rank-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

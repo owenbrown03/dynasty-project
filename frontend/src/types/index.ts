@@ -607,6 +607,11 @@ export interface PersonalValueRankingsResetResponse {
   reset_players: number;
 }
 
+export interface PersonalValueUnderdogSyncRequest {
+  league_id: string;
+  position?: string | null;
+}
+
 
 export interface PersonalValueDetail {
   context: PersonalValueLeagueContext;

@@ -7,6 +7,7 @@ import {
   useResetPersonalValueRankings,
   useSavePersonalValueRankings,
 } from '@/hooks/sleeper/usePersonalValues';
+import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { notify } from '@/utils/notify';
 
 import './MyValuesRankingsBoard.css';
@@ -126,30 +127,6 @@ export function MyValuesRankingsBoard({ leagueId }: Props) {
     }
   };
 
-  const handleResetAll = async () => {
-    if (!leagueId) return;
-    if (
-      !window.confirm(
-        `Remove ALL your customizations for ${position}s and reset every ${position} to Underdog defaults?`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const result = await reset.resetRankings({
-        league_id: leagueId,
-        position,
-      });
-      notify.success(
-        `Reset ${result.reset_players} ${position}s to Underdog defaults.`,
-      );
-      setOverride(null);
-    } catch {
-      notify.error('Could not reset rankings.');
-    }
-  };
-
   return (
     <section className="my-values-rankings-board">
       <div className="my-values-rankings-controls">
@@ -183,16 +160,6 @@ export function MyValuesRankingsBoard({ leagueId }: Props) {
           </button>
         </div>
 
-        <button
-          type="button"
-          className="button-secondary my-values-reset-all"
-          disabled={reset.saving}
-          onClick={() => {
-            void handleResetAll();
-          }}
-        >
-          Reset all {position}s to Underdog
-        </button>
       </div>
 
       <p className="my-values-rankings-hint">
@@ -226,11 +193,18 @@ export function MyValuesRankingsBoard({ leagueId }: Props) {
                   {entry.primary_rank}
                 </span>
                 <span className="my-values-rank-name">
-                  {entry.name}
-                  {scope === 'future'
-                    && entry.has_divergent_future_years ? (
-                      <span className="my-values-rank-asterisk">*</span>
-                    ) : null}
+                  <PlayerAvatar
+                    playerId={entry.player_id}
+                    name={entry.name}
+                    size="sm"
+                  />
+                  <span className="my-values-rank-name-text">
+                    {entry.name}
+                    {scope === 'future'
+                      && entry.has_divergent_future_years ? (
+                        <span className="my-values-rank-asterisk">*</span>
+                      ) : null}
+                  </span>
                 </span>
                 <span className="my-values-rank-meta">
                   {[

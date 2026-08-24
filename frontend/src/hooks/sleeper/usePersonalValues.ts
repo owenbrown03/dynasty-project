@@ -12,6 +12,7 @@ import type {
   PersonalValueRankingsResetRequest,
   PersonalValueRankingsResetResponse,
   PersonalValueRankingsUpdateRequest,
+  PersonalValueUnderdogSyncRequest,
   PersonalValueSearchResult,
   PersonalValueUpdateRequest,
 } from '@/types';
@@ -258,6 +259,32 @@ export function useResetPersonalValueRankings() {
 
   return {
     resetRankings: mutation.mutateAsync,
+    saving: mutation.isPending,
+  };
+}
+
+
+export function useSyncUnderdogDefaults() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (
+      payload: PersonalValueUnderdogSyncRequest,
+    ) => {
+      const response = await api.personal_values.syncUnderdog(
+        payload,
+      );
+      return response.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['personal-values-rankings'],
+      });
+    },
+  });
+
+  return {
+    syncDefaults: mutation.mutateAsync,
     saving: mutation.isPending,
   };
 }

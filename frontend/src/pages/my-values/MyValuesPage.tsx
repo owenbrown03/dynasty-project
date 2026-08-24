@@ -15,7 +15,9 @@ import {
   usePersonalValueDetail,
   usePersonalValuePool,
   usePersonalValueSearch,
+  useResetPersonalValueRankings,
   useSavePersonalValueDetail,
+  useSyncUnderdogDefaults,
 } from '@/hooks/sleeper/usePersonalValues';
 import type {
   PersonalProjectionOutcomeItem,
@@ -154,6 +156,8 @@ export const MyValuesPage = () => {
     leagueId || undefined,
   );
   const saveProjection = useSavePersonalValueDetail();
+  const resetRankings = useResetPersonalValueRankings();
+  const syncUnderdog = useSyncUnderdogDefaults();
   const [editableSeasons, setEditableSeasons] = useState<
     PersonalProjectionSeasonItem[]
   >([]);
@@ -464,6 +468,52 @@ export const MyValuesPage = () => {
     );
   };
 
+  const handleSyncUnderdogAll = async () => {
+    if (!leagueId) return;
+
+    if (
+      !window.confirm(
+        'Freeze current Underdog ranks as your personal values for every player still on defaults? Customized players are untouched.',
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const result = await syncUnderdog.syncDefaults({
+        league_id: leagueId,
+      });
+      notify.success(
+        `Synced ${result.reset_players} defaulted players to Underdog ranks.`,
+      );
+    } catch {
+      notify.error('Could not sync Underdog defaults.');
+    }
+  };
+
+  const handleResetAllToUnderdog = async () => {
+    if (!leagueId) return;
+
+    if (
+      !window.confirm(
+        'Remove ALL your personal customizations (every position, every season) and reset to Underdog defaults?',
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const result = await resetRankings.resetRankings({
+        league_id: leagueId,
+      });
+      notify.success(
+        `Reset ${result.reset_players} players to Underdog defaults.`,
+      );
+    } catch {
+      notify.error('Could not reset to Underdog defaults.');
+    }
+  };
+
   const handleReset = () => {
     const detailData = detail.data;
 
@@ -677,6 +727,30 @@ export const MyValuesPage = () => {
         </div>
 
         <div className="my-values-header-controls">
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={syncUnderdog.saving}
+            onClick={() => {
+              void handleSyncUnderdogAll();
+            }}
+          >
+            {syncUnderdog.saving
+              ? 'Syncing…'
+              : 'Sync defaults from Underdog'}
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={resetRankings.saving}
+            onClick={() => {
+              void handleResetAllToUnderdog();
+            }}
+          >
+            {resetRankings.saving
+              ? 'Resetting…'
+              : 'Reset all to Underdog'}
+          </button>
           <label className="my-values-control">
             <span>League context</span>
             <select
@@ -703,12 +777,12 @@ export const MyValuesPage = () => {
         </div>
       </section>
 
-      <div className="my-values-view-tabs" role="tablist">
+      <div className="league-dashboard-tabs" role="tablist">
         <button
           type="button"
           role="tab"
           aria-selected={viewMode === 'editor'}
-          className={`my-values-view-tab${viewMode === 'editor' ? ' active' : ''}`}
+          className={`league-dashboard-tab${viewMode === 'editor' ? ' active' : ''}`}
           onClick={() => setViewMode('editor')}
         >
           Editor
@@ -717,7 +791,7 @@ export const MyValuesPage = () => {
           type="button"
           role="tab"
           aria-selected={viewMode === 'rankings'}
-          className={`my-values-view-tab${viewMode === 'rankings' ? ' active' : ''}`}
+          className={`league-dashboard-tab${viewMode === 'rankings' ? ' active' : ''}`}
           onClick={() => setViewMode('rankings')}
         >
           Rankings board

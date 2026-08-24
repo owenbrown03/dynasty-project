@@ -324,11 +324,11 @@ describe('moveRanking', () => {
     { player_id: 'd', primary_rank: 14 },
   ];
 
-  it('reassigns the existing rank pool in the new order', () => {
+  it('renumbers strictly one-per-rank after a move', () => {
     const result = moveRanking(base, 3, 0);
 
     expect(result.map((e) => e.player_id)).toEqual(['d', 'a', 'b', 'c']);
-    expect(result.map((e) => e.primary_rank)).toEqual([1, 4, 9, 14]);
+    expect(result.map((e) => e.primary_rank)).toEqual([1, 2, 3, 4]);
   });
 
   it('keeps other players untouched outside the window', () => {

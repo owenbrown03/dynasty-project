@@ -99,6 +99,11 @@ class PersonalValueRankingsResetResponse(Base):
     reset_players: int
 
 
+class PersonalValueUnderdogSyncRequest(Base):
+    league_id: str
+    position: str | None = None
+
+
 
 class PersonalValueDetailResponse(Base):
     context: PersonalValueLeagueContext

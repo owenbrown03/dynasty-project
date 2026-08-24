@@ -357,13 +357,17 @@ export function moveRanking(
   const [moved] = next.splice(fromIndex, 1);
   next.splice(toIndex, 0, moved);
 
-  const rankPool = entries
-    .map((entry) => entry.primary_rank)
-    .filter((rank): rank is number => rank !== null)
-    .sort((a, b) => a - b);
+  // Owner prefers strict non-e ranks (Gibbs #1, Bijan #2, ...) -
+  // renumber ranked entries sequentially after every move; unranked
+  // entries stay anchored unchanged.
+  let rank = 0;
 
-  return next.map((entry, index) => ({
-    ...entry,
-    primary_rank: rankPool[index] ?? entry.primary_rank,
-  }));
+  return next.map((entry) => {
+    if (entry.primary_rank === null) {
+      return entry;
+    }
+
+    rank += 1;
+    return { ...entry, primary_rank: rank };
+  });
 }
