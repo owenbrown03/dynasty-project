@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react';
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useBootstrapContext } from '@/context/useBootstrapContext';
@@ -128,11 +129,11 @@ export function DashboardLeagues({
               <div>
                 <h3 className="portfolio-league-title">
                   {league.is_focused ? (
-                    <span className="portfolio-league-star">
-                      ★
+                    <span className="portfolio-league-star" aria-label="Starred league">
+                      <Star size={13} fill="currentColor" />
                     </span>
                   ) : null}
-                  {league.league_name}
+                  <span>{league.league_name}</span>
                 </h3>
 
                 <p className="portfolio-league-subtitle">
