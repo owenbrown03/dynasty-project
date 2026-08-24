@@ -160,3 +160,24 @@ export function useAdvisorDirectives(options?: {
     loading: query.isLoading,
   };
 }
+
+
+export function useInvalidateAdvisorRecommendations() {
+  const mutation = useMutation({
+    mutationFn: async (input: {
+      username: string;
+      leagueId?: string;
+    }) => {
+      const response = await api.advisor.invalidate(
+        input.username,
+        input.leagueId,
+      );
+      return response.data;
+    },
+  });
+
+  return {
+    invalidate: mutation.mutateAsync,
+    saving: mutation.isPending,
+  };
+}

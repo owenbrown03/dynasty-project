@@ -3,19 +3,24 @@ from fastapi import APIRouter, HTTPException, Response
 
 from app.api.deps import ContextDep
 from app.schemas.advisor import (
+    AdvisorFeedbackEntryListResponse,
     AdvisorFeedbackRequest,
     AdvisorFeedbackResponse,
     AdvisorPreferenceSummary,
+    AdvisorInvalidateResponse,
     AdvisorSynthesisResponse,
 )
 from app.schemas.advisor import AdvisorDirectivesResponse
 from app.services.advisor.candidates import build_advisor_dossier
 from app.services.advisor.directives import build_advisor_directives
 from app.services.advisor.feedback import (
+    delete_feedback_entry,
+    list_league_feedback,
     list_preferences,
     record_feedback,
 )
 from app.services.advisor.synthesis import (
+    invalidate_cached_recommendations,
     peek_cached_recommendations,
     synthesize_recommendations,
 )
@@ -233,3 +238,67 @@ async def get_advisor_digest_endpoint(
     ctx: ContextDep,
 ):
     return await get_or_queue_digest(ctx, username)
+
+
+@router.get("/feedback", response_model=AdvisorFeedbackEntryListResponse)
+async def list_advisor_feedback_endpoint(
+    ctx: ContextDep,
+    league_id: str = "",
+) -> AdvisorFeedbackEntryListResponse:
+    if ctx.site_user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Sign in before viewing advisor feedback.",
+        )
+
+    if not league_id:
+        raise HTTPException(
+            status_code=422,
+            detail="league_id is required.",
+        )
+
+    return await list_league_feedback(ctx, league_id)
+
+
+@router.delete("/feedback/{feedback_id}")
+async def delete_advisor_feedback_endpoint(
+    feedback_id: int,
+    ctx: ContextDep,
+) -> dict:
+    if ctx.site_user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Sign in before deleting advisor feedback.",
+        )
+
+    await delete_feedback_entry(ctx, feedback_id)
+
+    return {"id": feedback_id, "deleted": True}
+
+
+@router.post(
+    "/{username}/invalidate",
+    response_model=AdvisorInvalidateResponse,
+)
+async def invalidate_advisor_recommendations_endpoint(
+    username: str,
+    ctx: ContextDep,
+    league_id: str | None = None,
+) -> AdvisorInvalidateResponse:
+    if ctx.site_user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Sign in before clearing cached recommendations.",
+        )
+
+    preferences = await _load_preferences(ctx)
+
+    invalidated = await invalidate_cached_recommendations(
+        redis=ctx.redis,
+        username=username,
+        league_id=league_id,
+        preferences=preferences,
+    )
+
+    return AdvisorInvalidateResponse(invalidated=invalidated)
+

@@ -164,3 +164,44 @@ async def get_site_user_connection_by_sleeper_user_id(
         .limit(1)
     )
     return result.first()
+
+
+async def list_active_feedback_for_league(
+    db: AsyncSession,
+    *,
+    site_user_id,
+    league_id: str,
+) -> list[AdvisorFeedback]:
+    result = await db.execute(
+        select(AdvisorFeedback)
+        .where(
+            AdvisorFeedback.site_user_id == site_user_id,
+            AdvisorFeedback.league_id == league_id,
+            AdvisorFeedback.resolved == False,  # noqa: E712
+        )
+        .order_by(AdvisorFeedback.created_at.desc()),
+    )
+    return list(result.scalars().all())
+
+
+async def delete_feedback(
+    db: AsyncSession,
+    *,
+    site_user_id,
+    feedback_id: int,
+) -> bool:
+    feedback = (
+        await db.execute(
+            select(AdvisorFeedback).where(
+                AdvisorFeedback.id == feedback_id,
+                AdvisorFeedback.site_user_id == site_user_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    if feedback is None:
+        return False
+
+    await db.delete(feedback)
+    await db.commit()
+    return True

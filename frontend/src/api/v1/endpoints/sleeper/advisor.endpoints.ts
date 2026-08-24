@@ -3,7 +3,9 @@ import { type AxiosInstance } from 'axios';
 import type {
   AdvisorDigestResponse,
   AdvisorDirectivesResponse,
+  AdvisorFeedbackEntryListResponse,
   AdvisorFeedbackRequest,
+  AdvisorInvalidateResponse,
   AdvisorSynthesisResponse,
 } from '@/types';
 
@@ -11,6 +13,30 @@ export const advisorEndpoints = (
   client: AxiosInstance,
   prefix: string,
 ) => ({
+  listFeedback: (
+    leagueId: string,
+    signal?: AbortSignal,
+  ) => client.get<AdvisorFeedbackEntryListResponse>(
+    `${prefix}/feedback`,
+    {
+      params: { league_id: leagueId },
+      signal,
+    },
+  ),
+  deleteFeedback: (feedbackId: number) =>
+    client.delete<{ id: number; deleted: boolean }>(
+      `${prefix}/feedback/${feedbackId}`,
+    ),
+  invalidate: (
+    username: string,
+    leagueId?: string,
+  ) => client.post<AdvisorInvalidateResponse>(
+    `${prefix}/${username}/invalidate`,
+    null,
+    {
+      params: leagueId ? { league_id: leagueId } : {},
+    },
+  ),
   getDirectives: (
     username: string,
     options?: {

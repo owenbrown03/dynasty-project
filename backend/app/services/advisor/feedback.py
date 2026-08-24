@@ -5,9 +5,13 @@ from fastapi import HTTPException
 from app.api.deps import ContextDep
 from app.crud.sleeper.advisor import (
     create_feedback,
+    delete_feedback,
     get_active_feedback_by_site_user,
+    list_active_feedback_for_league,
 )
 from app.schemas.advisor import (
+    AdvisorFeedbackEntryItem,
+    AdvisorFeedbackEntryListResponse,
     ACTION_GITHUB_ISSUE,
     ACTION_VALUES_DOWNGRADE,
     ALLOWED_FEEDBACK_SENTIMENTS,
@@ -168,3 +172,52 @@ def build_preference_summary(
             summary.tags[tag] = summary.tags.get(tag, 0) + 1
 
     return summary
+
+
+async def list_league_feedback(
+    ctx,
+    league_id: str,
+) -> AdvisorFeedbackEntryListResponse:
+    site_user = _require_site_user(ctx)
+
+    rows = await list_active_feedback_for_league(
+        ctx.db,
+        site_user_id=site_user.id,
+        league_id=league_id,
+    )
+
+    return AdvisorFeedbackEntryListResponse(
+        entries=[
+            AdvisorFeedbackEntryItem(
+                id=row.id,
+                sentiment=row.sentiment,
+                reason=row.reason,
+                tags=row.tags,
+                created_at=row.created_at.isoformat(),
+            )
+            for row in rows
+        ],
+    )
+
+
+async def delete_feedback_entry(
+    ctx,
+    feedback_id: int,
+) -> bool:
+    site_user = _require_site_user(ctx)
+
+    deleted = await delete_feedback(
+        ctx.db,
+        site_user_id=site_user.id,
+        feedback_id=feedback_id,
+    )
+
+    if not deleted:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=404,
+            detail="Feedback not found.",
+        )
+
+    return True

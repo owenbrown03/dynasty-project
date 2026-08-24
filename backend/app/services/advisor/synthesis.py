@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from types import SimpleNamespace
 from datetime import datetime, timezone
 
 from app.core.config import settings
@@ -460,3 +461,37 @@ def _narrative_references_proposal(
         for token in tokens
     )
 
+
+async def invalidate_cached_recommendations(
+    *,
+    redis,
+    username: str,
+    league_id: str | None,
+    preferences: AdvisorPreferenceSummary | None = None,
+) -> bool:
+    """Drops the cached synthesis for this scope.
+
+    The cache identity only depends on scope fields, so a full
+    dossier build is unnecessary here.
+    """
+    if redis is None:
+        return False
+
+    identity = _cache_identity(
+        SimpleNamespace(
+            username=username,
+            scope_league_id=league_id,
+        ),
+        preferences,
+    )
+
+    from app.services.advisor.quota import build_cache_key
+
+    key = build_cache_key(
+        model=settings.GEMINI_MODEL,
+        system_instruction=SYSTEM_PROMPT,
+        prompt=identity,
+    )
+
+    await redis.delete(key)
+    return True

@@ -1425,6 +1425,22 @@ export interface AdvisorDirectivesResponse {
   directives: AdvisorDirective[];
 }
 
+export interface AdvisorFeedbackEntryItem {
+  id: number;
+  sentiment: string;
+  reason: string | null;
+  tags: string[];
+  created_at: string;
+}
+
+export interface AdvisorFeedbackEntryListResponse {
+  entries: AdvisorFeedbackEntryItem[];
+}
+
+export interface AdvisorInvalidateResponse {
+  invalidated: boolean;
+}
+
 export interface AdvisorSynthesisResponse {
   summary: string;
   recommendations: AdvisorRecommendation[];

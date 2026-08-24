@@ -4,8 +4,12 @@ import { Link } from 'react-router';
 import {
   useAdvisorDirectives,
   useAdvisorRecommendations,
+  useInvalidateAdvisorRecommendations,
 } from '@/hooks/sleeper/useAdvisor';
-import { useAdvisorFeedback } from '@/hooks/sleeper/useAdvisorFeedback';
+import {
+  useAdvisorFeedback,
+  useAdvisorLeagueFeedback,
+} from '@/hooks/sleeper/useAdvisorFeedback';
 import { useSendAdvisorOffer } from '@/hooks/sleeper/useSendAdvisorOffer';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { Skeleton } from '@/components/feedback/Skeleton';
@@ -20,6 +24,7 @@ import type {
 } from '@/types';
 import { ADVISOR_FEEDBACK_TAGS } from '@/types';
 
+import { useLeagueDetails, useSaveUserNote } from '@/hooks/sleeper/useLeagues';
 import './AdvisorPanel.css';
 
 const TAG_LABELS: Record<AdvisorFeedbackTag, string> = {
@@ -823,6 +828,138 @@ function AdvisorDirectives({ leagueId }: { leagueId: string }) {
   );
 }
 
+
+function AdvisorContextPanel({
+  leagueId,
+  username,
+}: {
+  leagueId: string;
+  username: string;
+}) {
+  const feedbackList = useAdvisorLeagueFeedback(leagueId);
+  const invalidate = useInvalidateAdvisorRecommendations();
+  const noteState = useLeagueDetails(leagueId, true);
+  const saveNote = useSaveUserNote();
+  const [noteDraft, setNoteDraft] = useState<string | null>(null);
+
+  const savedNote = noteState.data?.note ?? '';
+  const noteValue = noteDraft ?? savedNote;
+  const noteDirty = noteDraft !== null && noteDraft !== savedNote;
+
+  const handleSaveNote = async () => {
+    try {
+      await saveNote.saveNote({
+        league_id: leagueId,
+        note: noteValue,
+      });
+      setNoteDraft(null);
+      notify.success('AI context note saved.');
+    } catch {
+      notify.error('Could not save the note.');
+    }
+  };
+
+  const handleRemoveEntry = async (id: number) => {
+    try {
+      await feedbackList.remove(id);
+      notify.success('Feedback entry removed.');
+    } catch {
+      notify.error('Could not remove feedback entry.');
+    }
+  };
+
+  const handleInvalidate = async () => {
+    try {
+      await invalidate.invalidate({ username, leagueId });
+      notify.success(
+        'Cached recommendations cleared — hit Generate for a fresh take.',
+      );
+    } catch {
+      notify.error('Could not clear cached recommendations.');
+    }
+  };
+
+  return (
+    <section className="advisor-context-panel">
+      <header className="advisor-panel-header">
+        <p className="page-eyebrow">AI context</p>
+        <h4 className="advisor-subheading">
+          What the advisor knows about you here
+        </h4>
+      </header>
+
+      <label className="advisor-context-note">
+        <span className="advisor-directive-label">
+          Direction note (treated as standing instructions)
+        </span>
+        <textarea
+          value={noteValue}
+          rows={2}
+          placeholder="e.g. Selling everything, full rebuild for 2027 picks."
+          onChange={(event) => setNoteDraft(event.target.value)}
+        />
+        {noteDirty && (
+          <button
+            type="button"
+            className="button-secondary advisor-context-save"
+            disabled={saveNote.saving}
+            onClick={() => {
+              void handleSaveNote();
+            }}
+          >
+            {saveNote.saving ? 'Saving…' : 'Save note'}
+          </button>
+        )}
+      </label>
+
+      <div className="advisor-context-feedback">
+        <span className="advisor-directive-label">
+          {feedbackList.entries.length === 0
+            ? 'No feedback remembered for this league yet'
+            : `${feedbackList.entries.length} feedback ${feedbackList.entries.length === 1 ? 'entry' : 'entries'} remembered for this league`}
+        </span>
+        {feedbackList.entries.map((entry) => (
+          <div
+            key={entry.id}
+            className="advisor-context-entry"
+          >
+            <span
+              className={`advisor-context-entry-sentiment ${entry.sentiment}`}
+            >
+              {entry.sentiment}
+            </span>
+            <span className="advisor-context-entry-text">
+              {entry.reason || entry.tags.join(', ') || '(no detail)'}
+            </span>
+            <button
+              type="button"
+              className="my-values-rank-reset"
+              title="Delete this feedback entry"
+              disabled={feedbackList.removing}
+              onClick={() => {
+                void handleRemoveEntry(entry.id);
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className="button-secondary advisor-context-invalidate"
+        disabled={invalidate.saving}
+        onClick={() => {
+          void handleInvalidate();
+        }}
+      >
+        {invalidate.saving ? 'Clearing…' : 'Invalidate cached recommendations'}
+      </button>
+    </section>
+  );
+}
+
 interface AdvisorPanelProps {
   leagueId: string;
   leagueName: string;
@@ -884,6 +1021,11 @@ export const AdvisorPanel = ({
         )}
 
         <AdvisorDirectives leagueId={leagueId} />
+
+        <AdvisorContextPanel
+          leagueId={leagueId}
+          username={username}
+        />
 
         <button
           type="button"

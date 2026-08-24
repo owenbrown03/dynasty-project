@@ -188,6 +188,22 @@ class AdvisorFeedbackResponse(Base):
     created_at: str
 
 
+class AdvisorFeedbackEntryItem(Base):
+    id: int
+    sentiment: str
+    reason: str | None = None
+    tags: list[str] = []
+    created_at: str
+
+
+class AdvisorFeedbackEntryListResponse(Base):
+    entries: list[AdvisorFeedbackEntryItem]
+
+
+class AdvisorInvalidateResponse(Base):
+    invalidated: bool
+
+
 class AdvisorPreferenceSummary(Base):
     likes: list[str] = []
     dislikes: list[str] = []
