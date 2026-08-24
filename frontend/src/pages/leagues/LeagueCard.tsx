@@ -11,6 +11,7 @@ import type {
   WarValueSettings,
 } from '@/types';
 import { notify } from '@/utils/notify';
+import { getValueBasisLabel } from '@/utils/valueBasis';
 import { RosterCard } from './RosterCard';
 
 
@@ -37,21 +38,6 @@ function getVisibleLeagueValueBasis(
   }
 
   return valueBasis;
-}
-
-function getLeagueSortLabel(
-  valueBasis: ValueBasis,
-): string {
-  switch (valueBasis) {
-    case 'fantasycalc':
-      return 'FantasyCalc';
-    case 'sleeper_war':
-      return 'Sleeper WAR';
-    case 'my_war':
-      return 'My WAR';
-    default:
-      return 'KTC';
-  }
 }
 
 function getRosterWarTotal(
@@ -222,7 +208,7 @@ export function LeagueCard({
               {league.season} · {league.total_rosters} teams
             </p>
             <p className="league-subtitle">
-              Ordered by current standings · value ranks by {getLeagueSortLabel(rosterSortBasis)}
+              Ordered by current standings · value ranks by {getValueBasisLabel(rosterSortBasis)}
             </p>
           </div>
         </div>
