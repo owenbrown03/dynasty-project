@@ -47,6 +47,22 @@
   font-weight: 700;
 }
 
+.player-table-slot-cell {
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.player-table-divider td {
+  padding: 4px 9px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
 @media (max-width: 768px) {
   .player-table {
     font-size: 11px;

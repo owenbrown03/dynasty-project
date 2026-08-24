@@ -925,6 +925,26 @@ class LeagueDetails:
                 for index, player_id in enumerate(roster.starters or [])
             }
 
+            starting_slots = [
+                slot
+                for slot in (league.roster_positions or [])
+                if slot not in {"BN", "IR", "TAXI"}
+            ]
+            reserve_ids = set(roster.reserve or [])
+            taxi_ids = set(roster.taxi or [])
+
+            def _resolve_slot(player_id: str) -> str | None:
+                if player_id in starter_ids:
+                    index = starter_order.get(player_id)
+                    if index is not None and index < len(starting_slots):
+                        return starting_slots[index]
+                    return None
+                if player_id in reserve_ids:
+                    return "IR"
+                if player_id in taxi_ids:
+                    return "TAXI"
+                return "BN"
+
             roster_players: list[LeaguePlayer] = []
 
             for player_id in roster.players or []:
@@ -962,6 +982,7 @@ class LeagueDetails:
                         my_dynasty_starter_war=player.my_dynasty_starter_war,
                         my_dynasty_roster_war=player.my_dynasty_roster_war,
                         is_starter=player_id in starter_ids,
+                        slot=_resolve_slot(player_id),
                     )
                 )
 

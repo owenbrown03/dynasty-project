@@ -46,6 +46,7 @@ class LeaguePlayer(BaseModel):
     my_dynasty_starter_war: float | None = None
     my_dynasty_roster_war: float | None = None
     is_starter: bool = False
+    slot: str | None = None
 
 
 class LeagueRoster(BaseModel):

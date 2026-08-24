@@ -338,6 +338,7 @@ export interface LeaguePlayer {
   my_dynasty_starter_war?: number | null;
   my_dynasty_roster_war?: number | null;
   is_starter: boolean;
+  slot?: string | null;
 }
 
 export interface LeagueRoster {
