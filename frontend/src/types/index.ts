@@ -563,6 +563,11 @@ export interface PersonalValueLeagueContext {
   total_rosters: number;
 }
 
+export interface PersonalValueRankingOutcome {
+  position_rank: number;
+  probability: number;
+}
+
 export interface PersonalValueRankingEntry {
   player_id: string;
   name: string;
@@ -570,6 +575,7 @@ export interface PersonalValueRankingEntry {
   team: string | null;
   primary_rank: number | null;
   secondary_rank: number | null;
+  outcomes: PersonalValueRankingOutcome[];
   is_customized: boolean;
   has_divergent_future_years: boolean;
 }

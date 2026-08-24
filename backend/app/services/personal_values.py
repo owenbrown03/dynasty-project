@@ -36,6 +36,7 @@ from app.schemas.personal_values import (
     PersonalValueDetailResponse,
     PersonalValueRankingEntry,
     PersonalValueRankingsResponse,
+    PersonalValueRankingOutcome,
     PersonalValueRankingsUpdateRequest,
     PersonalValueRankingsUpdateResponse,
     PersonalValueRankingsResetRequest,
@@ -1441,6 +1442,23 @@ def _outcome_pairs(outcomes) -> list[tuple[int, float]]:
     ]
 
 
+def _ranked_outcomes(outcomes) -> list:
+    """Outcome refs sorted by probability, highest first."""
+    ranked = sorted(
+        outcomes,
+        key=lambda outcome: outcome.probability,
+        reverse=True,
+    )
+
+    return [
+        PersonalValueRankingOutcome(
+            position_rank=outcome.position_rank,
+            probability=outcome.probability,
+        )
+        for outcome in ranked
+    ]
+
+
 async def get_personal_value_rankings(
     *,
     ctx: Context,
@@ -1536,14 +1554,15 @@ async def get_personal_value_rankings(
                 (player.player_id, current_season),
                 ([], False),
             )
+            ranked_outcomes = _ranked_outcomes(outcomes)
             primary = (
-                outcomes[0].position_rank
-                if outcomes
+                ranked_outcomes[0].position_rank
+                if ranked_outcomes
                 else default_rank
             )
             secondary = (
-                outcomes[1].position_rank
-                if len(outcomes) > 1
+                ranked_outcomes[1].position_rank
+                if len(ranked_outcomes) > 1
                 else None
             )
             divergent = False
@@ -1558,6 +1577,7 @@ async def get_personal_value_rankings(
             if not future_seasons:
                 primary = default_rank
                 secondary = None
+                ranked_outcomes = []
                 customized = False
                 divergent = False
             else:
@@ -1566,14 +1586,15 @@ async def get_personal_value_rankings(
                         (player.player_id, future_seasons[0])
                     ]
                 )
+                ranked_outcomes = _ranked_outcomes(first_outcomes)
                 primary = (
-                    first_outcomes[0].position_rank
-                    if first_outcomes
+                    ranked_outcomes[0].position_rank
+                    if ranked_outcomes
                     else default_rank
                 )
                 secondary = (
-                    first_outcomes[1].position_rank
-                    if len(first_outcomes) > 1
+                    ranked_outcomes[1].position_rank
+                    if len(ranked_outcomes) > 1
                     else None
                 )
                 customized = first_customized
@@ -1596,6 +1617,7 @@ async def get_personal_value_rankings(
                 position=player.position or position,
                 team=player.team,
                 primary_rank=primary,
+                outcomes=ranked_outcomes,
                 secondary_rank=secondary,
                 is_customized=customized,
                 has_divergent_future_years=divergent,

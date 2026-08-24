@@ -17,9 +17,13 @@ const VISIBLE_WINDOW = 60;
 
 interface Props {
   leagueId?: string;
+  onEditPlayer?: (playerId: string) => void;
 }
 
-export function MyValuesRankingsBoard({ leagueId }: Props) {
+export function MyValuesRankingsBoard({
+  leagueId,
+  onEditPlayer,
+}: Props) {
   const [position, setPosition] = useState('RB');
   const [scope, setScope] = useState<'current' | 'future'>('future');
   const query = usePersonalValueRankings(
@@ -237,13 +241,22 @@ export function MyValuesRankingsBoard({ leagueId }: Props) {
                   {[
                     entry.position,
                     entry.team,
-                    entry.secondary_rank != null
-                      ? `${entry.primary_rank} / ${entry.secondary_rank}`
-                      : null,
+                    ...entry.outcomes.map(
+                      (outcome) =>
+                        `${outcome.position_rank} @ ${Math.round(outcome.probability)}%`,
+                    ),
                   ]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
+                <button
+                  type="button"
+                  className="my-values-rank-reset"
+                  title="Edit outcomes in editor"
+                  onClick={() => onEditPlayer?.(entry.player_id)}
+                >
+                  ✎
+                </button>
                 <button
                   type="button"
                   className="my-values-rank-reset"

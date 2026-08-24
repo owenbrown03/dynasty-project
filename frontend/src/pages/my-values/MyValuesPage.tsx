@@ -799,7 +799,13 @@ export const MyValuesPage = () => {
       </div>
 
       {viewMode === 'rankings' && (
-        <MyValuesRankingsBoard leagueId={leagueId || undefined} />
+        <MyValuesRankingsBoard
+          leagueId={leagueId || undefined}
+          onEditPlayer={(playerId) => {
+            setSelectedPlayerId(playerId);
+            setViewMode('editor');
+          }}
+        />
       )}
 
       <section

@@ -55,13 +55,20 @@ class PersonalValuePlayer(Base):
     adp_value: float | None = None
 
 
+class PersonalValueRankingOutcome(Base):
+    position_rank: int
+    probability: float
+
+
 class PersonalValueRankingEntry(Base):
     player_id: str
     name: str
     position: str
     team: str | None = None
+    # Rank of the highest-probability outcome; board sorts by this.
     primary_rank: int | None = None
     secondary_rank: int | None = None
+    outcomes: list[PersonalValueRankingOutcome] = []
     is_customized: bool = False
     has_divergent_future_years: bool = False
 
