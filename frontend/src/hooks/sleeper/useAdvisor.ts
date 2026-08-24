@@ -36,9 +36,32 @@ export function useAdvisorRecommendations(
     ),
     queryFn: async () => {
       if (!username) return null;
-      return api.advisor.getCachedRecommendations(username, {
+      // Endpoint wrapper already unwraps the axios response.
+      const incoming = await api.advisor.getCachedRecommendations(
+        username,
+        { leagueId },
+      );
+
+      // A background peek refetch can race a just-completed generate.
+      // Never let an older payload replace fresher results already in
+      // the cache.
+      const key = queryKeys.advisor.cachedRecommendations(
+        username,
         leagueId,
-      });
+      );
+      const existing =
+        appQueryClient.getQueryData<AdvisorSynthesisResponse>(key);
+
+      if (
+        existing
+        && incoming
+        && (existing.generated_at ?? '')
+          >= (incoming.generated_at ?? '')
+      ) {
+        return existing;
+      }
+
+      return incoming;
     },
     enabled: !!username,
     staleTime: 5 * 60 * 1000,
