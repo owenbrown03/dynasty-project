@@ -49,10 +49,10 @@
 
 .my-values-ranking-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  grid-template-columns: 26px minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
+  gap: 12px;
+  padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
   background: var(--color-surface, rgba(255, 255, 255, 0.03));
@@ -65,6 +65,7 @@
 }
 
 .my-values-rank-number {
+  font-size: 13px;
   font-weight: 700;
   text-align: right;
   opacity: 0.85;
@@ -124,7 +125,7 @@
 
 @media (max-width: 640px) {
   .my-values-ranking-row {
-    grid-template-columns: 36px minmax(0, 1fr) auto;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
   }
 
   .my-values-rank-meta {
