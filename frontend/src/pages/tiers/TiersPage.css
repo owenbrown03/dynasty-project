@@ -259,3 +259,14 @@
   color: var(--color-text-muted);
 }
 
+
+
+.tier-player-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.tier-player-clickable:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}

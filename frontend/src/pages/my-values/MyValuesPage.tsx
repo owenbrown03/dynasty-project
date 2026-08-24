@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
@@ -123,6 +124,7 @@ function MyValuesEditorSkeleton() {
 }
 
 export const MyValuesPage = () => {
+  const [searchParams] = useSearchParams();
   const valuePreference = useValuePreference();
   const leagueOverview = useLeagueOverview();
   const [leagueId, setLeagueId] = useState('');
@@ -172,6 +174,15 @@ export const MyValuesPage = () => {
   const [defaultFutureOutcomes, setDefaultFutureOutcomes] = useState<
     PersonalProjectionOutcomeItem[]
   >([]);
+
+  // Deep link from the tier board: /my-values?player=<id>
+  useEffect(() => {
+    const linkedPlayerId = searchParams.get('player');
+
+    if (linkedPlayerId) {
+      setSelectedPlayerId(linkedPlayerId);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (
