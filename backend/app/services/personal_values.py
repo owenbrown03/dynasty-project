@@ -9,6 +9,7 @@ from time import perf_counter
 from types import SimpleNamespace
 
 from fastapi import HTTPException, status
+from pydantic import TypeAdapter
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -823,28 +824,30 @@ def _build_projection_context(
     )
 
 
+_player_value_list_adapter = TypeAdapter(list[PlayerValue])
+
+
 async def hydrate_personal_player_values(
     *,
     db: AsyncSession,
-    site_user_id,
-    league,
+    site_user_id: str | None,
+    league: League,
     player_values: list[PlayerValue],
     redis: RedisClient | None = None,
 ) -> list[PlayerValue]:
     if site_user_id is None or not player_values:
         return player_values
 
+    started_at = perf_counter()
     current_season = int(league.season)
     supported_player_ids = [
         player.player_id
         for player in player_values
         if player.position in DYNASTY_POSITIONS
     ]
-
     if not supported_player_ids:
         return player_values
 
-    started_at = perf_counter()
     saved_projections = await get_personal_projections_for_site_user(
         db=db,
         site_user_id=site_user_id,
@@ -866,10 +869,7 @@ async def hydrate_personal_player_values(
         )
 
         if cached_payload:
-            hydrated = [
-                PlayerValue.model_validate(row)
-                for row in json.loads(cached_payload)
-            ]
+            hydrated = _player_value_list_adapter.validate_json(cached_payload)
             logger.info(
                 (
                     "Personal value hydration source=redis league=%s "

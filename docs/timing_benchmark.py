@@ -251,6 +251,8 @@ def flush_redis() -> None:
 
 
 def decode_json(body: bytes, *, url: str, method: str) -> Any:
+    if not body.strip():
+        return None
     try:
         return json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -424,6 +426,20 @@ def validate_trade_calculator_payload(payload: Any) -> str:
         "trade calculator payload must include season and round",
     )
     return f"season {payload.get('season')} round {payload.get('round')}"
+
+
+def validate_advisor_directives_payload(payload: Any) -> str:
+    require(isinstance(payload, dict), "advisor directives payload must be an object")
+    directives = payload.get("directives")
+    require(isinstance(directives, list), "advisor directives payload must include directives[]")
+    return f"{len(directives)} directives"
+
+
+def validate_advisor_recommendations_peek_payload(payload: Any) -> str:
+    if payload is None:
+        return "no cached synthesis"
+    require(isinstance(payload, dict), "advisor recommendations payload must be an object or null")
+    return f"{len(payload.get('proposals', []))} proposals"
 
 
 def request_spec(
@@ -649,6 +665,26 @@ def build_site_specs(args: argparse.Namespace) -> list[RequestSpec]:
             ),
             validate_trade_calculator_payload,
         ),
+        request_spec(
+            "advisor-directives",
+            "GET",
+            build_url(
+                args.base_url,
+                f"/sleeper/advisor/{args.username}/directives",
+                {"league_id": args.shared_league_id},
+            ),
+            validate_advisor_directives_payload,
+        ),
+        request_spec(
+            "advisor-peek",
+            "GET",
+            build_url(
+                args.base_url,
+                f"/sleeper/advisor/{args.username}/recommendations",
+                {"league_id": args.shared_league_id},
+            ),
+            validate_advisor_recommendations_peek_payload,
+        ),
     ]
 
 
@@ -774,6 +810,28 @@ def build_overlap_specs(args: argparse.Namespace) -> list[RequestSpec]:
             ),
             validate_bulk_trade_search_payload,
             delay_seconds=stagger * 9,
+        ),
+        request_spec(
+            "advisor-directives",
+            "GET",
+            build_url(
+                args.base_url,
+                f"/sleeper/advisor/{args.username}/directives",
+                {"league_id": args.shared_league_id},
+            ),
+            validate_advisor_directives_payload,
+            delay_seconds=stagger * 10,
+        ),
+        request_spec(
+            "advisor-peek",
+            "GET",
+            build_url(
+                args.base_url,
+                f"/sleeper/advisor/{args.username}/recommendations",
+                {"league_id": args.shared_league_id},
+            ),
+            validate_advisor_recommendations_peek_payload,
+            delay_seconds=stagger * 11,
         ),
     ]
 
