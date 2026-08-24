@@ -29,6 +29,7 @@ from app.services.personal_values import get_personal_value_pool
 from app.services.advisor.strategy import (
     BASIS_ACTUAL_POINTS,
     BASIS_PROJECTED_WAR,
+    COMPETE,
     HOARD_PICKS,
     REBUILD,
     WIN_NOW,
@@ -53,7 +54,7 @@ MAX_LEAGUES = 6
 # Bumped whenever candidate-engine semantics change in a way that
 # should invalidate cached syntheses (value bases, constraint math,
 # package shapes). The synthesis cache identity includes this.
-ADVISOR_ENGINE_VERSION = 4
+ADVISOR_ENGINE_VERSION = 5
 ANCHOR_POOL_SIZE = 8  # kept for sell-pool context sizing
 TARGET_POOL_SIZE = 60
 MAX_PROPOSALS_PER_LEAGUE = 6
@@ -303,9 +304,13 @@ async def _build_league_candidates(
     # An explicit direction in the manager's note is ground truth;
     # numeric detection only runs when the note declares nothing.
     strategy = strategy_from_manager_note(manager_note)
+    strategies_by_roster_id: dict[int, LeagueStrategy] = {}
 
     if strategy is None:
-        strategy = await _detect_league_strategy(
+        (
+            strategy,
+            strategies_by_roster_id,
+        ) = await _detect_league_strategy(
             ctx,
             league=league,
             my_roster=my_roster,
@@ -363,6 +368,31 @@ async def _build_league_candidates(
     targets = list(buy_pool)
     if force:
         random.shuffle(targets)
+
+    # Soft counterparty-fit ranking: complement directions first so
+    # scarce proposal slots go to realistic partners. Stable sort keeps
+    # market-value ordering inside each band.
+    roster_by_id = {r.roster_id: r for _, r in league_rosters}
+    strategy_by_target = {}
+
+    for item in targets:
+        owner_roster = _find_roster_of_player(
+            league_rosters,
+            item.player.player_id,
+            exclude_owner=my_roster.owner_id,
+        )
+        strategy_by_target[item.player.player_id] = (
+            strategies_by_roster_id.get(owner_roster.roster_id)
+            if owner_roster is not None
+            else None
+        )
+
+    targets.sort(
+        key=lambda i: _counterparty_rank(
+            strategy_by_target.get(i.player.player_id),
+            strategy,
+        ),
+    )
 
 
     my_picks = sorted(
@@ -448,8 +478,22 @@ async def _build_league_candidates(
         market_receive_total = float(target_market)
         personal_receive_total = _personal_war(target)
 
+        # Rebuilders hoard draft capital; asking them to ship picks
+        # produces dead-on-arrival offers regardless of market math.
+        counterparty_strategy = strategies_by_roster_id.get(
+            target_roster.roster_id,
+        )
+        requestable_their_picks = (
+            their_picks
+            if (
+                counterparty_strategy is None
+                or counterparty_strategy.strategy != REBUILD
+            )
+            else []
+        )
+
         extra_receive_pick = _fix_with_extra_receive_pick(
-            their_picks=their_picks,
+            their_picks=requestable_their_picks,
             market_send_total=market_send_total,
             market_receive_total=market_receive_total,
             personal_send_total=personal_send_total,
@@ -523,6 +567,20 @@ async def _build_league_candidates(
                 counterparty_roster_id=target_roster.roster_id,
                 strategy=(
                     strategy.strategy if strategy else None
+                ),
+                counterparty_strategy=(
+                    counterparty_strategy.strategy
+                    if counterparty_strategy
+                    else None
+                ),
+                counterparty_strategy_reason=(
+                    counterparty_strategy.reason
+                    if counterparty_strategy
+                    else None
+                ),
+                counterparty_fringe=bool(
+                    counterparty_strategy
+                    and counterparty_strategy.fringe
                 ),
                 my_waiver_credit=my_credit,
                 their_waiver_credit=their_credit,
@@ -793,7 +851,10 @@ async def _detect_league_strategy(
     my_items: list[PersonalValuePoolItem],
     items_by_player_id: dict[str, PersonalValuePoolItem],
     chests: dict[int, list[PickAsset]],
-) -> LeagueStrategy:
+) -> tuple[
+    LeagueStrategy | None,
+    dict[int, LeagueStrategy],
+]:
     basis, _phase = await _season_phase(ctx.sleeper)
 
     starters = max(league.starter_slots, 1)
@@ -835,24 +896,78 @@ async def _detect_league_strategy(
 
     league_items = list(items_by_player_id.values())
     league_starter_age = _starter_ages(league_items)
-
-    return detect_strategy(
-        my_strength=my_strength,
-        all_strengths=all_strengths,
-        basis=basis,
-        my_wins=my_roster.wins or 0,
-        my_losses=my_roster.losses or 0,
-        my_ties=my_roster.ties or 0,
-        my_starter_age=_starter_ages(my_items),
-        league_starter_age=league_starter_age,
-        my_pick_count=len(
-            chests.get(my_roster.roster_id, [])
-        ),
-        league_avg_pick_count=(
-            sum(len(v) for v in chests.values())
-            / max(len(chests), 1)
-        ),
+    league_avg_pick_count = (
+        sum(len(v) for v in chests.values())
+        / max(len(chests), 1)
     )
+
+    items_by_roster_id = {
+        roster.roster_id: [
+            items_by_player_id[pid]
+            for pid in (roster.players or [])
+            if pid in items_by_player_id
+        ]
+        for _, roster in league_rosters
+    }
+
+    strategies_by_roster_id = {
+        roster.roster_id: detect_strategy(
+            my_strength=strength(roster),
+            all_strengths=all_strengths,
+            basis=basis,
+            my_wins=roster.wins or 0,
+            my_losses=roster.losses or 0,
+            my_ties=roster.ties or 0,
+            my_starter_age=_starter_ages(
+                items_by_roster_id[roster.roster_id],
+            ),
+            league_starter_age=league_starter_age,
+            my_pick_count=len(chests.get(roster.roster_id, [])),
+            league_avg_pick_count=league_avg_pick_count,
+        )
+        for _, roster in league_rosters
+    }
+
+    return (
+        strategies_by_roster_id.get(my_roster.roster_id),
+        strategies_by_roster_id,
+    )
+
+
+def _counterparty_rank(
+    their: LeagueStrategy | None,
+    mine: LeagueStrategy | None,
+) -> tuple[int, int]:
+    """Soft preference order for trade targets.
+
+    Lower sorts first. Complements our direction:
+      - we are win_now -> rebuilders/hoarders sell us picks and youth;
+        fringe teams sell us proven producers.
+      - we are rebuilding -> contenders and fringe teams pay for our
+        aging veterans.
+      - otherwise neutral, fringe slightly ahead.
+    """
+    their_strategy = their.strategy if their else None
+    fringe = bool(their and their.fringe)
+
+    if mine is not None and mine.strategy == WIN_NOW:
+        base = {
+            REBUILD: 0,
+            HOARD_PICKS: 1,
+            COMPETE: 2,
+            WIN_NOW: 3,
+        }.get(their_strategy, 2)
+    elif mine is not None and mine.strategy == REBUILD:
+        base = {
+            WIN_NOW: 0,
+            COMPETE: 1,
+            HOARD_PICKS: 2,
+            REBUILD: 3,
+        }.get(their_strategy, 2)
+    else:
+        base = 1
+
+    return base, 0 if fringe else 1
 
 
 def _apply_strategy_ordering(

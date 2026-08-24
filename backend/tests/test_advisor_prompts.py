@@ -27,3 +27,12 @@ def test_render_data_block_handles_lists_and_objects():
     parsed = json.loads(block.split("```json\n")[1].split("\n```")[0])
 
     assert parsed == [1, 2, 3]
+
+
+def test_system_prompt_encodes_counterparty_direction_rules():
+    lowered = prompts.SYSTEM_PROMPT.lower()
+
+    assert "counterparty_fringe" in lowered
+    assert "never" in lowered
+    assert "draft picks" in lowered
+    assert "hoarding capital" in lowered

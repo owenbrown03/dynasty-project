@@ -51,6 +51,9 @@ class AdvisorProposal(Base):
     your_roster_id: int | None = None
     counterparty_roster_id: int | None = None
     strategy: str | None = None
+    counterparty_strategy: str | None = None
+    counterparty_strategy_reason: str | None = None
+    counterparty_fringe: bool = False
     my_waiver_credit: float | None = None
     their_waiver_credit: float | None = None
 

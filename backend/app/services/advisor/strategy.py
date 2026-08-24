@@ -17,6 +17,10 @@ class LeagueStrategy:
     strategy: str
     reason: str
     source: str = "detected"
+    # Middle band by strength rank (not top-third contending, not
+    # bottom-third): these managers often believe their window is
+    # opening and pay up for proven production.
+    fringe: bool = False
 
 
 # Explicit direction declarations a manager can write in their league
@@ -170,13 +174,16 @@ def detect_strategy(
         else "projected starter WAR"
     )
 
+    middle_band = not contending and not bottom_feeding
+
     if bottom_feeding and (
         basis == BASIS_PROJECTED_WAR or record_is_meaningful
     ):
         if pick_rich:
             return LeagueStrategy(
                 REBUILD,
-                (
+                fringe=False,
+                reason=(
                     f"Rank {pf_rank} of {n_teams} in "
                     f"{strength_label} while holding "
                     f"{my_pick_count} picks — sell veterans for "
@@ -186,7 +193,8 @@ def detect_strategy(
 
         return LeagueStrategy(
             REBUILD,
-            (
+            fringe=False,
+            reason=(
                 f"Rank {pf_rank} of {n_teams} in "
                 f"{strength_label}"
                 + (
@@ -207,7 +215,8 @@ def detect_strategy(
         )
         return LeagueStrategy(
             WIN_NOW,
-            (
+            fringe=False,
+            reason=(
                 f"Top third in {strength_label} "
                 f"(rank {pf_rank} of {n_teams}; {window}"
                 f"older core avg {my_starter_age:.1f} vs league "
@@ -219,7 +228,8 @@ def detect_strategy(
     if not contending and pick_rich:
         return LeagueStrategy(
             HOARD_PICKS,
-            (
+            fringe=True,
+            reason=(
                 f"Mid-table in {strength_label} "
                 f"(rank {pf_rank} of {n_teams}) while holding "
                 f"{my_pick_count} picks vs a league average of "
@@ -240,7 +250,8 @@ def detect_strategy(
 
     return LeagueStrategy(
         COMPETE,
-        ", ".join(parts)
+        fringe=middle_band,
+        reason=", ".join(parts)
         + " — competitive as constructed; improve the roster "
         "without mortgaging either the present or the future.",
     )

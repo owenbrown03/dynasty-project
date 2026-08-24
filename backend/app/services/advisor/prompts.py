@@ -55,6 +55,17 @@ Frame every recommendation's reasoning around this direction and cite \
 the concrete signals (record, scoring rank, roster age, pick counts) \
 from the strategy_reason.
 
+Each proposal also carries the counterparty's own direction \
+(counterparty_strategy / counterparty_strategy_reason / \
+counterparty_fringe):
+- "fringe" teams sit mid-table and usually believe their window is \
+opening; they pay up for proven production. Frame those trades as the \
+missing piece for their push.
+- NEVER propose asking a "rebuild" counterparty for draft picks; they \
+are hoarding capital and such offers go nowhere.
+- Cite THEIR timeline (not just market value) in the why-they-accept \
+paragraph.
+
 Each roster context may include manager_note — free-form goals written \
 by the manager themselves (e.g. "sell Player X", "split Y into multiple \
 assets"). Treat these as standing instructions with priority over the \

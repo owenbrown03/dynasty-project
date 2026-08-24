@@ -186,3 +186,39 @@ def test_sell_low_phrase_does_not_trigger_rebuild():
     assert strategy_from_manager_note(
         "I like to buy low sell high on injured guys.",
     ) is None
+
+
+def test_mid_table_classified_fringe():
+    result = _detect(
+        my_strength=70.0,
+        all_strengths=[100.0, 90.0, 70.0, 60.0, 50.0, 40.0],
+        my_wins=1,
+        my_losses=2,
+        my_pick_count=4,
+        league_avg_pick_count=4.0,
+    )
+
+    # Rank 3 of 6: neither top third nor bottom third.
+    assert result.fringe is True
+
+
+def test_top_and_bottom_not_fringe():
+    top = _detect(
+        my_strength=100.0,
+        all_strengths=[100.0, 80.0, 60.0],
+        my_wins=3,
+        my_losses=0,
+        my_pick_count=4,
+        league_avg_pick_count=4.0,
+    )
+    bottom = _detect(
+        my_strength=40.0,
+        all_strengths=[100.0, 80.0, 40.0],
+        my_wins=0,
+        my_losses=3,
+        my_pick_count=4,
+        league_avg_pick_count=4.0,
+    )
+
+    assert top.fringe is False
+    assert bottom.fringe is False

@@ -290,7 +290,17 @@ function SendTradeSection({
     >
       <p>
         This sends a real offer on Sleeper to{' '}
-        <strong>{proposal.counterparty_name}</strong>:{' '}
+        <strong>{proposal.counterparty_name}</strong>
+        {proposal.counterparty_fringe ? (
+          <span className="advisor-otb-badge">FRINGE</span>
+        ) : proposal.counterparty_strategy ? (
+          <span className="advisor-otb-badge">
+            {proposal.counterparty_strategy === 'win_now'
+              ? 'CONTENDER'
+              : proposal.counterparty_strategy.toUpperCase()}
+          </span>
+        ) : null}
+        {' '}
         you give{' '}
         {proposal.send.map((p) => p.name).join(', ')} and
         receive{' '}
