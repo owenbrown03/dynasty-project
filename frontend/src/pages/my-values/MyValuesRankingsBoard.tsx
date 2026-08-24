@@ -33,13 +33,15 @@ export function MyValuesRankingsBoard({ leagueId }: Props) {
   const [override, setOverride] = useState<
     PersonalValueRankingEntry[] | null
   >(null);
-  const dragIndex = useRef<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<
-    number | null
+  const dragIdRef = useRef<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<
+    string | null
   >(null);
+  const dirtyRef = useRef(false);
 
   useEffect(() => {
     setOverride(null);
+    dirtyRef.current = false;
   }, [
     query.rankings,
     position,
@@ -56,41 +58,65 @@ export function MyValuesRankingsBoard({ leagueId }: Props) {
     (entry) => entry.primary_rank !== null,
   ).length;
 
-  const handleDragStart = (index: number) => {
-    dragIndex.current = index;
+  const handleDragStart = (playerId: string) => {
+    dragIdRef.current = playerId;
   };
 
-  const handleDragEnter = (index: number) => {
-    if (dragIndex.current === null) return;
-    setDragOverIndex(index);
+  // Identity-based swap: hovering another ROW exchanges positions in
+  // the current order. Tracking indices instead would oscillate,
+  // because the list reflows under the cursor mid-drag.
+  const handleDragEnter = (hoverId: string) => {
+    const dragId = dragIdRef.current;
+
+    if (!dragId || dragId === hoverId) return;
+
+    setDragOverId(hoverId);
 
     setOverride((current) => {
-      const base = current ?? query.rankings.filter(
-        (entry) => entry.primary_rank !== null,
+      const base = (
+        current ?? query.rankings.filter(
+          (entry) => entry.primary_rank !== null,
+        )
+      ).slice(0, VISIBLE_WINDOW);
+      const from = base.findIndex(
+        (entry) => entry.player_id === dragId,
       );
+      const to = base.findIndex(
+        (entry) => entry.player_id === hoverId,
+      );
+
+      if (from < 0 || to < 0 || from === to) {
+        return base;
+      }
+
+      dirtyRef.current = true;
+
       return moveRanking(
-        base.slice(0, VISIBLE_WINDOW),
-        dragIndex.current as number,
-        index,
+        base,
+        from,
+        to,
       ) as PersonalValueRankingEntry[];
     });
-    dragIndex.current = index;
   };
 
   const commitDrop = async () => {
-    dragIndex.current = null;
-    setDragOverIndex(null);
+    dragIdRef.current = null;
+    setDragOverId(null);
 
-    if (!override || !leagueId || save.saving) {
+    const finalOrder = override;
+
+    if (!finalOrder || !dirtyRef.current || !leagueId) {
       return;
     }
+
+    dirtyRef.current = false;
 
     try {
       await save.saveRankings({
         league_id: leagueId,
         position,
         scope,
-        entries: override.map((entry) => ({
+        entries: finalOrder.map((entry) => ({
           player_id: entry.player_id,
           primary_rank: entry.primary_rank as number,
         })),
@@ -101,6 +127,7 @@ export function MyValuesRankingsBoard({ leagueId }: Props) {
           : 'Current-year rankings saved.',
       );
       setOverride(null);
+      dirtyRef.current = false;
     } catch {
       notify.error('Could not save rankings.');
     }
@@ -173,19 +200,19 @@ export function MyValuesRankingsBoard({ leagueId }: Props) {
       ) : (
         <>
           <ol className="my-values-ranking-list">
-            {ranked.map((entry, index) => (
+            {ranked.map((entry) => (
               <li
                 key={entry.player_id}
-                className={`my-values-ranking-row${dragOverIndex === index && dragIndex.current !== null ? ' drag-target' : ''}`}
+                className={`my-values-ranking-row${dragOverId === entry.player_id && dragIdRef.current !== null ? ' drag-target' : ''}`}
                 draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragEnter={() => handleDragEnter(index)}
-                onDragOver={(event) => event.preventDefault()}
-                onDragEnd={() => {
-                  void commitDrop();
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = 'move';
+                  handleDragStart(entry.player_id);
                 }}
-                onDrop={(event) => {
-                  event.preventDefault();
+                onDragEnter={() => handleDragEnter(entry.player_id)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => event.preventDefault()}
+                onDragEnd={() => {
                   void commitDrop();
                 }}
               >

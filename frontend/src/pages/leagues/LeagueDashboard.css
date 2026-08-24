@@ -13,33 +13,6 @@
   flex-wrap: wrap;
 }
 
-.league-dashboard-tabs {
-  display: flex;
-  width: fit-content;
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-surface);
-}
-
-.league-dashboard-tab {
-  padding: 10px 16px;
-  border: 0;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-weight: 700;
-}
-
-.league-dashboard-tab:hover {
-  color: var(--color-text-strong);
-}
-
-.league-dashboard-tab + .league-dashboard-tab {
-  border-left: 1px solid var(--color-border);
-}
-
-.league-dashboard-tab.active {
-  background: var(--color-surface-raised);
-  color: var(--color-text-strong);
-}
 
 .league-dashboard-sort-control {
   display: grid;

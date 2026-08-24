@@ -777,7 +777,7 @@ export const MyValuesPage = () => {
         </div>
       </section>
 
-      <div className="league-dashboard-tabs" role="tablist">
+      <div className="page-tabs" role="tablist">
         <button
           type="button"
           role="tab"

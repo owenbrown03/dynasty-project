@@ -66,13 +66,13 @@ export function LeagueDashboard({
       }
     >
       <div className="league-dashboard-toolbar">
-        <div className="league-dashboard-tabs" role="tablist" aria-label="League dashboard tabs">
+        <div className="page-tabs" role="tablist" aria-label="League dashboard tabs">
           <button
             type="button"
             className={
               activeTab === 'overview'
-                ? 'league-dashboard-tab active'
-                : 'league-dashboard-tab'
+                ? 'page-tab active'
+                : 'page-tab'
             }
             onClick={() => {
               onTabChange('overview');
@@ -85,8 +85,8 @@ export function LeagueDashboard({
             type="button"
             className={
               activeTab === 'analytics'
-                ? 'league-dashboard-tab active'
-                : 'league-dashboard-tab'
+                ? 'page-tab active'
+                : 'page-tab'
             }
             onClick={() => {
               onTabChange('analytics');
@@ -99,8 +99,8 @@ export function LeagueDashboard({
             type="button"
             className={
               activeTab === 'advisor'
-                ? 'league-dashboard-tab active'
-                : 'league-dashboard-tab'
+                ? 'page-tab active'
+                : 'page-tab'
             }
             onClick={() => {
               onTabChange('advisor');
