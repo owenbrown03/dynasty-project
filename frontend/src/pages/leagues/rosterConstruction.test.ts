@@ -143,6 +143,8 @@ describe('buildRosterConstructionRows', () => {
         playerCount: 2,
         targetCount: 3,
         delta: -1,
+        projectedPoints: 0,
+        selectedValue: 0,
         warShare: 28.4,
       },
       {
@@ -150,6 +152,8 @@ describe('buildRosterConstructionRows', () => {
         playerCount: 1,
         targetCount: 8,
         delta: -7,
+        projectedPoints: 0,
+        selectedValue: 0,
         warShare: 24.1,
       },
       {
@@ -157,6 +161,8 @@ describe('buildRosterConstructionRows', () => {
         playerCount: 1,
         targetCount: 9,
         delta: -8,
+        projectedPoints: 0,
+        selectedValue: 0,
         warShare: 38.6,
       },
       {
@@ -164,8 +170,27 @@ describe('buildRosterConstructionRows', () => {
         playerCount: 0,
         targetCount: 2,
         delta: -2,
+        projectedPoints: 0,
+        selectedValue: 0,
         warShare: 8.9,
       },
     ]);
+  });
+});
+
+describe('buildRosterConstructionRows per-position sums', () => {
+  it('sums projected points and selected value per position', () => {
+    const rows = buildRosterConstructionRows(
+      roster,
+      [],
+      { valueBasis: 'dynasty_roster_war', warValueSettings: undefined as never },
+    );
+
+    const byPosition = new Map(rows.map(row => [row.position, row]));
+
+    expect(byPosition.get('QB')?.selectedValue).toBe(7);
+    expect(byPosition.get('RB')?.selectedValue).toBe(2);
+    expect(byPosition.get('WR')?.selectedValue).toBe(1);
+    expect(byPosition.get('TE')?.selectedValue).toBe(0);
   });
 });

@@ -154,6 +154,7 @@ export function RosterCard({
   const constructionRows = buildRosterConstructionRows(
     roster,
     rosterConstructionTargets,
+    { valueBasis, warValueSettings },
   );
   const selectedValueLabel = getValueBasisLabel(
     valueBasis,
@@ -329,7 +330,7 @@ export function RosterCard({
             <div className="roster-card-details">
               <section className="league-detail-section">
                 <div className="league-detail-header">
-                  <p>Roster construction</p>
+                  <p>Position breakdown</p>
                 </div>
 
                 <div className="roster-construction-grid">
@@ -352,6 +353,12 @@ export function RosterCard({
                           {row.targetCount}
                           {' '}
                           league target
+                        </span>
+                        <span>
+                          Proj {row.projectedPoints.toFixed(1)}
+                        </span>
+                        <span>
+                          {valueLabel} {row.selectedValue.toFixed(1)}
                         </span>
                         <span>
                           {row.warShare.toFixed(1)}

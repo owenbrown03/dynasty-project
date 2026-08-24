@@ -1,11 +1,14 @@
 import type {
   LeagueRoster,
   LeagueRosterConstructionTarget,
+  ValueBasis,
+  WarValueSettings,
 } from '@/types';
 import {
   CORE_FANTASY_POSITIONS,
   type FantasyPosition,
 } from '@/utils/positions';
+import { getLeaguePlayerSelectedValue } from '@/utils/valueBasis';
 
 type CorePosition =
   FantasyPosition;
@@ -16,11 +19,17 @@ export interface RosterConstructionRow {
   targetCount: number;
   delta: number;
   warShare: number;
+  projectedPoints: number;
+  selectedValue: number;
 }
 
 export function buildRosterConstructionRows(
   roster: LeagueRoster,
   targets: LeagueRosterConstructionTarget[],
+  valueSettings?: {
+    valueBasis: ValueBasis;
+    warValueSettings: WarValueSettings;
+  },
 ): RosterConstructionRow[] {
   const targetsByPosition = new Map(
     targets.map(
@@ -32,21 +41,51 @@ export function buildRosterConstructionRows(
   );
 
   return CORE_FANTASY_POSITIONS.map((position) => {
-    const playerCount = roster.players.filter(
+    const positionPlayers = roster.players.filter(
       player => player.position === position,
-    ).length;
+    );
     const target = targetsByPosition.get(position);
 
     return {
       position,
-      playerCount,
+      playerCount: positionPlayers.length,
       targetCount: target?.target_count ?? 0,
-      delta: playerCount - (target?.target_count ?? 0),
+      delta: positionPlayers.length - (target?.target_count ?? 0),
       warShare: roundPercent(
         target?.war_share ?? 0,
       ),
+      projectedPoints: roundPercent(
+        sumValues(
+          positionPlayers.map(
+            player => player.projected_points,
+          ),
+        ),
+      ),
+      selectedValue: valueSettings
+        ? roundPercent(
+            sumValues(
+              positionPlayers.map(
+                player =>
+                  getLeaguePlayerSelectedValue(
+                    player,
+                    valueSettings.valueBasis,
+                    valueSettings.warValueSettings,
+                  ),
+              ),
+            ),
+          )
+        : 0,
     };
   });
+}
+
+function sumValues(
+  values: Array<number | null | undefined>,
+): number {
+  return values.reduce<number>(
+    (total, value) => total + (value ?? 0),
+    0,
+  );
 }
 
 function roundPercent(
