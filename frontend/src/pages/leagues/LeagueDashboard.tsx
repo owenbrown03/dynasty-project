@@ -7,6 +7,7 @@ import type { ValueBasis } from '@/types';
 import './LeagueDashboard.css';
 
 import { LeagueCard } from './LeagueCard';
+import { LeagueRosterBarChart } from './LeagueRosterBarChart';
 import { LeagueWarSeasonChart } from './LeagueWarSeasonChart';
 import { AdvisorPanel } from './AdvisorPanel';
 
@@ -18,9 +19,9 @@ interface Props {
     league_id: string;
     league_name: string;
   };
-  activeTab: 'overview' | 'analytics' | 'advisor';
+  activeTab: 'overview' | 'charts' | 'analytics' | 'advisor';
   onTabChange: (
-    tab: 'overview' | 'analytics' | 'advisor',
+    tab: 'overview' | 'charts' | 'analytics' | 'advisor',
   ) => void;
 }
 
@@ -68,6 +69,20 @@ export function LeagueDashboard({
             }}
           >
             Overview
+          </button>
+
+          <button
+            type="button"
+            className={
+              activeTab === 'charts'
+                ? 'page-tab active'
+                : 'page-tab'
+            }
+            onClick={() => {
+              onTabChange('charts');
+            }}
+          >
+            Bar Chart
           </button>
 
           <button
@@ -123,26 +138,36 @@ export function LeagueDashboard({
               )
               : <LoadingState label="Loading league details..." />
           )
-          : activeTab === 'analytics'
+          : activeTab === 'charts'
             ? (
               league
                 ? (
-                  <LeagueWarSeasonChart
+                  <LeagueRosterBarChart
                     league={league}
                   />
                 )
                 : <LoadingState label="Loading league details..." />
             )
-            : (
-              <AdvisorPanel
-                leagueId={
-                  league?.league_id ?? leagueFallback.league_id
-                }
-                leagueName={
-                  league?.league_name ?? leagueFallback.league_name
-                }
-              />
-            )
+            : activeTab === 'analytics'
+              ? (
+                league
+                  ? (
+                    <LeagueWarSeasonChart
+                      league={league}
+                    />
+                  )
+                  : <LoadingState label="Loading league details..." />
+              )
+              : (
+                <AdvisorPanel
+                  leagueId={
+                    league?.league_id ?? leagueFallback.league_id
+                  }
+                  leagueName={
+                    league?.league_name ?? leagueFallback.league_name
+                  }
+                />
+              )
       }
     </div>
   );
