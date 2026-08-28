@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react';
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useBootstrapContext } from '@/context/useBootstrapContext';
@@ -104,7 +105,12 @@ export function DashboardLeagues({
           <button
             key={league.league_id}
             type="button"
-            className="portfolio-league-row"
+            className={`portfolio-league-row${league.is_focused ? ' portfolio-league-row-focused' : ''}`}
+            title={
+              league.is_focused
+                ? 'Starred league'
+                : undefined
+            }
             onClick={() =>
               navigate('/leagues', {
                 state: {
@@ -122,7 +128,12 @@ export function DashboardLeagues({
 
               <div>
                 <h3 className="portfolio-league-title">
-                  {league.league_name}
+                  {league.is_focused ? (
+                    <span className="portfolio-league-star" aria-label="Starred league">
+                      <Star size={13} fill="currentColor" />
+                    </span>
+                  ) : null}
+                  <span>{league.league_name}</span>
                 </h3>
 
                 <p className="portfolio-league-subtitle">

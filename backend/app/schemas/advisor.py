@@ -9,6 +9,7 @@ class AdvisorPlayerRef(Base):
     position: str | None = None
     team: str | None = None
     age: float | None = None
+    injury_status: str | None = None
     personal_war: float | None = None
     market_war: float | None = None
     delta_war: float | None = None
@@ -51,7 +52,12 @@ class AdvisorProposal(Base):
     your_roster_id: int | None = None
     counterparty_roster_id: int | None = None
     strategy: str | None = None
+    counterparty_strategy: str | None = None
+    counterparty_strategy_reason: str | None = None
+    counterparty_fringe: bool = False
     my_waiver_credit: float | None = None
+    my_waiver_credit_war: float | None = None
+    their_waiver_credit_war: float | None = None
     their_waiver_credit: float | None = None
 
     @property
@@ -99,6 +105,7 @@ class AdvisorRosterContext(Base):
     avg_age: float | None = None
     strategy: str | None = None
     strategy_reason: str | None = None
+    strategy_source: str | None = None
     manager_note: str | None = None
 
 
@@ -121,6 +128,20 @@ class AdvisorRecommendation(Base):
     confidence: str
     proposal: AdvisorProposal | None = None
 
+
+
+class AdvisorDirective(Base):
+    league_id: str
+    league_name: str
+    season: str | None = None
+    status: str | None = None
+    total_rosters: int | None = None
+    over_limit_by: int
+    suggested_drops: list[AdvisorPlayerRef] = []
+
+
+class AdvisorDirectivesResponse(Base):
+    directives: list[AdvisorDirective]
 
 class AdvisorSynthesisResponse(Base):
     summary: str
@@ -165,6 +186,22 @@ class AdvisorFeedbackResponse(Base):
     tags: list[str] = []
     resolved: bool
     created_at: str
+
+
+class AdvisorFeedbackEntryItem(Base):
+    id: int
+    sentiment: str
+    reason: str | None = None
+    tags: list[str] = []
+    created_at: str
+
+
+class AdvisorFeedbackEntryListResponse(Base):
+    entries: list[AdvisorFeedbackEntryItem]
+
+
+class AdvisorInvalidateResponse(Base):
+    invalidated: bool
 
 
 class AdvisorPreferenceSummary(Base):

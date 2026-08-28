@@ -50,6 +50,9 @@ from app.models.db.sleeper.api import League, Roster
 from app.models.db.auth import SiteUser
 from app.services.draft.projection import (
     build_cached_projected_pick_slots_by_roster_id,
+    build_redraft_value_by_roster_id,
+    redraft_projection_basis_for_method,
+    resolve_draft_pick_projection_method,
     resolve_finance_projection_settings,
 )
 from app.services.finance_math import (
@@ -404,6 +407,23 @@ async def build_finance_projected_seed_by_league_roster(
             ),
             redraft_roster_war_by_roster_id=(
                 redraft_roster_war_by_roster_id
+            ),
+            redraft_value_by_roster_id=(
+                await build_redraft_value_by_roster_id(
+                    ctx.db,
+                    rosters,
+                    basis=(
+                        redraft_projection_basis_for_method(
+                            resolve_draft_pick_projection_method(
+                                current_week=current_week,
+                                settings=(
+                                    effective_projection_settings
+                                ),
+                            ),
+                        )
+                        or "sleeper_projection"
+                    ),
+                )
             ),
             settings=effective_projection_settings,
         )

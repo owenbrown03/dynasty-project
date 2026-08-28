@@ -11,13 +11,16 @@ from app.models.db.sleeper.api import League, Roster
 DRAFT_PICK_PROJECTION_CACHE_TTL_SECONDS = (
     6 * 60 * 60
 )
-DRAFT_PICK_PROJECTION_CACHE_VERSION = "v1"
+DRAFT_PICK_PROJECTION_CACHE_VERSION = "v2"
 
 DRAFT_PICK_PROJECTION_METHODS = {
-    "reverse_standings",
+    "standings_proxy",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
+    "sleeper_projection",
+    "ktc_redraft",
+    "fantasycalc_redraft",
 }
 DRAFT_PICK_PROJECTION_PHASE_METHODS = {
     "none",
@@ -27,7 +30,7 @@ DEFAULT_DRAFT_PICK_PROJECTION_SETTINGS = {
     "enabled": True,
     "switch_week": 4,
     "before_week_method": "none",
-    "from_week_method": "max_pf",
+    "from_week_method": "sleeper_projection",
 }
 DEFAULT_FINANCE_PROJECTION_SETTINGS = {
     "same_as_draft_pick_projection": True,
@@ -39,10 +42,13 @@ MIN_DRAFT_PICK_PROJECTION_WEEK = 1
 MAX_DRAFT_PICK_PROJECTION_WEEK = 18
 
 DraftPickProjectionMethod = Literal[
-    "reverse_standings",
+    "standings_proxy",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
+    "sleeper_projection",
+    "ktc_redraft",
+    "fantasycalc_redraft",
 ]
 DraftPickProjectionPhaseMethod = Literal[
     "none",
@@ -232,7 +238,13 @@ def _format_method_label(
         return "redraft starter WAR"
     if method == "redraft_roster_war":
         return "redraft roster WAR"
-    return "reverse standings proxy"
+    if method == "sleeper_projection":
+        return "sleeper projected points"
+    if method == "ktc_redraft":
+        return "KTC (redraft)"
+    if method == "fantasycalc_redraft":
+        return "FantasyCalc (redraft)"
+    return "standings proxy"
 
 
 def build_projected_slot_source_label(
@@ -252,29 +264,50 @@ def build_projected_slot_source_label(
 
     if resolved_method == "max_pf":
         label = (
-            "Projected from reverse max PF through "
+            "Projected from max PF through "
             f"Week {current_week}, using cumulative "
             "potential points first, then points for, "
             "then projected points as tiebreakers"
         )
     elif resolved_method == "redraft_starter_war":
         label = (
-            "Projected from reverse redraft starter WAR "
+            "Projected from redraft starter WAR "
             f"through Week {current_week}, using lower starter "
             "WAR first, then points for, then projected points "
             "as tiebreakers"
         )
     elif resolved_method == "redraft_roster_war":
         label = (
-            "Projected from reverse redraft roster WAR "
+            "Projected from redraft roster WAR "
             f"through Week {current_week}, using lower roster "
             "WAR first, then points for, then projected points "
             "as tiebreakers"
         )
+    elif resolved_method == "sleeper_projection":
+        label = (
+            "Projected from sleeper projected points "
+            f"through Week {current_week}, using lower total "
+            "projection first, then points for, then "
+            "projected points as tiebreakers"
+        )
+    elif resolved_method == "ktc_redraft":
+        label = (
+            "Projected from KTC redraft values "
+            f"through Week {current_week}, using lower total "
+            "value first, then points for, then "
+            "projected points as tiebreakers"
+        )
+    elif resolved_method == "fantasycalc_redraft":
+        label = (
+            "Projected from FantasyCalc redraft values "
+            f"through Week {current_week}, using lower total "
+            "value first, then points for, then "
+            "projected points as tiebreakers"
+        )
     else:
         label = (
-            "Projected from the current reverse-order standings "
-            f"proxy through Week {current_week}, using record "
+            "Projected from the standings proxy "
+            f"through Week {current_week}, using record "
             "first, then points for, then projected points as "
             "tiebreakers"
         )
@@ -424,7 +457,8 @@ def _build_draft_pick_projection_cache_key(
     projected_points_by_roster_id: dict[int, float] | None,
     redraft_starter_war_by_roster_id: dict[int, float] | None,
     redraft_roster_war_by_roster_id: dict[int, float] | None,
-    settings: dict[str, object] | None,
+    redraft_value_by_roster_id: dict[int, float] | None = None,
+    settings: dict[str, object] | None = None,
 ) -> str:
     digest = hashlib.sha256()
     digest.update(
@@ -467,6 +501,9 @@ def _build_draft_pick_projection_cache_key(
                     redraft_roster_war_by_roster_id
                     or {}
                 ),
+                "redraft_value_by_roster_id": (
+                    redraft_value_by_roster_id or {}
+                ),
             },
             sort_keys=True,
             separators=(",", ":"),
@@ -487,6 +524,7 @@ def build_projected_pick_slots_by_roster_id(
     projected_points_by_roster_id: dict[int, float] | None = None,
     redraft_starter_war_by_roster_id: dict[int, float] | None = None,
     redraft_roster_war_by_roster_id: dict[int, float] | None = None,
+    redraft_value_by_roster_id: dict[int, float] | None = None,
     settings: dict[str, object] | None = None,
 ) -> DraftPickProjectionResult:
     normalized = normalize_draft_pick_projection_settings(
@@ -550,6 +588,20 @@ def build_projected_pick_slots_by_roster_id(
             ),
         )
         method_used = "redraft_roster_war"
+    elif (
+        requested_method in REDRAFT_MARKET_METHODS
+        and _has_metric_values(redraft_value_by_roster_id)
+    ):
+        ordered_rosters = _sort_rosters_by_metric(
+            rosters=rosters,
+            projected_points_by_roster_id=(
+                projected_points_by_roster_id
+            ),
+            values_by_roster_id=(
+                redraft_value_by_roster_id or {}
+            ),
+        )
+        method_used = requested_method
     else:
         if requested_method != "reverse_standings":
             fallback_from_method = requested_method
@@ -583,6 +635,7 @@ async def build_cached_projected_pick_slots_by_roster_id(
     projected_points_by_roster_id: dict[int, float] | None = None,
     redraft_starter_war_by_roster_id: dict[int, float] | None = None,
     redraft_roster_war_by_roster_id: dict[int, float] | None = None,
+    redraft_value_by_roster_id: dict[int, float] | None = None,
     settings: dict[str, object] | None = None,
 ) -> DraftPickProjectionResult:
     cache_key = _build_draft_pick_projection_cache_key(
@@ -597,6 +650,9 @@ async def build_cached_projected_pick_slots_by_roster_id(
         ),
         redraft_roster_war_by_roster_id=(
             redraft_roster_war_by_roster_id
+        ),
+        redraft_value_by_roster_id=(
+            redraft_value_by_roster_id
         ),
         settings=settings,
     )
@@ -639,6 +695,9 @@ async def build_cached_projected_pick_slots_by_roster_id(
         redraft_roster_war_by_roster_id=(
             redraft_roster_war_by_roster_id
         ),
+        redraft_value_by_roster_id=(
+            redraft_value_by_roster_id
+        ),
         settings=settings,
     )
 
@@ -663,3 +722,111 @@ async def build_cached_projected_pick_slots_by_roster_id(
         )
 
     return result
+
+
+async def build_redraft_value_by_roster_id(
+    db,
+    rosters: list[Roster],
+    basis: str = "ktc",
+) -> dict[int, float]:
+    """Total redraft market value per roster.
+
+    Backs the redraft_value_system projection method and the advisor
+    contention bands: both project redraft finish from the market
+    system chosen in settings (#165 phase 3).
+    """
+    from app.crud.value import get_player_values
+
+    player_ids = {
+        player_id
+        for roster in rosters
+        for player_id in (roster.players or [])
+    }
+
+    if not player_ids:
+        return {}
+
+    values = await get_player_values(
+        db,
+        player_ids=list(player_ids),
+        redraft_war_players=[],
+        value_context="redraft",
+    )
+
+    def _basis_value(value) -> float:
+        if basis == "fantasycalc":
+            return value.fc_value or 0.0
+        if basis == "sleeper_projection":
+            return value.projected_points or 0.0
+        if basis == "redraft_roster_war":
+            return value.redraft_roster_war or 0.0
+        if basis == "redraft_starter_war":
+            return value.redraft_starter_war or 0.0
+        if basis == "dynasty_roster_war":
+            return value.dynasty_roster_war or 0.0
+        if basis == "dynasty_starter_war":
+            return value.dynasty_starter_war or 0.0
+        # my_war / sleeper_war parameterized configs default to the
+        # dynasty roster WAR leg.
+        if basis in {"my_war", "sleeper_war"}:
+            return value.dynasty_roster_war or 0.0
+        if basis == "adp":
+            return value.adp_value or 0.0
+        return value.ktc_value or 0.0
+
+    value_by_player = {
+        value.player_id: _basis_value(value)
+        for value in values
+    }
+
+    return {
+        roster.roster_id: round(
+            sum(
+                value_by_player.get(player_id, 0.0)
+                for player_id in (roster.players or [])
+            ),
+            2,
+        )
+        for roster in rosters
+    }
+
+
+# Methods that rank rosters by a redraft market-source sum; each
+# maps to the basis build_redraft_value_by_roster_id should sum.
+REDRAFT_MARKET_METHODS = {
+    "sleeper_projection",
+    "ktc_redraft",
+    "fantasycalc_redraft",
+}
+
+
+def redraft_projection_basis_for_method(
+    method: str,
+) -> str | None:
+    if method == "sleeper_projection":
+        return "sleeper_projection"
+    if method == "ktc_redraft":
+        return "ktc"
+    if method == "fantasycalc_redraft":
+        return "fantasycalc"
+    return None
+
+
+def redraft_value_system_active(
+    *,
+    current_week: int,
+    settings: dict[str, object] | None,
+) -> bool:
+    """Whether the active phase method ranks by a redraft market
+    source.
+
+    Callers use this to skip fetching redraft market sums when another
+    method is active.
+    """
+    return (
+        resolve_draft_pick_projection_method(
+            current_week=current_week,
+            settings=settings,
+        )
+        in REDRAFT_MARKET_METHODS
+    )

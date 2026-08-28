@@ -16,6 +16,95 @@ BASIS_PROJECTED_WAR = "projected_war"
 class LeagueStrategy:
     strategy: str
     reason: str
+    source: str = "detected"
+    # Middle band by strength rank (not top-third contending, not
+    # bottom-third): these managers often believe their window is
+    # opening and pay up for proven production.
+    fringe: bool = False
+    # Bottom two ranks. With an OLD core that is NOT on the trade
+    # block these teams behave like contenders (they think they can
+    # still win), so their firsts become requestable despite being
+    # rebuild-classified.
+    bottom_two: bool = False
+
+
+# Explicit direction declarations a manager can write in their league
+# note. When one matches, it is treated as ground truth and overrides
+# the numeric strategy detection instead of merely informing the prompt.
+_NOTE_DIRECTION_KEYWORDS: list[tuple[str, list[str]]] = [
+    (
+        WIN_NOW,
+        [
+            "win now",
+            "win-now",
+            "all-in",
+            "all in",
+            "going for it",
+            "championship or bust",
+            "contending window",
+        ],
+    ),
+    (
+        REBUILD,
+        [
+            "rebuild",
+            "rebuilding",
+            "retool",
+            "tanking",
+            "tank for",
+            "sell everything",
+            "tear it down",
+            "reset roster",
+        ],
+    ),
+    (
+        HOARD_PICKS,
+        [
+            "hoard picks",
+            "stockpile picks",
+            "stockpiling picks",
+            "collect picks",
+            "accumulate picks",
+            "draft capital",
+        ],
+    ),
+]
+
+
+def strategy_from_manager_note(
+    note: str | None,
+) -> LeagueStrategy | None:
+    """Pins strategy to an explicit direction declared in the note.
+
+    Scans all keyword groups and returns the match that appears
+    earliest in the text so mixed notes honor the manager's first
+    stated intent.
+    """
+    if not note:
+        return None
+
+    text = note.lower()
+
+    best: tuple[int, str] | None = None
+    for strategy, keywords in _NOTE_DIRECTION_KEYWORDS:
+        for keyword in keywords:
+            index = text.find(keyword)
+            if index == -1:
+                continue
+            if best is None or index < best[0]:
+                best = (index, strategy)
+
+    if best is None:
+        return None
+
+    return LeagueStrategy(
+        strategy=best[1],
+        reason=(
+            "Pinned from your league note, overriding numeric "
+            "signals."
+        ),
+        source="manager_note",
+    )
 
 
 def detect_strategy(
@@ -70,6 +159,14 @@ def detect_strategy(
         pf_rank > n_teams - max(1, round(n_teams / 3))
     )
 
+    # Owner-confirmed fringe band: upper-middle ranks, e.g. 7-10 of
+    # a 12-teamer. Scales proportionally with league size.
+    fringe_band = (
+        pf_rank > round(n_teams / 2)
+        and pf_rank <= n_teams - 2
+    )
+    bottom_two = pf_rank > n_teams - 2
+
     # Before enough games are played a win-loss record says nothing
     # about team quality; only trust it once it can mean something.
     record_is_meaningful = games >= 3
@@ -96,7 +193,9 @@ def detect_strategy(
         if pick_rich:
             return LeagueStrategy(
                 REBUILD,
-                (
+                fringe=False,
+                bottom_two=bottom_two,
+                reason=(
                     f"Rank {pf_rank} of {n_teams} in "
                     f"{strength_label} while holding "
                     f"{my_pick_count} picks — sell veterans for "
@@ -106,7 +205,9 @@ def detect_strategy(
 
         return LeagueStrategy(
             REBUILD,
-            (
+            fringe=False,
+            bottom_two=bottom_two,
+            reason=(
                 f"Rank {pf_rank} of {n_teams} in "
                 f"{strength_label}"
                 + (
@@ -127,7 +228,9 @@ def detect_strategy(
         )
         return LeagueStrategy(
             WIN_NOW,
-            (
+            fringe=False,
+            bottom_two=bottom_two,
+            reason=(
                 f"Top third in {strength_label} "
                 f"(rank {pf_rank} of {n_teams}; {window}"
                 f"older core avg {my_starter_age:.1f} vs league "
@@ -139,7 +242,9 @@ def detect_strategy(
     if not contending and pick_rich:
         return LeagueStrategy(
             HOARD_PICKS,
-            (
+            fringe=True,
+            bottom_two=bottom_two,
+            reason=(
                 f"Mid-table in {strength_label} "
                 f"(rank {pf_rank} of {n_teams}) while holding "
                 f"{my_pick_count} picks vs a league average of "
@@ -160,7 +265,42 @@ def detect_strategy(
 
     return LeagueStrategy(
         COMPETE,
-        ", ".join(parts)
+        fringe=fringe_band,
+        bottom_two=bottom_two,
+        reason=", ".join(parts)
         + " — competitive as constructed; improve the roster "
         "without mortgaging either the present or the future.",
+    )
+
+
+# Explicit Sleeper injury-status mapping. Season-altering designations
+# remove a player from the lineup for the rest of the year (or
+# indefinitely); weekly designations (Q/D/DNR) are day-to-day noise
+# and deliberately NOT treated as season-altering.
+SEASON_ALTERING_INJURY_STATUSES = {
+    "ir",
+    "injured reserve",
+    "ir-r",
+    "o",
+    "out",
+    "pup",
+    "nfi",
+}
+
+WEEKLY_INJURY_STATUSES = {
+    "q",
+    "questionable",
+    "d",
+    "doubtful",
+    "dnr",
+}
+
+
+def is_season_altering_injury(status: str | None) -> bool:
+    if not status:
+        return False
+
+    return (
+        status.strip().casefold()
+        in SEASON_ALTERING_INJURY_STATUSES
     )

@@ -13,6 +13,7 @@ from app.models.db.sleeper.personal import (
     FinanceLeagueDefault,
     FinanceLeagueSeason,
     FinanceUserDefaults,
+    FocusLeague,
     HiddenLeague,
     PersonalProjection,
     PersonalProjectionOutcome,
@@ -473,6 +474,37 @@ async def replace_personal_projection_outcomes(
     return new_rows
 
 
+async def delete_personal_projections(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    projection_ids: list[int],
+) -> int:
+    """Removes customization rows; absence means Underdog defaults."""
+    from sqlalchemy import delete
+
+    if not projection_ids:
+        return 0
+
+    await db.execute(
+        delete(PersonalProjectionOutcome).where(
+            PersonalProjectionOutcome.projection_id.in_(
+                projection_ids,
+            ),
+        ),
+    )
+    result = await db.execute(
+        delete(PersonalProjection).where(
+            PersonalProjection.id.in_(projection_ids),
+            PersonalProjection.site_user_id == site_user_id,
+        ),
+    )
+    await db.commit()
+
+    return result.rowcount or 0
+
+
+
 async def upsert_personal_projection(
     *,
     db: AsyncSession,
@@ -599,6 +631,66 @@ async def unhide_league(
         site_user_id=site_user_id,
         league_id=league_id,
     )
+
+    if record is None:
+        return
+
+    await db.delete(record)
+    await db.commit()
+
+
+async def get_focused_league_ids(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+) -> set[str]:
+    results = await db.execute(
+        select(FocusLeague.league_id).where(
+            FocusLeague.site_user_id == site_user_id,
+        )
+    )
+    return set(results.scalars().all())
+
+
+async def focus_league(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str,
+) -> FocusLeague:
+    results = await db.execute(
+        select(FocusLeague).where(
+            FocusLeague.site_user_id == site_user_id,
+            FocusLeague.league_id == league_id,
+        )
+    )
+    record = results.scalar_one_or_none()
+
+    if record is None:
+        record = FocusLeague(
+            site_user_id=site_user_id,
+            league_id=league_id,
+        )
+
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def unfocus_league(
+    *,
+    db: AsyncSession,
+    site_user_id: UUID,
+    league_id: str,
+) -> None:
+    results = await db.execute(
+        select(FocusLeague).where(
+            FocusLeague.site_user_id == site_user_id,
+            FocusLeague.league_id == league_id,
+        )
+    )
+    record = results.scalar_one_or_none()
 
     if record is None:
         return

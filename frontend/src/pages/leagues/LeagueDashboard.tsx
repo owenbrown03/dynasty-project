@@ -1,7 +1,6 @@
-import { useState } from 'react';
-
 import { useBootstrap } from '@/hooks/useBootstrap';
 import { useValuePreference } from '@/context/useValuePreference';
+import { LoadingState } from '@/components/feedback/LoadingState';
 import type { LeagueDetails } from '@/types';
 import type { ValueBasis } from '@/types';
 
@@ -13,57 +12,59 @@ import { AdvisorPanel } from './AdvisorPanel';
 
 
 interface Props {
-  league: LeagueDetails;
+  league: LeagueDetails | null;
+  isFocused?: boolean;
+  leagueFallback: {
+    league_id: string;
+    league_name: string;
+  };
+  activeTab: 'overview' | 'analytics' | 'advisor';
+  onTabChange: (
+    tab: 'overview' | 'analytics' | 'advisor',
+  ) => void;
 }
-
-type LeagueDashboardTab =
-  | 'overview'
-  | 'analytics'
-  | 'advisor';
 
 function normalizeLeagueSortBasis(
   valueBasis: ValueBasis,
 ): ValueBasis {
-  if (
-    valueBasis === 'dynasty_starter_war'
-    || valueBasis === 'dynasty_roster_war'
-    || valueBasis === 'redraft_starter_war'
-    || valueBasis === 'redraft_roster_war'
-  ) {
-    return 'sleeper_war';
-  }
-
-  if (valueBasis === 'adp') {
-    return 'ktc';
-  }
-
+  // Every pool basis now resolves directly; legacy parameterized
+  // aliases are gone.
   return valueBasis;
 }
 
 
 export function LeagueDashboard({
   league,
+  isFocused,
+  leagueFallback,
+  activeTab,
+  onTabChange,
 }: Props) {
   const bootstrap = useBootstrap();
   const valuePreference = useValuePreference();
-  const [activeTab, setActiveTab] = useState<LeagueDashboardTab>('overview');
   const rosterSortBasis = normalizeLeagueSortBasis(
     valuePreference.preference,
   );
 
   return (
-    <div className="league-dashboard">
+    <div
+      className={
+        isFocused
+          ? 'league-dashboard focused'
+          : 'league-dashboard'
+      }
+    >
       <div className="league-dashboard-toolbar">
-        <div className="league-dashboard-tabs" role="tablist" aria-label="League dashboard tabs">
+        <div className="page-tabs" role="tablist" aria-label="League dashboard tabs">
           <button
             type="button"
             className={
               activeTab === 'overview'
-                ? 'league-dashboard-tab active'
-                : 'league-dashboard-tab'
+                ? 'page-tab active'
+                : 'page-tab'
             }
             onClick={() => {
-              setActiveTab('overview');
+              onTabChange('overview');
             }}
           >
             Overview
@@ -73,11 +74,11 @@ export function LeagueDashboard({
             type="button"
             className={
               activeTab === 'analytics'
-                ? 'league-dashboard-tab active'
-                : 'league-dashboard-tab'
+                ? 'page-tab active'
+                : 'page-tab'
             }
             onClick={() => {
-              setActiveTab('analytics');
+              onTabChange('analytics');
             }}
           >
             Analytics
@@ -87,14 +88,14 @@ export function LeagueDashboard({
             type="button"
             className={
               activeTab === 'advisor'
-                ? 'league-dashboard-tab active'
-                : 'league-dashboard-tab'
+                ? 'page-tab active'
+                : 'page-tab'
             }
             onClick={() => {
-              setActiveTab('advisor');
+              onTabChange('advisor');
             }}
           >
-            AI Advisor
+            Roster Lab
           </button>
         </div>
 
@@ -103,31 +104,43 @@ export function LeagueDashboard({
       {
         activeTab === 'overview'
           ? (
-            <LeagueCard
-              league={league}
-              rosterSortBasis={rosterSortBasis}
-              warValueSettings={bootstrap.data?.war_value_settings ?? {
-                sleeper_projection: {
-                  timeframe: 'dynasty',
-                  scope: 'roster',
-                },
-                my: {
-                  timeframe: 'dynasty',
-                  scope: 'roster',
-                },
-              }}
-            />
+            league
+              ? (
+                <LeagueCard
+                  league={league}
+                  rosterSortBasis={rosterSortBasis}
+                  warValueSettings={bootstrap.data?.war_value_settings ?? {
+                    sleeper_projection: {
+                      timeframe: 'dynasty',
+                      scope: 'roster',
+                    },
+                    my: {
+                      timeframe: 'dynasty',
+                      scope: 'roster',
+                    },
+                  }}
+                />
+              )
+              : <LoadingState label="Loading league details..." />
           )
           : activeTab === 'analytics'
             ? (
-              <LeagueWarSeasonChart
-                league={league}
-              />
+              league
+                ? (
+                  <LeagueWarSeasonChart
+                    league={league}
+                  />
+                )
+                : <LoadingState label="Loading league details..." />
             )
             : (
               <AdvisorPanel
-                leagueId={league.league_id}
-                leagueName={league.league_name}
+                leagueId={
+                  league?.league_id ?? leagueFallback.league_id
+                }
+                leagueName={
+                  league?.league_name ?? leagueFallback.league_name
+                }
               />
             )
       }

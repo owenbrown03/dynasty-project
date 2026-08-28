@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import time
@@ -23,6 +24,16 @@ from app.schemas.draft import DraftPickAsset
 
 SHARED_DATA_CACHE_KEY_PREFIX = "rookie_war:shared:"
 SHARED_DATA_CACHE_TTL_SECONDS = 6 * 60 * 60
+
+AGGREGATE_CACHE_KEY_PREFIX = "rookie_war:aggregates:"
+AGGREGATE_CACHE_VERSION = "v1"
+AGGREGATE_CACHE_TTL_SECONDS = 24 * 60 * 60
+
+PLAYERS_CACHE_KEY = "v1"
+PLAYERS_CACHE_TTL_SECONDS = 30 * 60
+
+_war_service = WARService()
+_players_cache: dict[str, tuple[float, dict]] = {}
 
 
 @dataclass(frozen=True)
@@ -50,7 +61,7 @@ _SEL_ROUND_SLOT = 3
 
 
 def _sel_attr(selection, name: str):
-    if isinstance(selection, tuple):
+    if isinstance(selection, (tuple, list)):
         idx = {
             "player_id": _SEL_PLAYER_ID,
             "season": _SEL_SEASON,
@@ -77,7 +88,10 @@ async def _load_shared_data(
         if cached:
             data = json.loads(cached)
             return _SharedData(
-                selections=data["selections"],
+                selections=[
+                    tuple(s) if isinstance(s, list) else s
+                    for s in data["selections"]
+                ],
                 stat_seasons=data["stat_seasons"],
             )
 
@@ -114,6 +128,105 @@ async def _load_shared_data(
         )
 
     return shared
+
+
+async def _get_cached_players(
+    db: AsyncSession,
+) -> dict:
+    now = time.monotonic()
+    entry = _players_cache.get(PLAYERS_CACHE_KEY)
+
+    if entry is not None and entry[0] > now:
+        return entry[1]
+
+    players = await _war_service.loader.get_players(db)
+    _players_cache[PLAYERS_CACHE_KEY] = (
+        now + PLAYERS_CACHE_TTL_SECONDS,
+        players,
+    )
+    return players
+
+
+def build_rookie_war_config_fingerprint(
+    *,
+    league_total_rosters: int,
+    league_scoring_settings: dict[str, float],
+    league_roster_positions: list[str],
+    rounds: list[int],
+    seasons: list[str],
+    effective_slots: list[int],
+    latest_completed_season: int,
+) -> str:
+    payload = json.dumps(
+        {
+            "total_rosters": league_total_rosters,
+            "scoring_settings": league_scoring_settings,
+            "roster_positions": league_roster_positions,
+            "rounds": rounds,
+            "seasons": seasons,
+            "effective_slots": effective_slots,
+            "latest_completed_season": latest_completed_season,
+        },
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def _build_aggregate_cache_key(fingerprint: str) -> str:
+    return (
+        f"{AGGREGATE_CACHE_KEY_PREFIX}"
+        f"{AGGREGATE_CACHE_VERSION}:{fingerprint}"
+    )
+
+
+def _serialize_aggregates(
+    resolved: dict[tuple[str, int, int], RookiePickWarAggregate],
+) -> list[list]:
+    return [
+        [
+            season,
+            round_number,
+            og_roster_id,
+            aggregate.starter_war,
+            aggregate.roster_war,
+            aggregate.sample_size,
+            aggregate.source_label,
+        ]
+        for (
+            (season, round_number, og_roster_id),
+            aggregate,
+        ) in resolved.items()
+    ]
+
+
+def _deserialize_aggregates(rows: list[list]) -> dict[
+    tuple[str, int, int],
+    RookiePickWarAggregate,
+]:
+    resolved: dict[
+        tuple[str, int, int],
+        RookiePickWarAggregate,
+    ] = {}
+
+    for (
+        season,
+        round_number,
+        og_roster_id,
+        starter_war,
+        roster_war,
+        sample_size,
+        source_label,
+    ) in rows:
+        resolved[(season, round_number, og_roster_id)] = (
+            RookiePickWarAggregate(
+                starter_war=starter_war,
+                roster_war=roster_war,
+                sample_size=sample_size,
+                source_label=source_label,
+            )
+        )
+
+    return resolved
 
 
 async def get_rookie_pick_war_values_by_key(
@@ -161,9 +274,35 @@ async def get_rookie_pick_war_values_by_key(
     if not selections:
         return {}
 
-    war_service = WARService()
+    def _effective_slot(pick) -> int:
+        if pick.slot is not None:
+            return int(pick.slot)
+        if pick.projected_slot is not None:
+            return int(pick.projected_slot)
+        return 0
+
+    fingerprint = build_rookie_war_config_fingerprint(
+        league_total_rosters=league_total_rosters,
+        league_scoring_settings=dict(league_scoring_settings or {}),
+        league_roster_positions=list(league_roster_positions or []),
+        rounds=rounds,
+        seasons=sorted({str(pick.season) for pick in picks}),
+        effective_slots=sorted(
+            {_effective_slot(pick) for pick in picks}
+        ),
+        latest_completed_season=latest_completed_season,
+    )
+    aggregate_cache_key = _build_aggregate_cache_key(fingerprint)
+
+    if redis is not None:
+        cached_aggregates = await redis.get(aggregate_cache_key)
+        if cached_aggregates:
+            return _deserialize_aggregates(
+                json.loads(cached_aggregates),
+            )
+
     t0 = time.monotonic()
-    players = await war_service.loader.get_players(db)
+    players = await _get_cached_players(db)
     logger.info("rookie_war get_players took %.1fs", time.monotonic() - t0)
 
     starter_war_by_player_id: dict[str, float] = defaultdict(float)
@@ -182,7 +321,7 @@ async def get_rookie_pick_war_values_by_key(
 
     for season in stat_seasons:
         _season_start = time.monotonic()
-        stats_rows = await war_service.loader.get_season_stats(
+        stats_rows = await _war_service.loader.get_season_stats(
             db,
             season,
         )
@@ -190,7 +329,7 @@ async def get_rookie_pick_war_values_by_key(
         if not stats_rows:
             continue
 
-        season_results = await war_service.calculate_with_data(
+        season_results = await _war_service.calculate_with_data(
             league=SimpleNamespace(
                 season=str(season),
                 scoring_settings=league_scoring_settings,
@@ -346,6 +485,13 @@ async def get_rookie_pick_war_values_by_key(
             ),
             sample_size=sample_count,
             source_label=source_label,
+        )
+
+    if redis is not None and resolved:
+        await redis.set(
+            aggregate_cache_key,
+            json.dumps(_serialize_aggregates(resolved)),
+            ttl_seconds=AGGREGATE_CACHE_TTL_SECONDS,
         )
 
     return resolved

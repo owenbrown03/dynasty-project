@@ -41,6 +41,9 @@ from app.services.draft.projection import (
     build_draft_pick_projection_summary,
     build_cached_projected_pick_slots_by_roster_id,
     build_projected_slot_source_label,
+    build_redraft_value_by_roster_id,
+    redraft_projection_basis_for_method,
+    resolve_draft_pick_projection_method,
 )
 from app.services.draft.values import get_resolved_pick_values_by_key
 from app.services.leagues.models import (
@@ -449,6 +452,50 @@ async def get_trade_counts_by_roster_id(
     }
 
 
+async def get_waiver_move_counts_by_roster_id(
+    *,
+    db: AsyncSession,
+    league_id: str,
+    roster_ids: list[int],
+) -> dict[int, int]:
+    """
+    Counts waiver/free-agent ADD and DROP movements per roster.
+
+    Sleeper's roster settings counter (total_moves) no longer increments,
+    so move counts are derived from synced transaction movements instead.
+    """
+    if not roster_ids:
+        return {}
+
+    result = await db.execute(
+        select(
+            sleeper_model.Movement.roster_id,
+            func.count(sleeper_model.Movement.id),
+        )
+        .join(
+            sleeper_model.Transaction,
+            sleeper_model.Transaction.transaction_id
+            == sleeper_model.Movement.transaction_id,
+        )
+        .where(
+            sleeper_model.Transaction.league_id == league_id,
+            sleeper_model.Transaction.type.in_(
+                ["waiver", "free_agent"],
+            ),
+            sleeper_model.Movement.roster_id.in_(roster_ids),
+        )
+        .group_by(
+            sleeper_model.Movement.roster_id,
+        )
+    )
+
+    return {
+        int(roster_id): int(move_count)
+        for roster_id, move_count in result.all()
+        if roster_id is not None
+    }
+
+
 def build_league_roster_construction_targets(
     *,
     league,
@@ -671,6 +718,16 @@ class LeagueDetails:
                 ],
             )
         )
+        waiver_move_counts_by_roster_id = (
+            await get_waiver_move_counts_by_roster_id(
+                db=db,
+                league_id=league_id,
+                roster_ids=[
+                    roster.roster_id
+                    for roster in roster_rows
+                ],
+            )
+        )
         notes_by_league_id = (
             await get_user_notes_by_league_id(
                 db=db,
@@ -823,6 +880,7 @@ class LeagueDetails:
             player.player_id: player
             for player in player_values
         }
+        empty_starter_slots_by_roster_id: dict[int, list[str]] = {}
         roster_players_by_roster_id: dict[
             int,
             list[LeaguePlayer],
@@ -864,12 +922,81 @@ class LeagueDetails:
         }
 
         for roster in roster_rows:
-            starter_ids = set(roster.starters or [])
+            starting_slots = [
+                slot
+                for slot in (league.roster_positions or [])
+                if slot not in {"BN", "IR", "TAXI"}
+            ]
+            reserve_ids = set(roster.reserve or [])
+            taxi_ids = set(roster.taxi or [])
 
-            starter_order = {
-                player_id: index
-                for index, player_id in enumerate(roster.starters or [])
-            }
+            # Starting lineup PREVIEW: slots fill with the best
+            # projected players per the redraft projection, not
+            # Sleeper's stored lineup - best-ball leagues never set
+            # optimal slots and lineup leagues may leave points on
+            # the bench. Exact-position slots fill first, then flex.
+            parked_ids = reserve_ids | taxi_ids
+
+            def _projection(player_id: str) -> float:
+                # Full data ranks by the redraft projection; cheap
+                # data (no WAR lookup yet) falls back to market value.
+                entry = war_lookup.get(player_id)
+
+                if entry is not None:
+                    return entry.projection
+
+                player = player_map.get(player_id)
+
+                if player is not None and player.ktc_value:
+                    return float(player.ktc_value)
+
+                return float("-inf")
+
+            lineup_pool = sorted(
+                (
+                    player_id
+                    for player_id in (roster.players or [])
+                    if player_id not in parked_ids
+                    and player_map.get(player_id) is not None
+                ),
+                key=_projection,
+                reverse=True,
+            )
+
+            open_slots = list(starting_slots)
+            slot_assignment: dict[str, str] = {}
+
+            for player_id in lineup_pool:
+                position = player_map[player_id].position
+
+                for i, slot in enumerate(open_slots):
+                    if slot == position:
+                        slot_assignment[player_id] = slot
+                        open_slots.pop(i)
+                        break
+
+            for player_id in lineup_pool:
+                if player_id in slot_assignment:
+                    continue
+
+                position = player_map[player_id].position
+
+                for i, slot in enumerate(open_slots):
+                    if is_slot_eligible(slot, position):
+                        slot_assignment[player_id] = slot
+                        open_slots.pop(i)
+                        break
+
+            empty_starter_slots = list(open_slots)
+
+            def _resolve_slot(player_id: str) -> str | None:
+                if player_id in slot_assignment:
+                    return slot_assignment[player_id]
+                if player_id in reserve_ids:
+                    return "IR"
+                if player_id in taxi_ids:
+                    return "TAXI"
+                return "BN"
 
             roster_players: list[LeaguePlayer] = []
 
@@ -907,14 +1034,24 @@ class LeagueDetails:
                         my_redraft_roster_war=player.my_redraft_roster_war,
                         my_dynasty_starter_war=player.my_dynasty_starter_war,
                         my_dynasty_roster_war=player.my_dynasty_roster_war,
-                        is_starter=player_id in starter_ids,
+                        is_starter=player_id in slot_assignment,
+                        slot=_resolve_slot(player_id),
                     )
                 )
+
+            slot_order = {
+                slot: index
+                for index, slot in enumerate(starting_slots)
+            }
 
             roster_players.sort(
                 key=lambda player: (
                     0 if player.is_starter else 1,
-                    starter_order.get(player.player_id, 999),
+                    (
+                        slot_order.get(player.slot, 999)
+                        if player.is_starter
+                        else 999
+                    ),
                     -(
                         player.projected_points
                         if player.projected_points is not None
@@ -927,6 +1064,9 @@ class LeagueDetails:
             roster_players_by_roster_id[
                 roster.roster_id
             ] = roster_players
+            empty_starter_slots_by_roster_id[
+                roster.roster_id
+            ] = empty_starter_slots
             projected_points_by_roster_id[
                 roster.roster_id
             ] = calculate_projected_starter_points(
@@ -999,6 +1139,25 @@ class LeagueDetails:
                     ),
                     redraft_roster_war_by_roster_id=(
                         redraft_roster_war_by_roster_id
+                    ),
+                    redraft_value_by_roster_id=(
+                        await build_redraft_value_by_roster_id(
+                            db,
+                            roster_rows,
+                            basis=(
+                                redraft_projection_basis_for_method(
+                                    resolve_draft_pick_projection_method(
+                                        current_week=(
+                                            current_week
+                                        ),
+                                        settings=(
+                                            draft_pick_projection_settings
+                                        ),
+                                    ),
+                                )
+                                or "sleeper_projection"
+                            ),
+                        )
                     ),
                     settings=draft_pick_projection_settings,
                 )
@@ -1199,6 +1358,12 @@ class LeagueDetails:
 
             rosters.append(
                 LeagueRoster(
+                    empty_starter_slots=(
+                        empty_starter_slots_by_roster_id.get(
+                            roster.roster_id,
+                            [],
+                        )
+                    ),
                     roster_id=roster.roster_id,
                     owner=LeagueOwner(
                         user_id=owner.user_id if owner else None,
@@ -1225,7 +1390,10 @@ class LeagueDetails:
                     ),
                     faab_remaining=roster.faab_remaining(league),
                     waiver_position=roster.waiver_position,
-                    total_moves=roster.total_moves,
+                    total_moves=waiver_move_counts_by_roster_id.get(
+                        roster.roster_id,
+                        0,
+                    ),
                     total_trades=trade_counts_by_roster_id.get(
                         roster.roster_id,
                         0,

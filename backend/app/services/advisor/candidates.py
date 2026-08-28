@@ -28,13 +28,17 @@ from app.services.draft.values import (
 from app.services.personal_values import get_personal_value_pool
 from app.services.advisor.strategy import (
     BASIS_ACTUAL_POINTS,
+    is_season_altering_injury,
     BASIS_PROJECTED_WAR,
+    COMPETE,
     HOARD_PICKS,
     REBUILD,
     WIN_NOW,
     LeagueStrategy,
     detect_strategy,
+    strategy_from_manager_note,
 )
+from app.services.trades.waiver import build_waiver_credit_ladder
 from app.services.advisor.trade_block import (
     get_trade_block_snapshot,
 )
@@ -52,7 +56,11 @@ MAX_LEAGUES = 6
 # Bumped whenever candidate-engine semantics change in a way that
 # should invalidate cached syntheses (value bases, constraint math,
 # package shapes). The synthesis cache identity includes this.
-ADVISOR_ENGINE_VERSION = 4
+ADVISOR_ENGINE_VERSION = 7
+
+# How many of my top market-value players count as "stars" for the
+# contender-lost-a-star injury directive.
+CONTENDER_STAR_POOL = 3
 ANCHOR_POOL_SIZE = 8  # kept for sell-pool context sizing
 TARGET_POOL_SIZE = 60
 MAX_PROPOSALS_PER_LEAGUE = 6
@@ -141,6 +149,7 @@ def _to_ref(
         position=item.player.position,
         team=item.player.team,
         age=item.player.age,
+        injury_status=item.player.injury_status,
         market_value=_market_value(item),
         personal_war=_personal_war(item),
         market_war=_market_war(item),
@@ -299,15 +308,24 @@ async def _build_league_candidates(
         blocked_pick_keys=set(snapshot.picks.keys()),
     )
 
-    strategy = await _detect_league_strategy(
-        ctx,
-        league=league,
-        my_roster=my_roster,
-        league_rosters=league_rosters,
-        my_items=my_items,
-        items_by_player_id=items_by_player_id,
-        chests=chests,
-    )
+    # An explicit direction in the manager's note is ground truth;
+    # numeric detection only runs when the note declares nothing.
+    strategy = strategy_from_manager_note(manager_note)
+    strategies_by_roster_id: dict[int, LeagueStrategy] = {}
+
+    if strategy is None:
+        (
+            strategy,
+            strategies_by_roster_id,
+        ) = await _detect_league_strategy(
+            ctx,
+            league=league,
+            my_roster=my_roster,
+            league_rosters=league_rosters,
+            my_items=my_items,
+            items_by_player_id=items_by_player_id,
+            chests=chests,
+        )
 
     roster_contexts.append(
         await _build_roster_context(
@@ -341,6 +359,50 @@ async def _build_league_candidates(
         blocked_ids=set(snapshot.player_ids),
     )
 
+    # Contender lost a star: a top asset with a season-altering injury
+    # is dead roster weight for a win-now push; surface packages that
+    # convert it into usable production first. Stable sort preserves
+    # the strategy ordering within each band.
+    if strategy is not None and strategy.strategy == WIN_NOW:
+        injured_star_ids = {
+            item.player.player_id
+            for item in sorted(
+                my_items,
+                key=lambda i: -(_market_value(i) or 0.0),
+            )[:CONTENDER_STAR_POOL]
+            if is_season_altering_injury(item.player.injury_status)
+        }
+
+        if injured_star_ids:
+            sell_pool.sort(
+                key=lambda i: (
+                    0
+                    if i.player.player_id in injured_star_ids
+                    else 1
+                ),
+            )
+
+    # Rebuilder buy-low: season-altering injuries crater market prices
+    # on players whose dynasty value survives the year. Surface those
+    # discounted upside targets first when we are selling the present.
+    if strategy is not None and strategy.strategy == REBUILD:
+        injured_buy_ids = {
+            item.player.player_id
+            for item in buy_pool
+            if is_season_altering_injury(
+                item.player.injury_status,
+            )
+        }
+
+        if injured_buy_ids:
+            buy_pool.sort(
+                key=lambda i: (
+                    0
+                    if i.player.player_id in injured_buy_ids
+                    else 1
+                ),
+            )
+
     if not sell_pool or not buy_pool:
         return
 
@@ -357,6 +419,31 @@ async def _build_league_candidates(
     targets = list(buy_pool)
     if force:
         random.shuffle(targets)
+
+    # Soft counterparty-fit ranking: complement directions first so
+    # scarce proposal slots go to realistic partners. Stable sort keeps
+    # market-value ordering inside each band.
+    roster_by_id = {r.roster_id: r for _, r in league_rosters}
+    strategy_by_target = {}
+
+    for item in targets:
+        owner_roster = _find_roster_of_player(
+            league_rosters,
+            item.player.player_id,
+            exclude_owner=my_roster.owner_id,
+        )
+        strategy_by_target[item.player.player_id] = (
+            strategies_by_roster_id.get(owner_roster.roster_id)
+            if owner_roster is not None
+            else None
+        )
+
+    targets.sort(
+        key=lambda i: _counterparty_rank(
+            strategy_by_target.get(i.player.player_id),
+            strategy,
+        ),
+    )
 
 
     my_picks = sorted(
@@ -388,6 +475,12 @@ async def _build_league_candidates(
             league.league_id,
         )
         waiver_ladder = []
+
+    war_ladder = _build_war_waiver_ladder(
+        items=list(items_by_player_id.values()),
+        total_rosters=pool.context.total_rosters,
+        roster_slots=league.roster_size,
+    )
 
 
     made_for_this_league = 0
@@ -442,8 +535,43 @@ async def _build_league_candidates(
         market_receive_total = float(target_market)
         personal_receive_total = _personal_war(target)
 
+        counterparty_strategy = strategies_by_roster_id.get(
+            target_roster.roster_id,
+        )
+
+        # Rebuilders hoard draft capital; asking them to ship picks
+        # produces dead-on-arrival offers regardless of market math.
+        # Exception: bottom-ranked teams with an old, unsold core
+        # behave like contenders — their firsts are fair game.
+        rebuild_picks_locked = (
+            counterparty_strategy is not None
+            and counterparty_strategy.strategy == REBUILD
+            and not _rebuilder_behaves_like_contender(
+                strategy=counterparty_strategy,
+                target_roster=target_roster,
+                items_by_player_id=items_by_player_id,
+                blocked_ids=set(snapshot.player_ids),
+            )
+        )
+
+        if counterparty_strategy is not None and (
+            counterparty_strategy.strategy == REBUILD
+        ):
+            requestable_their_picks = (
+                [] if rebuild_picks_locked else their_picks
+            )
+        elif counterparty_strategy is not None and (
+            counterparty_strategy.strategy == WIN_NOW
+        ):
+            # Real contenders rarely move firsts (and theirs are
+            # late). Soft downrank: skip pick-fixups against them;
+            # base all-player packages still proceed.
+            requestable_their_picks = []
+        else:
+            requestable_their_picks = their_picks
+
         extra_receive_pick = _fix_with_extra_receive_pick(
-            their_picks=their_picks,
+            their_picks=requestable_their_picks,
             market_send_total=market_send_total,
             market_receive_total=market_receive_total,
             personal_send_total=personal_send_total,
@@ -467,6 +595,12 @@ async def _build_league_candidates(
             ladder=waiver_ladder,
         )
 
+        my_credit_war, their_credit_war = split_waiver_credits(
+            my_players_out=len(package_players),
+            their_players_out=1,
+            ladder=war_ladder,
+        )
+
         if not _passes_value_constraints(
             market_send_total=market_send_total
             + (my_credit or 0.0),
@@ -474,6 +608,7 @@ async def _build_league_candidates(
             + (their_credit or 0.0),
             personal_send_total=personal_send_total,
             personal_receive_total=personal_receive_total,
+            my_waiver_credit_war=my_credit_war,
         ):
             continue
 
@@ -518,8 +653,24 @@ async def _build_league_candidates(
                 strategy=(
                     strategy.strategy if strategy else None
                 ),
+                counterparty_strategy=(
+                    counterparty_strategy.strategy
+                    if counterparty_strategy
+                    else None
+                ),
+                counterparty_strategy_reason=(
+                    counterparty_strategy.reason
+                    if counterparty_strategy
+                    else None
+                ),
+                counterparty_fringe=bool(
+                    counterparty_strategy
+                    and counterparty_strategy.fringe
+                ),
                 my_waiver_credit=my_credit,
                 their_waiver_credit=their_credit,
+                my_waiver_credit_war=my_credit_war,
+                their_waiver_credit_war=their_credit_war,
             ),
         )
         made_for_this_league += 1
@@ -731,6 +882,14 @@ def _starter_war(item: PersonalValuePoolItem) -> float | None:
     return war
 
 
+async def _current_nfl_week(sleeper) -> int:
+    try:
+        state = await sleeper.read.get_nfl_state()
+        return int(state.week or 0)
+    except Exception:
+        return 0
+
+
 async def _season_phase(sleeper) -> tuple[str, str]:
     """Returns (basis, label) for team-strength measurement.
 
@@ -787,19 +946,52 @@ async def _detect_league_strategy(
     my_items: list[PersonalValuePoolItem],
     items_by_player_id: dict[str, PersonalValuePoolItem],
     chests: dict[int, list[PickAsset]],
-) -> LeagueStrategy:
+) -> tuple[
+    LeagueStrategy | None,
+    dict[int, LeagueStrategy],
+]:
     basis, _phase = await _season_phase(ctx.sleeper)
+    _basis_week = await _current_nfl_week(ctx.sleeper)
 
     starters = max(league.starter_slots, 1)
 
     if basis == BASIS_PROJECTED_WAR:
-        # Preseason/offseason: rank every roster by its best
-        # starters-sized slice of current-year projected WAR.
+        # Preseason/offseason: no real production yet, so contention
+        # follows the manager's redraft projection setting - total
+        # redraft market value per roster (#165 phase 3).
+        from app.crud.auth.user import (
+            get_draft_pick_projection_settings,
+        )
+        from app.services.draft.projection import (
+            build_redraft_value_by_roster_id,
+            redraft_projection_basis_for_method,
+            resolve_draft_pick_projection_method,
+        )
+
+        redraft_basis = (
+            redraft_projection_basis_for_method(
+                resolve_draft_pick_projection_method(
+                    current_week=_basis_week,
+                    settings=get_draft_pick_projection_settings(
+                        ctx.site_user,
+                    ),
+                ),
+            )
+            or "sleeper_projection"
+        )
+
+        redraft_value_by_roster_id = (
+            await build_redraft_value_by_roster_id(
+                ctx.db,
+                [roster for _, roster in league_rosters],
+                basis=redraft_basis,
+            )
+        )
+
         def strength(roster) -> float:
-            return _projected_roster_strength(
-                set(roster.players or []),
-                items_by_player_id,
-                starters,
+            return redraft_value_by_roster_id.get(
+                roster.roster_id,
+                0.0,
             )
 
     else:
@@ -829,24 +1021,120 @@ async def _detect_league_strategy(
 
     league_items = list(items_by_player_id.values())
     league_starter_age = _starter_ages(league_items)
-
-    return detect_strategy(
-        my_strength=my_strength,
-        all_strengths=all_strengths,
-        basis=basis,
-        my_wins=my_roster.wins or 0,
-        my_losses=my_roster.losses or 0,
-        my_ties=my_roster.ties or 0,
-        my_starter_age=_starter_ages(my_items),
-        league_starter_age=league_starter_age,
-        my_pick_count=len(
-            chests.get(my_roster.roster_id, [])
-        ),
-        league_avg_pick_count=(
-            sum(len(v) for v in chests.values())
-            / max(len(chests), 1)
-        ),
+    league_avg_pick_count = (
+        sum(len(v) for v in chests.values())
+        / max(len(chests), 1)
     )
+
+    items_by_roster_id = {
+        roster.roster_id: [
+            items_by_player_id[pid]
+            for pid in (roster.players or [])
+            if pid in items_by_player_id
+        ]
+        for _, roster in league_rosters
+    }
+
+    strategies_by_roster_id = {
+        roster.roster_id: detect_strategy(
+            my_strength=strength(roster),
+            all_strengths=all_strengths,
+            basis=basis,
+            my_wins=roster.wins or 0,
+            my_losses=roster.losses or 0,
+            my_ties=roster.ties or 0,
+            my_starter_age=_starter_ages(
+                items_by_roster_id[roster.roster_id],
+            ),
+            league_starter_age=league_starter_age,
+            my_pick_count=len(chests.get(roster.roster_id, [])),
+            league_avg_pick_count=league_avg_pick_count,
+        )
+        for _, roster in league_rosters
+    }
+
+    return (
+        strategies_by_roster_id.get(my_roster.roster_id),
+        strategies_by_roster_id,
+    )
+
+
+def _rebuilder_behaves_like_contender(
+    *,
+    strategy: LeagueStrategy,
+    target_roster,
+    items_by_player_id: dict[str, PersonalValuePoolItem],
+    blocked_ids: set[str],
+) -> bool:
+    """Bottom-ranked team with an OLD core that is NOT for sale.
+
+    They think they can still compete because they are not selling,
+    so their firsts are fair game despite the rebuild label.
+    """
+    if not strategy.bottom_two:
+        return False
+
+    starter_items = [
+        items_by_player_id[pid]
+        for pid in (target_roster.starters or [])
+        if pid in items_by_player_id
+    ]
+
+    ages = [
+        item.player.age
+        for item in starter_items
+        if item.player.age is not None
+    ]
+    if not ages or sum(ages) / len(ages) < 28.0:
+        return False
+
+    top_ids = {
+        item.player.player_id
+        for item in sorted(
+            starter_items,
+            key=lambda i: -(_market_value(i) or 0.0),
+        )[:3]
+    }
+
+    # Unsold core: none of their top assets are on the block.
+    return not (top_ids & blocked_ids)
+
+
+
+def _counterparty_rank(
+    their: LeagueStrategy | None,
+    mine: LeagueStrategy | None,
+) -> tuple[int, int]:
+    """Soft preference order for trade targets.
+
+    Lower sorts first. Complements our direction:
+      - we are win_now -> rebuilders/hoarders sell us picks and youth;
+        fringe teams sell us proven producers.
+      - we are rebuilding -> contenders and fringe teams pay for our
+        aging veterans.
+      - otherwise neutral, fringe slightly ahead.
+    """
+    their_strategy = their.strategy if their else None
+    fringe = bool(their and their.fringe)
+
+    if mine is not None and mine.strategy == WIN_NOW:
+        base = {
+            REBUILD: 0,
+            HOARD_PICKS: 1,
+            COMPETE: 2,
+            WIN_NOW: 3,
+        }.get(their_strategy, 2)
+    elif mine is not None and mine.strategy == REBUILD:
+        base = {
+            WIN_NOW: 0,
+            COMPETE: 1,
+            HOARD_PICKS: 2,
+            REBUILD: 3,
+        }.get(their_strategy, 2)
+    else:
+        base = 1
+
+    return base, 0 if fringe else 1
 
 
 def _apply_strategy_ordering(
@@ -1107,11 +1395,13 @@ def _passes_value_constraints(
     market_receive_total: float,
     personal_send_total: float | None,
     personal_receive_total: float | None,
+    my_waiver_credit_war: float | None = None,
 ) -> bool:
     """Enforces the two-sided acceptance rules from the advisor spec.
 
     1. Counterparty-convincing: they receive at least even market value.
-    2. We win or tie on OUR value system (never lose personally).
+    2. We win or tie on OUR value system (never lose personally),
+       counting the bench-spot refill credit from our own value ladder.
     """
     if (
         market_send_total
@@ -1125,9 +1415,45 @@ def _passes_value_constraints(
     ):
         return False
 
+    personal_receive_adjusted = personal_receive_total + (
+        my_waiver_credit_war or 0.0
+    )
+
     return (
-        personal_receive_total
+        personal_receive_adjusted
         >= personal_send_total - PERSONAL_EDGE_TOLERANCE
+    )
+
+
+def _build_war_waiver_ladder(
+    *,
+    items: list[PersonalValuePoolItem],
+    total_rosters: int,
+    roster_slots: int,
+) -> list[float]:
+    """Waiver ladder denominated in the manager's own value system.
+
+    Same cutline and step semantics as the FC ladder, but ranks come
+    from personal-WAR ordering of the league's value pool instead of
+    FantasyCalc's published ranking.
+    """
+    values_by_rank: dict[int, float] = {}
+
+    ranked_items = sorted(
+        (
+            item
+            for item in items
+            if _personal_war(item) is not None
+        ),
+        key=lambda i: -(_personal_war(i) or 0.0),
+    )
+
+    for rank, item in enumerate(ranked_items, start=1):
+        values_by_rank[rank] = _personal_war(item)
+
+    return build_waiver_credit_ladder(
+        values_by_rank=values_by_rank,
+        cutline=total_rosters * roster_slots,
     )
 
 
@@ -1194,6 +1520,9 @@ async def _build_roster_context(
         strategy=strategy.strategy if strategy else None,
         strategy_reason=(
             strategy.reason if strategy else None
+        ),
+        strategy_source=(
+            strategy.source if strategy else None
         ),
         manager_note=manager_note,
     )

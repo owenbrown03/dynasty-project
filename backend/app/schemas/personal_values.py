@@ -48,10 +48,68 @@ class PersonalValuePlayer(Base):
     position: str
     team: str | None = None
     age: float | None = None
+    injury_status: str | None = None
     underdog_position_rank: str | None = None
     ktc_value: float | None = None
     fc_value: float | None = None
     adp_value: float | None = None
+
+
+class PersonalValueRankingOutcome(Base):
+    position_rank: int
+    probability: float
+
+
+class PersonalValueRankingEntry(Base):
+    player_id: str
+    name: str
+    position: str
+    team: str | None = None
+    # Rank of the highest-probability outcome; board sorts by this.
+    primary_rank: int | None = None
+    secondary_rank: int | None = None
+    outcomes: list[PersonalValueRankingOutcome] = []
+    is_customized: bool = False
+    has_divergent_future_years: bool = False
+
+
+class PersonalValueRankingsResponse(Base):
+    season: int
+    position: str
+    scope: str
+    entries: list[PersonalValueRankingEntry]
+
+
+class PersonalValueRankingUpdateEntry(Base):
+    player_id: str
+    primary_rank: int
+
+
+class PersonalValueRankingsUpdateRequest(Base):
+    league_id: str
+    position: str
+    scope: str
+    entries: list[PersonalValueRankingUpdateEntry]
+
+
+class PersonalValueRankingsUpdateResponse(Base):
+    updated: int
+
+
+class PersonalValueRankingsResetRequest(Base):
+    league_id: str
+    position: str | None = None
+    player_id: str | None = None
+
+
+class PersonalValueRankingsResetResponse(Base):
+    reset_players: int
+
+
+class PersonalValueUnderdogSyncRequest(Base):
+    league_id: str
+    position: str | None = None
+
 
 
 class PersonalValueDetailResponse(Base):

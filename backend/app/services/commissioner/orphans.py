@@ -31,6 +31,10 @@ from app.services.draft.picks import (
 from app.services.draft.projection import (
     build_cached_projected_pick_slots_by_roster_id,
     build_projected_slot_source_label,
+    build_redraft_value_by_roster_id,
+    redraft_projection_basis_for_method,
+    redraft_value_system_active,
+    resolve_draft_pick_projection_method,
 )
 from app.services.draft.values import (
     get_resolved_pick_values_by_key,
@@ -194,6 +198,31 @@ def get_average_age(
         1,
     )
 
+
+
+async def _resolve_site_redraft_basis(
+    db,
+    site_user_id,
+) -> str:
+    if not site_user_id:
+        return "ktc"
+
+    from app.crud.auth.user import (
+        get_redraft_value_preference,
+    )
+    from app.models.db.auth import SiteUser
+
+    site_user = await db.get(
+        SiteUser,
+        site_user_id,
+    )
+
+    if site_user is None:
+        return "ktc"
+
+    return get_redraft_value_preference(
+        site_user,
+    ).value
 
 async def build_league_player_values(
     *,
@@ -406,12 +435,37 @@ async def get_commissioner_orphans(
             if league_id in sync_states_by_league_id
             else 0
         )
+        redraft_value_by_roster_id = None
+
+        if redraft_value_system_active(
+            current_week=current_week,
+            settings=None,
+        ):
+            redraft_value_by_roster_id = (
+                await build_redraft_value_by_roster_id(
+                    db,
+                    rosters,
+                    basis=(
+                        redraft_projection_basis_for_method(
+                            resolve_draft_pick_projection_method(
+                                current_week=current_week,
+                                settings=None,
+                            )
+                        )
+                        or "sleeper_projection"
+                    ),
+                )
+            )
+
         projected_pick_slots_by_roster_id = (
             await build_cached_projected_pick_slots_by_roster_id(
                 redis=redis,
                 league=league,
                 rosters=rosters,
                 current_week=current_week,
+                redraft_value_by_roster_id=(
+                    redraft_value_by_roster_id
+                ),
             )
         )
         projected_slots_by_season_and_roster_id = {

@@ -48,10 +48,15 @@ async def get_player_values(
     player_ids: Iterable[str],
     redraft_war_players: list[PlayerWAR],
     dynasty_war_by_player_id: dict[str, DynastyProjection] | None = None,
+    value_context: str = "dynasty",
 ) -> list[PlayerValue]:
     """
     Enriches player IDs with market values, current redraft WAR,
     and dynasty WAR.
+
+    value_context selects which market snapshot feeds ktc_value /
+    fc_value: "dynasty" (default) or "redraft" (#165). WAR legs are
+    context-independent.
 
     Redraft WAR:
         League-specific current-season value.
@@ -85,10 +90,16 @@ async def get_player_values(
         return {value.player_id: value for value in result.scalars()}
 
     async def _fetch_fc():
+        # Rows exist per (player, is_dynasty) variant; bucket by both
+        # keys so the context pick below is deterministic instead of
+        # last-write-wins.
         result = await db.execute(
             select(FantasyCalcValue).where(FantasyCalcValue.player_id.in_(player_ids))
         )
-        return {value.player_id: value for value in result.scalars()}
+        fc_by_key: dict[tuple[str, bool], FantasyCalcValue] = {}
+        for value in result.scalars():
+            fc_by_key[(value.player_id, value.is_dynasty)] = value
+        return fc_by_key
 
     async def _fetch_underdog():
         result = await db.execute(
@@ -104,7 +115,7 @@ async def get_player_values(
 
     players = await _fetch_players()
     ktc_values = await _fetch_ktc()
-    fc_values = await _fetch_fc()
+    fc_by_key = await _fetch_fc()
     underdog_values = await _fetch_underdog()
 
     # ------------------------------------
@@ -127,7 +138,9 @@ async def get_player_values(
             continue
 
         ktc = ktc_values.get(player_id)
-        fc = fc_values.get(player_id)
+        fc = fc_by_key.get(
+            (player_id, value_context != "redraft"),
+        )
         underdog = underdog_values.get(player_id)
 
         redraft_war = redraft_war_by_player_id.get(player_id)
@@ -142,7 +155,11 @@ async def get_player_values(
                 age=calculate_age(player.birth_date),
 
                 ktc_value=(
-                    ktc.sf_value
+                    (
+                        ktc.sf_redraft_value
+                        if value_context == "redraft"
+                        else ktc.sf_value
+                    )
                     if ktc is not None
                     else None
                 ),
@@ -156,6 +173,12 @@ async def get_player_values(
                 adp_value=_calculate_adp_value(
                     underdog.adp
                     if underdog is not None
+                    else None
+                ),
+
+                projected_points=(
+                    redraft_war.projection
+                    if redraft_war is not None
                     else None
                 ),
 

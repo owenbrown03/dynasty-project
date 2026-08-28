@@ -46,6 +46,7 @@ class LeaguePlayer(BaseModel):
     my_dynasty_starter_war: float | None = None
     my_dynasty_roster_war: float | None = None
     is_starter: bool = False
+    slot: str | None = None
 
 
 class LeagueRoster(BaseModel):
@@ -79,6 +80,9 @@ class LeagueRoster(BaseModel):
         default_factory=dict,
     )
     players: list[LeaguePlayer]
+    empty_starter_slots: list[str] = Field(
+        default_factory=list,
+    )
     picks: list[LeaguePick]
 
 

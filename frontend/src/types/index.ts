@@ -109,6 +109,7 @@ export interface Bootstrap {
   theme_preference: ThemePreference | null;
   accent_color: AccentColor | null;
   value_preference: ValueBasis | null;
+  redraft_value_preference: ValueBasis | null;
   war_value_settings: WarValueSettings;
   draft_pick_projection_settings: DraftPickProjectionSettings;
   finance_projection_settings: FinanceProjectionSettings;
@@ -147,10 +148,13 @@ export interface WarValueSettings {
 }
 
 export type DraftPickProjectionMethod =
-  | 'reverse_standings'
+  | 'standings_proxy'
   | 'max_pf'
   | 'redraft_starter_war'
-  | 'redraft_roster_war';
+  | 'redraft_roster_war'
+  | 'sleeper_projection'
+  | 'ktc_redraft'
+  | 'fantasycalc_redraft';
 
 export type DraftPickProjectionPhaseMethod =
   | 'none'
@@ -251,6 +255,7 @@ export interface LeagueOverview {
   season: string | null;
   total_rosters: number | null;
   is_hidden: boolean;
+  is_focused: boolean;
 }
 
 export interface LeagueVisibilityUpdate {
@@ -260,6 +265,15 @@ export interface LeagueVisibilityUpdate {
 export interface LeagueVisibilityItem {
   league_id: string;
   hidden: boolean;
+}
+
+export interface LeagueFocusUpdate {
+  focused: boolean;
+}
+
+export interface LeagueFocusItem {
+  league_id: string;
+  focused: boolean;
 }
 
 export interface LeagueOwner {
@@ -338,6 +352,7 @@ export interface LeaguePlayer {
   my_dynasty_starter_war?: number | null;
   my_dynasty_roster_war?: number | null;
   is_starter: boolean;
+  slot?: string | null;
 }
 
 export interface LeagueRoster {
@@ -373,6 +388,7 @@ export interface LeagueRoster {
 
   players: LeaguePlayer[];
   picks: LeaguePick[];
+  empty_starter_slots?: string[] | null;
 }
 
 export interface LeagueRosterConstructionTarget {
@@ -402,6 +418,7 @@ export interface LeagueDetails {
 export interface DashboardLeague {
   league_id: string;
   league_name: string;
+  is_focused?: boolean;
   avatar: string | null;
   league_size: number;
   wins: number;
@@ -459,6 +476,9 @@ export type ValueBasis =
   | 'ktc'
   | 'fantasycalc'
   | 'adp'
+  | 'sleeper_projection'
+  | 'my_roster_war'
+  | 'my_starter_war'
   | 'sleeper_war'
   | 'my_war'
   | 'redraft_starter_war'
@@ -466,9 +486,7 @@ export type ValueBasis =
   | 'dynasty_starter_war'
   | 'dynasty_roster_war';
 
-export type TierBoardSource =
-  | ValueBasis
-  | 'league_war';
+export type TierBoardSource = ValueBasis;
 
 export interface TierBoardPlayer {
   player_id: string;
@@ -482,6 +500,7 @@ export interface TierBoardPlayer {
   exposure_pct: number | null;
   exposure_owned_leagues: number | null;
   exposure_total_leagues: number | null;
+  secondary_value?: number | null;
 }
 
 export interface TierBoardGroup {
@@ -550,6 +569,62 @@ export interface PersonalValueLeagueContext {
   season: number;
   total_rosters: number;
 }
+
+export interface PersonalValueRankingOutcome {
+  position_rank: number;
+  probability: number;
+}
+
+export interface PersonalValueRankingEntry {
+  player_id: string;
+  name: string;
+  position: string;
+  team: string | null;
+  primary_rank: number | null;
+  secondary_rank: number | null;
+  outcomes: PersonalValueRankingOutcome[];
+  is_customized: boolean;
+  has_divergent_future_years: boolean;
+}
+
+export interface PersonalValueRankingsResponse {
+  season: number;
+  position: string;
+  scope: string;
+  entries: PersonalValueRankingEntry[];
+}
+
+export interface PersonalValueRankingUpdateEntry {
+  player_id: string;
+  primary_rank: number;
+}
+
+export interface PersonalValueRankingsUpdateRequest {
+  league_id: string;
+  position: string;
+  scope: string;
+  entries: PersonalValueRankingUpdateEntry[];
+}
+
+export interface PersonalValueRankingsUpdateResponse {
+  updated: number;
+}
+
+export interface PersonalValueRankingsResetRequest {
+  league_id: string;
+  position?: string | null;
+  player_id?: string | null;
+}
+
+export interface PersonalValueRankingsResetResponse {
+  reset_players: number;
+}
+
+export interface PersonalValueUnderdogSyncRequest {
+  league_id: string;
+  position?: string | null;
+}
+
 
 export interface PersonalValueDetail {
   context: PersonalValueLeagueContext;
@@ -1294,6 +1369,7 @@ export interface AdvisorPlayerRef {
   position: string | null;
   team: string | null;
   age: number | null;
+  injury_status: string | null;
   personal_war: number | null;
   market_war: number | null;
   delta_war: number | null;
@@ -1324,7 +1400,12 @@ export interface AdvisorProposal {
   personal_receive_total: number | null;
   your_roster_id?: number | null;
   counterparty_roster_id?: number | null;
+  my_waiver_credit_war?: number | null;
+  their_waiver_credit_war?: number | null;
   strategy?: string | null;
+  counterparty_strategy?: string | null;
+  counterparty_strategy_reason?: string | null;
+  counterparty_fringe?: boolean;
   my_waiver_credit?: number | null;
   their_waiver_credit?: number | null;
 }
@@ -1334,6 +1415,37 @@ export interface AdvisorRecommendation {
   reasoning: string;
   confidence: string;
   proposal: AdvisorProposal | null;
+}
+
+
+export interface AdvisorDirective {
+  league_id: string;
+  league_name: string;
+  season: string | null;
+  status: string | null;
+  total_rosters: number | null;
+  over_limit_by: number;
+  suggested_drops: AdvisorPlayerRef[];
+}
+
+export interface AdvisorDirectivesResponse {
+  directives: AdvisorDirective[];
+}
+
+export interface AdvisorFeedbackEntryItem {
+  id: number;
+  sentiment: string;
+  reason: string | null;
+  tags: string[];
+  created_at: string;
+}
+
+export interface AdvisorFeedbackEntryListResponse {
+  entries: AdvisorFeedbackEntryItem[];
+}
+
+export interface AdvisorInvalidateResponse {
+  invalidated: boolean;
 }
 
 export interface AdvisorSynthesisResponse {

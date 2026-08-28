@@ -9,7 +9,9 @@ import { BOOTSTRAP_QUERY_KEY } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import { useBootstrap } from '@/hooks/useBootstrap';
 import {
+  getStoredRedraftValuePreference,
   getStoredValuePreference,
+  REDRAFT_VALUE_PREFERENCE_STORAGE_KEY,
   VALUE_PREFERENCE_STORAGE_KEY,
 } from '@/context/value-preference';
 import {
@@ -20,21 +22,6 @@ import type {
   Bootstrap,
   ValueBasis,
 } from '@/types';
-
-function normalizeVisiblePreference(
-  value: ValueBasis,
-): ValueBasis {
-  if (
-    value === 'redraft_starter_war'
-    || value === 'redraft_roster_war'
-    || value === 'dynasty_starter_war'
-    || value === 'dynasty_roster_war'
-  ) {
-    return 'sleeper_war';
-  }
-
-  return value;
-}
 
 export function ValuePreferenceProvider({
   children,
@@ -53,11 +40,27 @@ export function ValuePreferenceProvider({
     useState<ValueBasis>(
       getStoredValuePreference,
     );
+  const bootstrapRedraftPreference = (
+    bootstrap.data?.redraft_value_preference ?? null
+  );
+  const [
+    redraftPreference,
+    setRedraftPreferenceState,
+  ] = useState<ValueBasis>(
+    getStoredRedraftValuePreference,
+  );
 
   const updatePreference = useMutation({
-    mutationFn: api.auth.updateValuePreference,
+    mutationFn: (input: {
+      value_preference: ValueBasis;
+      redraft_value_preference?: ValueBasis;
+    }) =>
+      api.auth.updateValuePreference(
+        input.value_preference,
+        input.redraft_value_preference,
+      ),
 
-    onSuccess: async (_, nextPreference) => {
+    onSuccess: async (response) => {
       queryClient.setQueryData(
         BOOTSTRAP_QUERY_KEY,
         (current: Bootstrap | undefined | null) => {
@@ -67,7 +70,10 @@ export function ValuePreferenceProvider({
 
           return {
             ...current,
-            value_preference: nextPreference,
+            value_preference:
+              response.data.value_preference,
+            redraft_value_preference:
+              response.data.redraft_value_preference,
           };
         },
       );
@@ -83,10 +89,6 @@ export function ValuePreferenceProvider({
       bootstrapPreference
       ?? getStoredValuePreference()
     );
-    nextPreference = normalizeVisiblePreference(
-      nextPreference,
-    );
-
     if (
       nextPreference === 'my_war'
       && bootstrap.data?.authenticated !== true
@@ -104,9 +106,24 @@ export function ValuePreferenceProvider({
     );
   }, [bootstrap.data?.authenticated, bootstrapPreference]);
 
+  useEffect(() => {
+    const nextRedraft = (
+      bootstrapRedraftPreference
+      ?? getStoredRedraftValuePreference()
+    );
+
+    setRedraftPreferenceState(nextRedraft);
+
+    window.localStorage.setItem(
+      REDRAFT_VALUE_PREFERENCE_STORAGE_KEY,
+      nextRedraft,
+    );
+  }, [bootstrapRedraftPreference]);
+
   const value = useMemo<ValuePreferenceContextType>(
     () => ({
       preference,
+      redraftPreference,
       isSaving: updatePreference.isPending,
       setPreference: async (
         nextPreference: ValueBasis,
@@ -120,12 +137,31 @@ export function ValuePreferenceProvider({
           nextPreference,
         );
 
-        await updatePreference.mutateAsync(
-          nextPreference,
+        await updatePreference.mutateAsync({
+          value_preference: nextPreference,
+        });
+      },
+      setRedraftPreference: async (
+        nextRedraft: ValueBasis,
+      ) => {
+        setRedraftPreferenceState(nextRedraft);
+
+        window.localStorage.setItem(
+          REDRAFT_VALUE_PREFERENCE_STORAGE_KEY,
+          nextRedraft,
         );
+
+        await updatePreference.mutateAsync({
+          value_preference: preference,
+          redraft_value_preference: nextRedraft,
+        });
       },
     }),
-    [preference, updatePreference],
+    [
+      preference,
+      redraftPreference,
+      updatePreference,
+    ],
   );
 
   return (

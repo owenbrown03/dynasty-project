@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 
-import { useAdvisorRecommendations } from '@/hooks/sleeper/useAdvisor';
-import { useAdvisorFeedback } from '@/hooks/sleeper/useAdvisorFeedback';
+import {
+  useAdvisorDirectives,
+  useAdvisorRecommendations,
+  useInvalidateAdvisorRecommendations,
+} from '@/hooks/sleeper/useAdvisor';
+import {
+  useAdvisorFeedback,
+  useAdvisorLeagueFeedback,
+} from '@/hooks/sleeper/useAdvisorFeedback';
 import { useSendAdvisorOffer } from '@/hooks/sleeper/useSendAdvisorOffer';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { Skeleton } from '@/components/feedback/Skeleton';
@@ -10,12 +17,14 @@ import { notify } from '@/utils/notify';
 import type {
   AdvisorFeedbackTag,
   AdvisorPickRef,
+  AdvisorDirective,
   AdvisorPlayerRef,
   AdvisorProposal,
   AdvisorRecommendation,
 } from '@/types';
 import { ADVISOR_FEEDBACK_TAGS } from '@/types';
 
+import { useLeagueDetails, useSaveUserNote } from '@/hooks/sleeper/useLeagues';
 import './AdvisorPanel.css';
 
 const TAG_LABELS: Record<AdvisorFeedbackTag, string> = {
@@ -80,6 +89,11 @@ function PlayerChip({
     >
       <span className="advisor-chip-name">
         {player.name}
+        {player.injury_status ? (
+          <span className="advisor-injury-badge">
+            {player.injury_status.toUpperCase()}
+          </span>
+        ) : null}
         {player.on_block ? (
           <span className="advisor-otb-badge">ON BLOCK</span>
         ) : null}
@@ -89,6 +103,9 @@ function PlayerChip({
           player.position ?? '?',
           player.team ?? null,
           `FC ${formatValue(player.market_value)}`,
+          player.personal_war != null
+            ? `${player.personal_war.toFixed(1)} W`
+            : null,
         ]
           .filter(Boolean)
           .join(' · ')}
@@ -117,6 +134,195 @@ function PickChip({
       <span className="advisor-chip-meta">
         FC {formatValue(pick.market_value)}
       </span>
+    </div>
+  );
+}
+
+type ProposalAsset =
+  | {
+      kind: 'player';
+      player: AdvisorPlayerRef;
+      direction: 'send' | 'receive';
+    }
+  | {
+      kind: 'pick';
+      pick: AdvisorPickRef;
+      direction: 'send' | 'receive';
+    }
+  | {
+      kind: 'waiver';
+      direction: 'send' | 'receive';
+      creditFc: number | null;
+      creditWar: number | null;
+    };
+
+function WaiverCreditChip({
+  direction,
+  creditFc,
+  creditWar,
+}: {
+  direction: 'send' | 'receive';
+  creditFc: number | null;
+  creditWar: number | null;
+}) {
+  return (
+    <div
+      className={`advisor-waiver-chip advisor-chip-${direction}`}
+    >
+      <span className="advisor-chip-name">
+        Waiver refill
+      </span>
+      <span className="advisor-chip-meta">
+        {[
+          creditFc
+            ? `+${Math.round(creditFc)} FC`
+            : null,
+          creditWar
+            ? `+${creditWar.toFixed(2)} W`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' \u00b7 ')}
+      </span>
+    </div>
+  );
+}
+
+function AssetCell({ asset }: { asset: ProposalAsset | null }) {
+  if (!asset) {
+    return <div className="advisor-asset-empty" />;
+  }
+
+  if (asset.kind === 'waiver') {
+    return (
+      <WaiverCreditChip
+        direction={asset.direction}
+        creditFc={asset.creditFc}
+        creditWar={asset.creditWar}
+      />
+    );
+  }
+
+  if (asset.kind === 'pick') {
+    return <PickChip pick={asset.pick} direction={asset.direction} />;
+  }
+
+  return (
+    <PlayerChip player={asset.player} direction={asset.direction} />
+  );
+}
+
+function buildProposalAssets(
+  proposal: AdvisorProposal,
+): { send: ProposalAsset[]; receive: ProposalAsset[] } {
+  const send: ProposalAsset[] = [
+    ...proposal.send.map(
+      (player) =>
+        ({
+          kind: 'player',
+          player,
+          direction: 'send',
+        } as ProposalAsset),
+    ),
+    ...(proposal.send_picks ?? []).map(
+      (pick) =>
+        ({
+          kind: 'pick',
+          pick,
+          direction: 'send',
+        } as ProposalAsset),
+    ),
+  ];
+
+  const receive: ProposalAsset[] = [
+    ...proposal.receive.map(
+      (player) =>
+        ({
+          kind: 'player',
+          player,
+          direction: 'receive',
+        } as ProposalAsset),
+    ),
+    ...(proposal.receive_picks ?? []).map(
+      (pick) =>
+        ({
+          kind: 'pick',
+          pick,
+          direction: 'receive',
+        } as ProposalAsset),
+    ),
+  ];
+
+  const myFc = proposal.my_waiver_credit ?? null;
+  const myWar = proposal.my_waiver_credit_war ?? null;
+  const theirFc = proposal.their_waiver_credit ?? null;
+  const theirWar = proposal.their_waiver_credit_war ?? null;
+
+  if (myFc || myWar) {
+    send.push({
+      kind: 'waiver',
+      direction: 'send',
+      creditFc: myFc,
+      creditWar: myWar,
+    });
+  }
+
+  if (theirFc || theirWar) {
+    receive.push({
+      kind: 'waiver',
+      direction: 'receive',
+      creditFc: theirFc,
+      creditWar: theirWar,
+    });
+  }
+
+  return { send, receive };
+}
+
+function DeltaBadge({ delta }: { delta: number | null }) {
+  if (delta === null || Number.isNaN(delta)) {
+    return null;
+  }
+
+  const positive = delta >= 0;
+
+  return (
+    <span
+      className={`advisor-delta-badge ${positive ? 'positive' : 'negative'}`}
+    >
+      {positive ? '+' : ''}
+      {Math.round(delta * 100) / 100}
+    </span>
+  );
+}
+
+function ProposalMatrix({
+  proposal,
+}: {
+  proposal: AdvisorProposal;
+}) {
+  const { send, receive } = buildProposalAssets(proposal);
+  const rowCount = Math.max(send.length, receive.length);
+
+  return (
+    <div className="advisor-proposal-matrix">
+      <div className="advisor-proposal-head">
+        <span className="advisor-proposal-label">
+          You send → {proposal.counterparty_name}
+        </span>
+        <span className="advisor-proposal-label">
+          You receive ← ({proposal.league_name})
+        </span>
+      </div>
+
+      {Array.from({ length: rowCount }).map((_, i) => (
+        <div className="advisor-proposal-row" key={i}>
+          <div>{send[i] ? <AssetCell asset={send[i]} /> : null}</div>
+          <div>
+            {receive[i] ? <AssetCell asset={receive[i]} /> : null}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -286,7 +492,17 @@ function SendTradeSection({
     >
       <p>
         This sends a real offer on Sleeper to{' '}
-        <strong>{proposal.counterparty_name}</strong>:{' '}
+        <strong>{proposal.counterparty_name}</strong>
+        {proposal.counterparty_fringe ? (
+          <span className="advisor-otb-badge">FRINGE</span>
+        ) : proposal.counterparty_strategy ? (
+          <span className="advisor-otb-badge">
+            {proposal.counterparty_strategy === 'win_now'
+              ? 'CONTENDER'
+              : proposal.counterparty_strategy.toUpperCase()}
+          </span>
+        ) : null}
+        {' '}
         you give{' '}
         {proposal.send.map((p) => p.name).join(', ')} and
         receive{' '}
@@ -409,108 +625,44 @@ function RecommendationCard({
 
       <p className="advisor-reasoning">{recommendation.reasoning}</p>
 
-      {proposal && (
-        <div className="advisor-proposal-grid">
-          <div className="advisor-proposal-side">
-            <span className="advisor-proposal-label">
-              You send → {proposal.counterparty_name}
-            </span>
+      {proposal && <ProposalMatrix proposal={proposal} />}
 
-            {proposal.send.map((player) => (
-              <PlayerChip
-                key={`send-${player.player_id}`}
-                player={player}
-                direction="send"
-              />
-            ))}
+      {proposal && (() => {
+        const marketSendAdj =
+          (proposal.market_send_total ?? 0)
+          + (proposal.my_waiver_credit ?? 0);
+        const marketRecvAdj =
+          (proposal.market_receive_total ?? 0)
+          + (proposal.their_waiver_credit ?? 0);
+        const warSend =
+          proposal.personal_send_total ?? 0;
+        const warRecvAdj =
+          (proposal.personal_receive_total ?? 0)
+          + (proposal.my_waiver_credit_war ?? 0);
 
-            {(proposal.send_picks ?? []).map((pick) => (
-              <PickChip
-                key={`send-pick-${pick.season}-${pick.round}-${pick.og_roster_id}`}
-                pick={pick}
-                direction="send"
-              />
-            ))}
-          </div>
-
-          <div className="advisor-proposal-side">
-            <span className="advisor-proposal-label">
-              You receive ← ({proposal.league_name})
-            </span>
-
-            {proposal.receive.map((player) => (
-              <PlayerChip
-                key={`receive-${player.player_id}`}
-                player={player}
-                direction="receive"
-              />
-            ))}
-
-            {(proposal.receive_picks ?? []).map((pick) => (
-              <PickChip
-                key={`receive-pick-${pick.season}-${pick.round}-${pick.og_roster_id}`}
-                pick={pick}
-                direction="receive"
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {proposal && (
-        <footer className="advisor-totals">
-          <span>
-            Market (FC) total:{' '}
-            <strong>
-              {formatValue(
-                (proposal.my_waiver_credit
-                  ? (proposal.market_send_total ?? 0)
-                    + proposal.my_waiver_credit
-                  : proposal.market_send_total),
-              )} →{' '}
-              {formatValue(
-                (proposal.their_waiver_credit
-                  ? (proposal.market_receive_total ?? 0)
-                    + proposal.their_waiver_credit
-                  : proposal.market_receive_total),
-              )}
-            </strong>
-            {proposal.their_waiver_credit ? (
-              <span className="advisor-waiver-inline">
-                {' '}incl. +{Math.round(proposal.their_waiver_credit)}{' '}
-                waiver to them
+        return (
+          <footer className="advisor-totals">
+            <div className="advisor-total-block">
+              <span className="advisor-total-label">Market</span>
+              <span className="advisor-total-value">
+                {formatValue(marketSendAdj)}
+                {' \u2192 '}
+                {formatValue(marketRecvAdj)}
+                <DeltaBadge delta={marketRecvAdj - marketSendAdj} />
               </span>
-            ) : null}
-            {proposal.my_waiver_credit ? (
-              <span className="advisor-waiver-inline">
-                {' '}incl. +{Math.round(proposal.my_waiver_credit)}{' '}
-                waiver to you
+            </div>
+            <div className="advisor-total-block">
+              <span className="advisor-total-label">Mine</span>
+              <span className="advisor-total-value">
+                {formatValue(warSend, ' W')}
+                {' \u2192 '}
+                {formatValue(warRecvAdj, ' W')}
+                <DeltaBadge delta={warRecvAdj - warSend} />
               </span>
-            ) : null}
-          </span>
-          <span>
-            Your WAR total:{' '}
-            <strong>
-              {formatValue(proposal.personal_send_total, ' W')} →{' '}
-              {formatValue(proposal.personal_receive_total, ' W')}
-            </strong>
-          </span>
-        </footer>
-      )}
-
-      {proposal
-        && (proposal.my_waiver_credit
-          || proposal.their_waiver_credit) && (
-        <p className="advisor-waiver-note">
-          Incl. waiver-spot credit{' '}
-          {proposal.my_waiver_credit
-            ? `to you (+${Math.round(proposal.my_waiver_credit)})`
-            : `to ${proposal.counterparty_name} (+${Math.round(
-                proposal.their_waiver_credit ?? 0,
-              )})`}
-          {' '}for the uneven asset count.
-        </p>
-      )}
+            </div>
+          </footer>
+        );
+      })()}
 
       {proposal && <SendTradeSection proposal={proposal} />}
 
@@ -603,6 +755,211 @@ function RecommendationCard({
   );
 }
 
+
+function DirectiveDropChip({
+  player,
+}: {
+  player: AdvisorPlayerRef;
+}) {
+  return (
+    <div className="advisor-player-chip advisor-chip-send">
+      <span className="advisor-chip-name">
+        {player.name}
+        {player.injury_status ? (
+          <span className="advisor-injury-badge">
+            {player.injury_status.toUpperCase()}
+          </span>
+        ) : null}
+      </span>
+      <span className="advisor-chip-meta">
+        {[
+          player.position ?? '?',
+          player.team ?? null,
+          `FC ${formatValue(player.market_value)}`,
+        ]
+          .filter(Boolean)
+          .join(' \u00b7 ')}
+      </span>
+    </div>
+  );
+}
+
+function AdvisorDirectives({ leagueId }: { leagueId: string }) {
+  const { directives, loading } = useAdvisorDirectives({ leagueId });
+
+  if (loading || directives.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="advisor-directives" role="alert">
+      {directives.map((directive: AdvisorDirective) => (
+        <div
+          key={directive.league_id}
+          className="advisor-directive-card"
+        >
+          <p className="advisor-directive-title">
+            {directive.league_name} is{' '}
+            <strong>
+              {directive.over_limit_by} player
+              {directive.over_limit_by === 1 ? '' : 's'}
+            </strong>{' '}
+            over its roster limit
+            {directive.status === 'pre_draft'
+              ? ' — fix this before your draft starts'
+              : ''}
+          </p>
+          {directive.suggested_drops.length > 0 && (
+            <div className="advisor-directive-drops">
+              <span className="advisor-directive-label">
+                Suggested drops:
+              </span>
+              {directive.suggested_drops.map((drop) => (
+                <DirectiveDropChip
+                  key={drop.player_id}
+                  player={drop}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+function AdvisorContextPanel({
+  leagueId,
+  username,
+}: {
+  leagueId: string;
+  username: string;
+}) {
+  const feedbackList = useAdvisorLeagueFeedback(leagueId);
+  const invalidate = useInvalidateAdvisorRecommendations();
+  const noteState = useLeagueDetails(leagueId, true);
+  const saveNote = useSaveUserNote();
+  const [noteDraft, setNoteDraft] = useState<string | null>(null);
+
+  const savedNote = noteState.data?.note ?? '';
+  const noteValue = noteDraft ?? savedNote;
+  const noteDirty = noteDraft !== null && noteDraft !== savedNote;
+
+  const handleSaveNote = async () => {
+    try {
+      await saveNote.saveNote({
+        league_id: leagueId,
+        note: noteValue,
+      });
+      setNoteDraft(null);
+      notify.success('AI context note saved.');
+    } catch {
+      notify.error('Could not save the note.');
+    }
+  };
+
+  const handleRemoveEntry = async (id: number) => {
+    try {
+      await feedbackList.remove(id);
+      notify.success('Feedback entry removed.');
+    } catch {
+      notify.error('Could not remove feedback entry.');
+    }
+  };
+
+  const handleInvalidate = async () => {
+    try {
+      await invalidate.invalidate({ username, leagueId });
+      notify.success(
+        'Cached recommendations cleared — hit Generate for a fresh take.',
+      );
+    } catch {
+      notify.error('Could not clear cached recommendations.');
+    }
+  };
+
+  return (
+    <section className="advisor-context-panel">
+      <header className="advisor-panel-header">
+        <p className="page-eyebrow">AI context</p>
+        <h4 className="advisor-subheading">
+          What the advisor knows about you here
+        </h4>
+      </header>
+
+      <label className="advisor-context-note">
+        <span className="advisor-directive-label">
+          Direction note (treated as standing instructions)
+        </span>
+        <textarea
+          value={noteValue}
+          rows={2}
+          placeholder="e.g. Selling everything, full rebuild for 2027 picks."
+          onChange={(event) => setNoteDraft(event.target.value)}
+        />
+        {noteDirty && (
+          <button
+            type="button"
+            className="button-secondary advisor-context-save"
+            disabled={saveNote.saving}
+            onClick={() => {
+              void handleSaveNote();
+            }}
+          >
+            {saveNote.saving ? 'Saving…' : 'Save note'}
+          </button>
+        )}
+      </label>
+
+      <div className="advisor-context-feedback">
+        <span className="advisor-directive-label">
+          {feedbackList.entries.length === 0
+            ? 'No feedback remembered for this league yet'
+            : `${feedbackList.entries.length} feedback ${feedbackList.entries.length === 1 ? 'entry' : 'entries'} remembered for this league`}
+        </span>
+        {feedbackList.entries.map((entry) => (
+          <div
+            key={entry.id}
+            className="advisor-context-entry"
+          >
+            <span
+              className={`advisor-context-entry-sentiment ${entry.sentiment}`}
+            >
+              {entry.sentiment}
+            </span>
+            <span className="advisor-context-entry-text">
+              {entry.reason || entry.tags.join(', ') || '(no detail)'}
+            </span>
+            <button
+              type="button"
+              className="my-values-rank-reset"
+              title="Delete this feedback entry"
+              disabled={feedbackList.removing}
+              onClick={() => {
+                void handleRemoveEntry(entry.id);
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className="button-secondary advisor-context-invalidate"
+        disabled={invalidate.saving}
+        onClick={() => {
+          void handleInvalidate();
+        }}
+      >
+        {invalidate.saving ? 'Clearing…' : 'Invalidate cached recommendations'}
+      </button>
+    </section>
+  );
+}
+
 interface AdvisorPanelProps {
   leagueId: string;
   leagueName: string;
@@ -645,7 +1002,7 @@ export const AdvisorPanel = ({
     return (
       <section className="advisor-panel">
         <header className="advisor-panel-header">
-          <p className="page-eyebrow">AI Advisor</p>
+          <p className="page-eyebrow">Roster Lab</p>
           <h3 className="trades-section-title">
             Trade recommendations for {leagueName}
           </h3>
@@ -662,6 +1019,13 @@ export const AdvisorPanel = ({
             {errorMessage}
           </div>
         )}
+
+        <AdvisorDirectives leagueId={leagueId} />
+
+        <AdvisorContextPanel
+          leagueId={leagueId}
+          username={username}
+        />
 
         <button
           type="button"
@@ -682,7 +1046,7 @@ export const AdvisorPanel = ({
   return (
     <section className="advisor-panel">
       <header className="advisor-panel-header">
-        <p className="page-eyebrow">AI Advisor</p>
+        <p className="page-eyebrow">Roster Lab</p>
         <h3 className="trades-section-title">
           Your recommendations
         </h3>
@@ -710,6 +1074,8 @@ export const AdvisorPanel = ({
           {errorMessage}
         </div>
       )}
+
+      <AdvisorDirectives leagueId={leagueId} />
 
       {hasContent ? (
         <>

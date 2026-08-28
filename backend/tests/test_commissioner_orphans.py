@@ -293,9 +293,17 @@ def test_commissioner_orphans_uses_visible_current_leagues(monkeypatch):
                 "include_hidden": include_hidden,
             }
         )
+
         return [
             OwnedLeagueRow(league=visible_league, roster=object()),
         ]
+
+    async def fake_build_redraft_value_by_roster_id(*args, **kwargs):
+        return {}
+
+    async def fake_resolve_site_redraft_basis(*args, **kwargs):
+        return "ktc"
+
 
     async def fake_get_all_rosters_by_league(*, db, league_ids):
         assert league_ids == ["current-visible"]
@@ -346,6 +354,16 @@ def test_commissioner_orphans_uses_visible_current_leagues(monkeypatch):
         orphan_service,
         "get_all_rosters_by_league",
         fake_get_all_rosters_by_league,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "build_redraft_value_by_roster_id",
+        fake_build_redraft_value_by_roster_id,
+    )
+    monkeypatch.setattr(
+        orphan_service,
+        "_resolve_site_redraft_basis",
+        fake_resolve_site_redraft_basis,
     )
     monkeypatch.setattr(
         orphan_service,

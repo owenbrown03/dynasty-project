@@ -160,7 +160,7 @@
 
 .settings-method-option {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-items: start;
   padding: 10px 12px;
@@ -168,13 +168,6 @@
   background: var(--color-surface-raised);
 }
 
-.settings-method-swatch {
-  width: 10px;
-  height: 10px;
-  margin-top: 6px;
-  border-radius: 999px;
-  background: var(--color-link);
-}
 
 .settings-method-option strong {
   display: block;
@@ -188,4 +181,21 @@
   color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.45;
+}
+
+
+.settings-applies-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.settings-applies-list li {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-raised);
+  font-size: 0.84rem;
 }

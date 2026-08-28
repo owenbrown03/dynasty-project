@@ -33,6 +33,7 @@ class BootstrapResponse(Base):
     theme_preference: Literal["light", "dark", "system"] | None = None
     accent_color: str | None = None
     value_preference: ValueBasis | None = None
+    redraft_value_preference: ValueBasis | None = None
     war_value_settings: WarValueSettings
     draft_pick_projection_settings: DraftPickProjectionSettings
     finance_projection_settings: FinanceProjectionSettings

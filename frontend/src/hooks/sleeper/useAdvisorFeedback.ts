@@ -1,8 +1,15 @@
-import { useMutation } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { api } from '@/api/v1/endpoints';
 import { notify } from '@/utils/notify';
-import type { AdvisorFeedbackRequest } from '@/types';
+import type {
+  AdvisorFeedbackEntryItem,
+  AdvisorFeedbackRequest,
+} from '@/types';
 
 export function useAdvisorFeedback() {
   const mutation = useMutation<void, Error, AdvisorFeedbackRequest>({
@@ -20,5 +27,43 @@ export function useAdvisorFeedback() {
   return {
     save: (payload: AdvisorFeedbackRequest) => mutation.mutateAsync(payload),
     saving: mutation.isPending,
+  };
+}
+
+
+export function useAdvisorLeagueFeedback(
+  leagueId: string | undefined,
+) {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['advisor-feedback', leagueId ?? null],
+    queryFn: async () => {
+      if (!leagueId) return null;
+      const response = await api.advisor.listFeedback(leagueId);
+      return response.data;
+    },
+    enabled: !!leagueId,
+    staleTime: 60 * 1000,
+  });
+
+  const invalidateLists = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ['advisor-feedback'],
+    });
+  };
+
+  const remove = useMutation({
+    mutationFn: async (feedbackId: number) => {
+      await api.advisor.deleteFeedback(feedbackId);
+    },
+    onSuccess: invalidateLists,
+  });
+
+  return {
+    entries: (query.data?.entries ?? []) as AdvisorFeedbackEntryItem[],
+    loading: query.isLoading,
+    remove: remove.mutateAsync,
+    removing: remove.isPending,
   };
 }

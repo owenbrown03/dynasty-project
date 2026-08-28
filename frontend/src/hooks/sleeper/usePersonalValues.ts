@@ -9,6 +9,10 @@ import { api } from '@/api/v1/endpoints';
 import type {
   PersonalValueDetail,
   PersonalValuePoolResponse,
+  PersonalValueRankingsResetRequest,
+  PersonalValueRankingsResetResponse,
+  PersonalValueRankingsUpdateRequest,
+  PersonalValueUnderdogSyncRequest,
   PersonalValueSearchResult,
   PersonalValueUpdateRequest,
 } from '@/types';
@@ -165,5 +169,122 @@ export function useSavePersonalValueDetail() {
     savePersonalValue: mutation.mutateAsync,
     saving: mutation.isPending,
     error: mutation.error,
+  };
+}
+
+
+export function usePersonalValueRankings(
+  leagueId: string | undefined,
+  position: string,
+  scope: string,
+) {
+  const query = useQuery({
+    queryKey: queryKeys.players.personalRankings(
+      leagueId,
+      position,
+      scope,
+    ),
+    queryFn: async () => {
+      if (!leagueId) return null;
+      const response = await api.personal_values.getRankings(
+        leagueId,
+        position,
+        scope,
+      );
+      return response.data;
+    },
+    enabled: !!leagueId,
+    staleTime: 30 * 1000,
+  });
+
+  return {
+    rankings: query.data?.entries ?? [],
+    season: query.data?.season ?? null,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    refetch: query.refetch,
+  };
+}
+
+export function useSavePersonalValueRankings() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (
+      payload: PersonalValueRankingsUpdateRequest,
+    ) => {
+      const response = await api.personal_values.saveRankings(
+        payload,
+      );
+      return response.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['personal-values-rankings'],
+      });
+    },
+  });
+
+  return {
+    saveRankings: mutation.mutateAsync,
+    saving: mutation.isPending,
+    error: mutation.error,
+  };
+}
+
+
+export function useResetPersonalValueRankings() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (
+      payload: PersonalValueRankingsResetRequest,
+    ) => {
+      const response = await api.personal_values.resetRankings(
+        payload,
+      );
+      return response.data as PersonalValueRankingsResetResponse;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['personal-values-rankings'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.players.personalDetailRoot,
+        }),
+      ]);
+    },
+  });
+
+  return {
+    resetRankings: mutation.mutateAsync,
+    saving: mutation.isPending,
+  };
+}
+
+
+export function useSyncUnderdogDefaults() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (
+      payload: PersonalValueUnderdogSyncRequest,
+    ) => {
+      const response = await api.personal_values.syncUnderdog(
+        payload,
+      );
+      return response.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['personal-values-rankings'],
+      });
+    },
+  });
+
+  return {
+    syncDefaults: mutation.mutateAsync,
+    saving: mutation.isPending,
   };
 }

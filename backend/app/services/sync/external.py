@@ -192,13 +192,23 @@ async def run_daily_external_syncs(
                 force_update=True,
             )
 
+            # Redraft variants feed the redraft value context
+            # (#165); KTC merges redraft columns into the same rows.
             ktc_result = await sync_ktc_values(
                 db=db,
                 ktc=ktc,
+                include_redraft=True,
             )
             fantasycalc_result = await sync_fantasycalc_values(
                 db=db,
                 fc=fc,
+            )
+            fantasycalc_redraft_result = (
+                await sync_fantasycalc_values(
+                    db=db,
+                    fc=fc,
+                    is_dynasty=False,
+                )
             )
             underdog_result = await sync_underdog_adp(
                 db=db,
@@ -234,6 +244,7 @@ async def run_daily_external_syncs(
                 "season": season,
                 "ktc": ktc_result,
                 "fantasycalc": fantasycalc_result,
+                "fantasycalc_redraft": fantasycalc_redraft_result,
                 "underdog": underdog_result,
                 "adp": {
                     "seeded_count": adp_result.seeded_count,

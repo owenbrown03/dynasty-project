@@ -73,6 +73,15 @@
   white-space: nowrap;
 }
 
+.leagues-focus-button {
+  white-space: nowrap;
+}
+
+.leagues-focus-button.is-focused {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .league-details-skeleton-heading {
   display: grid;
   gap: 5px;

@@ -9,6 +9,7 @@ from time import perf_counter
 from types import SimpleNamespace
 
 from fastapi import HTTPException, status
+from pydantic import TypeAdapter
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +27,7 @@ from app.crud.sleeper.personal import (
     get_personal_rank_curve_rows,
     replace_personal_rank_curve_rows,
     upsert_personal_projection,
+    delete_personal_projections,
 )
 from app.crud.value import get_player_values
 from app.infrastructure.redis.client import RedisClient
@@ -33,6 +35,14 @@ from app.schemas.player import PlayerValue
 from app.schemas.personal_values import (
     PersonalProjectionSeasonItem,
     PersonalValueDetailResponse,
+    PersonalValueRankingEntry,
+    PersonalValueRankingsResponse,
+    PersonalValueRankingOutcome,
+    PersonalValueRankingsUpdateRequest,
+    PersonalValueRankingsUpdateResponse,
+    PersonalValueRankingsResetRequest,
+    PersonalValueRankingsResetResponse,
+    PersonalValueUnderdogSyncRequest,
     PersonalValueLeagueContext,
     PersonalValueMetrics,
     PersonalValuePlayer,
@@ -673,6 +683,7 @@ async def _load_market_values_by_player_id(
     ctx: Context,
     league,
     player_ids: list[str] | None = None,
+    value_context: str = "dynasty",
 ) -> dict[str, _MarketSnapshot]:
     shared = await war_service.load_shared_data(
         ctx.db,
@@ -713,6 +724,7 @@ async def _load_market_values_by_player_id(
         ],
         redraft_war_players=war_players,
         dynasty_war_by_player_id=dynasty_war_by_player_id,
+        value_context=value_context,
     )
 
     return {
@@ -812,28 +824,30 @@ def _build_projection_context(
     )
 
 
+_player_value_list_adapter = TypeAdapter(list[PlayerValue])
+
+
 async def hydrate_personal_player_values(
     *,
     db: AsyncSession,
-    site_user_id,
-    league,
+    site_user_id: str | None,
+    league: League,
     player_values: list[PlayerValue],
     redis: RedisClient | None = None,
 ) -> list[PlayerValue]:
     if site_user_id is None or not player_values:
         return player_values
 
+    started_at = perf_counter()
     current_season = int(league.season)
     supported_player_ids = [
         player.player_id
         for player in player_values
         if player.position in DYNASTY_POSITIONS
     ]
-
     if not supported_player_ids:
         return player_values
 
-    started_at = perf_counter()
     saved_projections = await get_personal_projections_for_site_user(
         db=db,
         site_user_id=site_user_id,
@@ -855,10 +869,7 @@ async def hydrate_personal_player_values(
         )
 
         if cached_payload:
-            hydrated = [
-                PlayerValue.model_validate(row)
-                for row in json.loads(cached_payload)
-            ]
+            hydrated = _player_value_list_adapter.validate_json(cached_payload)
             logger.info(
                 (
                     "Personal value hydration source=redis league=%s "
@@ -1039,10 +1050,19 @@ async def get_personal_value_detail(
     ctx: Context,
     league_id: str,
     player_id: str,
+    value_context: str = "dynasty",
 ) -> PersonalValueDetailResponse:
     _require_personal_values_context(
         ctx,
     )
+
+    if value_context not in {"dynasty", "redraft"}:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail="value_context must be 'dynasty' or 'redraft'.",
+        )
 
     league = await _resolve_league_context(
         ctx=ctx,
@@ -1094,6 +1114,7 @@ async def get_personal_value_detail(
         ctx=ctx,
         league=league,
         player_ids=[player.player_id],
+        value_context=value_context,
     )
     market_snapshot = market_snapshots_by_player_id.get(
         player.player_id,
@@ -1123,6 +1144,7 @@ async def get_personal_value_detail(
             position=player.position,
             team=player.team,
             age=calculate_age(player.birth_date),
+            injury_status=player.injury_status,
             underdog_position_rank=underdog_position_rank,
             ktc_value=market_snapshot.ktc_value,
             fc_value=market_snapshot.fc_value,
@@ -1139,10 +1161,19 @@ async def get_personal_value_pool(
     *,
     ctx: Context,
     league_id: str,
+    value_context: str = "dynasty",
 ) -> PersonalValuePoolResponse:
     _require_personal_values_context(
         ctx,
     )
+
+    if value_context not in {"dynasty", "redraft"}:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail="value_context must be 'dynasty' or 'redraft'.",
+        )
 
     league = await _resolve_league_context(
         ctx=ctx,
@@ -1157,6 +1188,7 @@ async def get_personal_value_pool(
     market_snapshots_by_player_id = await _load_market_values_by_player_id(
         ctx=ctx,
         league=league,
+        value_context=value_context,
     )
     player_ids = list(
         market_snapshots_by_player_id.keys(),
@@ -1282,6 +1314,7 @@ async def get_personal_value_pool(
             position=player.position,
             team=player.team,
             age=calculate_age(player.birth_date),
+            injury_status=player.injury_status,
             underdog_position_rank=underdog_position_rank,
             ktc_value=market_snapshot.ktc_value,
             fc_value=market_snapshot.fc_value,
@@ -1422,3 +1455,512 @@ async def save_personal_value_detail(
         league_id=league_id,
         player_id=player_id,
     )
+
+
+def _outcome_pairs(outcomes) -> list[tuple[int, float]]:
+    return [
+        (outcome.position_rank, outcome.probability)
+        for outcome in outcomes
+    ]
+
+
+def _ranked_outcomes(outcomes) -> list:
+    """Outcome refs sorted by probability, highest first."""
+    ranked = sorted(
+        outcomes,
+        key=lambda outcome: outcome.probability,
+        reverse=True,
+    )
+
+    return [
+        PersonalValueRankingOutcome(
+            position_rank=outcome.position_rank,
+            probability=outcome.probability,
+        )
+        for outcome in ranked
+    ]
+
+
+async def get_personal_value_rankings(
+    *,
+    ctx: Context,
+    league_id: str,
+    position: str,
+    scope: str,
+) -> PersonalValueRankingsResponse:
+    """Position-wide personal ranking board data.
+
+    scope="current" reads the current-season single outcome;
+    scope="future" reads each player's default future trajectory (the
+    first future season) and flags players whose later seasons
+    diverge from it - those divergent years were individually edited
+    and are never touched by board reordering.
+    """
+    _require_personal_values_context(ctx)
+
+    league = await _resolve_league_context(
+        ctx=ctx,
+        league_id=league_id,
+    )
+    current_season = int(league.season)
+
+    player_rows = await ctx.db.execute(
+        select(Player).where(Player.position == position),
+    )
+    players = list(player_rows.scalars().all())
+    player_ids = [p.player_id for p in players]
+
+    saved = await get_personal_projections_for_site_user(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+        player_ids=player_ids,
+    ) if player_ids else []
+
+    outcomes_by_projection_id = await get_personal_projection_outcomes(
+        db=ctx.db,
+        projection_ids=[
+            projection.id
+            for projection in saved
+            if projection.id is not None
+        ],
+    )
+
+    saved_by_player_season: dict[
+        tuple[str, int],
+        tuple[list, bool],
+    ] = {}
+
+    for projection in saved:
+        saved_by_player_season[
+            (projection.player_id, projection.season)
+        ] = (
+            outcomes_by_projection_id.get(
+                projection.id,
+                [],
+            ),
+            projection.is_customized,
+        )
+
+    # Latest Underdog ADP row per player provides the fallback rank.
+    underdog_rows = []
+    if player_ids:
+        underdog_result = await ctx.db.execute(
+            select(UnderdogADP)
+            .where(UnderdogADP.player_id.in_(player_ids))
+            .order_by(desc(UnderdogADP.id)),
+        )
+        underdog_rows = list(
+            underdog_result.scalars().all(),
+        )
+
+    default_rank_by_player: dict[str, int | None] = {}
+    seen_player_ids: set[str] = set()
+    for underdog_row in underdog_rows:
+        if underdog_row.player_id in seen_player_ids:
+            continue
+        seen_player_ids.add(underdog_row.player_id)
+        default_rank_by_player[underdog_row.player_id] = (
+            _parse_position_rank(
+                position,
+                underdog_row.position_rank,
+            )
+        )
+
+    entries: list[PersonalValueRankingEntry] = []
+
+    for player in players:
+        default_rank = default_rank_by_player.get(player.player_id)
+
+        if scope == "current":
+            outcomes, customized = saved_by_player_season.get(
+                (player.player_id, current_season),
+                ([], False),
+            )
+            ranked_outcomes = _ranked_outcomes(outcomes)
+            primary = (
+                ranked_outcomes[0].position_rank
+                if ranked_outcomes
+                else default_rank
+            )
+            secondary = (
+                ranked_outcomes[1].position_rank
+                if len(ranked_outcomes) > 1
+                else None
+            )
+            divergent = False
+        else:
+            future_seasons = sorted(
+                season
+                for (pid, season) in saved_by_player_season
+                if pid == player.player_id
+                and season > current_season
+            )
+
+            if not future_seasons:
+                primary = default_rank
+                secondary = None
+                ranked_outcomes = []
+                customized = False
+                divergent = False
+            else:
+                first_outcomes, first_customized = (
+                    saved_by_player_season[
+                        (player.player_id, future_seasons[0])
+                    ]
+                )
+                ranked_outcomes = _ranked_outcomes(first_outcomes)
+                primary = (
+                    ranked_outcomes[0].position_rank
+                    if ranked_outcomes
+                    else default_rank
+                )
+                secondary = (
+                    ranked_outcomes[1].position_rank
+                    if len(ranked_outcomes) > 1
+                    else None
+                )
+                customized = first_customized
+
+                template_pairs = _outcome_pairs(first_outcomes)
+                divergent = any(
+                    _outcome_pairs(
+                        saved_by_player_season[
+                            (player.player_id, season)
+                        ][0],
+                    )
+                    != template_pairs
+                    for season in future_seasons[1:]
+                )
+
+        entries.append(
+            PersonalValueRankingEntry(
+                player_id=player.player_id,
+                name=player.full_name,
+                position=player.position or position,
+                team=player.team,
+                primary_rank=primary,
+                outcomes=ranked_outcomes,
+                secondary_rank=secondary,
+                is_customized=customized,
+                has_divergent_future_years=divergent,
+            ),
+        )
+
+    entries.sort(
+        key=lambda entry: (
+            entry.primary_rank is None,
+            entry.primary_rank if entry.primary_rank is not None else 0,
+            entry.secondary_rank
+            if entry.secondary_rank is not None
+            else 10_000,
+            entry.name,
+        ),
+    )
+
+    return PersonalValueRankingsResponse(
+        season=current_season,
+        position=position,
+        scope=scope,
+        entries=entries,
+    )
+
+
+async def set_personal_value_rankings(
+    *,
+    ctx: Context,
+    request: PersonalValueRankingsUpdateRequest,
+) -> PersonalValueRankingsUpdateResponse:
+    """Applies board reordering to personal projections.
+
+    Current scope rewrites the current-season single outcome. Future
+    scope rewrites every season that still matches the player's
+    default future trajectory; individually-edited (divergent) seasons
+    are deliberately left untouched.
+    """
+    _require_personal_values_context(ctx)
+
+    if request.scope not in {"current", "future"}:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail="scope must be 'current' or 'future'.",
+        )
+
+    league = await _resolve_league_context(
+        ctx=ctx,
+        league_id=request.league_id,
+    )
+    current_season = int(league.season)
+
+    updated = 0
+
+    for entry in request.entries:
+        player_row = await ctx.db.get(Player, entry.player_id)
+
+        if player_row is None:
+            continue
+
+        age = calculate_age(player_row.birth_date)
+
+        if request.scope == "current":
+            await upsert_personal_projection(
+                db=ctx.db,
+                site_user_id=ctx.site_user.id,
+                player_id=entry.player_id,
+                season=current_season,
+                position=player_row.position,
+                default_source="underdog",
+                is_customized=True,
+                outcomes=[(entry.primary_rank, 100.0)],
+            )
+            updated += 1
+            continue
+
+        end_season = _get_projection_end_season(
+            base_season=current_season,
+            age=age,
+            position=player_row.position,
+        )
+
+        saved = await get_personal_projections_for_player(
+            db=ctx.db,
+            site_user_id=ctx.site_user.id,
+            player_id=entry.player_id,
+        )
+        future_saved = sorted(
+            (
+                projection
+                for projection in saved
+                if projection.season > current_season
+            ),
+            key=lambda projection: projection.season,
+        )
+
+        if future_saved:
+            outcomes_by_id = await get_personal_projection_outcomes(
+                db=ctx.db,
+                projection_ids=[
+                    projection.id
+                    for projection in future_saved
+                    if projection.id is not None
+                ],
+            )
+            template_pairs = _outcome_pairs(
+                outcomes_by_id.get(future_saved[0].id, []),
+            )
+
+            old_primary = (
+                template_pairs[0][0] if template_pairs else None
+            )
+            spread = (
+                template_pairs[1][0] - old_primary
+                if len(template_pairs) > 1 and old_primary is not None
+                else 0
+            )
+
+            # Tied template ranks (spread 0) keep both outcomes
+            # equal rather than nulling the secondary rank.
+            new_secondary = (
+                entry.primary_rank + spread
+                if len(template_pairs) > 1
+                else None
+            )
+
+            for projection in future_saved:
+                pairs = _outcome_pairs(
+                    outcomes_by_id.get(projection.id, []),
+                )
+
+                if pairs != template_pairs:
+                    # Individually edited year - hands off.
+                    continue
+
+                new_outcomes = [
+                    (entry.primary_rank, pairs[0][1]),
+                ]
+                if len(pairs) > 1:
+                    new_outcomes.append(
+                        (new_secondary, pairs[1][1]),
+                    )
+
+                await upsert_personal_projection(
+                    db=ctx.db,
+                    site_user_id=ctx.site_user.id,
+                    player_id=entry.player_id,
+                    season=projection.season,
+                    position=player_row.position,
+                    default_source="underdog",
+                    is_customized=True,
+                    outcomes=new_outcomes,
+                )
+                updated += 1
+        else:
+            for season in range(
+                current_season + 1,
+                end_season + 1,
+            ):
+                await upsert_personal_projection(
+                    db=ctx.db,
+                    site_user_id=ctx.site_user.id,
+                    player_id=entry.player_id,
+                    season=season,
+                    position=player_row.position,
+                    default_source="underdog",
+                    is_customized=True,
+                    outcomes=[(entry.primary_rank, 100.0)],
+                )
+                updated += 1
+
+    return PersonalValueRankingsUpdateResponse(updated=updated)
+
+
+async def reset_personal_value_rankings(
+    *,
+    ctx: Context,
+    request: PersonalValueRankingsResetRequest,
+) -> PersonalValueRankingsResetResponse:
+    """Strips personal customizations back to Underdog defaults.
+
+    With player_id set, resets a single player across all seasons;
+    otherwise resets every player at the given position.
+    """
+    _require_personal_values_context(ctx)
+
+    await _resolve_league_context(
+        ctx=ctx,
+        league_id=request.league_id,
+    )
+
+    if request.player_id:
+        player_ids = [request.player_id]
+    elif request.position:
+        rows = await ctx.db.execute(
+            select(Player.player_id).where(
+                Player.position == request.position,
+            ),
+        )
+        player_ids = [
+            row[0] for row in rows.all()
+        ]
+    else:
+        rows = await ctx.db.execute(
+            select(Player.player_id).where(
+                Player.position.in_(DYNASTY_POSITIONS),
+            ),
+        )
+        player_ids = [
+            row[0] for row in rows.all()
+        ]
+
+    saved = await get_personal_projections_for_site_user(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+        player_ids=player_ids,
+    ) if player_ids else []
+
+    removed = await delete_personal_projections(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+        projection_ids=[
+            projection.id
+            for projection in saved
+            if projection.id is not None
+        ],
+    )
+
+    return PersonalValueRankingsResetResponse(
+        reset_players=len(saved),
+    )
+
+
+async def sync_underdog_defaults(
+    *,
+    ctx: Context,
+    league_id: str,
+    position: str | None = None,
+) -> PersonalValueRankingsResetResponse:
+    """Freezes current Underdog ranks as personal values.
+
+    Only touches players with NO stored projections (still on pure
+    defaults); already-customized players are left alone. Writes one
+    single-outcome projection per horizon season so later Underdog
+    updates cannot move them.
+    """
+    _require_personal_values_context(ctx)
+
+    league = await _resolve_league_context(
+        ctx=ctx,
+        league_id=league_id,
+    )
+    current_season = int(league.season)
+
+    query = select(Player).where(
+        Player.position == position,
+    ) if position else select(Player).where(
+        Player.position.in_(DYNASTY_POSITIONS),
+    )
+    players = list(
+        (await ctx.db.execute(query)).scalars().all(),
+    )
+
+    if not players:
+        return PersonalValueRankingsResetResponse(reset_players=0)
+
+    player_ids = [p.player_id for p in players]
+    saved = await get_personal_projections_for_site_user(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+        player_ids=player_ids,
+    )
+    touched_ids = {projection.player_id for projection in saved}
+
+    underdog_result = await ctx.db.execute(
+        select(UnderdogADP)
+        .where(UnderdogADP.player_id.in_(player_ids))
+        .order_by(desc(UnderdogADP.id)),
+    )
+    raw_ud_rank_by_player: dict[str, str | None] = {}
+    seen: set[str] = set()
+    for underdog_row in underdog_result.scalars().all():
+        if underdog_row.player_id in seen:
+            continue
+        seen.add(underdog_row.player_id)
+        raw_ud_rank_by_player[underdog_row.player_id] = (
+            underdog_row.position_rank
+        )
+
+    synced = 0
+
+    for player in players:
+        if player.player_id in touched_ids:
+            continue
+
+        default_rank = _parse_position_rank(
+            player.position,
+            raw_ud_rank_by_player.get(player.player_id),
+        )
+        if default_rank is None:
+            continue
+
+        end_season = _get_projection_end_season(
+            base_season=current_season,
+            age=calculate_age(player.birth_date),
+            position=player.position,
+        )
+
+        for season in range(current_season, end_season + 1):
+            await upsert_personal_projection(
+                db=ctx.db,
+                site_user_id=ctx.site_user.id,
+                player_id=player.player_id,
+                season=season,
+                position=player.position,
+                default_source="underdog",
+                is_customized=False,
+                outcomes=[(default_rank, 100.0)],
+            )
+
+        synced += 1
+
+    return PersonalValueRankingsResetResponse(reset_players=synced)

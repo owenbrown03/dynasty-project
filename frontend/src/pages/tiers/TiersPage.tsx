@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { Skeleton } from '@/components/feedback/Skeleton';
@@ -10,16 +11,16 @@ import { usePlayerTiers } from '@/hooks/sleeper/usePlayerTiers';
 import type {
   TierBoardPlayer,
   TierBoardSource,
-  ValueBasis,
 } from '@/types';
 import { getPositionColor } from '@/utils/positions';
+import { getValueBasisLabel } from '@/utils/valueBasis';
 import {
   formatSelectedValue as formatTierSelectedValue,
 } from '@/utils/valueFormat';
 
 import {
+  isLeagueContextValueBasis,
   TIER_SOURCE_OPTIONS,
-  WAR_ONLY_OPTIONS,
 } from './tier.constants';
 import './TiersPage.css';
 
@@ -129,22 +130,11 @@ function getExposureTone(
 
 
 export const TiersPage = () => {
+  const navigate = useNavigate();
   const valuePreference = useValuePreference();
   const initialSource = valuePreference.preference;
-  const initialWarBasis: ValueBasis = (
-    initialSource === 'my_war'
-    || initialSource === 'sleeper_war'
-  )
-    ? initialSource
-    : 'sleeper_war';
   const [source, setSource] = useState<TierBoardSource>(
-    initialSource === 'my_war'
-      || initialSource === 'sleeper_war'
-      ? 'league_war'
-      : initialSource,
-  );
-  const [warBasis, setWarBasis] = useState<ValueBasis>(
-    initialWarBasis,
+    initialSource,
   );
   const [leagueId, setLeagueId] = useState('');
   const debouncedLeagueId = useDebouncedValue(
@@ -153,18 +143,14 @@ export const TiersPage = () => {
   );
 
   const leagueOverview = useLeagueOverview();
-  const effectiveValueBasis = (
-    source === 'league_war'
-      ? warBasis
-      : source
-  ) as ValueBasis;
+  const effectiveValueBasis = source;
+  const needsLeagueSelection = isLeagueContextValueBasis(
+    source,
+  );
   const effectiveLeagueId = (
-    source === 'league_war'
+    needsLeagueSelection
       ? debouncedLeagueId || undefined
       : undefined
-  );
-  const needsLeagueSelection = (
-    source === 'league_war'
   );
   const canRequestBoard = (
     !needsLeagueSelection
@@ -273,29 +259,6 @@ export const TiersPage = () => {
                     </select>
                   </label>
 
-                  <label className="waivers-value-selector">
-                    <span>WAR Type</span>
-
-                    <select
-                      value={warBasis}
-                      onChange={(event) => {
-                        setWarBasis(
-                          event.target.value as ValueBasis,
-                        );
-                      }}
-                    >
-                      {
-                        WAR_ONLY_OPTIONS.map((option) => (
-                          <option
-                            key={option.value}
-                            value={option.value}
-                          >
-                            {option.label}
-                          </option>
-                        ))
-                      }
-                    </select>
-                  </label>
                 </>
               )
               : null
@@ -391,7 +354,13 @@ export const TiersPage = () => {
                             ? tier.players.map((player) => (
                                 <article
                                   key={player.player_id}
-                                  className="tier-player"
+                                  className="tier-player tier-player-clickable"
+                                  title="Edit this player's projections in My Values"
+                                  onClick={() => {
+                                    navigate(
+                                      `/my-values?player=${player.player_id}`,
+                                    );
+                                  }}
                                   style={{
                                     borderLeftColor: getPositionColor(
                                       player.position,
@@ -420,6 +389,17 @@ export const TiersPage = () => {
                                             )
                                           }
                                         </strong>
+                                        {player.secondary_value != null ? (
+                                          <span
+                                            className="tier-player-secondary"
+                                            title={`Redraft value (${getValueBasisLabel(valuePreference.redraftPreference)})`}
+                                          >
+                                            R {formatTierSelectedValue(
+                                              player.secondary_value,
+                                              valuePreference.redraftPreference,
+                                            )}
+                                          </span>
+                                        ) : null}
                                       </div>
                                     </div>
 

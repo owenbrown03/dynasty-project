@@ -89,7 +89,7 @@
 
 .tier-row-players {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 8px;
   padding: 8px;
 }
@@ -97,8 +97,8 @@
 .tier-row-empty {
   display: flex;
   align-items: center;
-  min-height: 54px;
-  padding: 10px 12px;
+  min-height: 48px;
+  padding: 8px 12px;
   color: var(--color-text-faint);
   font-size: 12px;
 }
@@ -108,8 +108,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 7px 10px;
   border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm, 4px);
   background: var(--color-surface);
 }
 
@@ -118,14 +120,14 @@
 }
 
 .tier-player-skeleton {
-  border-left: 2px solid var(--color-border-strong);
+  border-left: 3px solid var(--color-border-strong);
 }
 
 .tier-player-copy {
   min-width: 0;
   flex: 1;
   display: grid;
-  gap: 4px;
+  gap: 3px;
 }
 
 .tier-player-topline,
@@ -134,7 +136,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
 .tier-player-name {
@@ -143,13 +145,18 @@
 }
 
 .tier-player-value {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .tier-player-value strong {
   color: var(--color-text-strong);
   font-size: 13px;
+  font-weight: 700;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .tier-player-name strong {
@@ -158,6 +165,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
+  font-weight: 700;
 }
 
 .tier-player-meta {
@@ -166,6 +174,7 @@
   flex: 1;
   color: var(--color-text-muted);
   font-size: 11px;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -176,7 +185,7 @@
   flex-shrink: 0;
   color: color-mix(in srgb, var(--color-warning) 38%, var(--color-text-faint));
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.04em;
   white-space: nowrap;
   text-transform: uppercase;
@@ -259,3 +268,22 @@
   color: var(--color-text-muted);
 }
 
+.tier-player-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.tier-player-clickable:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.tier-player-secondary {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

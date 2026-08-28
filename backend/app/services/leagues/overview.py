@@ -1,6 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crud.sleeper.personal import get_hidden_league_ids
+from app.crud.sleeper.personal import (
+    get_focused_league_ids,
+    get_hidden_league_ids,
+)
 from app.schemas.league import LeagueOverviewItem
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_username,
@@ -15,9 +18,14 @@ async def get_league_overview(
     include_hidden: bool = False,
 ) -> list[LeagueOverviewItem]:
     hidden_league_ids = set()
+    focused_league_ids = set()
 
     if site_user_id is not None:
         hidden_league_ids = await get_hidden_league_ids(
+            db=db,
+            site_user_id=site_user_id,
+        )
+        focused_league_ids = await get_focused_league_ids(
             db=db,
             site_user_id=site_user_id,
         )
@@ -44,6 +52,7 @@ async def get_league_overview(
                 season=league.season,
                 total_rosters=league.total_rosters,
                 is_hidden=league.league_id in hidden_league_ids,
+                is_focused=league.league_id in focused_league_ids,
             )
         )
 

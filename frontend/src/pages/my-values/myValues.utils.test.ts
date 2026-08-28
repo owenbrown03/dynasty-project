@@ -312,3 +312,41 @@ describe('myValues utils', () => {
     ).toEqual(new Set(['a', 'b']));
   });
 });
+
+
+import { moveRanking } from './myValues.utils';
+
+describe('moveRanking', () => {
+  const base = [
+    { player_id: 'a', primary_rank: 1 },
+    { player_id: 'b', primary_rank: 4 },
+    { player_id: 'c', primary_rank: 9 },
+    { player_id: 'd', primary_rank: 14 },
+  ];
+
+  it('renumbers strictly one-per-rank after a move', () => {
+    const result = moveRanking(base, 3, 0);
+
+    expect(result.map((e) => e.player_id)).toEqual(['d', 'a', 'b', 'c']);
+    expect(result.map((e) => e.primary_rank)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('keeps other players untouched outside the window', () => {
+    const wider = [
+      ...base,
+      { player_id: 'e', primary_rank: null },
+    ];
+
+    const result = moveRanking(wider, 0, 2);
+
+    expect(result.find((e) => e.player_id === 'e')).toEqual({
+      player_id: 'e',
+      primary_rank: null,
+    });
+  });
+
+  it('returns the same array for no-op moves', () => {
+    expect(moveRanking(base, 1, 1)).toBe(base);
+    expect(moveRanking(base, -1, 0)).toBe(base);
+  });
+});

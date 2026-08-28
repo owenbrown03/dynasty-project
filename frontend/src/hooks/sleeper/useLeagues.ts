@@ -11,6 +11,8 @@ import type {
   LeagueOverview,
   LeagueDetails,
   Dashboard,
+  LeagueFocusItem,
+  LeagueFocusUpdate,
   LeagueVisibilityItem,
   LeagueVisibilityUpdate,
   UserLeagueNoteUpdate,
@@ -121,6 +123,67 @@ export function useLeagueVisibility() {
 }
 
 
+
+export function useLeagueFocus() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<
+    LeagueFocusItem,
+    Error,
+    {
+      leagueId: string;
+      payload: LeagueFocusUpdate;
+    }
+  >({
+    mutationFn: async ({
+      leagueId,
+      payload,
+    }) => {
+      return api.leagues
+        .setFocus(
+          leagueId,
+          payload,
+        )
+        .then((res) => res.data);
+    },
+    onSuccess: (_response, variables) => {
+      // 1. Update League Overview queries in-place without refetching
+      queryClient.setQueriesData<LeagueOverview[]>(
+        { queryKey: queryKeys.leagues.overviewRoot },
+        (previous) =>
+          previous
+            ? previous.map((league) =>
+                league.league_id === variables.leagueId
+                  ? { ...league, is_focused: variables.payload.focused }
+                  : league,
+              )
+            : previous,
+      );
+
+      // 2. Update Dashboard queries in-place (both cheap and full variants) without expensive refetching
+      queryClient.setQueriesData<Dashboard>(
+        { queryKey: queryKeys.leagues.dashboardRoot },
+        (previous) =>
+          previous
+            ? {
+                ...previous,
+                leagues: previous.leagues.map((league) =>
+                  league.league_id === variables.leagueId
+                    ? { ...league, is_focused: variables.payload.focused }
+                    : league,
+                ),
+              }
+            : previous,
+      );
+    },
+  });
+
+  return {
+    setLeagueFocus: mutation.mutateAsync,
+    saving: mutation.isPending,
+  };
+}
+
 export function useLeagueDetails(league_id?: string, cheap = false) {
   const bootstrap = useBootstrap();
   const viewerKey =
@@ -187,6 +250,7 @@ export function useLeagueDashboard(cheap = false) {
 
 export function useSaveUserNote() {
   const queryClient = useQueryClient();
+  const bootstrap = useBootstrap();
 
   const mutation = useMutation<
     UserLeagueNoteResponse,
@@ -198,10 +262,24 @@ export function useSaveUserNote() {
         .saveNote(payload)
         .then((res) => res.data);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.leagues.detailsRoot,
-      });
+    onSuccess: (response, variables) => {
+      const viewerKey = buildLeagueDetailsViewerKey(
+        bootstrap.data,
+      );
+
+      for (const cheap of [true, false]) {
+        queryClient.setQueryData<LeagueDetails>(
+          queryKeys.leagues.details(
+            variables.league_id,
+            viewerKey,
+            cheap,
+          ),
+          (previous) =>
+            previous
+              ? { ...previous, note: response.note }
+              : previous,
+        );
+      }
     },
   });
 

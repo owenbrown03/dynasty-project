@@ -4,6 +4,8 @@ import type {
   LeagueOverview,
   LeagueDetails,
   Dashboard,
+  LeagueFocusItem,
+  LeagueFocusUpdate,
   LeagueVisibilityItem,
   LeagueVisibilityUpdate,
   UserLeagueNoteUpdate,
@@ -66,6 +68,14 @@ export const leaguesEndpoints = (
   ) =>
     client.put<LeagueVisibilityItem>(
       `${prefix}/visibility/${leagueId}`,
+      payload,
+    ),
+  setFocus: (
+    leagueId: string,
+    payload: LeagueFocusUpdate,
+  ) =>
+    client.put<LeagueFocusItem>(
+      `${prefix}/focus/${leagueId}`,
       payload,
     ),
   saveNote: (

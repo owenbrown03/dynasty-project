@@ -1,5 +1,7 @@
 import json
 import logging
+import re
+from types import SimpleNamespace
 from datetime import datetime, timezone
 
 from app.core.config import settings
@@ -7,6 +9,7 @@ from app.integrations.gemini.client import GeminiClient
 from app.schemas.advisor import (
     AdvisorDossier,
     AdvisorPreferenceSummary,
+    AdvisorProposal,
     AdvisorRecommendation,
     AdvisorSynthesisResponse,
 )
@@ -105,6 +108,15 @@ async def peek_cached_recommendations(
     if cached is None:
         return None
 
+    stable = _response_from_cache(cached)
+
+    if stable is not None:
+        return stable
+
+    # Legacy envelope: raw text written before responses were cached
+    # fully parsed. Reparsing against today's dossier can pair old
+    # narratives with new trades, so the defensive validator below
+    # drops mismatched attachments.
     text, generated_at = _cached_envelope(cached)
 
     return _parse_response(
@@ -146,6 +158,11 @@ async def synthesize_recommendations(
         cached = await _cache_get(redis, cache_identity)
 
         if cached is not None:
+            stable = _response_from_cache(cached)
+
+            if stable is not None:
+                return stable
+
             text, generated_at = _cached_envelope(cached)
 
             return _parse_response(
@@ -178,7 +195,18 @@ async def synthesize_recommendations(
         raise
 
     if has_dossier_content:
-        await _cache_set(redis, cache_identity, text)
+        parsed = _parse_response(
+            text,
+            dossier=dossier,
+            generated_at=datetime.now(
+                timezone.utc
+            ).isoformat(),
+            model=model,
+            cached=False,
+        )
+        await _cache_set(redis, cache_identity, text, parsed)
+
+        return parsed
 
     return _parse_response(
         text,
@@ -256,6 +284,19 @@ def _parse_response(
         if isinstance(index, int) and 0 <= index < len(dossier.proposals):
             proposal = dossier.proposals[index]
 
+            if not _narrative_references_proposal(
+                item.get("headline"),
+                item.get("reasoning"),
+                proposal,
+            ):
+                logger.warning(
+                    "Advisor recommendation narrative does not reference "
+                    "its attached proposal (index=%s); dropping the "
+                    "attachment to avoid mismatched cards",
+                    index,
+                )
+                proposal = None
+
         recommendations.append(
             AdvisorRecommendation(
                 headline=item.get("headline", ""),
@@ -321,20 +362,136 @@ async def _cache_get(redis, prompt: str):
     )
 
 
-async def _cache_set(redis, prompt: str, text: str) -> None:
+async def _cache_set(
+    redis,
+    prompt: str,
+    text: str,
+    response: AdvisorSynthesisResponse | None = None,
+) -> None:
     if redis is None:
         return
+
+    payload = {
+        "text": text,
+        "generated_at": (
+            response.generated_at
+            if response is not None
+            else datetime.now(timezone.utc).isoformat()
+        ),
+    }
+
+    if response is not None:
+        # Store the fully parsed response (proposals embedded) so
+        # later reads serve byte-stable cards even when the dossier
+        # was rebuilt with different proposal ordering/content.
+        payload["response"] = json.loads(
+            response.model_dump_json()
+        )
 
     await quota.cache_generation(
         redis,
         model=settings.GEMINI_MODEL,
         system_instruction=SYSTEM_PROMPT,
         prompt=prompt,
-        payload={
-            "text": text,
-            "generated_at": datetime.now(
-                timezone.utc
-            ).isoformat(),
-        },
+        payload=payload,
     )
 
+
+def _response_from_cache(
+    cached,
+) -> AdvisorSynthesisResponse | None:
+    """Rebuilds a cached fully-parsed response, if present.
+
+    Returns None for legacy entries that only carry raw LLM text.
+    """
+    if not isinstance(cached, dict):
+        return None
+
+    stored = cached.get("response")
+
+    if not isinstance(stored, dict):
+        return None
+
+    try:
+        response = AdvisorSynthesisResponse.model_validate(stored)
+    except Exception:
+        logger.warning(
+            "Advisor synthesis cache held an invalid stored response; "
+            "falling back to reparse",
+        )
+        return None
+
+    return response.model_copy(update={"cached": True})
+
+
+def _narrative_references_proposal(
+    headline: str | None,
+    reasoning: str | None,
+    proposal: AdvisorProposal,
+) -> bool:
+    """Guards narrative<->proposal pairing.
+
+    A card claiming a trade must reference at least one player
+    actually in the proposal (either direction). Pick-only swaps are
+    exempt. Tokens are matched on word boundaries so partial-name
+    phrasing ("Achane" for "De'Von Achane", "vet RB" for
+    "Veteran RB") still counts.
+    """
+    tokens: list[str] = []
+
+    for ref in [*proposal.send, *proposal.receive]:
+        name = (ref.name or "").strip()
+        if not name:
+            continue
+
+        casefolded = name.casefold()
+        tokens.append(casefolded)
+
+        for word in casefolded.split():
+            if len(word) >= 2 and word not in tokens:
+                tokens.append(word)
+
+    if not tokens:
+        return True
+
+    text = f"{headline or ''} {reasoning or ''}".casefold()
+
+    return any(
+        re.search(rf"\b{re.escape(token)}\b", text)
+        for token in tokens
+    )
+
+
+async def invalidate_cached_recommendations(
+    *,
+    redis,
+    username: str,
+    league_id: str | None,
+    preferences: AdvisorPreferenceSummary | None = None,
+) -> bool:
+    """Drops the cached synthesis for this scope.
+
+    The cache identity only depends on scope fields, so a full
+    dossier build is unnecessary here.
+    """
+    if redis is None:
+        return False
+
+    identity = _cache_identity(
+        SimpleNamespace(
+            username=username,
+            scope_league_id=league_id,
+        ),
+        preferences,
+    )
+
+    from app.services.advisor.quota import build_cache_key
+
+    key = build_cache_key(
+        model=settings.GEMINI_MODEL,
+        system_instruction=SYSTEM_PROMPT,
+        prompt=identity,
+    )
+
+    await redis.delete(key)
+    return True

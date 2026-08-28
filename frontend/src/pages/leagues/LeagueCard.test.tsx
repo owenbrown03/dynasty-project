@@ -2,6 +2,17 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
+
+vi.mock('@/context/useValuePreference', () => ({
+  useValuePreference: () => ({
+    preference: 'ktc',
+    redraftPreference: 'sleeper_projection',
+    setPreference: vi.fn(),
+    setRedraftPreference: vi.fn(),
+    isSaving: false,
+  }),
+}));
+
 import { LeagueCard } from './LeagueCard';
 import type { LeagueDetails } from '@/types';
 

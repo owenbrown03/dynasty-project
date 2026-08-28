@@ -4,48 +4,12 @@ export const VALUE_BASIS_OPTIONS: Array<{
   value: ValueBasis;
   label: string;
 }> = [
-  {
-    value: 'ktc',
-    label: 'KTC Value',
-  },
-  {
-    value: 'fantasycalc',
-    label: 'FantasyCalc Value',
-  },
-  {
-    value: 'adp',
-    label: 'ADP Value',
-  },
-  {
-    value: 'sleeper_war',
-    label: 'Sleeper Projection WAR',
-  },
-  {
-    value: 'my_war',
-    label: 'My WAR',
-  },
-];
-
-export const LEGACY_WAR_BASIS_OPTIONS: Array<{
-  value: ValueBasis;
-  label: string;
-}> = [
-  {
-    value: 'dynasty_roster_war',
-    label: 'Dynasty Roster WAR',
-  },
-  {
-    value: 'dynasty_starter_war',
-    label: 'Dynasty Starter WAR',
-  },
-  {
-    value: 'redraft_roster_war',
-    label: 'Redraft Roster WAR',
-  },
-  {
-    value: 'redraft_starter_war',
-    label: 'Redraft Starter WAR',
-  },
+  { value: 'ktc', label: 'KTC Value' },
+  { value: 'fantasycalc', label: 'FantasyCalc Value' },
+  { value: 'adp', label: 'ADP Value' },
+  { value: 'sleeper_projection', label: 'Sleeper projected points' },
+  { value: 'my_roster_war', label: 'Dynasty Roster WAR' },
+  { value: 'my_starter_war', label: 'Dynasty Starter WAR' },
 ];
 
 export function getValueBasisOptions(
@@ -57,4 +21,23 @@ export function getValueBasisOptions(
       || option.value !== 'my_war'
     ),
   );
+}
+
+
+// Redraft Value assigns per-player redraft valuations (#165): the
+// redraft-meaningful projection/WAR sources.
+const REDRAFT_VALUE_BASIS_OPTIONS: Array<{
+  value: ValueBasis;
+  label: string;
+}> = [
+  { value: 'sleeper_projection', label: 'Sleeper projected points' },
+  { value: 'redraft_roster_war', label: 'Redraft Roster WAR' },
+  { value: 'redraft_starter_war', label: 'Redraft Starter WAR' },
+];
+
+export function getRedraftValueBasisOptions(): Array<{
+  value: ValueBasis;
+  label: string;
+}> {
+  return REDRAFT_VALUE_BASIS_OPTIONS;
 }

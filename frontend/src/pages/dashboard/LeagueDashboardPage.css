@@ -196,9 +196,19 @@
 }
 
 .portfolio-league-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 16px;
   font-weight: 700;
   color: var(--color-text-strong);
+  min-width: 0;
+}
+
+.portfolio-league-title > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .portfolio-league-subtitle {
@@ -409,3 +419,34 @@
   color: var(--color-text-muted);
 }
 
+
+.portfolio-league-row-focused {
+  background: color-mix(in srgb, var(--color-accent) 5%, var(--color-surface));
+  border-left: 3px solid var(--color-accent);
+  border-bottom-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-border));
+}
+
+.portfolio-league-row-focused:hover {
+  background: color-mix(in srgb, var(--color-accent) 9%, var(--color-surface-raised));
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border-strong));
+  border-left-color: var(--color-accent);
+}
+
+.portfolio-league-row-focused .portfolio-league-metric {
+  border-left-color: color-mix(in srgb, var(--color-accent) 15%, var(--color-border));
+}
+
+.portfolio-league-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-accent) 40%, transparent));
+}
+
+@media (max-width: 1120px) {
+  .portfolio-league-row-focused .portfolio-league-primary {
+    border-bottom-color: color-mix(in srgb, var(--color-accent) 18%, var(--color-border));
+  }
+}

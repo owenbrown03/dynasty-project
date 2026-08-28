@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum
 
 from app.schemas.player import PlayerValue
@@ -17,6 +18,9 @@ class ValueBasis(StrEnum):
     ADP = "adp"
     SLEEPER_WAR = "sleeper_war"
     MY_WAR = "my_war"
+    SLEEPER_PROJECTION = "sleeper_projection"
+    MY_ROSTER_WAR = "my_roster_war"
+    MY_STARTER_WAR = "my_starter_war"
 
     REDRAFT_STARTER_WAR = "redraft_starter_war"
     REDRAFT_ROSTER_WAR = "redraft_roster_war"
@@ -61,6 +65,64 @@ def _get_configured_war_value(
         if value is not None
         else None
     )
+
+
+@dataclass(frozen=True)
+class ValueBasisSpec:
+    """What a value basis needs to produce numbers.
+
+    Single source of truth for feature gates (tier board, exports,
+    future consumers). A basis missing from this registry is a bug:
+    the completeness test in the suite will fail.
+    """
+
+    needs_league_context: bool = False
+    needs_personal_hydration: bool = False
+    needs_dynasty_projections: bool = False
+
+
+VALUE_BASIS_SPECS: dict[ValueBasis, ValueBasisSpec] = {
+    ValueBasis.KTC: ValueBasisSpec(),
+    ValueBasis.FANTASYCALC: ValueBasisSpec(),
+    ValueBasis.ADP: ValueBasisSpec(),
+    ValueBasis.ROOKIE_PICK_WAR: ValueBasisSpec(),
+    ValueBasis.SLEEPER_PROJECTION: ValueBasisSpec(
+        needs_league_context=True,
+    ),
+    ValueBasis.SLEEPER_WAR: ValueBasisSpec(
+        needs_league_context=True,
+        needs_dynasty_projections=True,
+    ),
+    ValueBasis.MY_WAR: ValueBasisSpec(
+        needs_league_context=True,
+        needs_personal_hydration=True,
+        needs_dynasty_projections=True,
+    ),
+    ValueBasis.MY_ROSTER_WAR: ValueBasisSpec(
+        needs_league_context=True,
+        needs_personal_hydration=True,
+        needs_dynasty_projections=True,
+    ),
+    ValueBasis.MY_STARTER_WAR: ValueBasisSpec(
+        needs_league_context=True,
+        needs_personal_hydration=True,
+        needs_dynasty_projections=True,
+    ),
+    ValueBasis.REDRAFT_STARTER_WAR: ValueBasisSpec(
+        needs_league_context=True,
+    ),
+    ValueBasis.REDRAFT_ROSTER_WAR: ValueBasisSpec(
+        needs_league_context=True,
+    ),
+    ValueBasis.DYNASTY_STARTER_WAR: ValueBasisSpec(
+        needs_league_context=True,
+        needs_dynasty_projections=True,
+    ),
+    ValueBasis.DYNASTY_ROSTER_WAR: ValueBasisSpec(
+        needs_league_context=True,
+        needs_dynasty_projections=True,
+    ),
+}
 
 
 def get_player_value(
@@ -119,6 +181,15 @@ def get_player_value(
                 prefix="my",
                 config=normalized_war_settings["my"],
             )
+
+        case ValueBasis.SLEEPER_PROJECTION:
+            return player.projected_points
+
+        case ValueBasis.MY_ROSTER_WAR:
+            return player.my_dynasty_roster_war
+
+        case ValueBasis.MY_STARTER_WAR:
+            return player.my_dynasty_starter_war
 
         case ValueBasis.REDRAFT_STARTER_WAR:
             return player.redraft_starter_war

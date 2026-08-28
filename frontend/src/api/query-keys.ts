@@ -35,6 +35,7 @@ export const queryKeys = {
   leagues: {
     detailsRoot: ['league-details'] as const,
     overviewRoot: ['league-overview'] as const,
+    dashboardRoot: ['league-dashboard'] as const,
     overview: (
       username: string | null | undefined,
       includeHidden = false,
@@ -88,6 +89,12 @@ export const queryKeys = {
       'advisor-recommendations',
       username ?? null,
       leagueId ?? null,
+    ] as const,
+    directives: (
+      username: string | null | undefined,
+    ) => [
+      'advisor-directives',
+      username ?? null,
     ] as const,
     cachedRecommendations: (
       username: string | null | undefined,
@@ -234,6 +241,17 @@ export const queryKeys = {
         playerId ?? null,
       ] as const,
     personalDetailRoot: ['personal-values-detail'] as const,
+    personalRankings: (
+      leagueId: string | undefined,
+      position: string,
+      scope: string,
+    ) =>
+      [
+        'personal-values-rankings',
+        leagueId ?? null,
+        position,
+        scope,
+      ] as const,
   },
 } as const;
 

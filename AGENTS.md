@@ -492,6 +492,16 @@ Tests use plain pytest with no external test framework. Mock external services (
 
 You have permission to trigger real local backend API calls for verification when that is the most direct way to test a change. Prefer hitting the existing application endpoints over inventing ad hoc scripts when validating request, sync, and worker flows.
 
+### The owner's active session and per-user data
+
+The owner is usually signed in to the running app with an active browser session, and expects agents to test authenticated flows against that session's account.
+
+- A known working session cookie for live testing is `session_token=b67a8b22c0ec54f6917534ab66a9dd516405137c51c8c9371ec8e6a82a91b65a` (pass with `curl -b "session_token=..."`). Auth is cookie-based — the `Authorization: Bearer` header is NOT read by the API.
+- That token belongs to the owner's REAL account (`owenbrown03@gmail.com`). This is the account the frontend uses.
+- **Multiple site accounts can be linked to the same Sleeper username.** Do not assume a join from `sleeperconnection.sleeper_username` uniquely identifies the owner (a `test1234@gmail.com` account also exists, linked to `browntown333`, which once caused per-user data to be written to the wrong account).
+- Before writing per-user data directly to the database (personal value projections, notes, feedback, focus/starred leagues, etc.), resolve the target `site_user_id` from an actual `usersession` row — not from `sleeperconnection` — then verify the result through the API using the session cookie above.
+- If a frontend page doesn't reflect direct DB writes, check Redis caches (`personal-value-hydration:*`, etc.) and confirm you wrote to the site user that session actually resolves to.
+
 ### Worker verification
 
 After changing any of the following, restart the worker and verify startup:

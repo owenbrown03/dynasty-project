@@ -11,6 +11,7 @@ class LeagueOverviewItem(Base):
     season: str | None = None
     total_rosters: int | None = None
     is_hidden: bool = False
+    is_focused: bool = False
 
 
 class LeagueVisibilityUpdate(Base):
@@ -20,6 +21,15 @@ class LeagueVisibilityUpdate(Base):
 class LeagueVisibilityItem(Base):
     league_id: str
     hidden: bool
+
+
+class LeagueFocusUpdate(Base):
+    focused: bool
+
+
+class LeagueFocusItem(Base):
+    league_id: str
+    focused: bool
 
 
 class RosterSummary(Base):

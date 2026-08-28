@@ -36,9 +36,32 @@ export function useAdvisorRecommendations(
     ),
     queryFn: async () => {
       if (!username) return null;
-      return api.advisor.getCachedRecommendations(username, {
+      // Endpoint wrapper already unwraps the axios response.
+      const incoming = await api.advisor.getCachedRecommendations(
+        username,
+        { leagueId },
+      );
+
+      // A background peek refetch can race a just-completed generate.
+      // Never let an older payload replace fresher results already in
+      // the cache.
+      const key = queryKeys.advisor.cachedRecommendations(
+        username,
         leagueId,
-      });
+      );
+      const existing =
+        appQueryClient.getQueryData<AdvisorSynthesisResponse>(key);
+
+      if (
+        existing
+        && incoming
+        && (existing.generated_at ?? '')
+          >= (incoming.generated_at ?? '')
+      ) {
+        return existing;
+      }
+
+      return incoming;
     },
     enabled: !!username,
     staleTime: 5 * 60 * 1000,
@@ -107,5 +130,54 @@ export function useAdvisorRecommendations(
         ),
       });
     },
+  };
+}
+
+
+export function useAdvisorDirectives(options?: {
+  leagueId?: string;
+}) {
+  const { username } = useSleeperConnection();
+  const leagueId = options?.leagueId;
+
+  const query = useQuery({
+    queryKey: [...queryKeys.advisor.directives(username), leagueId ?? null],
+    queryFn: async () => {
+      if (!username) return null;
+      const response = await api.advisor.getDirectives(username, {
+        leagueId,
+      });
+      return response.data;
+    },
+    enabled: !!username,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  return {
+    username,
+    directives: query.data?.directives ?? [],
+    loading: query.isLoading,
+  };
+}
+
+
+export function useInvalidateAdvisorRecommendations() {
+  const mutation = useMutation({
+    mutationFn: async (input: {
+      username: string;
+      leagueId?: string;
+    }) => {
+      const response = await api.advisor.invalidate(
+        input.username,
+        input.leagueId,
+      );
+      return response.data;
+    },
+  });
+
+  return {
+    invalidate: mutation.mutateAsync,
+    saving: mutation.isPending,
   };
 }

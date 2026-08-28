@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.war.redraft.singleton import war_service
+from app.services.values.basis import VALUE_BASIS_SPECS
 from app.core.concurrency import heavy_work_semaphore
 from app.core.context import Context
 from app.crud.sleeper.player import (
@@ -115,7 +116,24 @@ async def load_player_values_for_basis(
     league=None,
     season: int,
     cheap: bool = False,
+    value_context: str = "dynasty",
 ) -> list[PlayerValue]:
+    # Bases flagged needs_league_context compute from a league's
+    # redraft context; without a league there is nothing to compute
+    # against.
+    if (
+        league is None
+        and VALUE_BASIS_SPECS[value_basis].needs_league_context
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"{value_basis.value} is not a valid source "
+                "selection for the player tier board without a "
+                "league to get the WAR context from."
+            ),
+        )
+
     supported_player_ids = await get_supported_player_ids(
         db,
     )
@@ -136,6 +154,7 @@ async def load_player_values_for_basis(
             player_ids=supported_player_ids,
             redraft_war_players=[],
             dynasty_war_by_player_id={},
+            value_context=value_context,
         )
 
     async with heavy_work_semaphore:
@@ -152,12 +171,9 @@ async def load_player_values_for_basis(
 
         dynasty_war_by_player_id = {}
 
-        if value_basis in {
-            ValueBasis.DYNASTY_STARTER_WAR,
-            ValueBasis.DYNASTY_ROSTER_WAR,
-            ValueBasis.SLEEPER_WAR,
-            ValueBasis.MY_WAR,
-        }:
+        if (
+            VALUE_BASIS_SPECS[value_basis].needs_dynasty_projections
+        ):
             dynasty_war_by_player_id = (
                 await build_dynasty_values_by_player_id(
                     redis=redis,
@@ -172,7 +188,10 @@ async def load_player_values_for_basis(
             dynasty_war_by_player_id=dynasty_war_by_player_id,
         )
 
-        if value_basis == ValueBasis.MY_WAR and league is not None:
+        if (
+            VALUE_BASIS_SPECS[value_basis].needs_personal_hydration
+            and league is not None
+        ):
             player_values = await hydrate_personal_player_values(
                 db=db,
                 site_user_id=site_user_id,
@@ -268,6 +287,7 @@ async def get_player_tier_board(
     value_basis: ValueBasis,
     league_id: str | None = None,
     cheap: bool = False,
+    value_context: str = "dynasty",
 ) -> PlayerTierBoardResponse:
     season = await get_latest_projection_season(
         ctx.db,
@@ -283,14 +303,7 @@ async def get_player_tier_board(
     war_context = "global"
     league = None
 
-    if value_basis in {
-        ValueBasis.REDRAFT_STARTER_WAR,
-        ValueBasis.REDRAFT_ROSTER_WAR,
-        ValueBasis.DYNASTY_STARTER_WAR,
-        ValueBasis.DYNASTY_ROSTER_WAR,
-        ValueBasis.SLEEPER_WAR,
-        ValueBasis.MY_WAR,
-    }:
+    if VALUE_BASIS_SPECS[value_basis].needs_league_context:
         if league_id:
             league = await resolve_league_war_context(
                 ctx=ctx,
@@ -320,6 +333,7 @@ async def get_player_tier_board(
         league=league,
         season=effective_season,
         cheap=cheap,
+        value_context=value_context,
     )
     war_value_settings = (
         ctx.site_user.settings.get("war_value_settings")
@@ -336,6 +350,55 @@ async def get_player_tier_board(
     if cheap and value_basis not in {ValueBasis.KTC, ValueBasis.FANTASYCALC}:
         effective_value_basis = ValueBasis.KTC
 
+    redraft_value_basis = None
+    if ctx.site_user is not None:
+        from app.crud.auth.user import (
+            get_redraft_value_preference,
+        )
+
+        redraft_value_basis = get_redraft_value_preference(
+            ctx.site_user,
+        )
+
+    # Side-by-side display: load the redraft value leg when it
+    # differs from the selected basis. Reuses the same league
+    # resolution and caching as the primary fetch.
+    secondary_values_by_player_id: dict[str, float] = {}
+
+    if (
+        not cheap
+        and redraft_value_basis is not None
+        and redraft_value_basis != effective_value_basis
+    ):
+        secondary_players = await load_player_values_for_basis(
+            db=ctx.db,
+            redis=ctx.redis,
+            value_basis=redraft_value_basis,
+            site_user_id=(
+                ctx.site_user.id if ctx.site_user else None
+            ),
+            war_value_settings=war_value_settings,
+            league=(
+                league
+                if league is not None
+                else build_canonical_war_league(season)
+            ),
+            season=effective_season,
+            cheap=False,
+        )
+
+        for player in secondary_players:
+            value = get_player_value(
+                player,
+                redraft_value_basis,
+                war_value_settings,
+            )
+
+            if value is not None:
+                secondary_values_by_player_id[
+                    player.player_id
+                ] = float(value)
+
     for player in player_values:
         selected_value = get_player_value(
             player,
@@ -346,10 +409,15 @@ async def get_player_tier_board(
         if selected_value is None:
             continue
 
+        secondary_value = secondary_values_by_player_id.get(
+            player.player_id,
+        )
+
         ranked_players.append(
             (
                 player,
                 float(selected_value),
+                secondary_value,
             )
         )
 
@@ -375,7 +443,11 @@ async def get_player_tier_board(
         for label in TIER_LABELS
     }
 
-    for index, (player, selected_value) in enumerate(
+    for index, (
+        player,
+        selected_value,
+        secondary_value,
+    ) in enumerate(
         ranked_players,
         start=1,
     ):
@@ -405,7 +477,14 @@ async def get_player_tier_board(
                 age=player.age,
                 rank=index,
                 tier=tier_label,
-                selected_value=selected_value,
+                # Serialized at the same precision the frontend
+                # formats WAR-style values at.
+                selected_value=round(selected_value, 2),
+                secondary_value=(
+                    round(secondary_value, 2)
+                    if secondary_value is not None
+                    else None
+                ),
                 exposure_pct=(
                     exposure_pct
                     if exposure_denominator > 0

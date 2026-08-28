@@ -63,10 +63,12 @@ class AccentColorResponse(Base):
 
 class ValuePreferenceUpdate(Base):
     value_preference: ValueBasis
+    redraft_value_preference: ValueBasis | None = None
 
 
 class ValuePreferenceResponse(Base):
     value_preference: ValueBasis | None
+    redraft_value_preference: ValueBasis | None = None
 
 
 class WarValueConfig(Base):
@@ -99,7 +101,7 @@ class DraftPickProjectionSettings(Base):
         le=18,
     )
     before_week_method: DraftPickProjectionPhaseMethod = "none"
-    from_week_method: DraftPickProjectionMethod = "max_pf"
+    from_week_method: DraftPickProjectionMethod = "redraft_value_system"
 
 
 class DraftPickProjectionSettingsUpdate(Base):

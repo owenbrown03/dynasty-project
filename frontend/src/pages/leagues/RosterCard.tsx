@@ -12,7 +12,9 @@ import type {
   WarValueSettings,
 } from '@/types';
 import { PlayerTable } from './PlayerTable';
+import { formatDollarAmount } from '@/utils/valueFormat';
 import { formatNumber } from '@/utils/format';
+import { useValuePreference } from '@/context/useValuePreference';
 import { buildRosterConstructionRows } from './rosterConstruction';
 import {
   getDraftPickColor,
@@ -116,8 +118,6 @@ function PickList({
 
             <div className="league-pick-values">
               <span>
-                {getPickValueLabel(valueBasis)}
-                {' '}
                 {
                   formatNumber(
                     getPickSelectedValue(
@@ -132,6 +132,8 @@ function PickList({
                       : 2,
                   )
                 }
+                {' '}
+                {getPickValueLabel(valueBasis)}
               </span>
             </div>
           </div>
@@ -150,12 +152,22 @@ export function RosterCard({
   isCheap = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const valuePreference = useValuePreference();
+  const redraftValueBasis = valuePreference.redraftPreference;
   const constructionRows = buildRosterConstructionRows(
     roster,
     rosterConstructionTargets,
+    {
+      valueBasis,
+      redraftValueBasis,
+      warValueSettings,
+    },
   );
   const selectedValueLabel = getValueBasisLabel(
     valueBasis,
+  );
+  const redraftValueLabel = getValueBasisLabel(
+    redraftValueBasis,
   );
   const selectedAssetValue = getRosterSelectedAssetValue(
     roster,
@@ -286,7 +298,7 @@ export function RosterCard({
         <div className="roster-summary-stat">
           <span>FAAB</span>
           <StatValue
-            value={roster.faab_remaining}
+            value={formatDollarAmount(roster.faab_remaining)}
             rank={roster.stat_ranks.faab_remaining}
           />
         </div>
@@ -328,7 +340,7 @@ export function RosterCard({
             <div className="roster-card-details">
               <section className="league-detail-section">
                 <div className="league-detail-header">
-                  <p>Roster construction</p>
+                  <p>Position breakdown</p>
                 </div>
 
                 <div className="roster-construction-grid">
@@ -351,6 +363,15 @@ export function RosterCard({
                           {row.targetCount}
                           {' '}
                           league target
+                        </span>
+                        <span>
+                          Proj {row.projectedPoints.toFixed(1)}
+                        </span>
+                        <span>
+                          {selectedValueLabel} {row.selectedValue.toFixed(1)}
+                        </span>
+                        <span>
+                          {redraftValueLabel} {row.redraftValue.toFixed(1)}
                         </span>
                         <span>
                           {row.warShare.toFixed(1)}
@@ -378,7 +399,9 @@ export function RosterCard({
 
                 <PlayerTable
                   players={roster.players}
+                  emptyStarterSlots={roster.empty_starter_slots}
                   valueBasis={valueBasis}
+                  redraftValueBasis={redraftValueBasis}
                   warValueSettings={warValueSettings}
                 />
               </section>

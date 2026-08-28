@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
@@ -15,7 +16,9 @@ import {
   usePersonalValueDetail,
   usePersonalValuePool,
   usePersonalValueSearch,
+  useResetPersonalValueRankings,
   useSavePersonalValueDetail,
+  useSyncUnderdogDefaults,
 } from '@/hooks/sleeper/usePersonalValues';
 import type {
   PersonalProjectionOutcomeItem,
@@ -40,6 +43,7 @@ import {
 import { MyValuesMetricCard } from './MyValuesMetricCard';
 import { MyValuesPlayerHero } from './MyValuesPlayerHero';
 import { MyValuesPoolPanel } from './MyValuesPoolPanel';
+import { MyValuesRankingsBoard } from './MyValuesRankingsBoard';
 import { MyValuesSearchCard } from './MyValuesSearchCard';
 
 function getErrorMessage(
@@ -120,6 +124,7 @@ function MyValuesEditorSkeleton() {
 }
 
 export const MyValuesPage = () => {
+  const [searchParams] = useSearchParams();
   const valuePreference = useValuePreference();
   const leagueOverview = useLeagueOverview();
   const [leagueId, setLeagueId] = useState('');
@@ -153,9 +158,14 @@ export const MyValuesPage = () => {
     leagueId || undefined,
   );
   const saveProjection = useSavePersonalValueDetail();
+  const resetRankings = useResetPersonalValueRankings();
+  const syncUnderdog = useSyncUnderdogDefaults();
   const [editableSeasons, setEditableSeasons] = useState<
     PersonalProjectionSeasonItem[]
   >([]);
+  const [viewMode, setViewMode] = useState<
+    'editor' | 'rankings'
+  >('editor');
   const [futureProjectionMode, setFutureProjectionMode] =
     useState<FutureProjectionMode>('default');
   const [specificFutureYear, setSpecificFutureYear] = useState<
@@ -164,6 +174,15 @@ export const MyValuesPage = () => {
   const [defaultFutureOutcomes, setDefaultFutureOutcomes] = useState<
     PersonalProjectionOutcomeItem[]
   >([]);
+
+  // Deep link from the tier board: /my-values?player=<id>
+  useEffect(() => {
+    const linkedPlayerId = searchParams.get('player');
+
+    if (linkedPlayerId) {
+      setSelectedPlayerId(linkedPlayerId);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (
@@ -460,6 +479,52 @@ export const MyValuesPage = () => {
     );
   };
 
+  const handleSyncUnderdogAll = async () => {
+    if (!leagueId) return;
+
+    if (
+      !window.confirm(
+        'Freeze current Underdog ranks as your personal values for every player still on defaults? Customized players are untouched.',
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const result = await syncUnderdog.syncDefaults({
+        league_id: leagueId,
+      });
+      notify.success(
+        `Synced ${result.reset_players} defaulted players to Underdog ranks.`,
+      );
+    } catch {
+      notify.error('Could not sync Underdog defaults.');
+    }
+  };
+
+  const handleResetAllToUnderdog = async () => {
+    if (!leagueId) return;
+
+    if (
+      !window.confirm(
+        'Remove ALL your personal customizations (every position, every season) and reset to Underdog defaults?',
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const result = await resetRankings.resetRankings({
+        league_id: leagueId,
+      });
+      notify.success(
+        `Reset ${result.reset_players} players to Underdog defaults.`,
+      );
+    } catch {
+      notify.error('Could not reset to Underdog defaults.');
+    }
+  };
+
   const handleReset = () => {
     const detailData = detail.data;
 
@@ -673,6 +738,30 @@ export const MyValuesPage = () => {
         </div>
 
         <div className="my-values-header-controls">
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={syncUnderdog.saving}
+            onClick={() => {
+              void handleSyncUnderdogAll();
+            }}
+          >
+            {syncUnderdog.saving
+              ? 'Syncing…'
+              : 'Sync defaults from Underdog'}
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={resetRankings.saving}
+            onClick={() => {
+              void handleResetAllToUnderdog();
+            }}
+          >
+            {resetRankings.saving
+              ? 'Resetting…'
+              : 'Reset all to Underdog'}
+          </button>
           <label className="my-values-control">
             <span>League context</span>
             <select
@@ -699,7 +788,45 @@ export const MyValuesPage = () => {
         </div>
       </section>
 
-      <section className="my-values-workspace">
+      <div className="page-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'editor'}
+          className={`page-tab${viewMode === 'editor' ? ' active' : ''}`}
+          onClick={() => setViewMode('editor')}
+        >
+          Editor
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'rankings'}
+          className={`page-tab${viewMode === 'rankings' ? ' active' : ''}`}
+          onClick={() => setViewMode('rankings')}
+        >
+          Rankings board
+        </button>
+      </div>
+
+      {viewMode === 'rankings' && (
+        <MyValuesRankingsBoard
+          leagueId={leagueId || undefined}
+          onEditPlayer={(playerId) => {
+            setSelectedPlayerId(playerId);
+            setViewMode('editor');
+          }}
+        />
+      )}
+
+      <section
+        className="my-values-workspace"
+        style={
+          viewMode === 'rankings'
+            ? { display: 'none' }
+            : undefined
+        }
+      >
         <MyValuesPoolPanel
           leagueName={selectedLeagueName}
           fetching={pool.fetching}

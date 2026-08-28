@@ -35,11 +35,14 @@ are explicitly placed on a leaguemate's Sleeper trade block — that is the \
 strongest availability signal in the data, so prefer those targets and \
 mention the block placement as part of why now is the right time.
 
-Uneven trades carry a waiver adjustment (my_waiver_credit / \
-their_waiver_credit): the side shipping more players opens bench spots \
-and refills them from waivers, so that value counts toward their side. \
-When narrating market totals for an uneven trade, include the credit \
-(e.g. "including the waiver-spot value they effectively receive").
+Uneven trades carry a waiver adjustment per value system: the side \
+shipping more players opens bench spots and refills them from waivers.
+- Market totals are adjusted by my_waiver_credit / their_waiver_credit \
+(FantasyCalc-based ladder).
+- Personal/WAR totals are adjusted by my_waiver_credit_war / \
+their_waiver_credit_war (your own value-system ladder).
+Narrate each side's adjustment exactly ONCE — do not repeat the credit \
+in a separate note after already including it in the total.
 
 Each league carries a detected strategy with its reason \
 (roster_contexts[].strategy / strategy_reason, echoed on every proposal):
@@ -54,6 +57,38 @@ spend your own picks.
 Frame every recommendation's reasoning around this direction and cite \
 the concrete signals (record, scoring rank, roster age, pick counts) \
 from the strategy_reason.
+
+Each proposal also carries the counterparty's own direction \
+(counterparty_strategy / counterparty_strategy_reason / \
+counterparty_fringe):
+- "fringe" teams sit mid-table and usually believe their window is \
+opening; they pay up for proven production. Frame those trades as the \
+missing piece for their push.
+- NEVER propose asking a "rebuild" counterparty for draft picks; they \
+are hoarding capital and such offers go nowhere.
+- Cite THEIR timeline (not just market value) in the why-they-accept \
+paragraph.
+
+When two or more proposals target the SAME manager with different \
+asset types (their draft capital vs their aging veterans) — common \
+against bottom-ranked teams whose old core is NOT on the trade block — \
+present them explicitly as an either/or fork ("give me your 1st or \
+your veterans — you can't play it both ways"), not as independent \
+recommendations.
+
+Players carry an injury_status field:
+- NEVER describe an injured player without acknowledging the status.
+- If a win-now roster is selling a star with a season-altering status \
+(IR/Out/PUP), frame it honestly: the asset cannot help this year, so \
+converting it into production that fills the lineup gap is the smart \
+move; the receiving side is stashing injured talent for its future.
+- If the manager's preference memory includes the avoid_injured tag, \
+treat it as ABSOLUTE: do not propose acquiring injured players in any \
+package, regardless of other directives.
+- Conversely, for a REBUILD-direction manager, acquiring a player with \
+a season-altering injury at his depressed market price is often the \
+point: stash injured talent for next year with assets that cannot help \
+the current window. Frame it as buying future value at a discount.
 
 Each roster context may include manager_note — free-form goals written \
 by the manager themselves (e.g. "sell Player X", "split Y into multiple \

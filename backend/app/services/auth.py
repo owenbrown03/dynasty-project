@@ -31,6 +31,8 @@ from app.schemas.auth import (
 )
 from app.core.context import Context
 from app.crud.auth.user import (
+    get_redraft_value_preference,
+    set_redraft_value_preference,
     consume_email_verification,
     create_email_verification_token,
     get_accent_color,
@@ -57,6 +59,8 @@ from app.crud.auth.user import (
     set_war_value_settings,
 )
 from app.crud.auth.session import (
+    get_session_redraft_value_preference,
+    set_session_redraft_value_preference,
     create_session_by_userid,
     get_session_accent_color,
     get_session_draft_pick_projection_settings,
@@ -333,21 +337,50 @@ async def update_value_preference(
         db=ctx.db,
     )
 
+    # The redraft axis is an independent setting (Redraft Value);
+    # only update it when explicitly provided.
+    effective_redraft = body.redraft_value_preference
+
+    if effective_redraft is not None:
+        session = await set_session_redraft_value_preference(
+            session=session,
+            redraft_value_preference=(
+                effective_redraft
+            ),
+            db=ctx.db,
+        )
+
     if ctx.site_user:
         user = await set_value_preference(
             user=ctx.site_user,
             value_preference=body.value_preference,
             db=ctx.db,
         )
+
+        if effective_redraft is not None:
+            user = await set_redraft_value_preference(
+                user=user,
+                redraft_value_preference=(
+                    effective_redraft
+                ),
+                db=ctx.db,
+            )
+
         return ValuePreferenceResponse(
             value_preference=get_value_preference(
                 user,
+            ),
+            redraft_value_preference=(
+                get_redraft_value_preference(user)
             ),
         )
 
     return ValuePreferenceResponse(
         value_preference=get_session_value_preference(
             session,
+        ),
+        redraft_value_preference=(
+            get_session_redraft_value_preference(session)
         ),
     )
 
