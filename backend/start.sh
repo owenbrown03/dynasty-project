@@ -6,7 +6,7 @@ alembic upgrade head
 
 echo "Starting application..."
 if [ "${DEBUG_MODE}" = "true" ]; then
-  exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
 fi
 
 exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000

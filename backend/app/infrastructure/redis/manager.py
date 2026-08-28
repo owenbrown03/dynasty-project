@@ -12,9 +12,10 @@ class RedisManager:
             cls._client = Redis.from_url(
                 settings.REDIS_URL,
                 decode_responses=True,
-                socket_connect_timeout=5,
+                socket_connect_timeout=15,
                 socket_timeout=30,
                 health_check_interval=30,
+                max_connections=100,
             )
 
             await cls._client.ping()

@@ -28,6 +28,8 @@ services:
     image: dpage/pgadmin4
     container_name: pgadmin_gui
     restart: unless-stopped
+    profiles:
+      - pgadmin
     env_file:
       - .env
     environment:
@@ -94,6 +96,7 @@ services:
       - app-network
       
   worker:
+    scale: 1
     build:
       context: ./backend
       dockerfile: Dockerfile

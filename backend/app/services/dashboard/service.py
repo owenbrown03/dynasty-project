@@ -94,13 +94,12 @@ async def _prefetch_trade_signals(username: str, site_user_id):
     try:
         async with AsyncSessionLocal() as db:
             from app.crud.sleeper.trade import get_trade_signals
-            from app.integrations.sleeper.factory import get_sleeper_client
             from app.infrastructure.redis.client import RedisClient
-            from app.core.config import settings
-            from redis.asyncio import Redis
+            from app.infrastructure.redis.manager import RedisManager
+            from app.integrations.sleeper.factory import get_sleeper_client
 
             sleeper = await get_sleeper_client()
-            redis = RedisClient(redis=Redis.from_url(settings.REDIS_URL))
+            redis = RedisClient(redis=await RedisManager.get())
 
             await get_trade_signals(
                 db,
@@ -249,7 +248,7 @@ async def calculate_war_by_league(
         leagues.keys(),
     )
 
-    sem = asyncio.Semaphore(4)
+    sem = asyncio.Semaphore(2)
 
     async def _task(league_id: str):
         async with sem:
@@ -362,7 +361,7 @@ async def build_player_maps_by_league(
     - dynasty WAR projected from that exact league's redraft WAR
     """
 
-    sem = asyncio.Semaphore(4)
+    sem = asyncio.Semaphore(2)
 
     async def _task(league_id):
         async with sem:
@@ -556,6 +555,22 @@ async def get_user_dashboard(
         return response
 
     async with heavy_work_semaphore:
+        if redis is not None:
+            cached_payload = await redis.get(
+                dashboard_cache_key,
+            )
+            if cached_payload:
+                logger.info(
+                    "Dashboard source=redis-post-lock user=%s leagues=%s elapsed=%.1fs",
+                    username,
+                    len(league_ids),
+                    time.monotonic() - t_total,
+                )
+                return _apply_focus_flags(
+                    json.loads(cached_payload),
+                    focused_league_ids,
+                )
+
         t_rosters = time.monotonic()
         all_rosters = await get_all_league_rosters(
             db,
@@ -596,7 +611,7 @@ async def get_user_dashboard(
         roster_construction_service = LeagueDetails()
 
         async def _build_roster_construction():
-            sem = asyncio.Semaphore(4)
+            sem = asyncio.Semaphore(2)
 
             async def _rc_task(league_id):
                 async with sem:
