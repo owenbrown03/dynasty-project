@@ -186,6 +186,9 @@
 
 .auction-room-header,
 .auction-available-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
   font-size: 11px;
