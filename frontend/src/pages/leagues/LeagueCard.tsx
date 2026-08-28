@@ -198,17 +198,14 @@ export function LeagueCard({
           <LeagueAvatar
             avatarId={league.avatar}
             name={league.league_name}
-            size="lg"
+            size="md"
           />
 
           <div>
             <p className="league-header-kicker">League</p>
             <h2 className="league-title">{league.league_name}</h2>
             <p className="league-subtitle">
-              {league.season} · {league.total_rosters} teams
-            </p>
-            <p className="league-subtitle">
-              Ordered by current standings · value ranks by {getValueBasisLabel(rosterSortBasis)}
+              {league.season} · {league.total_rosters} teams · ordered by current standings · value ranks by {getValueBasisLabel(rosterSortBasis)}
             </p>
           </div>
         </div>
