@@ -44,23 +44,25 @@ export const LeaguesPage = () => {
   );
 
   const activeTab = useMemo<
-    'overview' | 'analytics' | 'advisor'
+    'overview' | 'charts' | 'analytics' | 'advisor'
   >(() => {
     const tab = searchParams.get('tab');
 
     if (
       tab === 'overview'
+      || tab === 'charts'
+      || tab === 'chart'
       || tab === 'analytics'
       || tab === 'advisor'
     ) {
-      return tab;
+      return tab === 'chart' ? 'charts' : tab;
     }
 
     return 'overview';
   }, [searchParams]);
 
   const setActiveTab = (
-    nextTab: 'overview' | 'analytics' | 'advisor',
+    nextTab: 'overview' | 'charts' | 'analytics' | 'advisor',
   ) => {
     const next = new URLSearchParams(searchParams);
     next.set('tab', nextTab);
