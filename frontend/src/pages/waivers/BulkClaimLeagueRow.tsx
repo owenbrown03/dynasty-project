@@ -231,7 +231,13 @@ export const BulkClaimLeagueRow = ({
           ? (
             <div className="bulk-claim-controls">
               <label>
-                <span>FAAB Bid</span>
+                <span>
+                  FAAB Bid
+                  {' '}
+                  <small>
+                    (${league.faab_remaining} remaining)
+                  </small>
+                </span>
 
                 <input
                   type="number"

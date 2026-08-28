@@ -57,7 +57,7 @@ def build_settings_details(league) -> list[LeagueSettingsDetail]:
         ("Roster Size", str(roster_size)),
         ("Draft Rounds", str(int(settings.get("draft_rounds", 4) or 4))),
         ("Playoff Teams", str(int(settings.get("playoff_teams", 6) or 6))),
-        ("FAAB", str(int(settings.get("waiver_budget", 100) or 100))),
+        ("FAAB", f"${int(settings.get('waiver_budget', 100) or 100)}"),
         ("Taxi", str(int(settings.get("taxi_slots", 0) or 0))),
         ("Reserve", str(int(settings.get("reserve_slots", 0) or 0))),
         ("PPR", str(scoring.get("rec", 0) or 0)),
