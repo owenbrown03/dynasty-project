@@ -94,13 +94,12 @@ async def _prefetch_trade_signals(username: str, site_user_id):
     try:
         async with AsyncSessionLocal() as db:
             from app.crud.sleeper.trade import get_trade_signals
-            from app.integrations.sleeper.factory import get_sleeper_client
             from app.infrastructure.redis.client import RedisClient
-            from app.core.config import settings
-            from redis.asyncio import Redis
+            from app.infrastructure.redis.manager import RedisManager
+            from app.integrations.sleeper.factory import get_sleeper_client
 
             sleeper = await get_sleeper_client()
-            redis = RedisClient(redis=Redis.from_url(settings.REDIS_URL))
+            redis = RedisClient(redis=await RedisManager.get())
 
             await get_trade_signals(
                 db,
