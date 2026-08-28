@@ -555,6 +555,22 @@ async def get_user_dashboard(
         return response
 
     async with heavy_work_semaphore:
+        if redis is not None:
+            cached_payload = await redis.get(
+                dashboard_cache_key,
+            )
+            if cached_payload:
+                logger.info(
+                    "Dashboard source=redis-post-lock user=%s leagues=%s elapsed=%.1fs",
+                    username,
+                    len(league_ids),
+                    time.monotonic() - t_total,
+                )
+                return _apply_focus_flags(
+                    json.loads(cached_payload),
+                    focused_league_ids,
+                )
+
         t_rosters = time.monotonic()
         all_rosters = await get_all_league_rosters(
             db,
