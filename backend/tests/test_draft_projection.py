@@ -2,10 +2,45 @@ from app.models.db.sleeper.api import League, Roster
 from app.schemas.draft import DraftPickAsset
 from app.services.draft.projection import (
     build_projected_pick_slots_by_roster_id,
+    build_projected_slot_source_label,
 )
 from app.services.draft.values import (
     get_effective_pick_slot,
 )
+
+
+def test_slot_source_label_omits_through_week_for_model_methods():
+    for method in {
+        "redraft_starter_war",
+        "redraft_roster_war",
+        "sleeper_projection",
+        "ktc_redraft",
+        "fantasycalc_redraft",
+    }:
+        label = build_projected_slot_source_label(
+            current_week=2,
+            method_used=method,
+        )
+        assert "through Week" not in label
+        assert "Fallback" not in label
+
+
+def test_slot_source_label_keeps_through_week_for_cumulative_methods():
+    for method in {"max_pf", "reverse_standings"}:
+        label = build_projected_slot_source_label(
+            current_week=2,
+            method_used=method,
+        )
+        assert "through Week 2" in label
+
+
+def test_slot_source_label_appends_fallback_note():
+    label = build_projected_slot_source_label(
+        current_week=2,
+        method_used="redraft_starter_war",
+        fallback_from_method="max_pf",
+    )
+    assert "Fell back from" in label
 
 
 def test_build_projected_pick_slots_uses_max_pf_when_requested():

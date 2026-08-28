@@ -271,37 +271,32 @@ def build_projected_slot_source_label(
         )
     elif resolved_method == "redraft_starter_war":
         label = (
-            "Projected from redraft starter WAR "
-            f"through Week {current_week}, using lower starter "
-            "WAR first, then points for, then projected points "
-            "as tiebreakers"
+            "Projected from redraft starter WAR, using lower "
+            "starter WAR first, then points for, then projected "
+            "points as tiebreakers"
         )
     elif resolved_method == "redraft_roster_war":
         label = (
-            "Projected from redraft roster WAR "
-            f"through Week {current_week}, using lower roster "
-            "WAR first, then points for, then projected points "
-            "as tiebreakers"
+            "Projected from redraft roster WAR, using lower "
+            "roster WAR first, then points for, then projected "
+            "points as tiebreakers"
         )
     elif resolved_method == "sleeper_projection":
         label = (
-            "Projected from sleeper projected points "
-            f"through Week {current_week}, using lower total "
-            "projection first, then points for, then "
+            "Projected from sleeper projected points, using "
+            "lower total projection first, then points for, then "
             "projected points as tiebreakers"
         )
     elif resolved_method == "ktc_redraft":
         label = (
-            "Projected from KTC redraft values "
-            f"through Week {current_week}, using lower total "
-            "value first, then points for, then "
-            "projected points as tiebreakers"
+            "Projected from KTC redraft values, using lower total "
+            "value first, then points for, then projected points "
+            "as tiebreakers"
         )
     elif resolved_method == "fantasycalc_redraft":
         label = (
-            "Projected from FantasyCalc redraft values "
-            f"through Week {current_week}, using lower total "
-            "value first, then points for, then "
+            "Projected from FantasyCalc redraft values, using "
+            "lower total value first, then points for, then "
             "projected points as tiebreakers"
         )
     else:

@@ -257,6 +257,28 @@ def get_transaction_weeks_to_fetch(
         set(missing_weeks),
     )
 
+
+def resolve_synced_week(
+    *,
+    last_synced_week: int,
+    curr_week: int,
+    is_current_season: bool,
+) -> int:
+    """
+    The sync-state week only tracks the current NFL season.
+
+    Current-season syncs record the effective NFL week, which also
+    clamps stale high-water marks left over from a previous season
+    (they never lower within a season). Historical backfills never
+    advance the week, so prior-season transaction syncs cannot
+    overwrite the current season's week with the historical cap.
+    """
+    if not is_current_season:
+        return last_synced_week
+
+    return curr_week
+
+
 # --------------------------------------------------
 # Core sync entry point
 # --------------------------------------------------
@@ -276,6 +298,7 @@ async def sync_leagues(
     user_id: str | None = None,
     league_id: str | None = None,
     league_type: str | None = None,
+    is_current_season: bool = True,
 ):
     # Backward compatibility: if raw_leagues not provided but legacy args supplied,
     # construct a minimal iterable with the needed attributes.
@@ -353,6 +376,7 @@ async def sync_leagues(
                     incomplete_league_ids=incomplete_league_ids,
                     force=force,
                     existing_refresh=existing_refresh,
+                    is_current_season=is_current_season,
                 )
                 for league in league_chunk
             ],
@@ -448,6 +472,7 @@ async def fetch_league_bundle(
         "full",
         "transactions_only",
     ] = "full",
+    is_current_season: bool = True,
 ):
     """
     Daily full roster refresh plus transaction backfill.
@@ -570,9 +595,10 @@ async def fetch_league_bundle(
                 "transactions": transactions,
                 "traded_picks": traded_picks if isinstance(traded_picks, list) else [],
                 "transactions_only": True,
-                "synced_week": max(
-                    last_synced_week,
-                    curr_week,
+                "synced_week": resolve_synced_week(
+                    last_synced_week=last_synced_week,
+                    curr_week=curr_week,
+                    is_current_season=is_current_season,
                 ),
             }
 
@@ -689,9 +715,10 @@ async def fetch_league_bundle(
             "transactions_only": False,
 
             # Used for sync-state update after successful save.
-            "synced_week": max(
-                last_synced_week,
-                curr_week,
+            "synced_week": resolve_synced_week(
+                last_synced_week=last_synced_week,
+                curr_week=curr_week,
+                is_current_season=is_current_season,
             ),
         }
 

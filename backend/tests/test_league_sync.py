@@ -161,6 +161,7 @@ def test_sync_leagues_uses_nested_transaction_per_batch(
         incomplete_league_ids,
         force=False,
         existing_refresh="full",
+        is_current_season=True,
     ):
         del incomplete_league_ids
         return {"league_id": league.league_id}
@@ -338,6 +339,146 @@ def test_fetch_league_bundle_uses_transactions_only_for_existing_league():
         ("get_transactions", "league-1", 3),
         ("get_traded_picks", "league-1", None),
     ]
+
+
+def test_resolve_synced_week_tracks_current_season():
+    assert (
+        league_crud.resolve_synced_week(
+            last_synced_week=3,
+            curr_week=6,
+            is_current_season=True,
+        )
+        == 6
+    )
+
+
+def test_resolve_synced_week_clamps_stale_prior_season_week():
+    assert (
+        league_crud.resolve_synced_week(
+            last_synced_week=17,
+            curr_week=1,
+            is_current_season=True,
+        )
+        == 1
+    )
+
+
+def test_resolve_synced_week_does_not_advance_on_historical_backfill():
+    assert (
+        league_crud.resolve_synced_week(
+            last_synced_week=1,
+            curr_week=18,
+            is_current_season=False,
+        )
+        == 1
+    )
+
+
+def test_fetch_league_bundle_clamps_stale_week_for_current_season():
+    class FakeRead:
+        def __init__(self):
+            self.calls: list[tuple[str, str, int | None]] = []
+
+        async def get_transactions(self, league_id, week):
+            self.calls.append(("get_transactions", league_id, week))
+            return []
+
+        async def get_league(self, league_id):
+            self.calls.append(("get_league", league_id, None))
+            return SimpleNamespace(league_id=league_id)
+
+        async def get_users(self, league_id):
+            return []
+
+        async def get_rosters(self, league_id):
+            return []
+
+        async def get_drafts_league(self, league_id):
+            return []
+
+        async def get_traded_picks(self, league_id):
+            return []
+
+    sleeper = SimpleNamespace(
+        read=FakeRead(),
+    )
+
+    bundle = asyncio.run(
+        league_crud.fetch_league_bundle(
+            league=SimpleNamespace(
+                league_id="league-1",
+            ),
+            curr_week=1,
+            sleeper=sleeper,
+            existing_ids={"league-1"},
+            sync_states={
+                "league-1": SimpleNamespace(
+                    last_synced_week=17,
+                    last_synced_at=datetime.now(UTC) - timedelta(hours=1),
+                    last_full_synced_at=datetime.now(UTC) - timedelta(hours=1),
+                )
+            },
+            incomplete_league_ids=set(),
+            force=True,
+        )
+    )
+
+    assert bundle is not None
+    assert bundle["synced_week"] == 1
+
+
+def test_fetch_league_bundle_keeps_week_on_historical_backfill():
+    class FakeRead:
+        def __init__(self):
+            self.calls: list[tuple[str, str, int | None]] = []
+
+        async def get_transactions(self, league_id, week):
+            self.calls.append(("get_transactions", league_id, week))
+            return []
+
+        async def get_league(self, league_id):
+            self.calls.append(("get_league", league_id, None))
+            return SimpleNamespace(league_id=league_id)
+
+        async def get_users(self, league_id):
+            return []
+
+        async def get_rosters(self, league_id):
+            return []
+
+        async def get_drafts_league(self, league_id):
+            return []
+
+        async def get_traded_picks(self, league_id):
+            return []
+
+    sleeper = SimpleNamespace(
+        read=FakeRead(),
+    )
+
+    bundle = asyncio.run(
+        league_crud.fetch_league_bundle(
+            league=SimpleNamespace(
+                league_id="league-1",
+            ),
+            curr_week=18,
+            sleeper=sleeper,
+            existing_ids={"league-1"},
+            sync_states={
+                "league-1": SimpleNamespace(
+                    last_synced_week=1,
+                    last_synced_at=datetime.now(UTC) - timedelta(hours=1),
+                    last_full_synced_at=datetime.now(UTC) - timedelta(hours=1),
+                )
+            },
+            incomplete_league_ids=set(),
+            force=True,
+            is_current_season=False,
+        )
+    )
+
+    assert bundle is not None
+    assert bundle["synced_week"] == 1
 
 
 def test_fetch_league_bundle_uses_full_refresh_for_incomplete_existing_league():
