@@ -26,7 +26,7 @@ export function LoadingState({
     >
       <LoaderCircle
         className="site-spinner"
-        size={18}
+        size={inline ? 14 : 18}
         aria-hidden="true"
       />
 
