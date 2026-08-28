@@ -14,6 +14,7 @@ from app.services.dashboard.service import (
 )
 from app.schemas.league import (
     LeagueOverviewItem,
+    LeagueSelectorItem,
     LeagueVisibilityItem,
     LeagueFocusItem,
     LeagueFocusUpdate,
@@ -22,7 +23,10 @@ from app.schemas.league import (
     UserLeagueNoteResponse,
 )
 from app.services.leagues.details import LeagueDetails
-from app.services.leagues.overview import get_league_overview
+from app.services.leagues.overview import (
+    get_league_overview,
+    get_league_selector_options,
+)
 from app.services.leagues.visibility import (
     set_league_focus,
     set_league_visibility,
@@ -41,6 +45,26 @@ async def overview_endpoint(
     include_hidden: bool = Query(default=False),
 ):
     return await get_league_overview(
+        ctx.db,
+        username=username,
+        site_user_id=(
+            ctx.site_user.id
+            if ctx.site_user is not None
+            else None
+        ),
+        include_hidden=include_hidden,
+    )
+
+@router.get(
+    "/selector/{username}",
+    response_model=list[LeagueSelectorItem],
+)
+async def selector_endpoint(
+    username: str,
+    ctx: ContextDep,
+    include_hidden: bool = Query(default=False),
+):
+    return await get_league_selector_options(
         ctx.db,
         username=username,
         site_user_id=(

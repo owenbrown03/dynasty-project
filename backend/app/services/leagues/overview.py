@@ -4,7 +4,10 @@ from app.crud.sleeper.personal import (
     get_focused_league_ids,
     get_hidden_league_ids,
 )
-from app.schemas.league import LeagueOverviewItem
+from app.schemas.league import (
+    LeagueOverviewItem,
+    LeagueSelectorItem,
+)
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_username,
 )
@@ -57,3 +60,45 @@ async def get_league_overview(
         )
 
     return output
+
+
+async def get_league_selector_options(
+    db: AsyncSession,
+    username: str,
+    *,
+    site_user_id=None,
+    include_hidden: bool = False,
+) -> list[LeagueSelectorItem]:
+    hidden_league_ids = set()
+    focused_league_ids = set()
+
+    if site_user_id is not None:
+        hidden_league_ids = await get_hidden_league_ids(
+            db=db,
+            site_user_id=site_user_id,
+        )
+        focused_league_ids = await get_focused_league_ids(
+            db=db,
+            site_user_id=site_user_id,
+        )
+
+    leagues = await get_visible_owned_league_rows_by_username(
+        db=db,
+        username=username,
+        site_user_id=site_user_id,
+        include_hidden=include_hidden,
+    )
+
+    if not leagues:
+        return []
+
+    return [
+        LeagueSelectorItem(
+            league_id=row.league.league_id,
+            league_name=row.league.name,
+            season=row.league.season,
+            is_hidden=row.league.league_id in hidden_league_ids,
+            is_focused=row.league.league_id in focused_league_ids,
+        )
+        for row in leagues
+    ]

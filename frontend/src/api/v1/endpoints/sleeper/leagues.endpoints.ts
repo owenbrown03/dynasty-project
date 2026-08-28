@@ -2,6 +2,7 @@ import { type AxiosInstance } from 'axios';
 
 import type {
   LeagueOverview,
+  LeagueSelectorItem,
   LeagueDetails,
   Dashboard,
   LeagueFocusItem,
@@ -26,6 +27,21 @@ export const leaguesEndpoints = (
   ) =>
     client.get<LeagueOverview[]>(
       `${prefix}/overview/${username}`,
+      {
+        params: {
+          include_hidden: includeHidden,
+        },
+        signal,
+      },
+    ),
+
+  getSelector: (
+    username: string,
+    includeHidden = false,
+    signal?: AbortSignal,
+  ) =>
+    client.get<LeagueSelectorItem[]>(
+      `${prefix}/selector/${username}`,
       {
         params: {
           include_hidden: includeHidden,

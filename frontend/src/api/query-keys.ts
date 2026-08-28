@@ -35,6 +35,7 @@ export const queryKeys = {
   leagues: {
     detailsRoot: ['league-details'] as const,
     overviewRoot: ['league-overview'] as const,
+    selectorRoot: ['league-selector'] as const,
     dashboardRoot: ['league-dashboard'] as const,
     overview: (
       username: string | null | undefined,
@@ -42,6 +43,15 @@ export const queryKeys = {
     ) =>
       [
         'league-overview',
+        username ?? null,
+        includeHidden,
+      ] as const,
+    selector: (
+      username: string | null | undefined,
+      includeHidden = false,
+    ) =>
+      [
+        'league-selector',
         username ?? null,
         includeHidden,
       ] as const,

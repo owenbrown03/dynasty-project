@@ -9,6 +9,7 @@ import { api } from '@/api/v1/endpoints';
 import type {
   Bootstrap,
   LeagueOverview,
+  LeagueSelectorItem,
   LeagueDetails,
   Dashboard,
   LeagueFocusItem,
@@ -79,6 +80,43 @@ export function useLeagueOverview(
 }
 
 
+export function useLeagueSelector(
+  includeHidden = false,
+) {
+  const { username } = useSleeperConnection();
+
+  const query = useQuery<LeagueSelectorItem[]>({
+    queryKey: queryKeys.leagues.selector(
+      username,
+      includeHidden,
+    ),
+
+    queryFn: async ({ signal }) => {
+      if (!username) {
+        throw new Error('Missing username');
+      }
+
+      return api.leagues
+        .getSelector(
+          username,
+          includeHidden,
+          signal,
+        )
+        .then(res => res.data);
+    },
+
+    enabled: !!username,
+  });
+
+  return {
+    data: query.data ?? [],
+    username,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+  };
+}
+
+
 export function useLeagueVisibility() {
   const queryClient = useQueryClient();
 
@@ -105,6 +143,9 @@ export function useLeagueVisibility() {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: queryKeys.leagues.overviewRoot,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.leagues.selectorRoot,
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.waivers.overviewRoot,
@@ -160,7 +201,20 @@ export function useLeagueFocus() {
             : previous,
       );
 
-      // 2. Update Dashboard queries in-place (both cheap and full variants) without expensive refetching
+      // 2. Update League Selector queries in-place without refetching
+      queryClient.setQueriesData<LeagueSelectorItem[]>(
+        { queryKey: queryKeys.leagues.selectorRoot },
+        (previous) =>
+          previous
+            ? previous.map((league) =>
+                league.league_id === variables.leagueId
+                  ? { ...league, is_focused: variables.payload.focused }
+                  : league,
+              )
+            : previous,
+      );
+
+      // 3. Update Dashboard queries in-place (both cheap and full variants) without expensive refetching
       queryClient.setQueriesData<Dashboard>(
         { queryKey: queryKeys.leagues.dashboardRoot },
         (previous) =>

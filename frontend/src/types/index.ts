@@ -258,6 +258,14 @@ export interface LeagueOverview {
   is_focused: boolean;
 }
 
+export interface LeagueSelectorItem {
+  league_id: string;
+  league_name: string;
+  season: string | null;
+  is_hidden: boolean;
+  is_focused: boolean;
+}
+
 export interface LeagueVisibilityUpdate {
   hidden: boolean;
 }

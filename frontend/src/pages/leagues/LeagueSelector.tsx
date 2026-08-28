@@ -1,15 +1,9 @@
-import type { LeagueOverview } from '@/types';
-
+import type { LeagueSelectorItem } from '@/types';
 
 interface Props {
-
-  leagues: LeagueOverview[];
-
+  leagues: LeagueSelectorItem[];
   selectedLeague?: string;
-
-  onSelect:
-    (league_id:string)=>void;
-
+  onSelect: (league_id: string) => void;
 }
 
 
