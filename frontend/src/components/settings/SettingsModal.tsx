@@ -17,8 +17,10 @@ import type {
   ValueBasis,
 } from '@/types';
 import { notify } from '@/utils/notify';
-import { getRedraftValueBasisOptions } from '@/pages/waivers/waiver.constants';
-import { getValueBasisLabel } from '@/utils/valueBasis';
+import {
+  getRedraftValueBasisOptions,
+  getValueBasisOptions,
+} from '@/pages/waivers/waiver.constants';
 
 const DRAFT_PICK_PROJECTION_METHOD_OPTIONS: Array<{
   value: DraftPickProjectionMethod;

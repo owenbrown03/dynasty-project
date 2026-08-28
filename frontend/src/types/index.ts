@@ -484,7 +484,9 @@ export type ValueBasis =
   | 'redraft_starter_war'
   | 'redraft_roster_war'
   | 'dynasty_starter_war'
-  | 'dynasty_roster_war';
+  | 'dynasty_roster_war'
+  | 'ktc_redraft'
+  | 'fantasycalc_redraft';
 
 export type TierBoardSource = ValueBasis;
 

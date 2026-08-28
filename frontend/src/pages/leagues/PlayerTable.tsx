@@ -215,7 +215,7 @@ export function PlayerTable({
                   )
                 }
               </td>
-              {redraftLabel ? (
+              {redraftMeta ? (
                 <td className="player-table-num-cell">
                   {
                     formatNumber(
