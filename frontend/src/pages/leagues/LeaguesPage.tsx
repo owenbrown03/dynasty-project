@@ -13,7 +13,7 @@ import { LoadingState } from '@/components/feedback/LoadingState';
 import {
   useLeagueDetails,
   useLeagueFocus,
-  useLeagueOverview,
+  useLeagueSelector,
   useLeagueVisibility,
 } from '@/hooks/sleeper/useLeagues';
 import { notify } from '@/utils/notify';
@@ -67,7 +67,7 @@ export const LeaguesPage = () => {
     setSearchParams(next);
   };
 
-  const overview = useLeagueOverview(
+  const selector = useLeagueSelector(
     includeHidden
   );
   const visibility = useLeagueVisibility();
@@ -87,19 +87,19 @@ export const LeaguesPage = () => {
   const isFetching = fullDetails.fetching;
 
   const selectedLeagueEntry =
-    overview.data.find(
+    selector.data.find(
       (league) =>
         league.league_id === selectedLeague
     ) ?? null;
 
   useEffect(() => {
-    if (!overview.data.length) {
+    if (!selector.data.length) {
       return;
     }
 
     if (
       selectedLeague
-      && overview.data.some(
+      && selector.data.some(
         (league) =>
           league.league_id === selectedLeague
       )
@@ -108,10 +108,10 @@ export const LeaguesPage = () => {
     }
 
     setSelectedLeague(
-      overview.data[0].league_id
+      selector.data[0].league_id
     );
   }, [
-    overview.data,
+    selector.data,
     selectedLeague,
   ]);
 
@@ -205,7 +205,7 @@ export const LeaguesPage = () => {
           <div className="leagues-selector-top-row">
             <LeagueSelector
               leagues={
-                overview.data
+                selector.data
               }
               selectedLeague={
                 selectedLeague

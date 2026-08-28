@@ -14,6 +14,14 @@ class LeagueOverviewItem(Base):
     is_focused: bool = False
 
 
+class LeagueSelectorItem(Base):
+    league_id: str
+    league_name: str
+    season: str | None = None
+    is_hidden: bool = False
+    is_focused: bool = False
+
+
 class LeagueVisibilityUpdate(Base):
     hidden: bool
 
