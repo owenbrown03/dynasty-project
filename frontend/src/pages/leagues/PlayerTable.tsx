@@ -71,14 +71,14 @@ export function PlayerTable({
     <table className="player-table">
       <thead>
         <tr>
-          <th>Slot</th>
-          <th>Name</th>
-          <th>Pos</th>
-          <th>Team</th>
-          <th>Proj</th>
-          <th>UD</th>
-          <th>{valueLabel}</th>
-          {redraftLabel ? <th>{redraftLabel}</th> : null}
+          <th className="player-table-slot-col">Slot</th>
+          <th className="player-table-name-col">Name</th>
+          <th className="player-table-pos-col">Pos</th>
+          <th className="player-table-team-col">Team</th>
+          <th className="player-table-num-col">Proj</th>
+          <th className="player-table-ud-col">UD</th>
+          <th className="player-table-num-col">{valueLabel}</th>
+          {redraftLabel ? <th className="player-table-num-col">{redraftLabel}</th> : null}
         </tr>
       </thead>
 
@@ -94,36 +94,50 @@ export function PlayerTable({
                   className="player-table-row-empty"
                 >
                   <td className="player-table-slot-cell">
-                    {prettySlotLabel(slot)}
+                    <span className="player-table-slot-badge player-table-slot-badge-empty">
+                      {prettySlotLabel(slot)}
+                    </span>
                   </td>
-                  <td colSpan={redraftLabel ? 7 : 6}>
-                    Empty slot
+                  <td colSpan={redraftLabel ? 7 : 6} className="player-table-empty-label">
+                    Empty starter slot
                   </td>
                 </tr>
               ))}
             {index === firstBenchIndex && firstBenchIndex > 0 && (
               <tr className="player-table-divider">
-                <td colSpan={redraftLabel ? 8 : 7}>Bench</td>
+                <td colSpan={redraftLabel ? 8 : 7}>
+                  <div className="player-table-divider-content">
+                    <span className="player-table-divider-badge">Bench</span>
+                  </div>
+                </td>
               </tr>
             )}
             <tr
               className={
                 player.is_starter
                   ? 'player-table-row-starter'
-                  : undefined
+                  : 'player-table-row-bench'
               }
             >
-              <td
-                className="player-table-slot-cell"
-                style={{
-                  color: player.slot
-                    ? getPositionColor(
-                        normalizeSlotPosition(player.slot),
-                      )
-                    : undefined,
-                }}
-              >
-                {prettySlotLabel(player.slot)}
+              <td className="player-table-slot-cell">
+                <span
+                  className="player-table-slot-badge"
+                  style={{
+                    color: player.slot
+                      ? getPositionColor(
+                          normalizeSlotPosition(player.slot),
+                        )
+                      : undefined,
+                    backgroundColor: player.slot
+                      ? `color-mix(in srgb, ${getPositionColor(normalizeSlotPosition(player.slot))} 15%, transparent)`
+                      : undefined,
+                    borderColor: player.slot
+                      ? `color-mix(in srgb, ${getPositionColor(normalizeSlotPosition(player.slot))} 35%, transparent)`
+                      : undefined,
+                  }}
+                >
+                  {prettySlotLabel(player.slot)}
+                </span>
               </td>
               <td className="player-table-name-cell">
                 <div className="player-with-avatar">
@@ -146,10 +160,10 @@ export function PlayerTable({
               >
                 {player.position ?? '-'}
               </td>
-              <td>{player.team ?? '-'}</td>
-              <td>{formatNumber(player.projected_points)}</td>
-              <td>{player.underdog_position_rank ?? '-'}</td>
-              <td>
+              <td className="player-table-team-cell">{player.team ?? '-'}</td>
+              <td className="player-table-num-cell">{formatNumber(player.projected_points)}</td>
+              <td className="player-table-ud-cell">{player.underdog_position_rank ?? '-'}</td>
+              <td className="player-table-num-cell">
                 {
                   formatNumber(
                     getLeaguePlayerSelectedValue(
@@ -168,7 +182,7 @@ export function PlayerTable({
                 }
               </td>
               {redraftLabel ? (
-                <td>
+                <td className="player-table-num-cell">
                   {
                     formatNumber(
                       getLeaguePlayerSelectedValue(
