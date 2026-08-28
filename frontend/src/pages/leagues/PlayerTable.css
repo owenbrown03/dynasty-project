@@ -8,12 +8,12 @@
 
 .player-table thead {
   background: var(--color-surface);
-  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .player-table th,
 .player-table td {
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--color-border);
   text-align: left;
   color: var(--color-text);
@@ -25,6 +25,8 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--color-text-muted);
+  user-select: none;
 }
 
 .player-table tbody tr {
@@ -36,7 +38,7 @@
 }
 
 .player-table-row-starter {
-  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
 }
 
 .player-table-row-bench {
@@ -44,46 +46,32 @@
 }
 
 /* Column alignments and widths */
-.player-table-slot-col {
-  width: 56px;
-  text-align: center;
-}
-
+.player-table-slot-col,
 .player-table-slot-cell {
-  text-align: center;
-  padding-left: 6px;
+  width: 46px;
+  text-align: left;
+  padding-left: 10px;
   padding-right: 6px;
 }
 
-.player-table-slot-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  border: 1px solid transparent;
-  text-transform: uppercase;
-  line-height: 1.3;
+.player-table-slot-text {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.03em;
 }
 
-.player-table-slot-badge-empty {
+.player-table-slot-text-empty {
   color: var(--color-text-muted);
-  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
-  border-color: var(--color-border);
   opacity: 0.6;
 }
 
 .player-table-name-col {
   width: auto;
-  min-width: 170px;
+  min-width: 160px;
 }
 
 .player-table-name-cell {
-  min-width: 170px;
+  min-width: 160px;
 }
 
 .player-table-name {
@@ -94,16 +82,16 @@
 
 .player-table-pos-col,
 .player-table-position-cell {
-  width: 48px;
-  text-align: center;
+  width: 44px;
+  text-align: left;
   font-weight: 700;
   font-size: 11px;
 }
 
 .player-table-team-col,
 .player-table-team-cell {
-  width: 52px;
-  text-align: center;
+  width: 48px;
+  text-align: left;
   color: var(--color-text-muted);
   font-weight: 600;
   font-size: 11px;
@@ -111,7 +99,7 @@
 
 .player-table-num-col,
 .player-table-num-cell {
-  width: 80px;
+  width: 68px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -120,7 +108,7 @@
 
 .player-table-ud-col,
 .player-table-ud-cell {
-  width: 58px;
+  width: 52px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -131,30 +119,27 @@
 
 /* Bench divider */
 .player-table-divider td {
-  padding: 12px 10px 6px;
+  padding: 14px 10px 6px;
   background: transparent;
   border-bottom: 1px solid var(--color-border);
 }
 
-.player-table-divider-content {
+.player-table-divider-inner {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.player-table-divider-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 7px;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+}
+
+.player-table-divider-inner::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
 }
 
 .player-table-row-empty td {
@@ -179,11 +164,5 @@
 
   .player-table-name-cell {
     min-width: 120px;
-  }
-
-  .player-table-slot-badge {
-    min-width: 30px;
-    font-size: 9px;
-    padding: 1px 4px;
   }
 }
