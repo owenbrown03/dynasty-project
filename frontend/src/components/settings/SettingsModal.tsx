@@ -78,6 +78,38 @@ const DRAFT_PICK_PRE_SWITCH_OPTIONS: Array<{
   })),
 ];
 
+const DYNASTY_VALUE_SYSTEM_OPTIONS: Array<{
+  value: ValueBasis;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'ktc',
+    label: 'KTC Value',
+    description: 'Consensus dynasty trade value from KeepTradeCut, superflex-weighted.',
+  },
+  {
+    value: 'fantasycalc',
+    label: 'FantasyCalc Value',
+    description: 'Consensus dynasty trade value from FantasyCalc.',
+  },
+  {
+    value: 'adp',
+    label: 'ADP Value',
+    description: 'Value derived from Underdog best-ball draft position — earlier picks price higher.',
+  },
+  {
+    value: 'my_roster_war',
+    label: 'Dynasty Roster WAR',
+    description: 'Your own dynasty WAR projection summed across every rostered player.',
+  },
+  {
+    value: 'my_starter_war',
+    label: 'Dynasty Starter WAR',
+    description: 'Your own dynasty WAR projection summed across the starting lineup only.',
+  },
+];
+
 
 
 const ACCENT_COLOR_OPTIONS: Array<{
@@ -103,6 +135,35 @@ export const SettingsModal = () => {
   const valuePreference = useValuePreference();
   const draftPickProjectionSettings = (
     bootstrap.data?.draft_pick_projection_settings
+  );
+
+  const dynastyValueSystemOptions = (
+    DYNASTY_VALUE_SYSTEM_OPTIONS.some(
+      (option) => option.value === valuePreference.preference,
+    )
+      ? DYNASTY_VALUE_SYSTEM_OPTIONS
+      : [
+          {
+            value: valuePreference.preference,
+            label: getValueBasisLabel(valuePreference.preference),
+            description: 'Previously saved — pick from the list to replace it.',
+          },
+          ...DYNASTY_VALUE_SYSTEM_OPTIONS,
+        ]
+  );
+
+  const redraftValueBasisOptions = (
+    getRedraftValueBasisOptions().some(
+      (option) => option.value === valuePreference.redraftPreference,
+    )
+      ? getRedraftValueBasisOptions()
+      : [
+          {
+            value: valuePreference.redraftPreference,
+            label: getValueBasisLabel(valuePreference.redraftPreference),
+          },
+          ...getRedraftValueBasisOptions(),
+        ]
   );
 
   const updateDraftPickProjectionSettings = useMutation({
@@ -241,9 +302,7 @@ export const SettingsModal = () => {
                 disabled={valuePreference.isSaving}
               >
                 {
-                  getValueBasisOptions(
-                    bootstrap.data?.authenticated ?? false,
-                  ).map((option) => (
+                  dynastyValueSystemOptions.map((option) => (
                     <option
                       key={option.value}
                       value={option.value}
@@ -254,6 +313,22 @@ export const SettingsModal = () => {
                 }
               </select>
             </label>
+          </div>
+
+          <div className="settings-method-list">
+            {
+              dynastyValueSystemOptions.map((option) => (
+                <div
+                  className="settings-method"
+                  key={option.value}
+                >
+                  <div>
+                    <h4>{option.label}</h4>
+                    <p>{option.description}</p>
+                  </div>
+                </div>
+              ))
+            }
           </div>
         </section>
 
@@ -291,16 +366,14 @@ export const SettingsModal = () => {
                 disabled={valuePreference.isSaving}
               >
                 {
-                  getRedraftValueBasisOptions().map(
-                    (option) => (
-                      <option
-                        key={option.value}
-                        value={option.value}
-                      >
-                        {option.label}
-                      </option>
-                    ),
-                  )
+                  redraftValueBasisOptions.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </option>
+                  ))
                 }
               </select>
             </label>

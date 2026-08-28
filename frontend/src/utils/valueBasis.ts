@@ -83,6 +83,10 @@ export function getValueBasisLabel(
       return 'Dynasty Starter WAR';
     case 'dynasty_roster_war':
       return 'Dynasty Roster WAR';
+    case 'ktc_redraft':
+      return 'KTC (redraft)';
+    case 'fantasycalc_redraft':
+      return 'FantasyCalc (redraft)';
     case 'ktc':
     default:
       return 'KTC';
@@ -111,6 +115,10 @@ export function getLeaguePlayerSelectedValue(
       return player.dynasty_starter_war ?? null;
     case 'dynasty_roster_war':
       return player.dynasty_roster_war ?? null;
+    case 'ktc_redraft':
+      return player.ktc_redraft_value ?? null;
+    case 'fantasycalc_redraft':
+      return player.fc_redraft_value ?? null;
     case 'sleeper_war':
       return getNumericPlayerMetric(
         player,
@@ -154,6 +162,10 @@ export function getRosterSelectedAssetValue(
       return roster.total_dynasty_starter_war;
     case 'dynasty_roster_war':
       return roster.total_dynasty_roster_war;
+    case 'ktc_redraft':
+      return sumPlayerMetric(roster.players, 'ktc_redraft_value');
+    case 'fantasycalc_redraft':
+      return sumPlayerMetric(roster.players, 'fc_redraft_value');
     case 'sleeper_war':
       return sumPlayerMetric(
         roster.players,
@@ -208,6 +220,10 @@ export function getRosterSelectedPlayerValue(
       return roster.total_dynasty_starter_war;
     case 'dynasty_roster_war':
       return roster.total_dynasty_roster_war;
+    case 'ktc_redraft':
+      return sumPlayerMetric(roster.players, 'ktc_redraft_value');
+    case 'fantasycalc_redraft':
+      return sumPlayerMetric(roster.players, 'fc_redraft_value');
     case 'sleeper_war':
       return sumPlayerMetric(
         roster.players,
@@ -260,6 +276,8 @@ export function getRosterSelectedPickValue(
     case 'my_roster_war':
     case 'my_starter_war':
     case 'sleeper_projection':
+    case 'ktc_redraft':
+    case 'fantasycalc_redraft':
       return roster.total_pick_rookie_war_value;
     default:
       return null;
@@ -348,6 +366,8 @@ export function getRosterSelectedPickRank(
     case 'my_roster_war':
     case 'my_starter_war':
     case 'sleeper_projection':
+    case 'ktc_redraft':
+    case 'fantasycalc_redraft':
       return roster.stat_ranks.total_pick_rookie_war_value;
     default:
       return undefined;
@@ -369,6 +389,11 @@ export function getPickSelectedValue(
     case 'dynasty_roster_war':
     case 'sleeper_war':
     case 'my_war':
+    case 'my_roster_war':
+    case 'my_starter_war':
+    case 'sleeper_projection':
+    case 'ktc_redraft':
+    case 'fantasycalc_redraft':
       return pick.rookie_war_value;
     default:
       return null;
@@ -464,4 +489,91 @@ export function getDashboardLeagueSelectedRank(
     default:
       return league.ktc_rank;
   }
+}
+
+const DYNASTY_WAR_SCOPE_BASES: ValueBasis[] = [
+  'dynasty_roster_war',
+  'dynasty_starter_war',
+  'my_roster_war',
+  'my_starter_war',
+];
+
+const REDRAFT_WAR_SCOPE_BASES: ValueBasis[] = [
+  'redraft_roster_war',
+  'redraft_starter_war',
+];
+
+// Roster-summary WAR stats. These always resolve to a dynasty/redraft
+// WAR number (never points or market prices) so the labels stay
+// truthful. When the user's system is itself a WAR basis the value
+// follows its scope (starter vs roster, personal vs market);
+// otherwise it falls back to the full-roster market WAR leg.
+export function getRosterDynastyWAR(
+  roster: LeagueRoster,
+  valueBasis: ValueBasis,
+  warValueSettings: WarValueSettings,
+): number | null {
+  if (DYNASTY_WAR_SCOPE_BASES.includes(valueBasis)) {
+    return getRosterSelectedPlayerValue(
+      roster,
+      valueBasis,
+      warValueSettings,
+    );
+  }
+
+  return roster.total_dynasty_roster_war;
+}
+
+export function getRosterDynastyWARRank(
+  roster: LeagueRoster,
+  valueBasis: ValueBasis,
+  warValueSettings: WarValueSettings,
+): number | undefined {
+  if (DYNASTY_WAR_SCOPE_BASES.includes(valueBasis)) {
+    return getRosterSelectedPlayerRank(
+      roster,
+      valueBasis,
+      warValueSettings,
+    );
+  }
+
+  return roster.stat_ranks.total_dynasty_roster_war;
+}
+
+export function getRosterRedraftWAR(
+  roster: LeagueRoster,
+  redraftValueBasis: ValueBasis | undefined,
+  warValueSettings: WarValueSettings,
+): number | null {
+  if (
+    redraftValueBasis
+    && REDRAFT_WAR_SCOPE_BASES.includes(redraftValueBasis)
+  ) {
+    return getRosterSelectedPlayerValue(
+      roster,
+      redraftValueBasis,
+      warValueSettings,
+    );
+  }
+
+  return roster.total_redraft_roster_war;
+}
+
+export function getRosterRedraftWARRank(
+  roster: LeagueRoster,
+  redraftValueBasis: ValueBasis | undefined,
+  warValueSettings: WarValueSettings,
+): number | undefined {
+  if (
+    redraftValueBasis
+    && REDRAFT_WAR_SCOPE_BASES.includes(redraftValueBasis)
+  ) {
+    return getRosterSelectedPlayerRank(
+      roster,
+      redraftValueBasis,
+      warValueSettings,
+    );
+  }
+
+  return roster.stat_ranks.total_redraft_roster_war;
 }

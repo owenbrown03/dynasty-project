@@ -142,12 +142,22 @@ async def load_player_values_for_basis(
         return []
 
     effective_basis = value_basis
-    if cheap and value_basis not in {ValueBasis.KTC, ValueBasis.FANTASYCALC}:
+    if (
+        cheap
+        and value_basis not in {
+            ValueBasis.KTC,
+            ValueBasis.FANTASYCALC,
+            ValueBasis.KTC_REDRAFT,
+            ValueBasis.FANTASYCALC_REDRAFT,
+        }
+    ):
         effective_basis = ValueBasis.KTC
 
     if effective_basis in {
         ValueBasis.KTC,
         ValueBasis.FANTASYCALC,
+        ValueBasis.KTC_REDRAFT,
+        ValueBasis.FANTASYCALC_REDRAFT,
     }:
         return await get_player_values(
             db,
@@ -347,7 +357,15 @@ async def get_player_tier_board(
     )
 
     effective_value_basis = value_basis
-    if cheap and value_basis not in {ValueBasis.KTC, ValueBasis.FANTASYCALC}:
+    if (
+        cheap
+        and value_basis not in {
+            ValueBasis.KTC,
+            ValueBasis.FANTASYCALC,
+            ValueBasis.KTC_REDRAFT,
+            ValueBasis.FANTASYCALC_REDRAFT,
+        }
+    ):
         effective_value_basis = ValueBasis.KTC
 
     redraft_value_basis = None

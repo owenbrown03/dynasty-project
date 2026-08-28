@@ -36,6 +36,8 @@ class LeaguePlayer(BaseModel):
     projected_points: float | None = None
     ktc_value: int | None = None
     fc_value: int | None = None
+    ktc_redraft_value: int | None = None
+    fc_redraft_value: int | None = None
     fc_trend_30_day: int | None = None
     redraft_starter_war: float | None = None
     redraft_roster_war: float | None = None

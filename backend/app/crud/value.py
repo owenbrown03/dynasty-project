@@ -141,6 +141,9 @@ async def get_player_values(
         fc = fc_by_key.get(
             (player_id, value_context != "redraft"),
         )
+        fc_redraft = fc_by_key.get(
+            (player_id, False),
+        )
         underdog = underdog_values.get(player_id)
 
         redraft_war = redraft_war_by_player_id.get(player_id)
@@ -167,6 +170,22 @@ async def get_player_values(
                 fc_value=(
                     fc.value
                     if fc is not None
+                    else None
+                ),
+
+                ktc_redraft_value=(
+                    (
+                        ktc.sf_redraft_value
+                        if ktc.sf_redraft_value is not None
+                        else ktc.redraft_value
+                    )
+                    if ktc is not None
+                    else None
+                ),
+
+                fc_redraft_value=(
+                    fc_redraft.value
+                    if fc_redraft is not None
                     else None
                 ),
 

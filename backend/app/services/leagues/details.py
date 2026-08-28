@@ -1021,6 +1021,8 @@ class LeagueDetails:
                         ) if player_id in war_lookup else None,
                         ktc_value=player.ktc_value,
                         fc_value=player.fc_value,
+                        ktc_redraft_value=player.ktc_redraft_value,
+                        fc_redraft_value=player.fc_redraft_value,
                         fc_trend_30_day=(
                             fc_row.trend_30_day
                             if fc_row is not None
