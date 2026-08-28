@@ -41,6 +41,44 @@ function prettySlotLabel(slot: string | null | undefined): string {
   return slot;
 }
 
+function getCompactValueBasisMeta(valueBasis: ValueBasis): { label: string; tooltip: string } {
+  switch (valueBasis) {
+    case 'dynasty_roster_war':
+      return { label: 'D-WAR', tooltip: 'Dynasty Roster WAR' };
+    case 'dynasty_starter_war':
+      return { label: 'D-WAR', tooltip: 'Dynasty Starter WAR' };
+    case 'my_roster_war':
+      return { label: 'D-WAR', tooltip: 'Dynasty Roster WAR (My Model)' };
+    case 'my_starter_war':
+      return { label: 'D-WAR', tooltip: 'Dynasty Starter WAR (My Model)' };
+    case 'redraft_roster_war':
+      return { label: 'R-WAR', tooltip: 'Redraft Roster WAR' };
+    case 'redraft_starter_war':
+      return { label: 'R-WAR', tooltip: 'Redraft Starter WAR' };
+    case 'sleeper_war':
+      return { label: 'S-WAR', tooltip: 'Sleeper WAR' };
+    case 'my_war':
+      return { label: 'My WAR', tooltip: 'My Custom WAR' };
+    case 'fantasycalc':
+      return { label: 'FC', tooltip: 'FantasyCalc Dynasty Value' };
+    case 'fantasycalc_redraft':
+      return { label: 'FC (R)', tooltip: 'FantasyCalc Redraft Value' };
+    case 'ktc':
+      return { label: 'KTC', tooltip: 'KeepTradeCut Dynasty Value' };
+    case 'ktc_redraft':
+      return { label: 'KTC (R)', tooltip: 'KeepTradeCut Redraft Value' };
+    case 'adp':
+      return { label: 'ADP', tooltip: 'Average Draft Position' };
+    case 'sleeper_projection':
+      return { label: 'Proj', tooltip: 'Sleeper Projected Points' };
+    default:
+      return {
+        label: getValueBasisLabel(valueBasis),
+        tooltip: getValueBasisLabel(valueBasis),
+      };
+  }
+}
+
 interface Props {
   players: LeaguePlayer[];
   emptyStarterSlots?: string[] | null;
@@ -56,11 +94,9 @@ export function PlayerTable({
   redraftValueBasis,
   warValueSettings,
 }: Props) {
-  const valueLabel = getValueBasisLabel(
-    valueBasis,
-  );
-  const redraftLabel = redraftValueBasis
-    ? getValueBasisLabel(redraftValueBasis)
+  const valueMeta = getCompactValueBasisMeta(valueBasis);
+  const redraftMeta = redraftValueBasis
+    ? getCompactValueBasisMeta(redraftValueBasis)
     : null;
 
   const firstBenchIndex = players.findIndex(
@@ -71,14 +107,18 @@ export function PlayerTable({
     <table className="player-table">
       <thead>
         <tr>
-          <th>Slot</th>
-          <th>Name</th>
-          <th>Pos</th>
-          <th>Team</th>
-          <th>Proj</th>
-          <th>UD</th>
-          <th>{valueLabel}</th>
-          {redraftLabel ? <th>{redraftLabel}</th> : null}
+          <th className="player-table-slot-col">Slot</th>
+          <th className="player-table-name-col">Name</th>
+          <th className="player-table-pos-col">Pos</th>
+          <th className="player-table-team-col">Team</th>
+          <th className="player-table-num-col" title="Projected Points">Proj</th>
+          <th className="player-table-ud-col" title="Underdog Position Rank">UD</th>
+          <th className="player-table-num-col" title={valueMeta.tooltip}>{valueMeta.label}</th>
+          {redraftMeta ? (
+            <th className="player-table-num-col" title={redraftMeta.tooltip}>
+              {redraftMeta.label}
+            </th>
+          ) : null}
         </tr>
       </thead>
 
@@ -94,36 +134,44 @@ export function PlayerTable({
                   className="player-table-row-empty"
                 >
                   <td className="player-table-slot-cell">
-                    {prettySlotLabel(slot)}
+                    <span className="player-table-slot-text player-table-slot-text-empty">
+                      {prettySlotLabel(slot)}
+                    </span>
                   </td>
-                  <td colSpan={redraftLabel ? 7 : 6}>
-                    Empty slot
+                  <td colSpan={redraftMeta ? 7 : 6} className="player-table-empty-label">
+                    Empty starter slot
                   </td>
                 </tr>
               ))}
             {index === firstBenchIndex && firstBenchIndex > 0 && (
               <tr className="player-table-divider">
-                <td colSpan={redraftLabel ? 8 : 7}>Bench</td>
+                <td colSpan={redraftMeta ? 8 : 7}>
+                  <div className="player-table-divider-inner">
+                    <span>Bench</span>
+                  </div>
+                </td>
               </tr>
             )}
             <tr
               className={
                 player.is_starter
                   ? 'player-table-row-starter'
-                  : undefined
+                  : 'player-table-row-bench'
               }
             >
-              <td
-                className="player-table-slot-cell"
-                style={{
-                  color: player.slot
-                    ? getPositionColor(
-                        normalizeSlotPosition(player.slot),
-                      )
-                    : undefined,
-                }}
-              >
-                {prettySlotLabel(player.slot)}
+              <td className="player-table-slot-cell">
+                <span
+                  className="player-table-slot-text"
+                  style={{
+                    color: player.slot
+                      ? getPositionColor(
+                          normalizeSlotPosition(player.slot),
+                        )
+                      : 'var(--color-text-muted)',
+                  }}
+                >
+                  {prettySlotLabel(player.slot)}
+                </span>
               </td>
               <td className="player-table-name-cell">
                 <div className="player-with-avatar">
@@ -146,10 +194,10 @@ export function PlayerTable({
               >
                 {player.position ?? '-'}
               </td>
-              <td>{player.team ?? '-'}</td>
-              <td>{formatNumber(player.projected_points)}</td>
-              <td>{player.underdog_position_rank ?? '-'}</td>
-              <td>
+              <td className="player-table-team-cell">{player.team ?? '-'}</td>
+              <td className="player-table-num-cell">{formatNumber(player.projected_points)}</td>
+              <td className="player-table-ud-cell">{player.underdog_position_rank ?? '-'}</td>
+              <td className="player-table-num-cell">
                 {
                   formatNumber(
                     getLeaguePlayerSelectedValue(
@@ -167,8 +215,8 @@ export function PlayerTable({
                   )
                 }
               </td>
-              {redraftLabel ? (
-                <td>
+              {redraftMeta ? (
+                <td className="player-table-num-cell">
                   {
                     formatNumber(
                       getLeaguePlayerSelectedValue(

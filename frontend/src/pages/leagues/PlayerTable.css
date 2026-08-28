@@ -3,16 +3,17 @@
   border-collapse: collapse;
   font-size: 12px;
   color: var(--color-text);
+  table-layout: auto;
 }
 
 .player-table thead {
   background: var(--color-surface);
-  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .player-table th,
 .player-table td {
-  padding: 8px 9px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--color-border);
   text-align: left;
   color: var(--color-text);
@@ -24,43 +25,131 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.player-table tbody tr {
+  transition: background-color 0.12s ease;
 }
 
 .player-table tbody tr:hover {
-  background: var(--color-surface);
+  background: var(--color-surface-hover, var(--color-surface)) !important;
 }
 
 .player-table-row-starter {
-  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
+}
+
+.player-table-row-bench {
+  background: transparent;
+}
+
+/* Column alignments and widths */
+.player-table-slot-col,
+.player-table-slot-cell {
+  width: 46px;
+  text-align: left;
+  padding-left: 10px;
+  padding-right: 6px;
+}
+
+.player-table-slot-text {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+
+.player-table-slot-text-empty {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.player-table-name-col {
+  width: auto;
+  min-width: 160px;
 }
 
 .player-table-name-cell {
-  min-width: 220px;
+  min-width: 160px;
 }
 
 .player-table-name {
   min-width: 0;
   font-weight: 600;
+  font-size: 12px;
 }
 
+.player-table-pos-col,
 .player-table-position-cell {
-  font-weight: 700;
-}
-
-.player-table-slot-cell {
+  width: 44px;
+  text-align: left;
   font-weight: 700;
   font-size: 11px;
 }
 
+.player-table-team-col,
+.player-table-team-cell {
+  width: 48px;
+  text-align: left;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.player-table-num-col,
+.player-table-num-cell {
+  width: 68px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-weight: 500;
+}
+
+.player-table-ud-col,
+.player-table-ud-cell {
+  width: 52px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Bench divider */
 .player-table-divider td {
-  padding: 4px 9px;
-  font-size: 9px;
+  padding: 14px 10px 6px;
+  background: transparent;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.player-table-divider-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+}
+
+.player-table-divider-inner::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.player-table-row-empty td {
+  font-style: italic;
+  opacity: 0.65;
+}
+
+.player-table-empty-label {
+  color: var(--color-text-muted);
+  font-size: 11px;
 }
 
 @media (max-width: 768px) {
@@ -70,16 +159,10 @@
 
   .player-table th,
   .player-table td {
-    padding: 6px 7px;
+    padding: 6px 6px;
   }
 
   .player-table-name-cell {
-    min-width: 140px;
+    min-width: 120px;
   }
-}
-
-
-.player-table-row-empty td {
-  font-style: italic;
-  opacity: 0.65;
 }
