@@ -96,6 +96,7 @@ services:
       - app-network
       
   worker:
+    scale: 1
     build:
       context: ./backend
       dockerfile: Dockerfile
