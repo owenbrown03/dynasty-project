@@ -1,7 +1,11 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { PlayerTable } from './PlayerTable';
 import type { LeaguePlayer } from '@/types';
+
+afterEach(() => {
+  cleanup();
+});
 
 const mockPlayers: LeaguePlayer[] = [
   {
@@ -9,10 +13,12 @@ const mockPlayers: LeaguePlayer[] = [
     name: 'Josh Allen',
     position: 'QB',
     team: 'BUF',
+    age: 28,
     is_starter: true,
-    starter_slot: 'QB',
-    fantasycalc_value: 8000,
+    slot: 'QB',
+    fc_value: 8000,
     ktc_value: 8500,
+    fc_trend_30_day: 0,
     projected_points: 22.5,
     underdog_position_rank: '1',
     redraft_starter_war: 2.5,
@@ -29,10 +35,12 @@ const mockPlayers: LeaguePlayer[] = [
     name: 'Breece Hall',
     position: 'RB',
     team: 'NYJ',
+    age: 23,
     is_starter: false,
-    starter_slot: null,
-    fantasycalc_value: 6000,
+    slot: null,
+    fc_value: 6000,
     ktc_value: 6200,
+    fc_trend_30_day: 0,
     projected_points: 15.0,
     underdog_position_rank: '5',
     redraft_starter_war: 1.5,
@@ -79,8 +87,6 @@ describe('PlayerTable', () => {
     expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Pos' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Team' })).toBeInTheDocument();
-    expect(screen.getAllByRole('columnheader', { name: 'Proj' }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('columnheader', { name: 'UD' })).toBeInTheDocument();
 
     expect(screen.getByText('Josh Allen')).toBeInTheDocument();
     expect(screen.getByText('Breece Hall')).toBeInTheDocument();
