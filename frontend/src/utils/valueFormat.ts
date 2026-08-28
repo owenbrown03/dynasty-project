@@ -7,6 +7,8 @@ export function isMarketValueBasis(
     basis === 'ktc'
     || basis === 'fantasycalc'
     || basis === 'adp'
+    || basis === 'ktc_redraft'
+    || basis === 'fantasycalc_redraft'
   );
 }
 

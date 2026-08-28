@@ -38,14 +38,16 @@ export const REDRAFT_VALUE_PREFERENCE_STORAGE_KEY =
   'dynasty-redraft-value-preference';
 
 const REDRAFT_VALUE_PREFERENCES: ValueBasis[] = [
-  'ktc',
-  'fantasycalc',
-  'adp',
+  'sleeper_projection',
+  'redraft_roster_war',
+  'redraft_starter_war',
+  'ktc_redraft',
+  'fantasycalc_redraft',
 ];
 
 export function getStoredRedraftValuePreference(): ValueBasis {
   if (typeof window === 'undefined') {
-    return 'ktc';
+    return 'sleeper_projection';
   }
 
   const stored = window.localStorage.getItem(
@@ -61,5 +63,5 @@ export function getStoredRedraftValuePreference(): ValueBasis {
     return stored as ValueBasis;
   }
 
-  return 'ktc';
+  return 'sleeper_projection';
 }

@@ -28,6 +28,9 @@ class ValueBasis(StrEnum):
     DYNASTY_STARTER_WAR = "dynasty_starter_war"
     DYNASTY_ROSTER_WAR = "dynasty_roster_war"
 
+    KTC_REDRAFT = "ktc_redraft"
+    FANTASYCALC_REDRAFT = "fantasycalc_redraft"
+
 
 DEFAULT_VALUE_BASIS = ValueBasis.KTC
 
@@ -122,6 +125,8 @@ VALUE_BASIS_SPECS: dict[ValueBasis, ValueBasisSpec] = {
         needs_league_context=True,
         needs_dynasty_projections=True,
     ),
+    ValueBasis.KTC_REDRAFT: ValueBasisSpec(),
+    ValueBasis.FANTASYCALC_REDRAFT: ValueBasisSpec(),
 }
 
 
@@ -203,6 +208,12 @@ def get_player_value(
         case ValueBasis.DYNASTY_ROSTER_WAR:
             return player.dynasty_roster_war
 
+        case ValueBasis.KTC_REDRAFT:
+            return player.ktc_redraft_value
+
+        case ValueBasis.FANTASYCALC_REDRAFT:
+            return player.fc_redraft_value
+
     return None
 
 
@@ -254,5 +265,11 @@ def get_value_label(
 
         case ValueBasis.DYNASTY_ROSTER_WAR:
             return "Dynasty Roster WAR"
+
+        case ValueBasis.KTC_REDRAFT:
+            return "KTC (redraft)"
+
+        case ValueBasis.FANTASYCALC_REDRAFT:
+            return "FantasyCalc (redraft)"
 
     return "Value"

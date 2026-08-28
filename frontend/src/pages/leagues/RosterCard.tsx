@@ -25,10 +25,10 @@ import {
   getPickValueLabel,
   getRosterSelectedAssetRank,
   getRosterSelectedAssetValue,
-  getRosterSelectedPickRank,
-  getRosterSelectedPickValue,
-  getRosterSelectedPlayerRank,
-  getRosterSelectedPlayerValue,
+  getRosterDynastyWAR,
+  getRosterDynastyWARRank,
+  getRosterRedraftWAR,
+  getRosterRedraftWARRank,
   getValueBasisLabel,
 } from '@/utils/valueBasis';
 
@@ -174,14 +174,25 @@ export function RosterCard({
     valueBasis,
     warValueSettings,
   );
-  const selectedPlayerValue = getRosterSelectedPlayerValue(
+  const selectedPlayerValue = getRosterDynastyWAR(
     roster,
     valueBasis,
     warValueSettings,
   );
-  const selectedPickValue = getRosterSelectedPickValue(
+  const selectedPlayerRank = getRosterDynastyWARRank(
     roster,
     valueBasis,
+    warValueSettings,
+  );
+  const selectedRedraftWAR = getRosterRedraftWAR(
+    roster,
+    redraftValueBasis,
+    warValueSettings,
+  );
+  const selectedRedraftWARRank = getRosterRedraftWARRank(
+    roster,
+    redraftValueBasis,
+    warValueSettings,
   );
 
   return (
@@ -239,46 +250,26 @@ export function RosterCard({
           />
         </div>
         <div className="roster-summary-stat">
-          <span>{selectedValueLabel} players</span>
+          <span>Dynasty WAR</span>
           <StatValue
-            value={
-              formatNumber(
-                selectedPlayerValue,
-                (
-                  valueBasis === 'ktc'
-                  || valueBasis === 'fantasycalc'
-                )
-                  ? 0
-                  : 2,
-              )
-            }
-            rank={getRosterSelectedPlayerRank(
-              roster,
-              valueBasis,
-              warValueSettings,
-            )}
-            loading={isCheap && (valueBasis === 'my_war' || valueBasis === 'sleeper_war')}
+            value={formatNumber(selectedPlayerValue, 2)}
+            rank={selectedPlayerRank}
+            loading={isCheap}
           />
         </div>
         <div className="roster-summary-stat">
-          <span>{getPickValueLabel(valueBasis)}</span>
+          <span>Redraft WAR</span>
           <StatValue
-            value={
-              formatNumber(
-                selectedPickValue,
-                (
-                  valueBasis === 'ktc'
-                  || valueBasis === 'fantasycalc'
-                )
-                  ? 0
-                  : 2,
-              )
-            }
-            rank={getRosterSelectedPickRank(
-              roster,
-              valueBasis,
-            )}
-            loading={isCheap && (valueBasis === 'my_war' || valueBasis === 'sleeper_war')}
+            value={formatNumber(selectedRedraftWAR, 2)}
+            rank={selectedRedraftWARRank}
+            loading={isCheap}
+          />
+        </div>
+        <div className="roster-summary-stat">
+          <span>Pick WAR</span>
+          <StatValue
+            value={formatNumber(roster.total_pick_rookie_war_value, 2)}
+            rank={roster.stat_ranks.total_pick_rookie_war_value}
           />
         </div>
         <div className="roster-summary-stat">

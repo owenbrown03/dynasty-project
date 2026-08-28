@@ -340,6 +340,8 @@ export interface LeaguePlayer {
 
   ktc_value: number | null;
   fc_value: number | null;
+  ktc_redraft_value?: number | null;
+  fc_redraft_value?: number | null;
   adp_value?: number | null;
   fc_trend_30_day: number | null;
 

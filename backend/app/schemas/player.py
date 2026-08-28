@@ -11,6 +11,8 @@ class PlayerValue(Base):
 
     ktc_value: int | None = None
     fc_value: int | None = None
+    ktc_redraft_value: int | None = None
+    fc_redraft_value: int | None = None
     adp_value: float | None = None
     projected_points: float | None = None
     my_dynasty_roster_war: float | None = None

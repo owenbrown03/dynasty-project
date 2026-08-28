@@ -241,12 +241,23 @@ async def build_league_player_values(
     if value_basis in {
         ValueBasis.KTC,
         ValueBasis.FANTASYCALC,
+        ValueBasis.KTC_REDRAFT,
+        ValueBasis.FANTASYCALC_REDRAFT,
     }:
         return await get_player_values(
             db,
             player_ids=unique_player_ids,
             redraft_war_players=[],
             dynasty_war_by_player_id={},
+            value_context=(
+                "redraft"
+                if value_basis
+                in {
+                    ValueBasis.KTC_REDRAFT,
+                    ValueBasis.FANTASYCALC_REDRAFT,
+                }
+                else "dynasty"
+            ),
         )
 
     if war_players is None:

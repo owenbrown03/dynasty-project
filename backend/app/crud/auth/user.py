@@ -42,11 +42,14 @@ VALID_VALUE_PREFERENCES = {
 }
 
 # Redraft Value assigns per-player redraft valuations; the pool is
-# the redraft-meaningful projection/WAR sources (#165).
+# the redraft-meaningful projection/WAR sources (#165), including
+# the redraft market rows synced from KTC and FantasyCalc.
 REDRAFT_VALUE_PREFERENCES = {
     "sleeper_projection",
     "redraft_roster_war",
     "redraft_starter_war",
+    "ktc_redraft",
+    "fantasycalc_redraft",
 }
 DEFAULT_REDRAFT_VALUE_PREFERENCE = "sleeper_projection"
 
