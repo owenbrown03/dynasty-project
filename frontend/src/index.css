@@ -547,10 +547,14 @@ th {
 }
 
 .loading-state-inline {
+  display: inline-flex;
+  justify-content: flex-start;
   min-height: 0;
   padding: 0;
   border: 0;
   background: transparent;
+  text-align: left;
+  gap: 7px;
 }
 
 .empty-state {
