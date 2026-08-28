@@ -248,7 +248,7 @@ async def calculate_war_by_league(
         leagues.keys(),
     )
 
-    sem = asyncio.Semaphore(4)
+    sem = asyncio.Semaphore(2)
 
     async def _task(league_id: str):
         async with sem:
@@ -361,7 +361,7 @@ async def build_player_maps_by_league(
     - dynasty WAR projected from that exact league's redraft WAR
     """
 
-    sem = asyncio.Semaphore(4)
+    sem = asyncio.Semaphore(2)
 
     async def _task(league_id):
         async with sem:
@@ -595,7 +595,7 @@ async def get_user_dashboard(
         roster_construction_service = LeagueDetails()
 
         async def _build_roster_construction():
-            sem = asyncio.Semaphore(4)
+            sem = asyncio.Semaphore(2)
 
             async def _rc_task(league_id):
                 async with sem:
