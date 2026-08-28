@@ -142,7 +142,7 @@ export const WaiverLeagueCard = ({
             ${league.faab_remaining}
 
             <small>
-              /${league.faab_budget}
+              /{`$${league.faab_budget}`}
             </small>
           </strong>
         </div>

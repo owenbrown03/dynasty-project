@@ -209,6 +209,10 @@ export const WaiverClaimAction = ({
       <label className="waiver-bid-input">
         <span>
           FAAB Bid
+          {' '}
+          <small>
+            (${league.faab_remaining} remaining)
+          </small>
         </span>
 
         <input
