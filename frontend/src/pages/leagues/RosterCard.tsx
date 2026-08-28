@@ -199,7 +199,6 @@ export function RosterCard({
     <div className="roster-card">
       <header className="roster-header">
         <div className="roster-header-main">
-          <p className="roster-header-kicker">Roster</p>
           <div className="player-with-avatar">
             <UserAvatar
               avatarId={roster.owner.avatar}

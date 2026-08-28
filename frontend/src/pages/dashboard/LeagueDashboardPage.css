@@ -184,14 +184,14 @@
 .portfolio-league-primary {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 10px 12px;
   min-width: 0;
 }
 
 .portfolio-league-primary > div {
   display: grid;
-  gap: 6px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -199,7 +199,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--color-text-strong);
   min-width: 0;
@@ -213,7 +213,7 @@
 
 .portfolio-league-subtitle {
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .portfolio-league-metrics {
@@ -226,9 +226,9 @@
 
 .portfolio-league-metric {
   display: grid;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
-  padding: 14px 8px;
+  padding: 10px 8px;
   border-left: 1px solid var(--color-border);
   align-content: center;
 }
@@ -236,21 +236,22 @@
 .portfolio-league-metric span {
   display: none;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .portfolio-league-metric strong {
   color: var(--color-text-strong);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
+  line-height: 1.15;
 }
 
 .portfolio-league-metric small {
   color: var(--color-text-faint);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 @media (max-width: 1120px) {
@@ -264,17 +265,19 @@
 
   .portfolio-league-primary {
     border-bottom: 1px solid var(--color-border);
+    padding: 8px 10px;
   }
 
   .portfolio-league-metrics {
     grid-column: 1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    padding: 0;
   }
 
   .portfolio-league-metric {
     border-left: 0;
     border-top: 1px solid var(--color-border);
-    padding: 12px 14px;
+    padding: 6px 10px;
   }
 
   .portfolio-league-metric span {
@@ -284,7 +287,7 @@
 
 @media (max-width: 640px) {
   .portfolio-league-metrics {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -352,30 +355,6 @@
   .summary-grid {
     grid-template-columns: 1fr 1fr;
   }
-
-  .portfolio-league-table-head {
-    display: none;
-  }
-
-  .portfolio-league-row {
-    grid-template-columns: 1fr;
-  }
-
-  .portfolio-league-metrics {
-    grid-column: 1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 0 14px 14px;
-  }
-
-  .portfolio-league-metric {
-    padding: 10px 0 0;
-    border-left: 0;
-    border-top: 1px solid var(--color-border);
-  }
-
-  .portfolio-league-metric span {
-    display: block;
-  }
 }
 
 @media (max-width: 820px) {
@@ -392,8 +371,7 @@
     min-height: calc(100vh - 300px);
   }
 
-  .summary-grid,
-  .portfolio-league-metrics {
+  .summary-grid {
     grid-template-columns: 1fr;
   }
 

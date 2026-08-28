@@ -1,23 +1,23 @@
 .league-card {
   display: grid;
-  gap: 14px;
-  padding: 12px;
+  gap: 10px;
+  padding: 10px;
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
 }
 
 .league-header {
   display: flex;
-  align-items: end;
-  gap: 16px;
-  padding-bottom: 12px;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .league-header-identity {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -32,30 +32,30 @@
 }
 
 .league-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
 .league-subtitle {
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .league-badge-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .league-badge {
-  padding: 5px 7px;
+  padding: 3px 6px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -64,18 +64,18 @@
 .league-settings-panel,
 .league-detail-section {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .league-overview-panel {
-  gap: 8px;
+  gap: 6px;
 }
 
 .league-settings-header,
 .league-detail-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .league-settings-header::after,
@@ -88,38 +88,40 @@
 
 .league-settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 4px;
 }
 
 .league-overview-content {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .league-settings-item {
   display: grid;
-  gap: 2px;
-  min-height: 58px;
-  padding: 6px 8px;
+  gap: 1px;
+  min-height: 40px;
+  padding: 4px 8px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
+  align-content: center;
 }
 
 .league-settings-item span,
 .league-empty-note {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 9.5px;
 }
 
 .league-note-editor {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .league-note-editor textarea {
-  min-height: 108px;
-  padding: 10px 12px;
+  min-height: 60px;
+  padding: 6px 8px;
+  font-size: 12px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
   color: var(--color-text-strong);
@@ -129,69 +131,93 @@
 .league-settings-item strong {
   color: var(--color-text-strong);
   font-size: 11px;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .rosters {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .league-pick-list {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .league-pick-summary {
-  padding: 8px 10px;
+  padding: 6px 8px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .league-pick-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 6px 8px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
 }
 
 .league-pick-copy {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
 .league-pick-copy strong {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text-strong);
 }
 
 .league-pick-meta {
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 10.5px;
 }
 
 .league-pick-values {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .league-pick-values span {
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 @media (max-width: 760px) {
+  .league-card {
+    padding: 8px;
+    gap: 8px;
+  }
+
   .league-header {
     align-items: flex-start;
+    padding-bottom: 6px;
+  }
+
+  .league-title {
+    font-size: 16px;
+  }
+
+  .league-subtitle {
+    font-size: 10.5px;
+  }
+
+  .league-settings-grid {
+    grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+    gap: 4px;
+  }
+
+  .league-settings-item {
+    padding: 3px 6px;
+    min-height: 36px;
   }
 
   .league-pick-row {

@@ -44,11 +44,11 @@
 }
 
 .waiver-league-card {
-  padding: 14px;
+  padding: 10px 12px;
 
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .waiver-league-card:hover {
@@ -59,21 +59,22 @@
 .waiver-league-header {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 12px;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .waiver-league-identity {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .waiver-league-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -91,31 +92,32 @@
 }
 
 .waiver-league-header p {
-  margin: 5px 0 0;
+  margin: 2px 0 0;
 
   color: var(--color-text-muted);
-  font-size: 12px;
-}
-
-.waiver-league-basis {
-  margin-top: 6px;
-  color: var(--color-text-faint);
   font-size: 11px;
 }
 
+.waiver-league-basis {
+  margin-top: 2px;
+  color: var(--color-text-faint);
+  font-size: 10.5px;
+}
+
 .waiver-gain {
-  min-width: 120px;
+  min-width: 90px;
 
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 1px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 .waiver-gain span {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -123,13 +125,14 @@
 
 .waiver-gain strong {
   color: var(--color-success);
-  font-size: 18px;
+  font-size: 15px;
+  line-height: 1.2;
 }
 
 .waiver-league-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
 .waiver-stat {
@@ -139,42 +142,42 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 
-  padding: 9px;
+  padding: 5px 7px;
 
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-columns: 16px minmax(0, 1fr);
   grid-template-areas:
     'icon label'
     'icon value';
-  column-gap: 8px;
-  row-gap: 2px;
-  align-items: start;
+  column-gap: 6px;
+  row-gap: 1px;
+  align-items: center;
 }
 
 .waiver-stat svg {
   grid-area: icon;
-  margin-top: 1px;
   color: var(--color-text-faint);
 }
 
 .waiver-stat span {
   grid-area: label;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .waiver-stat strong {
   grid-area: value;
   color: var(--color-text-strong);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.15;
 }
 
 .waiver-stat small {
   color: var(--color-text-faint);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 500;
 }
 
@@ -192,9 +195,9 @@
 
 .waiver-recommendation-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
 }
 
 .waiver-swap-arrow {
@@ -212,7 +215,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 
-  padding: 12px;
+  padding: 6px 8px;
 }
 
 .waiver-player-card-add {
@@ -225,7 +228,7 @@
 
 .waiver-recommendation-skeleton {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   border-left: 3px solid var(--color-border-strong);
 }
 
@@ -233,17 +236,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding-bottom: 8px;
+  gap: 6px;
+  padding-bottom: 4px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .waiver-player-identity {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
-  margin-top: 12px;
+  margin-top: 6px;
 }
 
 .waiver-player-copy {
@@ -253,12 +256,12 @@
 .waiver-player-title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -272,7 +275,7 @@
 
 .waiver-player-value {
   color: var(--color-text-strong);
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 700;
 }
 
@@ -282,43 +285,44 @@
   white-space: nowrap;
 
   color: var(--color-text-strong);
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .waiver-player-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
 
-  margin-top: 5px;
+  margin-top: 2px;
 
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .waiver-player-empty {
-  margin-top: 14px;
+  margin-top: 6px;
 
   color: var(--color-text-faint);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .waiver-league-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding-top: 12px;
+  gap: 8px;
+  padding-top: 6px;
   border-top: 1px solid var(--color-border);
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 10.5px;
 }
 
 .waiver-claim-button {
   font-size: 11px;
-  padding: 7px 10px;
+  padding: 5px 8px;
 }
 
 .waiver-claim-button:disabled {
@@ -333,7 +337,7 @@
 
 @media (max-width: 760px) {
   .waivers-page {
-    padding: 16px;
+    padding: 12px;
   }
 
   .waivers-value-selector {
@@ -346,22 +350,30 @@
 }
 
 @media (max-width: 520px) {
+  .waiver-league-card {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
   .waiver-league-stats {
     grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
   }
 
   .waiver-recommendation-grid {
     grid-template-columns: 1fr;
+    gap: 4px;
   }
 
   .waiver-swap-arrow {
-    height: 20px;
+    height: 14px;
     transform: rotate(90deg);
   }
 
   .waiver-league-footer {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-between;
   }
 
   .waiver-read-only {
