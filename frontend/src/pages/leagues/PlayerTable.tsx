@@ -14,31 +14,97 @@ import {
   getValueBasisLabel,
 } from '@/utils/valueBasis';
 
-const FLEX_SLOT_POSITIONS: Record<string, string> = {
-  FLEX: 'RB',
-  WRRB_FLEX: 'RB',
-  REC_FLEX: 'WR',
-  WRTB_FLEX: 'WR',
-  SUPER_FLEX: 'QB',
-  IDP_FLEX: 'LB',
-};
-
-function normalizeSlotPosition(slot: string): string {
-  return FLEX_SLOT_POSITIONS[slot] ?? slot;
+interface SlotSegment {
+  letter: string;
+  position?: string;
 }
 
-function prettySlotLabel(slot: string | null | undefined): string {
+function getSlotSegments(slot: string | null | undefined): SlotSegment[] {
   if (!slot) {
-    return '-';
+    return [{ letter: '-' }];
   }
 
-  if (slot === 'WRRB_FLEX') return 'W/R';
-  if (slot === 'REC_FLEX') return 'W/T';
-  if (slot === 'WRTB_FLEX') return 'W/R/T';
-  if (slot === 'SUPER_FLEX') return 'SF';
-  if (slot === 'IDP_FLEX') return 'D';
+  switch (slot) {
+    case 'FLEX':
+    case 'WRTB_FLEX':
+      return [
+        { letter: 'W', position: 'WR' },
+        { letter: 'R', position: 'RB' },
+        { letter: 'T', position: 'TE' },
+      ];
+    case 'SUPER_FLEX':
+    case 'SF':
+    case 'OP':
+      return [
+        { letter: 'W', position: 'WR' },
+        { letter: 'R', position: 'RB' },
+        { letter: 'T', position: 'TE' },
+        { letter: 'Q', position: 'QB' },
+      ];
+    case 'WRRB_FLEX':
+      return [
+        { letter: 'W', position: 'WR' },
+        { letter: 'R', position: 'RB' },
+      ];
+    case 'REC_FLEX':
+      return [
+        { letter: 'W', position: 'WR' },
+        { letter: 'T', position: 'TE' },
+      ];
+    case 'IDP_FLEX':
+      return [
+        { letter: 'I', position: 'IDP' },
+        { letter: 'D', position: 'IDP' },
+        { letter: 'P', position: 'IDP' },
+      ];
+    case 'QB':
+      return [{ letter: 'QB', position: 'QB' }];
+    case 'RB':
+      return [{ letter: 'RB', position: 'RB' }];
+    case 'WR':
+      return [{ letter: 'WR', position: 'WR' }];
+    case 'TE':
+      return [{ letter: 'TE', position: 'TE' }];
+    case 'BN':
+      return [{ letter: 'BN' }];
+    default:
+      return [{ letter: slot, position: slot }];
+  }
+}
 
-  return slot;
+function SlotDisplay({
+  slot,
+  empty = false,
+}: {
+  slot: string | null | undefined;
+  empty?: boolean;
+}) {
+  const segments = getSlotSegments(slot);
+
+  return (
+    <span
+      className={
+        empty
+          ? 'player-table-slot-text player-table-slot-text-empty'
+          : 'player-table-slot-text'
+      }
+    >
+      {segments.map((seg, i) => (
+        <span
+          key={i}
+          style={{
+            color: empty
+              ? undefined
+              : seg.position
+                ? getPositionColor(seg.position)
+                : 'var(--color-text-muted)',
+          }}
+        >
+          {seg.letter}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function getCompactValueBasisMeta(valueBasis: ValueBasis): { label: string; tooltip: string } {
@@ -134,9 +200,7 @@ export function PlayerTable({
                   className="player-table-row-empty"
                 >
                   <td className="player-table-slot-cell">
-                    <span className="player-table-slot-text player-table-slot-text-empty">
-                      {prettySlotLabel(slot)}
-                    </span>
+                    <SlotDisplay slot={slot} empty />
                   </td>
                   <td colSpan={redraftMeta ? 7 : 6} className="player-table-empty-label">
                     Empty starter slot
@@ -160,18 +224,7 @@ export function PlayerTable({
               }
             >
               <td className="player-table-slot-cell">
-                <span
-                  className="player-table-slot-text"
-                  style={{
-                    color: player.slot
-                      ? getPositionColor(
-                          normalizeSlotPosition(player.slot),
-                        )
-                      : 'var(--color-text-muted)',
-                  }}
-                >
-                  {prettySlotLabel(player.slot)}
-                </span>
+                <SlotDisplay slot={player.slot} />
               </td>
               <td className="player-table-name-cell">
                 <div className="player-with-avatar">

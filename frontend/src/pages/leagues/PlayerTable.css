@@ -48,7 +48,8 @@
 /* Column alignments and widths */
 .player-table-slot-col,
 .player-table-slot-cell {
-  width: 46px;
+  width: 52px;
+  min-width: 52px;
   text-align: left;
   padding-left: 10px;
   padding-right: 6px;
@@ -58,6 +59,8 @@
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.03em;
+  display: inline-flex;
+  align-items: center;
 }
 
 .player-table-slot-text-empty {
