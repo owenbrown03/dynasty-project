@@ -1,6 +1,5 @@
 import { useBootstrap } from '@/hooks/useBootstrap';
 import { useValuePreference } from '@/context/useValuePreference';
-import { LoadingState } from '@/components/feedback/LoadingState';
 import type { LeagueDetails } from '@/types';
 import type { ValueBasis } from '@/types';
 
@@ -10,6 +9,7 @@ import { LeagueCard } from './LeagueCard';
 import { LeagueRosterBarChart } from './LeagueRosterBarChart';
 import { LeagueWarSeasonChart } from './LeagueWarSeasonChart';
 import { AdvisorPanel } from './AdvisorPanel';
+import { LeagueDetailsSkeleton } from './LeagueDetailsSkeleton';
 
 
 interface Props {
@@ -136,7 +136,7 @@ export function LeagueDashboard({
                   }}
                 />
               )
-              : <LoadingState label="Loading league details..." />
+              : <LeagueDetailsSkeleton activeTab="overview" />
           )
           : activeTab === 'charts'
             ? (
@@ -146,7 +146,7 @@ export function LeagueDashboard({
                     league={league}
                   />
                 )
-                : <LoadingState label="Loading league details..." />
+                : <LeagueDetailsSkeleton activeTab="charts" />
             )
             : activeTab === 'analytics'
               ? (
@@ -156,7 +156,7 @@ export function LeagueDashboard({
                       league={league}
                     />
                   )
-                  : <LoadingState label="Loading league details..." />
+                  : <LeagueDetailsSkeleton activeTab="analytics" />
               )
               : (
                 <AdvisorPanel
