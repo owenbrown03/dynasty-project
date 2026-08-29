@@ -177,11 +177,14 @@ export function TradeCalculatorTab({
   seed,
   onSendToBulkOffers,
 }: TradeCalculatorTabProps) {
-  const { preference } = useValuePreference();
-  const valueBasis: CalculatorBasis =
-    preference === 'fantasycalc'
-      ? 'fantasycalc'
-      : 'ktc';
+  const { preference, setPreference } = useValuePreference();
+  const [valueBasis, setValueBasis] = useState<CalculatorBasis>(
+    preference === 'fantasycalc' ? 'fantasycalc' : 'ktc',
+  );
+
+  useEffect(() => {
+    setValueBasis(preference === 'fantasycalc' ? 'fantasycalc' : 'ktc');
+  }, [preference]);
 
   const [waiverValue, setWaiverValue] = useState(500);
   const [totalRosters, setTotalRosters] = useState(12);
@@ -401,14 +404,17 @@ export function TradeCalculatorTab({
         <div className="trade-calculator-controls">
           <label>
             <span>Value basis</span>
-            <input
-              value={
-                valueBasis === 'ktc'
-                  ? 'KeepTradeCut (KTC)'
-                  : 'FantasyCalc (FC)'
-              }
-              readOnly
-            />
+            <select
+              value={valueBasis}
+              onChange={(e) => {
+                const next = e.target.value as CalculatorBasis;
+                setValueBasis(next);
+                void setPreference(next);
+              }}
+            >
+              <option value="ktc">KeepTradeCut (KTC)</option>
+              <option value="fantasycalc">FantasyCalc (FC)</option>
+            </select>
           </label>
 
           <label>
