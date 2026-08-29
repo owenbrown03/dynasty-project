@@ -102,6 +102,41 @@
   justify-content: flex-end;
 }
 
+.advisor-expiry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.advisor-expiry-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+
+.advisor-expiry-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.advisor-expiry-option {
+  font-size: 0.74rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, #e2e2e2);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.advisor-expiry-active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
 .advisor-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

@@ -449,6 +449,9 @@ function SendTradeSection({
   const { sendOffer, sending } = useSendAdvisorOffer();
   const [confirming, setConfirming] = useState(false);
   const [sent, setSent] = useState(false);
+  const [expiresInSecs, setExpiresInSecs] = useState<
+    number | null
+  >(null);
 
   if (sent) {
     return (
@@ -547,6 +550,37 @@ function SendTradeSection({
         </div>
       </div>
 
+      <div className="advisor-expiry">
+        <span className="advisor-expiry-label">
+          Offer expires
+        </span>
+        <div className="advisor-expiry-options">
+          {[
+            { label: 'No timer', value: null },
+            { label: '1 hour', value: 3600 },
+            { label: '6 hours', value: 21600 },
+            { label: '24 hours', value: 86400 },
+            { label: '3 days', value: 259200 },
+            { label: '7 days', value: 604800 },
+          ].map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              className={`advisor-expiry-option ${
+                expiresInSecs === option.value
+                  ? 'advisor-expiry-active'
+                  : ''
+              }`}
+              onClick={() =>
+                setExpiresInSecs(option.value)
+              }
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="advisor-send-actions">
         <button
           type="button"
@@ -562,6 +596,11 @@ function SendTradeSection({
           disabled={sending}
           onClick={() =>
             sendOffer(proposal, {
+              expiresAt:
+                expiresInSecs != null
+                  ? Math.floor(Date.now() / 1000)
+                    + expiresInSecs
+                  : null,
               onSuccess: () => setSent(true),
             })
           }
