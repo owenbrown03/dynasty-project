@@ -200,3 +200,32 @@ class SleeperWrite:
             },
         )
         return data.get("create_message") or {}
+
+    async def add_player_trade_block(
+        self,
+        *,
+        player_id: str,
+        league_id: str,
+    ) -> dict:
+        self._require_auth()
+        from .mutations import ADD_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION
+        data = await self.transport.post(
+            query=ADD_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION,
+            variables={"player_id": str(player_id), "league_id": str(league_id)},
+        )
+        return data.get("add_league_player_trade_block") or {}
+
+    async def remove_player_trade_block(
+        self,
+        *,
+        player_id: str,
+        league_id: str,
+    ) -> dict:
+        self._require_auth()
+        from .mutations import REMOVE_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION
+        data = await self.transport.post(
+            query=REMOVE_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION,
+            variables={"player_id": str(player_id), "league_id": str(league_id)},
+        )
+        return data.get("remove_league_player_trade_block") or {}
+

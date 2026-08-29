@@ -1,7 +1,19 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router';
 
+vi.mock('@/hooks/useBootstrap', () => ({
+  useBootstrap: () => ({
+    data: {
+      sleeper: {
+        sleeper_user_id: 'user-1',
+        sleeper_username: 'Alpha',
+      },
+    },
+  }),
+}));
 
 vi.mock('@/context/useValuePreference', () => ({
   useValuePreference: () => ({
@@ -93,23 +105,31 @@ const league: LeagueDetails = {
 };
 
 
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 describe('LeagueCard', () => {
   it('renders league settings and roster ownership summary', () => {
     render(
-      <LeagueCard
-        league={league}
-        rosterSortBasis="ktc"
-        warValueSettings={{
-          sleeper_projection: {
-            timeframe: 'dynasty',
-            scope: 'roster',
-          },
-          my: {
-            timeframe: 'dynasty',
-            scope: 'roster',
-          },
-        }}
-      />,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <LeagueCard
+            league={league}
+            rosterSortBasis="ktc"
+            warValueSettings={{
+              sleeper_projection: {
+                timeframe: 'dynasty',
+                scope: 'roster',
+              },
+              my: {
+                timeframe: 'dynasty',
+                scope: 'roster',
+              },
+            }}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
 
     expect(

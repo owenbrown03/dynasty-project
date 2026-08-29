@@ -24,6 +24,7 @@ class LeaguePick(BaseModel):
     fc_value: float | None = None
     ktc_value: float | None = None
     rookie_war_value: float | None = None
+    on_block: bool = False
 
 
 class LeaguePlayer(BaseModel):
@@ -49,6 +50,7 @@ class LeaguePlayer(BaseModel):
     my_dynasty_roster_war: float | None = None
     is_starter: bool = False
     slot: str | None = None
+    on_block: bool = False
 
 
 class LeagueRoster(BaseModel):

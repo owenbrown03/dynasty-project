@@ -1,6 +1,8 @@
 import {
+  useEffect,
   useState,
 } from 'react';
+import { useLocation } from 'react-router';
 
 import { BulkOffersTab } from './BulkOffersTab';
 import {
@@ -19,12 +21,22 @@ type TradesTab =
 
 
 export const TradesPage = () => {
+  const location = useLocation();
+  const locationSeed = (location.state as { seed?: TradeCalculatorBulkOfferSeed } | null)?.seed ?? null;
   const [activeTab, setActiveTab] = useState<TradesTab>(
     'bulk-offers',
   );
   const [bulkOfferSeed, setBulkOfferSeed] = useState<TradeCalculatorBulkOfferSeed | null>(
-    null,
+    locationSeed,
   );
+
+  useEffect(() => {
+    const nextSeed = (location.state as { seed?: TradeCalculatorBulkOfferSeed } | null)?.seed;
+    if (nextSeed) {
+      setBulkOfferSeed(nextSeed);
+      setActiveTab('bulk-offers');
+    }
+  }, [location.state]);
 
   return (
     <main className="trades-page">

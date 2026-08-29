@@ -9,6 +9,8 @@ import type {
   BulkTradeProposalResponse,
   TradeCalculatorPickValueResponse,
   TradeCalculatorWaiverAdjustmentResponse,
+  TradeBlockToggleRequest,
+  TradeBlockToggleResponse,
 } from '@/types';
 
 export const tradeEndpoints = (
@@ -17,6 +19,13 @@ export const tradeEndpoints = (
 ) => ({
   syncLeaguemates: (username: string) =>
     client.post(`${prefix}/${username}/sync-leaguemates`),
+
+  toggleTradeBlock: (
+    payload: TradeBlockToggleRequest,
+  ) => client.post<TradeBlockToggleResponse>(
+    `${prefix}/trade-block/toggle`,
+    payload,
+  ),
 
   getTradeSignals: (
     username: string,

@@ -167,6 +167,26 @@ CREATE_MESSAGE_MUTATION = """
     }
 """
 
+ADD_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION = """
+    mutation add_league_player_trade_block($player_id: String!, $league_id: String!) {
+        add_league_player_trade_block(player_id: $player_id, league_id: $league_id) {
+            player_id
+            league_id
+            settings
+        }
+    }
+"""
+
+REMOVE_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION = """
+    mutation remove_league_player_trade_block($player_id: String!, $league_id: String!) {
+        remove_league_player_trade_block(player_id: $player_id, league_id: $league_id) {
+            player_id
+            league_id
+            settings
+        }
+    }
+"""
+
 MUTATIONS: dict[str, str] = {
     "create_verification_code": CREATE_VERIFICATION_CODE_MUTATION,
     "login": LOGIN_QUERY,
@@ -175,4 +195,6 @@ MUTATIONS: dict[str, str] = {
     "get_dm_by_members": GET_DM_BY_MEMBERS_QUERY,
     "create_dm": CREATE_DM_MUTATION,
     "create_message": CREATE_MESSAGE_MUTATION,
+    "add_league_player_trade_block": ADD_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION,
+    "remove_league_player_trade_block": REMOVE_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION,
 }

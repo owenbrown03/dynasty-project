@@ -202,3 +202,17 @@ class TradeCalculatorPickValueResponse(Base):
 class TradeCalculatorWaiverAdjustmentResponse(Base):
     my_credit: float | None = None
     their_credit: float | None = None
+
+
+class TradeBlockToggleRequest(Base):
+    league_id: str
+    player_id: str
+
+
+class TradeBlockToggleResponse(Base):
+    success: bool
+    league_id: str
+    player_id: str
+    on_block: bool
+    message: str | None = None
+

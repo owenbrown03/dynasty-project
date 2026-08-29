@@ -50,7 +50,7 @@ class WaiverClaimRequest(Base):
     league_id: str
     roster_id: int
 
-    add_player_id: str
+    add_player_id: str | None = None
     drop_player_id: str | None = None
 
     bid: int = Field(default=0, ge=0)

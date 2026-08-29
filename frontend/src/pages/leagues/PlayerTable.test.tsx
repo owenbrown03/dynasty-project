@@ -1,11 +1,28 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router';
+
 import { PlayerTable } from './PlayerTable';
 import type { LeaguePlayer } from '@/types';
 
 afterEach(() => {
   cleanup();
 });
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+function renderWithProviders(ui: React.ReactElement) {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        {ui}
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
 
 const mockPlayers: LeaguePlayer[] = [
   {
@@ -29,6 +46,7 @@ const mockPlayers: LeaguePlayer[] = [
     my_redraft_roster_war: 3.2,
     my_dynasty_starter_war: 4.2,
     my_dynasty_roster_war: 4.8,
+    on_block: false,
   },
   {
     player_id: '2',
@@ -51,12 +69,13 @@ const mockPlayers: LeaguePlayer[] = [
     my_redraft_roster_war: 2.2,
     my_dynasty_starter_war: 3.2,
     my_dynasty_roster_war: 3.8,
+    on_block: true,
   },
 ];
 
 describe('PlayerTable', () => {
-  it('renders table headers and player rows with sticky table structure', () => {
-    const { container } = render(
+  it('renders table headers, player rows, trade buttons, and trade block actions', () => {
+    const { container } = renderWithProviders(
       <PlayerTable
         players={mockPlayers}
         emptyStarterSlots={[]}
@@ -72,6 +91,8 @@ describe('PlayerTable', () => {
             scope: 'roster',
           },
         }}
+        leagueId="12345"
+        isUserRoster={true}
       />,
     );
 
@@ -87,8 +108,18 @@ describe('PlayerTable', () => {
     expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Pos' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Team' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
 
     expect(screen.getByText('Josh Allen')).toBeInTheDocument();
     expect(screen.getByText('Breece Hall')).toBeInTheDocument();
+
+    // Verify Trade buttons are rendered
+    const tradeButtons = screen.getAllByRole('button', { name: /trade/i });
+    expect(tradeButtons.length).toBe(2);
+
+    // Verify Trade Block buttons are rendered for user roster
+    expect(screen.getByRole('button', { name: /\+ Block/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /On Block/i })).toBeInTheDocument();
   });
 });
+

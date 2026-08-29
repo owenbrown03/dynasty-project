@@ -1,8 +1,22 @@
-import { Fragment } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import {
+  ArrowLeftRight,
+  Calculator,
+  Flame,
+  MoreHorizontal,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 import './PlayerTable.css';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { useToggleTradeBlock } from '@/hooks/sleeper/useTrades';
+import { useSubmitWaiverClaim } from '@/hooks/sleeper/useWaivers';
+import { notify } from '@/utils/notify';
 import type {
+  BulkTradePlayerSearchResult,
   LeaguePlayer,
   ValueBasis,
   WarValueSettings,
@@ -151,6 +165,9 @@ interface Props {
   valueBasis: ValueBasis;
   redraftValueBasis?: ValueBasis;
   warValueSettings: WarValueSettings;
+  leagueId?: string;
+  rosterId?: number;
+  isUserRoster?: boolean;
 }
 
 export function PlayerTable({
@@ -159,7 +176,18 @@ export function PlayerTable({
   valueBasis,
   redraftValueBasis,
   warValueSettings,
+  leagueId,
+  rosterId,
+  isUserRoster = false,
 }: Props) {
+  const navigate = useNavigate();
+  const toggleTradeBlock = useToggleTradeBlock();
+  const submitClaim = useSubmitWaiverClaim();
+
+  const [activeMenuPlayerId, setActiveMenuPlayerId] = useState<string | null>(null);
+  const [playerToCut, setPlayerToCut] = useState<LeaguePlayer | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
   const valueMeta = getCompactValueBasisMeta(valueBasis);
   const redraftMeta = redraftValueBasis
     ? getCompactValueBasisMeta(redraftValueBasis)
@@ -168,6 +196,80 @@ export function PlayerTable({
   const firstBenchIndex = players.findIndex(
     (player) => !player.is_starter,
   );
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveMenuPlayerId(null);
+      }
+    }
+    if (activeMenuPlayerId) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeMenuPlayerId]);
+
+  const toPlayerAsset = (player: LeaguePlayer): BulkTradePlayerSearchResult => ({
+    player_id: player.player_id,
+    name: player.name,
+    position: player.position,
+    team: player.team,
+    age: player.age,
+    ktc_value: player.ktc_value,
+    fc_value: player.fc_value,
+    underdog_position_rank: player.underdog_position_rank,
+  });
+
+  const handleTradePlayer = (player: LeaguePlayer) => {
+    const playerAsset = toPlayerAsset(player);
+    navigate('/trades', {
+      state: {
+        seed: isUserRoster
+          ? {
+              sendPlayers: [playerAsset],
+              sendPicks: [],
+              receivePlayers: [],
+              receivePicks: [],
+              preferredLeagueId: leagueId,
+            }
+          : {
+              sendPlayers: [],
+              sendPicks: [],
+              receivePlayers: [playerAsset],
+              receivePicks: [],
+              preferredLeagueId: leagueId,
+            },
+      },
+    });
+  };
+
+  const handleToggleBlock = (player: LeaguePlayer) => {
+    if (!leagueId) return;
+    toggleTradeBlock.mutate({
+      league_id: leagueId,
+      player_id: player.player_id,
+    });
+  };
+
+  const handleConfirmCut = async () => {
+    if (!playerToCut || !leagueId || !rosterId) return;
+    try {
+      await submitClaim.submitClaimAsync({
+        league_id: leagueId,
+        roster_id: rosterId,
+        drop_player_id: playerToCut.player_id,
+        bid: 0,
+      });
+      notify.success(`Successfully cut ${playerToCut.name}`);
+      setPlayerToCut(null);
+      setActiveMenuPlayerId(null);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } }; message?: string };
+      notify.error(error?.response?.data?.detail || error?.message || 'Failed to cut player');
+    }
+  };
 
   return (
     <div className="player-table-scroll">
@@ -186,6 +288,7 @@ export function PlayerTable({
                 {redraftMeta.label}
               </th>
             ) : null}
+            <th className="player-table-actions-col">Actions</th>
           </tr>
         </thead>
 
@@ -204,7 +307,7 @@ export function PlayerTable({
                       <SlotDisplay slot={slot} empty />
                     </td>
                     <td
-                      colSpan={redraftMeta ? 7 : 6}
+                      colSpan={redraftMeta ? 8 : 7}
                       className="player-table-empty-label"
                     >
                       Empty Starter Slot
@@ -214,7 +317,7 @@ export function PlayerTable({
 
               {index === firstBenchIndex ? (
                 <tr className="player-table-divider">
-                  <td colSpan={redraftMeta ? 8 : 7}>
+                  <td colSpan={redraftMeta ? 9 : 8}>
                     <div className="player-table-divider-inner">
                       <span>Bench</span>
                     </div>
@@ -245,6 +348,11 @@ export function PlayerTable({
                     <span className="player-table-name">
                       {player.name}
                     </span>
+                    {player.on_block ? (
+                      <span className="player-table-otb-pill" title="On Sleeper Trade Block">
+                        OTB
+                      </span>
+                    ) : null}
                   </div>
                 </td>
 
@@ -312,11 +420,185 @@ export function PlayerTable({
                     }
                   </td>
                 ) : null}
+
+                <td className="player-table-actions-cell">
+                  <div className="player-table-actions">
+                    <button
+                      type="button"
+                      className="player-table-btn player-table-btn-trade"
+                      title={isUserRoster ? `Offer ${player.name} in a trade` : `Trade for ${player.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTradePlayer(player);
+                      }}
+                    >
+                      <ArrowLeftRight size={11} />
+                      <span>Trade</span>
+                    </button>
+
+                    {isUserRoster && leagueId ? (
+                      <button
+                        type="button"
+                        className={`player-table-btn player-table-btn-block ${player.on_block ? 'active' : ''}`}
+                        title={player.on_block ? 'On Sleeper Trade Block — click to remove' : 'Put on Sleeper Trade Block'}
+                        disabled={toggleTradeBlock.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleBlock(player);
+                        }}
+                      >
+                        <Flame size={11} />
+                        <span>{player.on_block ? 'On Block' : '+ Block'}</span>
+                      </button>
+                    ) : null}
+
+                    <div className="player-table-menu-container">
+                      <button
+                        type="button"
+                        className={`player-table-btn player-table-btn-more ${activeMenuPlayerId === player.player_id ? 'active' : ''}`}
+                        title="Player options"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuPlayerId(
+                            activeMenuPlayerId === player.player_id ? null : player.player_id,
+                          );
+                        }}
+                      >
+                        <MoreHorizontal size={13} />
+                      </button>
+
+                      {activeMenuPlayerId === player.player_id && (
+                        <div
+                          ref={menuRef}
+                          className="player-table-dropdown-menu"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="player-table-dropdown-header">
+                            <strong>{player.name}</strong>
+                            <small>{player.position} · {player.team ?? 'FA'}</small>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="player-table-dropdown-item"
+                            onClick={() => {
+                              setActiveMenuPlayerId(null);
+                              handleTradePlayer(player);
+                            }}
+                          >
+                            <ArrowLeftRight size={13} />
+                            <span>{isUserRoster ? 'Create Bulk Offer' : 'Trade for Player'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="player-table-dropdown-item"
+                            onClick={() => {
+                              setActiveMenuPlayerId(null);
+                              handleTradePlayer(player);
+                            }}
+                          >
+                            <Calculator size={13} />
+                            <span>Trade Calculator</span>
+                          </button>
+
+                          {isUserRoster && leagueId ? (
+                            <button
+                              type="button"
+                              className="player-table-dropdown-item"
+                              disabled={toggleTradeBlock.isPending}
+                              onClick={() => {
+                                setActiveMenuPlayerId(null);
+                                handleToggleBlock(player);
+                              }}
+                            >
+                              <Flame size={13} />
+                              <span>{player.on_block ? 'Remove from Trade Block' : 'Put on Trade Block'}</span>
+                            </button>
+                          ) : null}
+
+                          {leagueId ? (
+                            <button
+                              type="button"
+                              className="player-table-dropdown-item"
+                              onClick={() => {
+                                setActiveMenuPlayerId(null);
+                                navigate('/waivers');
+                              }}
+                            >
+                              <Search size={13} />
+                              <span>Browse Waivers</span>
+                            </button>
+                          ) : null}
+
+                          {isUserRoster && leagueId && rosterId ? (
+                            <button
+                              type="button"
+                              className="player-table-dropdown-item player-table-dropdown-danger"
+                              onClick={() => {
+                                setActiveMenuPlayerId(null);
+                                setPlayerToCut(player);
+                              }}
+                            >
+                              <Trash2 size={13} />
+                              <span>Cut Player (Drop)</span>
+                            </button>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </td>
               </tr>
             </Fragment>
           ))}
         </tbody>
       </table>
+
+      {playerToCut ? (
+        <div className="player-cut-backdrop" onClick={() => setPlayerToCut(null)}>
+          <div className="player-cut-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="player-cut-modal-header">
+              <h3>Cut Player</h3>
+              <button
+                type="button"
+                className="player-cut-close"
+                onClick={() => setPlayerToCut(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="player-cut-modal-body">
+              <p>
+                Are you sure you want to drop <strong>{playerToCut.name}</strong> ({playerToCut.position} - {playerToCut.team ?? 'FA'}) from your roster?
+              </p>
+              <p className="player-cut-warning">
+                This will submit a waiver drop transaction to Sleeper.
+              </p>
+            </div>
+
+            <div className="player-cut-modal-actions">
+              <button
+                type="button"
+                className="player-cut-btn-cancel"
+                onClick={() => setPlayerToCut(null)}
+                disabled={submitClaim.submitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="player-cut-btn-confirm"
+                onClick={() => void handleConfirmCut()}
+                disabled={submitClaim.submitting}
+              >
+                {submitClaim.submitting ? 'Dropping...' : 'Confirm Cut'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -18,6 +18,8 @@ from app.schemas.trades import (
     BulkTradeProposalRequest,
     BulkTradeProposalResponse,
     TradeCalculatorPickValueResponse,
+    TradeBlockToggleRequest,
+    TradeBlockToggleResponse,
 )
 from app.services.trades.bulk import (
     get_bulk_trade_availability,
@@ -226,4 +228,58 @@ async def trade_calculator_waiver_adjustment_endpoint(
     return TradeCalculatorWaiverAdjustmentResponse(
         my_credit=my_credit,
         their_credit=their_credit,
+    )
+
+
+@router.post(
+    "/trade-block/toggle",
+    response_model=TradeBlockToggleResponse,
+)
+async def toggle_trade_block_endpoint(
+    request: TradeBlockToggleRequest,
+    ctx: ContextDep,
+) -> TradeBlockToggleResponse:
+    require_sleeper_connection(
+        ctx,
+        detail="Authenticated Sleeper connection required to update trade block.",
+    )
+    if not ctx.connection or not ctx.connection.encrypted_token:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authenticated Sleeper connection required to update trade block.",
+        )
+
+    from app.services.advisor.trade_block import TradeBlockSnapshot
+
+    # Check if currently on block by reading league status
+    trade_block_data = await ctx.sleeper.read.get_league_players_status(request.league_id)
+    snapshot = TradeBlockSnapshot.from_league_players(trade_block_data)
+    is_currently_on_block = str(request.player_id) in snapshot.player_ids
+
+    if is_currently_on_block:
+        await ctx.sleeper.write.remove_player_trade_block(
+            player_id=request.player_id,
+            league_id=request.league_id,
+        )
+        new_status = False
+        msg = "Removed from trade block."
+    else:
+        await ctx.sleeper.write.add_player_trade_block(
+            player_id=request.player_id,
+            league_id=request.league_id,
+        )
+        new_status = True
+        msg = "Added to trade block."
+
+    # Invalidate caches
+    if ctx.redis is not None:
+        await ctx.redis.delete(f"advisor:trade_block:{request.league_id}")
+
+    return TradeBlockToggleResponse(
+        success=True,
+        league_id=request.league_id,
+        player_id=request.player_id,
+        on_block=new_status,
+        message=msg,
     )

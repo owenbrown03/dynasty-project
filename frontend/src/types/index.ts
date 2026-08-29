@@ -333,6 +333,7 @@ export interface LeaguePick {
   fc_value: number | null;
   ktc_value: number | null;
   rookie_war_value: number | null;
+  on_block?: boolean;
 }
 
 export interface LeaguePlayer {
@@ -363,6 +364,20 @@ export interface LeaguePlayer {
   my_dynasty_roster_war?: number | null;
   is_starter: boolean;
   slot?: string | null;
+  on_block?: boolean;
+}
+
+export interface TradeBlockToggleRequest {
+  league_id: string;
+  player_id: string;
+}
+
+export interface TradeBlockToggleResponse {
+  success: boolean;
+  league_id: string;
+  player_id: string;
+  on_block: boolean;
+  message?: string | null;
 }
 
 export interface LeagueRoster {
@@ -1109,8 +1124,8 @@ export interface WaiverClaimRequest {
   league_id: string;
   roster_id: number;
 
-  add_player_id: string;
-  drop_player_id: string | null;
+  add_player_id?: string | null;
+  drop_player_id?: string | null;
 
   bid: number;
 }

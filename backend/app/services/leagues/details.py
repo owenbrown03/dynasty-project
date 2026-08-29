@@ -880,6 +880,15 @@ class LeagueDetails:
             player.player_id: player
             for player in player_values
         }
+
+        trade_block_snapshot = None
+        try:
+            trade_block_data = await sleeper.read.get_league_players_status(league_id)
+            from app.services.advisor.trade_block import TradeBlockSnapshot
+            trade_block_snapshot = TradeBlockSnapshot.from_league_players(trade_block_data)
+        except Exception:
+            pass
+
         empty_starter_slots_by_roster_id: dict[int, list[str]] = {}
         roster_players_by_roster_id: dict[
             int,
@@ -1038,6 +1047,7 @@ class LeagueDetails:
                         my_dynasty_roster_war=player.my_dynasty_roster_war,
                         is_starter=player_id in slot_assignment,
                         slot=_resolve_slot(player_id),
+                        on_block=(str(player_id) in trade_block_snapshot.player_ids) if trade_block_snapshot else False,
                     )
                 )
 
@@ -1328,6 +1338,7 @@ class LeagueDetails:
                         fc_value=fc_value,
                         ktc_value=ktc_value,
                         rookie_war_value=rookie_war_value,
+                        on_block=((pick.round, str(pick.season), pick.og_roster_id) in trade_block_snapshot.picks) if trade_block_snapshot else False,
                     )
                 )
 

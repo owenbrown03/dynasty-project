@@ -3,6 +3,7 @@ import './LeagueCard.css';
 import { useEffect, useMemo, useState } from 'react';
 
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
+import { useBootstrap } from '@/hooks/useBootstrap';
 import { useSaveUserNote } from '@/hooks/sleeper/useLeagues';
 import type {
   LeagueDetails,
@@ -191,6 +192,10 @@ export function LeagueCard({
     }
   };
 
+  const bootstrap = useBootstrap();
+  const currentUserId = bootstrap.data?.sleeper?.sleeper_user_id;
+  const currentUsername = bootstrap.data?.sleeper?.sleeper_username?.toLowerCase();
+
   return (
     <div className="league-card">
       <header className="league-header">
@@ -265,18 +270,27 @@ export function LeagueCard({
       </section>
 
       <div className="rosters">
-        {sortedRosters.map((roster) => (
-              <RosterCard
-                key={roster.roster_id}
-                roster={roster}
-                displayRank={roster.rank}
-                rosterConstructionTargets={league.roster_construction_targets}
-                draftPickProjectionSummary={league.draft_pick_projection_summary}
-                valueBasis={rosterSortBasis}
-                warValueSettings={warValueSettings}
-                isCheap={!!league.is_cheap_data}
-              />
-        ))}
+        {sortedRosters.map((roster) => {
+          const isUserRoster = !!(
+            (currentUserId && roster.owner?.user_id === currentUserId) ||
+            (currentUsername && roster.owner?.display_name?.toLowerCase() === currentUsername)
+          );
+
+          return (
+            <RosterCard
+              key={roster.roster_id}
+              roster={roster}
+              displayRank={roster.rank}
+              rosterConstructionTargets={league.roster_construction_targets}
+              draftPickProjectionSummary={league.draft_pick_projection_summary}
+              valueBasis={rosterSortBasis}
+              warValueSettings={warValueSettings}
+              isCheap={!!league.is_cheap_data}
+              leagueId={league.league_id}
+              isUserRoster={isUserRoster}
+            />
+          );
+        })}
       </div>
     </div>
   );

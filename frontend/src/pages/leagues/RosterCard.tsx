@@ -41,6 +41,8 @@ interface Props {
   valueBasis: ValueBasis;
   warValueSettings: WarValueSettings;
   isCheap?: boolean;
+  leagueId?: string;
+  isUserRoster?: boolean;
 }
 
 function StatValue({
@@ -150,6 +152,8 @@ export function RosterCard({
   valueBasis,
   warValueSettings,
   isCheap = false,
+  leagueId,
+  isUserRoster = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const valuePreference = useValuePreference();
@@ -393,6 +397,9 @@ export function RosterCard({
                   valueBasis={valueBasis}
                   redraftValueBasis={redraftValueBasis}
                   warValueSettings={warValueSettings}
+                  leagueId={leagueId}
+                  rosterId={roster.roster_id}
+                  isUserRoster={isUserRoster}
                 />
               </section>
 
