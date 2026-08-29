@@ -116,18 +116,8 @@ async def get_completed_draft_seasons_by_league_ids(
 
 async def get_historical_rookie_draft_selections(
     db: AsyncSession,
-    *,
     rounds: list[int] | None = None,
 ) -> list[tuple[str, str, int, int]]:
-    subquery = (
-        select(League.league_id)
-        .where(
-            League.previous_league_id.is_not(None),
-        )
-        .correlate(DraftSelection)
-        .exists()
-    )
-
     query = (
         select(
             DraftSelection.player_id,
@@ -135,8 +125,9 @@ async def get_historical_rookie_draft_selections(
             DraftSelection.round,
             DraftSelection.round_slot,
         )
+        .join(League, League.league_id == DraftSelection.league_id)
         .where(
-            subquery,
+            League.previous_league_id.is_not(None),
             DraftSelection.player_id.is_not(None),
         )
     )

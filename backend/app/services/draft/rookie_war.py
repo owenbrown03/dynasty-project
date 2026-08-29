@@ -54,8 +54,10 @@ class _SharedData:
     stat_seasons: list[int]
 
 
-def _build_shared_cache_key(rounds: list[int]) -> str:
-    return f"{SHARED_DATA_CACHE_KEY_PREFIX}:{'-'.join(str(r) for r in rounds)}"
+def _build_shared_cache_key(rounds: list[int] | None = None) -> str:
+    if rounds:
+        return f"{SHARED_DATA_CACHE_KEY_PREFIX}:{'-'.join(str(r) for r in sorted(rounds))}"
+    return f"{SHARED_DATA_CACHE_KEY_PREFIX}:all"
 
 
 _SEL_PLAYER_ID = 0
@@ -84,7 +86,7 @@ async def _load_shared_data(
     db: AsyncSession,
     redis,
     *,
-    rounds: list[int],
+    rounds: list[int] | None = None,
 ) -> _SharedData:
     if redis is not None:
         cache_key = _build_shared_cache_key(rounds)
@@ -503,13 +505,15 @@ async def get_rookie_pick_war_values_by_key(
 
 def _build_history_cache_key(
     league_id: str,
-    rounds: list[int],
+    rounds: list[int] | None = None,
 ) -> str:
+    rounds_suffix = "-".join(str(r) for r in sorted(rounds)) if rounds else "all"
     return (
         f"{HISTORY_CACHE_PREFIX}"
         f"{HISTORY_CACHE_VERSION}:{league_id}:"
-        f"{'-'.join(str(r) for r in rounds)}"
+        f"{rounds_suffix}"
     )
+
 
 
 async def get_rookie_war_history(
