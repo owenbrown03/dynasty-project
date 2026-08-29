@@ -238,8 +238,8 @@ export function PlayerTable({
                 <td className="player-table-name-cell">
                   <div className="player-with-avatar">
                     <PlayerAvatar
-                      avatarId={player.player_id}
-                      position={player.position}
+                      playerId={player.player_id}
+                      name={player.name}
                       size="sm"
                     />
                     <span className="player-table-name">

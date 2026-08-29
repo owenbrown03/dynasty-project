@@ -116,6 +116,7 @@ export function RookieWarHistoryBoard() {
   const [viewMode, setViewMode] = useState<ViewMode>('board');
   const [selectedRound, setSelectedRound] = useState<number | 'all'>('all');
   const [metric, setMetric] = useState<'starter_war' | 'roster_war'>('starter_war');
+  const [scope, setScope] = useState<'career' | 'per_year'>('career');
   const [sort, setSort] = useState<{ column: SortColumn; direction: SortDirection }>({
     column: 'draft_year',
     direction: 'asc',
@@ -149,7 +150,10 @@ export function RookieWarHistoryBoard() {
     return Array.from(set).sort((a, b) => a - b);
   }, [rows]);
 
-  // Build 48 pick slots (Rounds 1-4, Slots 1-12) with round filter
+  // Current NFL season reference for seasons played
+  const currentSeason = 2025;
+
+  // Build 48 pick slots (Rounds 1-4, Slots 1-12) with round filter and time weighting
   const pickSlotSummaries = useMemo<PickSlotSummary[]>(() => {
     const map = new Map<string, RookieWarHistoryRow>();
     for (const r of rows) {
@@ -164,14 +168,27 @@ export function RookieWarHistoryBoard() {
         const pickLabel = `${rnd}.${sl.toString().padStart(2, '0')}`;
         const byYear: Record<number, RookieWarHistoryRow> = {};
         const wars: number[] = [];
+        const evaluatedWars: { value: number; yearsInLeague: number }[] = [];
 
         for (const yr of years) {
           const row = map.get(`${yr}-${rnd}-${sl}`);
           if (row) {
             byYear[yr] = row;
-            const warVal = metric === 'starter_war' ? row.starter_war : row.roster_war;
-            if (warVal != null) {
-              wars.push(warVal);
+            const rawWar = metric === 'starter_war' ? row.starter_war : row.roster_war;
+            if (rawWar != null) {
+              const yearsInLeague = Math.max(0, currentSeason - yr + 1);
+              const displayVal = scope === 'per_year' && yearsInLeague > 0
+                ? rawWar / yearsInLeague
+                : rawWar;
+              wars.push(displayVal);
+
+              // Only evaluate Hit/Bust on draft classes with at least 1 played season
+              if (yearsInLeague > 0) {
+                evaluatedWars.push({
+                  value: displayVal,
+                  yearsInLeague,
+                });
+              }
             }
           }
         }
@@ -189,11 +206,15 @@ export function RookieWarHistoryBoard() {
           medWar = sortedWars.length % 2 !== 0
             ? sortedWars[mid]
             : (sortedWars[mid - 1] + sortedWars[mid]) / 2;
+        }
 
-          const hits = wars.filter((v) => v >= 3.0).length;
-          const busts = wars.filter((v) => v <= 1.0).length;
-          hitRate = (hits / wars.length) * 100;
-          bustRate = (busts / wars.length) * 100;
+        if (evaluatedWars.length > 0) {
+          const hitThreshold = scope === 'per_year' ? 0.9 : 2.5;
+          const bustThreshold = scope === 'per_year' ? 0.3 : 0.8;
+          const hits = evaluatedWars.filter((e) => e.value >= hitThreshold).length;
+          const busts = evaluatedWars.filter((e) => e.value <= bustThreshold).length;
+          hitRate = (hits / evaluatedWars.length) * 100;
+          bustRate = (busts / evaluatedWars.length) * 100;
         }
 
         summaries.push({
@@ -210,7 +231,7 @@ export function RookieWarHistoryBoard() {
     }
 
     return summaries;
-  }, [rows, years, selectedRound, metric]);
+  }, [rows, years, selectedRound, metric, scope]);
 
   const sortedRows = useMemo(() => {
     const next = [...rows];
@@ -284,25 +305,48 @@ export function RookieWarHistoryBoard() {
         </div>
 
         {hasWar ? (
-          <div className="rkwh-toolbar-meta">
-            <span className="rkwh-meta-label">Metric</span>
-            <div className="rkwh-pill-group">
-              <button
-                type="button"
-                className={`rkwh-filter-pill ${metric === 'starter_war' ? 'rkwh-filter-pill--active' : ''}`}
-                onClick={() => setMetric('starter_war')}
-              >
-                Starter WAR
-              </button>
-              <button
-                type="button"
-                className={`rkwh-filter-pill ${metric === 'roster_war' ? 'rkwh-filter-pill--active' : ''}`}
-                onClick={() => setMetric('roster_war')}
-              >
-                Roster WAR
-              </button>
+          <>
+            <div className="rkwh-toolbar-meta">
+              <span className="rkwh-meta-label">Metric</span>
+              <div className="rkwh-pill-group">
+                <button
+                  type="button"
+                  className={`rkwh-filter-pill ${metric === 'starter_war' ? 'rkwh-filter-pill--active' : ''}`}
+                  onClick={() => setMetric('starter_war')}
+                >
+                  Starter WAR
+                </button>
+                <button
+                  type="button"
+                  className={`rkwh-filter-pill ${metric === 'roster_war' ? 'rkwh-filter-pill--active' : ''}`}
+                  onClick={() => setMetric('roster_war')}
+                >
+                  Roster WAR
+                </button>
+              </div>
             </div>
-          </div>
+
+            <div className="rkwh-toolbar-meta">
+              <span className="rkwh-meta-label">Basis</span>
+              <div className="rkwh-pill-group">
+                <button
+                  type="button"
+                  className={`rkwh-filter-pill ${scope === 'career' ? 'rkwh-filter-pill--active' : ''}`}
+                  onClick={() => setScope('career')}
+                >
+                  Career Total
+                </button>
+                <button
+                  type="button"
+                  className={`rkwh-filter-pill ${scope === 'per_year' ? 'rkwh-filter-pill--active' : ''}`}
+                  onClick={() => setScope('per_year')}
+                  title="Annualized WAR per active NFL season"
+                >
+                  WAR / Year
+                </button>
+              </div>
+            </div>
+          </>
         ) : null}
 
         <div className="rkwh-toolbar-meta">
@@ -377,7 +421,7 @@ export function RookieWarHistoryBoard() {
                   <strong>Rookie Pick WAR History Board</strong>
                   <small>
                     {hasWar
-                      ? `Career ${metric === 'starter_war' ? 'Starter' : 'Roster'} WAR under ${selectedLeagueName ?? 'selected league'}`
+                      ? `${scope === 'per_year' ? 'Annualized WAR / Year' : 'Career Total WAR'} (${metric === 'starter_war' ? 'Starter' : 'Roster'}) under ${selectedLeagueName ?? 'selected league'}`
                       : 'Consensus draft selections across historical rookie classes'}
                   </small>
                 </div>
@@ -400,7 +444,7 @@ export function RookieWarHistoryBoard() {
                         {years.map((year) => (
                           <React.Fragment key={year}>
                             <th className="rkwh-th-year-player">{year}</th>
-                            {hasWar ? <th className="rkwh-th-year-war">WAR</th> : null}
+                            {hasWar ? <th className="rkwh-th-year-war">{scope === 'per_year' ? 'WAR/yr' : 'WAR'}</th> : null}
                           </React.Fragment>
                         ))}
                       </tr>
@@ -447,10 +491,17 @@ export function RookieWarHistoryBoard() {
                               );
                             }
                             const pos = p.position ?? '??';
-                            const warVal = metric === 'starter_war' ? p.starter_war : p.roster_war;
+                            const rawWar = metric === 'starter_war' ? p.starter_war : p.roster_war;
+                            const yearsInLeague = Math.max(0, currentSeason - year + 1);
+                            const warVal = rawWar != null && scope === 'per_year' && yearsInLeague > 0
+                              ? rawWar / yearsInLeague
+                              : rawWar;
+                            const hitThresh = scope === 'per_year' ? 0.9 : 2.5;
+                            const bustThresh = scope === 'per_year' ? 0.3 : 0.8;
+
                             return (
                               <React.Fragment key={year}>
-                                <td className={`rkwh-matrix-cell rkwh-player-box-cell rkwh-pos-bg--${pos.toLowerCase()}`}>
+                                <td className="rkwh-matrix-cell rkwh-player-box-cell">
                                   <div className="rkwh-player-box">
                                     <span className={`rkwh-pos-tag rkwh-pos-tag--${pos.toLowerCase()}`}>
                                       {pos}
@@ -461,9 +512,9 @@ export function RookieWarHistoryBoard() {
                                   </div>
                                 </td>
                                 {hasWar ? (
-                                  <td className={`rkwh-matrix-cell rkwh-war-val-cell rkwh-pos-bg--${pos.toLowerCase()}`}>
+                                  <td className="rkwh-matrix-cell rkwh-war-val-cell">
                                     {warVal != null ? (
-                                      <span className={`rkwh-war-score ${warVal >= 3.0 ? 'rkwh-war-score--hit' : (warVal <= 1.0 ? 'rkwh-war-score--bust' : '')}`}>
+                                      <span className={`rkwh-war-score ${warVal >= hitThresh ? 'rkwh-war-score--hit' : (warVal <= bustThresh ? 'rkwh-war-score--bust' : '')}`}>
                                         {formatNumber(warVal)}
                                       </span>
                                     ) : '—'}

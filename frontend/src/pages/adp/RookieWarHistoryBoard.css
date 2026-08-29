@@ -323,48 +323,17 @@
   color: #ff5252;
 }
 
-/* Authentic position background tinting */
+/* Subtle position styling matching roster details & tier list */
 .rkwh-matrix-cell {
   padding: 6px 8px;
   font-size: 12px;
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
   white-space: nowrap;
 }
 
 .rkwh-player-box-cell {
   border-left: 1px solid var(--color-border-strong);
-}
-
-.rkwh-pos-bg--rb {
-  background: rgba(48, 164, 108, 0.18) !important;
-}
-
-.rkwh-pos-bg--qb {
-  background: rgba(224, 83, 83, 0.18) !important;
-}
-
-.rkwh-pos-bg--wr {
-  background: rgba(79, 124, 255, 0.18) !important;
-}
-
-.rkwh-pos-bg--te {
-  background: rgba(216, 177, 30, 0.18) !important;
-}
-
-:root:not([data-theme='dark']) .rkwh-pos-bg--rb {
-  background: #c8e6c9 !important;
-}
-
-:root:not([data-theme='dark']) .rkwh-pos-bg--qb {
-  background: #ffcdd2 !important;
-}
-
-:root:not([data-theme='dark']) .rkwh-pos-bg--wr {
-  background: #bbdefb !important;
-}
-
-:root:not([data-theme='dark']) .rkwh-pos-bg--te {
-  background: #fff9c4 !important;
 }
 
 .rkwh-player-box {
@@ -377,27 +346,34 @@
 .rkwh-pos-tag {
   font-size: 10px;
   font-weight: 800;
-  padding: 1px 4px;
-  border-radius: 3px;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  padding: 1px 5px;
+  border-radius: 4px;
   flex-shrink: 0;
+  letter-spacing: 0.02em;
 }
 
 .rkwh-pos-tag--rb {
-  background: #238551;
+  color: var(--position-rb-color, #30a46c);
+  background: rgba(48, 164, 108, 0.12);
+  border: 1px solid rgba(48, 164, 108, 0.25);
 }
 
 .rkwh-pos-tag--qb {
-  background: #d33838;
+  color: var(--position-qb-color, #e05353);
+  background: rgba(224, 83, 83, 0.12);
+  border: 1px solid rgba(224, 83, 83, 0.25);
 }
 
 .rkwh-pos-tag--wr {
-  background: #3b66de;
+  color: var(--position-wr-color, #4f7cff);
+  background: rgba(79, 124, 255, 0.12);
+  border: 1px solid rgba(79, 124, 255, 0.25);
 }
 
 .rkwh-pos-tag--te {
-  background: #b59110;
+  color: var(--position-te-color, #d8b11e);
+  background: rgba(216, 177, 30, 0.12);
+  border: 1px solid rgba(216, 177, 30, 0.25);
 }
 
 .rkwh-player-name-text {
