@@ -150,6 +150,8 @@
   overflow-x: auto;
   max-height: calc(100vh - 230px);
   overflow-y: auto;
+  position: relative;
+  background: var(--color-surface);
 }
 
 .rkwh-table {
@@ -159,14 +161,20 @@
   font-size: 13px;
 }
 
+.rkwh-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+
 /* Sticky top header row */
 .rkwh-head-row th {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 6;
   background: var(--color-surface-raised, var(--color-surface));
   padding: 8px 10px;
-  box-shadow: inset 0 -1px 0 var(--color-border-strong);
+  box-shadow: 0 -2px 0 var(--color-surface-raised, var(--color-surface)), inset 0 -1px 0 var(--color-border-strong);
   white-space: nowrap;
   font-size: 12px;
   font-weight: 700;
