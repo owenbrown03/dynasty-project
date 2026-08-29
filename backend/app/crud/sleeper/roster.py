@@ -133,48 +133,10 @@ async def get_owned_roster_rows(
     connection: SleeperConnection,
 ) -> list[tuple[Roster, League]]:
     """
-    Returns one roster/league pair for every league owned by the connected
-    Sleeper account.
-    """
-
-    if not connection.sleeper_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Connected Sleeper account is missing a "
-                "Sleeper user ID."
-            ),
-        )
-
-    result = await db.execute(
-        select(
-            Roster,
-            League,
-        )
-        .join(
-            League,
-            League.league_id == Roster.league_id,
-        )
-        .where(
-            Roster.owner_id == connection.sleeper_user_id,
-        )
-        .order_by(
-            League.name,
-        )
-    )
-
-    return list(
-        result.all(),
-    )
-
-
-async def get_owned_roster_rows(
-    *,
-    db: AsyncSession,
-    connection: SleeperConnection,
-) -> list[tuple[Roster, League]]:
-    """
-    Gets all roster/league pairs owned by the connected Sleeper account.
+    Returns one roster/league pair per league owned by the connected
+    Sleeper account. When a user owns multiple rosters in the same league
+    (e.g. as commissioner), only the first encountered row is kept so that
+    each league appears exactly once.
     """
 
     if not connection.sleeper_user_id:
@@ -197,9 +159,19 @@ async def get_owned_roster_rows(
         )
         .order_by(
             League.name,
+            Roster.roster_id,
         )
     )
 
-    return list(
-        result.all(),
-    )
+    rows = list(result.all())
+
+    # Deduplicate: keep first row per league_id (stable order from query).
+    seen: set[str] = set()
+    deduped: list[tuple[Roster, League]] = []
+    for roster, league in rows:
+        if league.league_id not in seen:
+            seen.add(league.league_id)
+            deduped.append((roster, league))
+
+    return deduped
+

@@ -416,15 +416,16 @@
   gap: 18px;
 }
 
-.bulk-trade-list-header > div {
+
+.bulk-trade-list-header-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
-.bulk-trade-list-header span {
-  color: var(--color-text-muted);
-  font-size: 13px;
+.bulk-trade-global-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .bulk-trade-league-list {
@@ -659,6 +660,24 @@
 .bulk-trade-expiry {
   border-top: 1px solid var(--color-border);
   padding: 12px 18px 4px;
+}
+
+.bulk-trade-dm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--color-border);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.bulk-trade-dm-toggle input[type="checkbox"] {
+  accent-color: var(--color-accent, #6366f1);
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .bulk-trade-review-footer {

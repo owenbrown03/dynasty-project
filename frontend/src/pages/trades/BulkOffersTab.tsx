@@ -465,13 +465,22 @@ export const BulkOffersTab = ({
     selectionsByLeagueId,
   ]);
 
-  const eligibleCount = (
+  const eligibleLeagues = (
     availability.data?.leagues.filter(
       (league: BulkTradeLeagueAvailability) => league.is_eligible,
-    ).length ?? 0
+    ) ?? []
   );
 
+  const eligibleCount = eligibleLeagues.length;
+
   const selectedCount = offers.length;
+
+  const allSelected =
+    eligibleCount > 0
+    && eligibleLeagues.every(
+      (league: BulkTradeLeagueAvailability) =>
+        selectionsByLeagueId[league.league_id]?.selected,
+    );
 
   const handleReset = () => {
     setSendPlayers([]);
@@ -483,7 +492,51 @@ export const BulkOffersTab = ({
     reset();
   };
 
-  const handleSubmit = (expiresInSecs: number | null) => {
+  const handleGlobalSelectAll = () => {
+    if (!availability.data) return;
+    setSelectionsByLeagueId(current => {
+      const next = { ...current };
+      for (const league of eligibleLeagues) {
+        const existing = next[league.league_id] ?? createLeagueSelection(league);
+        next[league.league_id] = {
+          ...existing,
+          selected: true,
+          counterparties: Object.fromEntries(
+            Object.entries(existing.counterparties).map(
+              ([id, c]) => [id, { ...c, selected: true }],
+            ),
+          ),
+        };
+      }
+      return next;
+    });
+  };
+
+  const handleGlobalSelectNone = () => {
+    if (!availability.data) return;
+    setSelectionsByLeagueId(current => {
+      const next = { ...current };
+      for (const league of eligibleLeagues) {
+        const existing = next[league.league_id] ?? createLeagueSelection(league);
+        next[league.league_id] = {
+          ...existing,
+          selected: false,
+          counterparties: Object.fromEntries(
+            Object.entries(existing.counterparties).map(
+              ([id, c]) => [id, { ...c, selected: false }],
+            ),
+          ),
+        };
+      }
+      return next;
+    });
+  };
+
+
+  const handleSubmit = (
+    expiresInSecs: number | null,
+    sendDm: boolean,
+  ) => {
     if (offers.length === 0) {
       return;
     }
@@ -497,6 +550,7 @@ export const BulkOffersTab = ({
       offers: offers.map(offer => ({
         ...offer,
         expires_at: expiresAt,
+        send_dm: sendDm,
       })),
     });
   };
@@ -853,26 +907,30 @@ export const BulkOffersTab = ({
           ? (
             <>
               <div className="bulk-trade-list-header">
-                <div>
+                <div className="bulk-trade-list-header-left">
                   <strong>
-                    {selectedCount}
-                    /
-                    {eligibleCount}
-                    {' '}
-                    eligible leagues selected
+                    {eligibleCount} eligible league{eligibleCount === 1 ? '' : 's'}
                   </strong>
 
-                  <span>
-                    Send {[
-                      ...sendPlayers.map(player => player.name),
-                      ...sendPicks.map(pick => `${pick.season} R${pick.round}`),
-                    ].join(', ')}
-                    {' for '}
-                    {[
-                      ...receivePlayers.map(player => player.name),
-                      ...receivePicks.map(pick => `${pick.season} R${pick.round}`),
-                    ].join(', ')}
-                  </span>
+                  <div className="bulk-trade-global-actions">
+                    <button
+                      className="bulk-trade-select-all"
+                      type="button"
+                      disabled={allSelected || eligibleCount === 0}
+                      onClick={handleGlobalSelectAll}
+                    >
+                      Select all
+                    </button>
+
+                    <button
+                      className="bulk-trade-select-none"
+                      type="button"
+                      disabled={selectedCount === 0}
+                      onClick={handleGlobalSelectNone}
+                    >
+                      Select none
+                    </button>
+                  </div>
                 </div>
 
                 <button

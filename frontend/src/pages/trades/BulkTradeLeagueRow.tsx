@@ -1,7 +1,3 @@
-import {
-  CheckSquare,
-  Square,
-} from 'lucide-react';
 
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import type {
@@ -138,11 +134,6 @@ export const BulkTradeLeagueRow = ({
     rosterId => selection.counterparties[rosterId]?.selected,
   ).length;
 
-  const allSelected =
-    counterpartyIds.length > 0
-    && counterpartyIds.every(
-      rosterId => selection.counterparties[rosterId]?.selected,
-    );
 
   const toggleLeague = (checked: boolean) => {
     onChange({
@@ -154,38 +145,6 @@ export const BulkTradeLeagueRow = ({
           {
             ...selection.counterparties[rosterId],
             selected: checked,
-          },
-        ]),
-      ),
-    });
-  };
-
-  const selectAll = () => {
-    onChange({
-      ...selection,
-      selected: true,
-      counterparties: Object.fromEntries(
-        counterpartyIds.map(rosterId => [
-          rosterId,
-          {
-            ...selection.counterparties[rosterId],
-            selected: true,
-          },
-        ]),
-      ),
-    });
-  };
-
-  const selectNone = () => {
-    onChange({
-      ...selection,
-      selected: false,
-      counterparties: Object.fromEntries(
-        counterpartyIds.map(rosterId => [
-          rosterId,
-          {
-            ...selection.counterparties[rosterId],
-            selected: false,
           },
         ]),
       ),
@@ -234,28 +193,6 @@ export const BulkTradeLeagueRow = ({
             </span>
           </div>
         </label>
-
-        <div className="bulk-trade-league-actions">
-          <button
-            className="bulk-trade-select-all"
-            type="button"
-            disabled={allSelected}
-            onClick={selectAll}
-          >
-            <CheckSquare size={14} />
-            Select all
-          </button>
-
-          <button
-            className="bulk-trade-select-none"
-            type="button"
-            disabled={selectedCount === 0}
-            onClick={selectNone}
-          >
-            <Square size={14} />
-            Select none
-          </button>
-        </div>
       </div>
 
       <div className="bulk-trade-counterparty-list">

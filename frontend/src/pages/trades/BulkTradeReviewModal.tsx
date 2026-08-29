@@ -48,7 +48,7 @@ interface BulkTradeReviewModalProps {
   error: Error | null;
 
   onClose: () => void;
-  onSubmit: (expiresInSecs: number | null) => void;
+  onSubmit: (expiresInSecs: number | null, sendDm: boolean) => void;
 }
 
 
@@ -87,6 +87,7 @@ export const BulkTradeReviewModal = ({
   onSubmit,
 }: BulkTradeReviewModalProps) => {
   const [expiresInSecs, setExpiresInSecs] = useState<number | null>(172_800);
+  const [sendDm, setSendDm] = useState(true);
 
   const hasResults = results.length > 0;
 
@@ -296,6 +297,21 @@ export const BulkTradeReviewModal = ({
             : null
         }
 
+        {
+          !hasResults
+            ? (
+              <label className="advisor-dm-toggle bulk-trade-dm-toggle">
+                <input
+                  type="checkbox"
+                  checked={sendDm}
+                  onChange={event => setSendDm(event.target.checked)}
+                />
+                <span>DM each manager this trade on Sleeper</span>
+              </label>
+            )
+            : null
+        }
+
         <div className="bulk-trade-review-actions">
           <button
             className="button-secondary"
@@ -314,7 +330,7 @@ export const BulkTradeReviewModal = ({
               ? (
                 <button
                   className="button-secondary bulk-trade-submit-button"
-                  onClick={() => onSubmit(expiresInSecs)}
+                  onClick={() => onSubmit(expiresInSecs, sendDm)}
                   disabled={
                     submitting
                     || offers.length === 0
