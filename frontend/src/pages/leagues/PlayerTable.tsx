@@ -170,128 +170,149 @@ export function PlayerTable({
   );
 
   return (
-    <table className="player-table">
-      <thead>
-        <tr>
-          <th className="player-table-slot-col">Slot</th>
-          <th className="player-table-name-col">Name</th>
-          <th className="player-table-pos-col">Pos</th>
-          <th className="player-table-team-col">Team</th>
-          <th className="player-table-num-col" title="Projected Points">Proj</th>
-          <th className="player-table-ud-col" title="Underdog Position Rank">UD</th>
-          <th className="player-table-num-col" title={valueMeta.tooltip}>{valueMeta.label}</th>
-          {redraftMeta ? (
-            <th className="player-table-num-col" title={redraftMeta.tooltip}>
-              {redraftMeta.label}
-            </th>
-          ) : null}
-        </tr>
-      </thead>
+    <div className="player-table-scroll">
+      <table className="player-table">
+        <thead>
+          <tr>
+            <th className="player-table-slot-col">Slot</th>
+            <th className="player-table-name-col">Name</th>
+            <th className="player-table-pos-col">Pos</th>
+            <th className="player-table-team-col">Team</th>
+            <th className="player-table-num-col" title="Projected Points">Proj</th>
+            <th className="player-table-ud-col" title="Underdog Position Rank">UD</th>
+            <th className="player-table-num-col" title={valueMeta.tooltip}>{valueMeta.label}</th>
+            {redraftMeta ? (
+              <th className="player-table-num-col" title={redraftMeta.tooltip}>
+                {redraftMeta.label}
+              </th>
+            ) : null}
+          </tr>
+        </thead>
 
-      <tbody>
-        {players.map((player, index) => (
-          <Fragment key={player.player_id}>
-            {index === firstBenchIndex
-              && firstBenchIndex > 0
-              && (emptyStarterSlots ?? []).length > 0
-              && (emptyStarterSlots ?? []).map((slot) => (
-                <tr
-                  key={`empty-${slot}`}
-                  className="player-table-row-empty"
-                >
-                  <td className="player-table-slot-cell">
-                    <SlotDisplay slot={slot} empty />
-                  </td>
-                  <td colSpan={redraftMeta ? 7 : 6} className="player-table-empty-label">
-                    Empty starter slot
+        <tbody>
+          {players.map((player, index) => (
+            <Fragment key={player.player_id}>
+              {index === firstBenchIndex
+                && firstBenchIndex > 0
+                && (emptyStarterSlots ?? []).length > 0
+                && (emptyStarterSlots ?? []).map((slot) => (
+                  <tr
+                    key={`empty-${slot}`}
+                    className="player-table-row-empty"
+                  >
+                    <td className="player-table-slot-cell">
+                      <SlotDisplay slot={slot} empty />
+                    </td>
+                    <td
+                      colSpan={redraftMeta ? 7 : 6}
+                      className="player-table-empty-label"
+                    >
+                      Empty Starter Slot
+                    </td>
+                  </tr>
+                ))}
+
+              {index === firstBenchIndex ? (
+                <tr className="player-table-divider">
+                  <td colSpan={redraftMeta ? 8 : 7}>
+                    <div className="player-table-divider-inner">
+                      <span>Bench</span>
+                    </div>
                   </td>
                 </tr>
-              ))}
-            {index === firstBenchIndex && firstBenchIndex > 0 && (
-              <tr className="player-table-divider">
-                <td colSpan={redraftMeta ? 8 : 7}>
-                  <div className="player-table-divider-inner">
-                    <span>Bench</span>
+              ) : null}
+
+              <tr
+                className={
+                  player.is_starter
+                    ? 'player-table-row-starter'
+                    : 'player-table-row-bench'
+                }
+              >
+                <td className="player-table-slot-cell">
+                  <SlotDisplay
+                    slot={player.slot ?? (player.is_starter ? 'STARTER' : 'BN')}
+                  />
+                </td>
+
+                <td className="player-table-name-cell">
+                  <div className="player-with-avatar">
+                    <PlayerAvatar
+                      avatarId={player.player_id}
+                      position={player.position}
+                      size="sm"
+                    />
+                    <span className="player-table-name">
+                      {player.name}
+                    </span>
                   </div>
                 </td>
-              </tr>
-            )}
-            <tr
-              className={
-                player.is_starter
-                  ? 'player-table-row-starter'
-                  : 'player-table-row-bench'
-              }
-            >
-              <td className="player-table-slot-cell">
-                <SlotDisplay slot={player.slot} />
-              </td>
-              <td className="player-table-name-cell">
-                <div className="player-with-avatar">
-                  <PlayerAvatar
-                    playerId={player.player_id}
-                    name={player.name}
-                    size="sm"
-                  />
 
-                  <span className="player-table-name">
-                    {player.name}
-                  </span>
-                </div>
-              </td>
-              <td
-                className="player-table-position-cell"
-                style={{
-                  color: getPositionColor(player.position),
-                }}
-              >
-                {player.position ?? '-'}
-              </td>
-              <td className="player-table-team-cell">{player.team ?? '-'}</td>
-              <td className="player-table-num-cell">{formatNumber(player.projected_points)}</td>
-              <td className="player-table-ud-cell">{player.underdog_position_rank ?? '-'}</td>
-              <td className="player-table-num-cell">
-                {
-                  formatNumber(
-                    getLeaguePlayerSelectedValue(
-                      player,
-                      valueBasis,
-                      warValueSettings,
-                    ),
-                    (
-                      valueBasis === 'ktc'
-                      || valueBasis === 'fantasycalc'
-                      || valueBasis === 'adp'
-                    )
-                      ? 0
-                      : 2,
-                  )
-                }
-              </td>
-              {redraftMeta ? (
+                <td
+                  className="player-table-position-cell"
+                  style={{
+                    color: getPositionColor(player.position),
+                  }}
+                >
+                  {player.position}
+                </td>
+
+                <td className="player-table-team-cell">
+                  {player.team ?? 'FA'}
+                </td>
+
+                <td className="player-table-num-cell">
+                  {formatNumber(player.projected_points)}
+                </td>
+
+                <td className="player-table-ud-cell">
+                  {player.underdog_position_rank ? `${player.position}${player.underdog_position_rank}` : '—'}
+                </td>
+
                 <td className="player-table-num-cell">
                   {
                     formatNumber(
                       getLeaguePlayerSelectedValue(
                         player,
-                        redraftValueBasis as ValueBasis,
+                        valueBasis,
                         warValueSettings,
                       ),
                       (
-                        redraftValueBasis === 'ktc'
-                        || redraftValueBasis === 'fantasycalc'
-                        || redraftValueBasis === 'adp'
+                        valueBasis === 'ktc'
+                        || valueBasis === 'fantasycalc'
+                        || valueBasis === 'adp'
                       )
                         ? 0
                         : 2,
                     )
                   }
                 </td>
-              ) : null}
-            </tr>
-          </Fragment>
-        ))}
-      </tbody>
-    </table>
+
+                {redraftMeta ? (
+                  <td className="player-table-num-cell">
+                    {
+                      formatNumber(
+                        getLeaguePlayerSelectedValue(
+                          player,
+                          redraftValueBasis ?? 'ktc',
+                          warValueSettings,
+                        ),
+                        (
+                          redraftValueBasis === 'ktc'
+                          || redraftValueBasis === 'fantasycalc'
+                          || redraftValueBasis === 'adp'
+                        )
+                          ? 0
+                          : 2,
+                      )
+                    }
+                  </td>
+                ) : null}
+              </tr>
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
