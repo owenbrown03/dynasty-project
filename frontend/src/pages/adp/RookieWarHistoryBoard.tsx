@@ -2,7 +2,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { LayoutGrid, List, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { useRookieWarHistory } from '@/hooks/useRookieWarHistory';
@@ -11,51 +11,6 @@ import type { RookieWarHistoryRow } from '@/types';
 import { formatNumber } from '@/utils/format';
 
 import './RookieWarHistoryBoard.css';
-
-type ViewMode = 'board' | 'list';
-
-type SortColumn =
-  | 'draft_year'
-  | 'round'
-  | 'round_slot'
-  | 'player_id'
-  | 'roster_war'
-  | 'starter_war';
-
-type SortDirection =
-  | 'asc'
-  | 'desc';
-
-const SORT_LABELS: Record<SortColumn, string> = {
-  draft_year: 'Draft Year',
-  round: 'Rd',
-  round_slot: 'Pick',
-  player_id: 'Player',
-  starter_war: 'Starter WAR',
-  roster_war: 'Roster WAR',
-};
-
-function compareRows(
-  left: RookieWarHistoryRow,
-  right: RookieWarHistoryRow,
-  column: SortColumn,
-) {
-  switch (column) {
-    case 'draft_year':
-      return left.draft_year - right.draft_year;
-    case 'round':
-      return left.round - right.round;
-    case 'round_slot':
-      return left.round_slot - right.round_slot;
-    case 'starter_war':
-      return (left.starter_war ?? 0) - (right.starter_war ?? 0);
-    case 'roster_war':
-      return (left.roster_war ?? 0) - (right.roster_war ?? 0);
-    case 'player_id':
-    default:
-      return left.name.localeCompare(right.name);
-  }
-}
 
 interface PickSlotSummary {
   round: number;
@@ -113,14 +68,10 @@ function HistoryTableSkeleton({
 export function RookieWarHistoryBoard() {
   const leagueOverview = useLeagueOverview();
   const [leagueId, setLeagueId] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('board');
   const [selectedRound, setSelectedRound] = useState<number | 'all'>('all');
-  const [metric, setMetric] = useState<'starter_war' | 'roster_war'>('starter_war');
+  const [metric, setMetric] = useState<'starter_war' | 'roster_war'>('roster_war');
   const [scope, setScope] = useState<'career' | 'per_year'>('career');
-  const [sort, setSort] = useState<{ column: SortColumn; direction: SortDirection }>({
-    column: 'draft_year',
-    direction: 'asc',
-  });
+
   const history = useRookieWarHistory(
     leagueId || undefined,
     true,
@@ -233,43 +184,8 @@ export function RookieWarHistoryBoard() {
     return summaries;
   }, [rows, years, selectedRound, metric, scope]);
 
-  const sortedRows = useMemo(() => {
-    const next = [...rows];
-    next.sort((left, right) => {
-      const value = compareRows(left, right, sort.column);
-      if (value !== 0) {
-        return sort.direction === 'asc' ? value : -value;
-      }
-      return left.draft_year - right.draft_year;
-    });
-    return next;
-  }, [rows, sort]);
-
-  const toggleSort = (column: SortColumn) => {
-    setSort((current) => (
-      current.column === column
-        ? { column, direction: current.direction === 'asc' ? 'desc' : 'asc' }
-        : { column, direction: 'asc' }
-    ));
-  };
-
   const isLoading = history.isLoading;
   const isFetching = history.isFetching;
-
-  const renderWarCell = (value: number | null) => {
-    if (!hasWar) {
-      return <span className="rkwh-cell-empty">—</span>;
-    }
-    if (value == null) {
-      return <span className="rkwh-cell-empty">—</span>;
-    }
-    const tone = value > 0 ? 'positive' : (value < 0 ? 'negative' : 'neutral');
-    return (
-      <span className={`rkwh-war rkwh-war--${tone}`}>
-        {formatNumber(value)}
-      </span>
-    );
-  };
 
   return (
     <div className="rkwh-page">
@@ -293,17 +209,6 @@ export function RookieWarHistoryBoard() {
           </select>
         </label>
 
-        <div className="rkwh-toolbar-meta">
-          <span className="rkwh-meta-label">Context</span>
-          <strong>
-            {
-              selectedLeagueName
-                ? `${selectedLeagueName} (Custom)`
-                : 'Consensus Superflex PPR (May ADP)'
-            }
-          </strong>
-        </div>
-
         {hasWar ? (
           <>
             <div className="rkwh-toolbar-meta">
@@ -311,17 +216,17 @@ export function RookieWarHistoryBoard() {
               <div className="rkwh-pill-group">
                 <button
                   type="button"
-                  className={`rkwh-filter-pill ${metric === 'starter_war' ? 'rkwh-filter-pill--active' : ''}`}
-                  onClick={() => setMetric('starter_war')}
-                >
-                  Starter WAR
-                </button>
-                <button
-                  type="button"
                   className={`rkwh-filter-pill ${metric === 'roster_war' ? 'rkwh-filter-pill--active' : ''}`}
                   onClick={() => setMetric('roster_war')}
                 >
                   Roster WAR
+                </button>
+                <button
+                  type="button"
+                  className={`rkwh-filter-pill ${metric === 'starter_war' ? 'rkwh-filter-pill--active' : ''}`}
+                  onClick={() => setMetric('starter_war')}
+                >
+                  Starter WAR
                 </button>
               </div>
             </div>
@@ -371,32 +276,13 @@ export function RookieWarHistoryBoard() {
             ))}
           </div>
         </div>
-
-        <div className="rkwh-view-mode-toggle" role="group" aria-label="View mode">
-          <button
-            type="button"
-            className={`rkwh-toggle-btn ${viewMode === 'board' ? 'rkwh-toggle-btn--active' : ''}`}
-            onClick={() => setViewMode('board')}
-          >
-            <LayoutGrid size={14} />
-            Board
-          </button>
-          <button
-            type="button"
-            className={`rkwh-toggle-btn ${viewMode === 'list' ? 'rkwh-toggle-btn--active' : ''}`}
-            onClick={() => setViewMode('list')}
-          >
-            <List size={14} />
-            List
-          </button>
-        </div>
       </section>
 
       {
         !hasWar && !isLoading ? (
           <div className="rkwh-hint">
             This board shows historical consensus rookie draft selections.
-            Select a league above to compute each player's career <strong>starter</strong> and <strong>roster</strong>{' '}
+            Select a league above to compute each player's career <strong>roster</strong> and <strong>starter</strong>{' '}
             WAR under that league's custom scoring settings.
           </div>
         ) : null
@@ -421,166 +307,112 @@ export function RookieWarHistoryBoard() {
                   <strong>Rookie Pick WAR History Board</strong>
                   <small>
                     {hasWar
-                      ? `${scope === 'per_year' ? 'Annualized WAR / Year' : 'Career Total WAR'} (${metric === 'starter_war' ? 'Starter' : 'Roster'}) under ${selectedLeagueName ?? 'selected league'}`
+                      ? `${scope === 'per_year' ? 'Annualized WAR / Year' : 'Career Total WAR'} (${metric === 'roster_war' ? 'Roster' : 'Starter'}) under ${selectedLeagueName ?? 'Consensus Superflex PPR'}`
                       : 'Consensus draft selections across historical rookie classes'}
                   </small>
                 </div>
               </div>
 
-              {viewMode === 'board' ? (
-                <div className="rkwh-table-scroll">
-                  <table className="rkwh-table rkwh-board-matrix">
-                    <thead>
-                      <tr className="rkwh-head-row">
-                        <th className="rkwh-freeze-col rkwh-col-pick">Pick</th>
+              <div className="rkwh-table-scroll">
+                <table className="rkwh-table rkwh-board-matrix">
+                  <thead>
+                    <tr className="rkwh-head-row">
+                      <th className="rkwh-freeze-col rkwh-col-pick">Pick</th>
+                      {hasWar ? (
+                        <>
+                          <th className="rkwh-freeze-col rkwh-col-avg">Avg</th>
+                          <th className="rkwh-freeze-col rkwh-col-med">Med</th>
+                          <th className="rkwh-freeze-col rkwh-col-hit">Hit</th>
+                          <th className="rkwh-freeze-col rkwh-col-bust">Bust</th>
+                        </>
+                      ) : null}
+                      {years.map((year) => (
+                        <React.Fragment key={year}>
+                          <th className="rkwh-th-year-player">{year}</th>
+                          {hasWar ? <th className="rkwh-th-year-war">{scope === 'per_year' ? 'WAR/yr' : 'WAR'}</th> : null}
+                        </React.Fragment>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pickSlotSummaries.map((summary) => (
+                      <tr key={summary.pickLabel} className="rkwh-matrix-row">
+                        <td className="rkwh-freeze-col rkwh-col-pick rkwh-pick-label">
+                          {summary.pickLabel}
+                        </td>
                         {hasWar ? (
                           <>
-                            <th className="rkwh-freeze-col rkwh-col-avg">Avg</th>
-                            <th className="rkwh-freeze-col rkwh-col-med">Med</th>
-                            <th className="rkwh-freeze-col rkwh-col-hit">Hit</th>
-                            <th className="rkwh-freeze-col rkwh-col-bust">Bust</th>
+                            <td className="rkwh-freeze-col rkwh-col-avg rkwh-stat-num">
+                              {summary.avgWar != null ? formatNumber(summary.avgWar) : '—'}
+                            </td>
+                            <td className="rkwh-freeze-col rkwh-col-med rkwh-stat-num">
+                              {summary.medWar != null ? formatNumber(summary.medWar) : '—'}
+                            </td>
+                            <td className="rkwh-freeze-col rkwh-col-hit rkwh-stat-num">
+                              {summary.hitRate != null ? (
+                                <span className={`rkwh-rate-tag ${summary.hitRate >= 50 ? 'rkwh-rate-tag--high' : ''}`}>
+                                  {Math.round(summary.hitRate)}%
+                                </span>
+                              ) : '—'}
+                            </td>
+                            <td className="rkwh-freeze-col rkwh-col-bust rkwh-stat-num">
+                              {summary.bustRate != null ? (
+                                <span className={`rkwh-rate-tag ${summary.bustRate >= 50 ? 'rkwh-rate-tag--bust' : ''}`}>
+                                  {Math.round(summary.bustRate)}%
+                                </span>
+                              ) : '—'}
+                            </td>
                           </>
                         ) : null}
-                        {years.map((year) => (
-                          <React.Fragment key={year}>
-                            <th className="rkwh-th-year-player">{year}</th>
-                            {hasWar ? <th className="rkwh-th-year-war">{scope === 'per_year' ? 'WAR/yr' : 'WAR'}</th> : null}
-                          </React.Fragment>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pickSlotSummaries.map((summary) => (
-                        <tr key={summary.pickLabel}>
-                          <td className="rkwh-freeze-col rkwh-col-pick rkwh-pick-label">
-                            {summary.pickLabel}
-                          </td>
-                          {hasWar ? (
-                            <>
-                              <td className="rkwh-freeze-col rkwh-col-avg rkwh-stat-num">
-                                {summary.avgWar != null ? formatNumber(summary.avgWar) : '—'}
-                              </td>
-                              <td className="rkwh-freeze-col rkwh-col-med rkwh-stat-num">
-                                {summary.medWar != null ? formatNumber(summary.medWar) : '—'}
-                              </td>
-                              <td className="rkwh-freeze-col rkwh-col-hit rkwh-stat-num">
-                                {summary.hitRate != null ? (
-                                  <span className={`rkwh-rate-pill ${summary.hitRate >= 60 ? 'rkwh-rate-pill--good' : ''}`}>
-                                    {Math.round(summary.hitRate)}%
-                                  </span>
-                                ) : '—'}
-                              </td>
-                              <td className="rkwh-freeze-col rkwh-col-bust rkwh-stat-num">
-                                {summary.bustRate != null ? (
-                                  <span className={`rkwh-rate-pill ${summary.bustRate >= 50 ? 'rkwh-rate-pill--bad' : ''}`}>
-                                    {Math.round(summary.bustRate)}%
-                                  </span>
-                                ) : '—'}
-                              </td>
-                            </>
-                          ) : null}
-                          {years.map((year) => {
-                            const p = summary.byYear[year];
-                            if (!p) {
-                              return (
-                                <React.Fragment key={year}>
-                                  <td className="rkwh-matrix-cell rkwh-matrix-cell--empty" colSpan={hasWar ? 2 : 1}>
-                                    —
-                                  </td>
-                                </React.Fragment>
-                              );
-                            }
-                            const pos = p.position ?? '??';
-                            const rawWar = metric === 'starter_war' ? p.starter_war : p.roster_war;
-                            const yearsInLeague = Math.max(0, currentSeason - year + 1);
-                            const warVal = rawWar != null && scope === 'per_year' && yearsInLeague > 0
-                              ? rawWar / yearsInLeague
-                              : rawWar;
-                            const hitThresh = scope === 'per_year' ? 0.9 : 2.5;
-                            const bustThresh = scope === 'per_year' ? 0.3 : 0.8;
 
+                        {years.map((year) => {
+                          const p = summary.byYear[year];
+                          if (!p) {
                             return (
                               <React.Fragment key={year}>
-                                <td className="rkwh-matrix-cell rkwh-player-box-cell">
-                                  <div className="rkwh-player-box">
-                                    <span className={`rkwh-pos-tag rkwh-pos-tag--${pos.toLowerCase()}`}>
-                                      {pos}
-                                    </span>
-                                    <span className="rkwh-player-name-text" title={p.name}>
-                                      {p.name}
-                                    </span>
-                                  </div>
-                                </td>
-                                {hasWar ? (
-                                  <td className="rkwh-matrix-cell rkwh-war-val-cell">
-                                    {warVal != null ? (
-                                      <span className={`rkwh-war-score ${warVal >= hitThresh ? 'rkwh-war-score--hit' : (warVal <= bustThresh ? 'rkwh-war-score--bust' : '')}`}>
-                                        {formatNumber(warVal)}
-                                      </span>
-                                    ) : '—'}
-                                  </td>
-                                ) : null}
+                                <td className="rkwh-matrix-cell rkwh-player-box-cell">—</td>
+                                {hasWar ? <td className="rkwh-matrix-cell rkwh-war-val-cell">—</td> : null}
                               </React.Fragment>
                             );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="rkwh-table-scroll">
-                  <table className="rkwh-table">
-                    <thead>
-                      <tr>
-                        {(Object.keys(SORT_LABELS) as SortColumn[]).map((column) => (
-                          <th
-                            key={column}
-                            className={column === 'player_id' ? 'rkwh-th-left' : ''}
-                          >
-                            <button
-                              type="button"
-                              className="rkwh-th-button"
-                              onClick={() => toggleSort(column)}
-                            >
-                              {SORT_LABELS[column]}
-                              {sort.column === column && (
-                                <span className="rkwh-sort-arrow">
-                                  {sort.direction === 'asc' ? ' ↑' : ' ↓'}
-                                </span>
-                              )}
-                            </button>
-                          </th>
-                        ))}
+                          }
+                          const pos = p.position ?? '??';
+                          const rawWar = metric === 'starter_war' ? p.starter_war : p.roster_war;
+                          const yearsInLeague = Math.max(0, currentSeason - year + 1);
+                          const warVal = rawWar != null && scope === 'per_year' && yearsInLeague > 0
+                            ? rawWar / yearsInLeague
+                            : rawWar;
+                          const hitThresh = scope === 'per_year' ? 0.9 : 2.5;
+                          const bustThresh = scope === 'per_year' ? 0.3 : 0.8;
+
+                          return (
+                            <React.Fragment key={year}>
+                              <td className="rkwh-matrix-cell rkwh-player-box-cell">
+                                <div className="rkwh-player-box">
+                                  <span className={`rkwh-pos-tag rkwh-pos-tag--${pos.toLowerCase()}`}>
+                                    {pos}
+                                  </span>
+                                  <span className="rkwh-player-name-text" title={p.name}>
+                                    {p.name}
+                                  </span>
+                                </div>
+                              </td>
+                              {hasWar ? (
+                                <td className="rkwh-matrix-cell rkwh-war-val-cell">
+                                  {warVal != null ? (
+                                    <span className={`rkwh-war-score ${warVal >= hitThresh ? 'rkwh-war-score--hit' : (warVal <= bustThresh ? 'rkwh-war-score--bust' : '')}`}>
+                                      {formatNumber(warVal)}
+                                    </span>
+                                  ) : '—'}
+                                </td>
+                              ) : null}
+                            </React.Fragment>
+                          );
+                        })}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {sortedRows.map((row) => (
-                        <tr key={`${row.draft_year}-${row.round}-${row.round_slot}-${row.player_id}`}>
-                          <td className="rkwh-center">{row.draft_year}</td>
-                          <td className="rkwh-center">{row.round}</td>
-                          <td className="rkwh-center">
-                            {row.round}.{row.round_slot.toString().padStart(2, '0')}
-                          </td>
-                          <td className="rkwh-player-cell">
-                            <span
-                              className={`rkwh-pos-tag rkwh-pos-tag--${(row.position ?? '??').toLowerCase()}`}
-                            >
-                              {row.position ?? '??'}
-                            </span>
-                            <span className="rkwh-player-name-text">{row.name}</span>
-                            {row.team && (
-                              <span className="rkwh-player-team">({row.team})</span>
-                            )}
-                          </td>
-                          <td className="rkwh-right">{renderWarCell(row.starter_war)}</td>
-                          <td className="rkwh-right">{renderWarCell(row.roster_war)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )
       }
