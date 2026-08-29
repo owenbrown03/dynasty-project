@@ -69,6 +69,22 @@ class RedisClient:
         except RedisError as exc:
             logger.warning("Redis delete_prefix error for prefix %s: %s", prefix, exc)
 
+    async def delete_pattern(
+        self,
+        pattern: str,
+    ) -> None:
+        try:
+            keys: list[str] = []
+            async for key in self.redis.scan_iter(
+                match=pattern,
+            ):
+                keys.append(key)
+
+            if keys:
+                await self.redis.delete(*keys)
+        except RedisError as exc:
+            logger.warning("Redis delete_pattern error for pattern %s: %s", pattern, exc)
+
     async def incr_with_ttl(
         self,
         key: str,

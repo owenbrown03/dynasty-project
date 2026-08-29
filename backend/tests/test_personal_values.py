@@ -94,3 +94,27 @@ def test_validate_projection_update_rejects_empty_future_outcomes():
 
     assert exc.value.status_code == 400
     assert exc.value.detail == "2027 must have at least one projection outcome."
+
+
+def test_invalidate_user_personal_values_caches_clears_expected_patterns():
+    import asyncio
+    from uuid import uuid4
+    from app.services.personal_values import invalidate_user_personal_values_caches
+
+    deleted_patterns = []
+
+    class FakeRedis:
+        async def delete_pattern(self, pattern: str):
+            deleted_patterns.append(pattern)
+
+    user_id = uuid4()
+    redis = FakeRedis()
+
+    asyncio.run(invalidate_user_personal_values_caches(redis, user_id))
+
+    user_str = str(user_id)
+    assert f"personal-value-hydration:*:{user_str}:*" in deleted_patterns
+    assert f"personal-value-hydration:{user_str}:*" in deleted_patterns
+    assert f"league-details:*{user_str}*" in deleted_patterns
+    assert f"dashboard:*{user_str}*" in deleted_patterns
+

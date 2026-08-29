@@ -226,6 +226,29 @@ def _build_personal_value_hydration_cache_key(
     )
 
 
+async def invalidate_user_personal_values_caches(
+    redis: RedisClient | None,
+    site_user_id,
+) -> None:
+    if redis is None or site_user_id is None:
+        return
+    user_str = str(site_user_id)
+    try:
+        # 1. Clear personal value hydration caches for this user
+        await redis.delete_pattern(f"personal-value-hydration:*:{user_str}:*")
+        await redis.delete_pattern(f"personal-value-hydration:{user_str}:*")
+        # 2. Clear league details caches for this user
+        await redis.delete_pattern(f"league-details:*{user_str}*")
+        # 3. Clear dashboard caches for this user
+        await redis.delete_pattern(f"dashboard:*{user_str}*")
+    except Exception as exc:
+        logger.warning(
+            "Failed to invalidate personal values caches for user %s: %s",
+            user_str,
+            exc,
+        )
+
+
 def _parse_position_rank(
     position: str,
     underdog_position_rank: str | None,
@@ -1450,6 +1473,11 @@ async def save_personal_value_detail(
             outcomes=submitted_outcomes,
         )
 
+    await invalidate_user_personal_values_caches(
+        ctx.redis,
+        ctx.site_user.id if ctx.site_user else None,
+    )
+
     return await get_personal_value_detail(
         ctx=ctx,
         league_id=league_id,
@@ -1812,6 +1840,11 @@ async def set_personal_value_rankings(
                 )
                 updated += 1
 
+    await invalidate_user_personal_values_caches(
+        ctx.redis,
+        ctx.site_user.id if ctx.site_user else None,
+    )
+
     return PersonalValueRankingsUpdateResponse(updated=updated)
 
 
@@ -1867,6 +1900,11 @@ async def reset_personal_value_rankings(
             for projection in saved
             if projection.id is not None
         ],
+    )
+
+    await invalidate_user_personal_values_caches(
+        ctx.redis,
+        ctx.site_user.id if ctx.site_user else None,
     )
 
     return PersonalValueRankingsResetResponse(
@@ -1962,5 +2000,10 @@ async def sync_underdog_defaults(
             )
 
         synced += 1
+
+    await invalidate_user_personal_values_caches(
+        ctx.redis,
+        ctx.site_user.id if ctx.site_user else None,
+    )
 
     return PersonalValueRankingsResetResponse(reset_players=synced)

@@ -113,6 +113,48 @@ export function usePersonalValueDetail(
 }
 
 
+async function invalidatePersonalValuesDependentQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  leagueId?: string,
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.leagues.detailsRoot,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.leagues.overviewRoot,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.leagues.dashboardRoot,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.players.personalDetailRoot,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: ['personal-values-rankings'],
+    }),
+    queryClient.invalidateQueries({
+      queryKey: ['rosters'],
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.waivers.rosterPlayersRoot,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.waivers.overviewRoot,
+    }),
+    leagueId
+      ? queryClient.invalidateQueries({
+          queryKey: [
+            ...queryKeys.players.personalDetailRoot,
+            'pool',
+            leagueId,
+          ],
+        })
+      : Promise.resolve(),
+  ]);
+}
+
+
 export function useSavePersonalValueDetail() {
   const queryClient = useQueryClient();
 
@@ -150,18 +192,10 @@ export function useSavePersonalValueDetail() {
         data,
       );
 
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.players.personalDetailRoot,
-        }),
-        queryClient.invalidateQueries({
-          queryKey: [
-            ...queryKeys.players.personalDetailRoot,
-            'pool',
-            variables.leagueId,
-          ],
-        }),
-      ]);
+      await invalidatePersonalValuesDependentQueries(
+        queryClient,
+        variables.leagueId,
+      );
     },
   });
 
@@ -218,10 +252,11 @@ export function useSavePersonalValueRankings() {
       );
       return response.data;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ['personal-values-rankings'],
-      });
+    onSuccess: async (_data, variables) => {
+      await invalidatePersonalValuesDependentQueries(
+        queryClient,
+        variables.league_id,
+      );
     },
   });
 
@@ -245,15 +280,11 @@ export function useResetPersonalValueRankings() {
       );
       return response.data as PersonalValueRankingsResetResponse;
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ['personal-values-rankings'],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.players.personalDetailRoot,
-        }),
-      ]);
+    onSuccess: async (_data, variables) => {
+      await invalidatePersonalValuesDependentQueries(
+        queryClient,
+        variables.league_id,
+      );
     },
   });
 
@@ -276,10 +307,11 @@ export function useSyncUnderdogDefaults() {
       );
       return response.data;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ['personal-values-rankings'],
-      });
+    onSuccess: async (_data, variables) => {
+      await invalidatePersonalValuesDependentQueries(
+        queryClient,
+        variables.league_id,
+      );
     },
   });
 
