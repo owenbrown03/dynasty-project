@@ -71,6 +71,13 @@ export const queryKeys = {
       cheap = false,
     ) =>
       ['league-dashboard', username ?? null, cheap] as const,
+    rookieWarHistory: (
+      leagueId: string | undefined,
+    ) =>
+      [
+        'rookie-war-history',
+        leagueId ?? null,
+      ] as const,
   },
 
   drafts: {

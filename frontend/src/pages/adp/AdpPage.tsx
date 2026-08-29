@@ -55,6 +55,7 @@ import {
 import { AdpFiltersPanel } from './AdpFiltersPanel';
 import { AdpResultsSection } from './AdpResultsSection';
 import { AdpSamplePanels } from './AdpSamplePanels';
+import { RookieWarHistoryBoard } from './RookieWarHistoryBoard';
 
 function AdpPageSkeleton() {
   return (
@@ -177,6 +178,9 @@ export const AdpPage = () => {
       searchParams.get('draft_kind') ?? DEFAULT_ADP_FILTERS.draft_kind,
     ),
   );
+  const [tab, setTab] = useState<'adp' | 'rookie-war'>(
+    () => searchParams.get('tab') === 'rookie-war' ? 'rookie-war' : 'adp',
+  );
   const deferredFilters = useDeferredValue(filters);
   const deferredPlayerSearch = useDeferredValue(playerSearch);
   const query = useAdp(deferredFilters);
@@ -230,6 +234,10 @@ export const AdpPage = () => {
         ? current
         : nextDraftOrderMode
     ));
+    setTab((current) => {
+      const nextTab = searchParams.get('tab') === 'rookie-war' ? 'rookie-war' : 'adp';
+      return current === nextTab ? current : nextTab;
+    });
   }, [searchParams]);
 
   useEffect(() => {
@@ -330,6 +338,9 @@ export const AdpPage = () => {
     if (draftOrderMode !== getDefaultDraftOrderMode(filters.draft_kind)) {
       next.set('draft_order', draftOrderMode);
     }
+    if (tab !== 'adp') {
+      next.set('tab', tab);
+    }
 
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true });
@@ -344,6 +355,7 @@ export const AdpPage = () => {
     sortDirection,
     viewMode,
     draftOrderMode,
+    tab,
   ]);
 
   const filteredPlayers = useMemo(() => filterCoreAdpPlayers(
@@ -745,57 +757,80 @@ export const AdpPage = () => {
         </div>
       </section>
 
-      <AdpFiltersPanel
-        filters={filters}
-        seasonOptions={seasonOptions}
-        draftKindOptions={draftKindOptions}
-        qbFormatOptions={qbFormatOptions}
-        tepOptions={tepOptions}
-        scoringOptions={scoringOptions}
-        teamCountOptions={teamCountOptions}
-        setFilters={setFilters}
-        onCopyBoardLink={copyBoardLink}
-        onResetBoardView={resetBoardView}
-        onApplyDateWindow={applyDateWindow}
-      />
+      <nav className="adp-tabs" aria-label="ADP views">
+        <button
+          type="button"
+          className={tab === 'adp' ? 'adp-tab adp-tab--active' : 'adp-tab'}
+          onClick={() => setTab('adp')}
+        >
+          ADP board
+        </button>
+        <button
+          type="button"
+          className={tab === 'rookie-war' ? 'adp-tab adp-tab--active' : 'adp-tab'}
+          onClick={() => setTab('rookie-war')}
+        >
+          Rookie WAR history
+        </button>
+      </nav>
 
-      {query.isLoading && !query.data ? (
-        <AdpPageSkeleton />
-      ) : (
+      {tab === 'adp' ? (
         <>
-          <AdpSamplePanels
-            sample={query.data?.sample}
-            sampleStrength={sampleStrength}
-            activeFilterPills={activeFilterPills}
-            corpusHealthCards={corpusHealthCards}
-            reportDistributionGroups={reportDistributionGroups}
-            sampleCompositionGroups={sampleCompositionGroups}
+          <AdpFiltersPanel
+            filters={filters}
+            seasonOptions={seasonOptions}
+            draftKindOptions={draftKindOptions}
+            qbFormatOptions={qbFormatOptions}
+            tepOptions={tepOptions}
+            scoringOptions={scoringOptions}
+            teamCountOptions={teamCountOptions}
+            setFilters={setFilters}
+            onCopyBoardLink={copyBoardLink}
+            onResetBoardView={resetBoardView}
+            onApplyDateWindow={applyDateWindow}
           />
 
-          <AdpResultsSection
-            dataSource={query.data?.sample.data_source}
-            generatedAt={query.data?.sample.generated_at}
-            playerSearch={playerSearch}
-            positionFilter={positionFilter}
-            positionOptions={positionOptions}
-            viewMode={viewMode}
-            draftOrderMode={draftOrderMode}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            boardPlayers={boardPlayers}
-            sortedPlayers={sortedPlayers}
-            totalPlayerCount={query.data?.players.length ?? 0}
-            boardSize={boardSize}
-            boardDisplayRows={boardDisplayRows}
-            onExportCsv={downloadCurrentBoardCsv}
-            onPlayerSearchChange={setPlayerSearch}
-            onPositionFilterChange={setPositionFilter}
-            onViewModeChange={setViewMode}
-            onDraftOrderModeChange={setDraftOrderMode}
-            onSortColumnChange={setSortColumn}
-            onSortDirectionChange={setSortDirection}
-          />
+          {query.isLoading && !query.data ? (
+            <AdpPageSkeleton />
+          ) : (
+            <>
+              <AdpSamplePanels
+                sample={query.data?.sample}
+                sampleStrength={sampleStrength}
+                activeFilterPills={activeFilterPills}
+                corpusHealthCards={corpusHealthCards}
+                reportDistributionGroups={reportDistributionGroups}
+                sampleCompositionGroups={sampleCompositionGroups}
+              />
+
+              <AdpResultsSection
+                dataSource={query.data?.sample.data_source}
+                generatedAt={query.data?.sample.generated_at}
+                playerSearch={playerSearch}
+                positionFilter={positionFilter}
+                positionOptions={positionOptions}
+                viewMode={viewMode}
+                draftOrderMode={draftOrderMode}
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                boardPlayers={boardPlayers}
+                sortedPlayers={sortedPlayers}
+                totalPlayerCount={query.data?.players.length ?? 0}
+                boardSize={boardSize}
+                boardDisplayRows={boardDisplayRows}
+                onExportCsv={downloadCurrentBoardCsv}
+                onPlayerSearchChange={setPlayerSearch}
+                onPositionFilterChange={setPositionFilter}
+                onViewModeChange={setViewMode}
+                onDraftOrderModeChange={setDraftOrderMode}
+                onSortColumnChange={setSortColumn}
+                onSortDirectionChange={setSortDirection}
+              />
+            </>
+          )}
         </>
+      ) : (
+        <RookieWarHistoryBoard />
       )}
     </div>
   );
