@@ -763,6 +763,27 @@ export interface AuctionDraftCenter {
   available_players: AuctionAvailablePlayerAsset[];
 }
 
+export interface RookieWarHistoryRow {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  draft_year: number;
+  round: number;
+  round_slot: number;
+  starter_war: number | null;
+  roster_war: number | null;
+}
+
+export interface RookieWarHistory {
+  league_id: string | null;
+  league_name: string | null;
+  war_context: string;
+  has_war: boolean;
+  rounds: number[];
+  rows: RookieWarHistoryRow[];
+}
+
 export interface CommissionerPlayerAsset {
   player_id: string;
   name: string;
