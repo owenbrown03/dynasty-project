@@ -257,7 +257,12 @@ async def toggle_trade_block_endpoint(
     snapshot = TradeBlockSnapshot.from_league_players(trade_block_data)
     is_currently_on_block = str(request.player_id) in snapshot.player_ids
 
-    if is_currently_on_block:
+    if request.target_status is not None:
+        should_be_on_block = request.target_status
+    else:
+        should_be_on_block = not is_currently_on_block
+
+    if not should_be_on_block:
         await ctx.sleeper.write.remove_player_trade_block(
             player_id=request.player_id,
             league_id=request.league_id,
@@ -275,6 +280,7 @@ async def toggle_trade_block_endpoint(
     # Invalidate caches
     if ctx.redis is not None:
         await ctx.redis.delete(f"advisor:trade_block:{request.league_id}")
+        await ctx.redis.delete_pattern(f"league-details:*{request.league_id}*")
 
     return TradeBlockToggleResponse(
         success=True,

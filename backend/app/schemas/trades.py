@@ -207,6 +207,7 @@ class TradeCalculatorWaiverAdjustmentResponse(Base):
 class TradeBlockToggleRequest(Base):
     league_id: str
     player_id: str
+    target_status: bool | None = None
 
 
 class TradeBlockToggleResponse(Base):

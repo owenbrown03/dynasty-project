@@ -113,13 +113,12 @@ describe('PlayerTable', () => {
     expect(screen.getByText('Josh Allen')).toBeInTheDocument();
     expect(screen.getByText('Breece Hall')).toBeInTheDocument();
 
-    // Verify Trade buttons are rendered
-    const tradeButtons = screen.getAllByRole('button', { name: /trade/i });
-    expect(tradeButtons.length).toBe(2);
+    // Verify OTB badge is rendered for players on the block
+    expect(screen.getByText('OTB')).toBeInTheDocument();
 
-    // Verify Trade Block buttons are rendered for user roster
-    expect(screen.getByRole('button', { name: /\+ Block/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /On Block/i })).toBeInTheDocument();
+    // Verify Actions buttons are rendered
+    const actionButtons = screen.getAllByRole('button', { name: /options for/i });
+    expect(actionButtons.length).toBe(2);
   });
 });
 

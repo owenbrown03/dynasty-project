@@ -251,6 +251,7 @@ export function PlayerTable({
     toggleTradeBlock.mutate({
       league_id: leagueId,
       player_id: player.player_id,
+      target_status: !player.on_block,
     });
   };
 
@@ -424,40 +425,12 @@ export function PlayerTable({
 
                 <td className="player-table-actions-cell">
                   <div className="player-table-actions">
-                    <button
-                      type="button"
-                      className="player-table-btn player-table-btn-trade"
-                      title={isUserRoster ? `Offer ${player.name} in a trade` : `Trade for ${player.name}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleTradePlayer(player);
-                      }}
-                    >
-                      <ArrowLeftRight size={11} />
-                      <span>Trade</span>
-                    </button>
-
-                    {isUserRoster && leagueId ? (
-                      <button
-                        type="button"
-                        className={`player-table-btn player-table-btn-block ${player.on_block ? 'active' : ''}`}
-                        title={player.on_block ? 'On Sleeper Trade Block — click to remove' : 'Put on Sleeper Trade Block'}
-                        disabled={toggleTradeBlock.isPending}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleBlock(player);
-                        }}
-                      >
-                        <Flame size={11} />
-                        <span>{player.on_block ? 'On Block' : '+ Block'}</span>
-                      </button>
-                    ) : null}
-
                     <div className="player-table-menu-container">
                       <button
                         type="button"
                         className={`player-table-btn player-table-btn-more ${activeMenuPlayerId === player.player_id ? 'active' : ''}`}
                         title="Player options"
+                        aria-label={`Options for ${player.name}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveMenuPlayerId(
@@ -475,7 +448,12 @@ export function PlayerTable({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="player-table-dropdown-header">
-                            <strong>{player.name}</strong>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                              <strong>{player.name}</strong>
+                              {player.on_block ? (
+                                <span className="player-table-otb-pill" title="On Sleeper Trade Block">OTB</span>
+                              ) : null}
+                            </div>
                             <small>{player.position} · {player.team ?? 'FA'}</small>
                           </div>
 
@@ -513,7 +491,7 @@ export function PlayerTable({
                                 handleToggleBlock(player);
                               }}
                             >
-                              <Flame size={13} />
+                              <Flame size={13} color={player.on_block ? '#ef4444' : undefined} />
                               <span>{player.on_block ? 'Remove from Trade Block' : 'Put on Trade Block'}</span>
                             </button>
                           ) : null}

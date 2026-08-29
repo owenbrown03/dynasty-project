@@ -370,6 +370,7 @@ export interface LeaguePlayer {
 export interface TradeBlockToggleRequest {
   league_id: string;
   player_id: string;
+  target_status?: boolean | null;
 }
 
 export interface TradeBlockToggleResponse {
