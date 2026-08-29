@@ -611,3 +611,35 @@
     min-width: 140px;
   }
 }
+
+.adp-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  background: var(--color-surface);
+  align-self: flex-start;
+}
+
+.adp-tab {
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.adp-tab:hover {
+  color: var(--color-text);
+}
+
+.adp-tab--active {
+  background: var(--color-accent, var(--color-border-strong));
+  color: var(--color-text);
+}

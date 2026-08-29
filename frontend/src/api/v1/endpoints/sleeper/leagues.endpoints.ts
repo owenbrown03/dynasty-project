@@ -13,6 +13,7 @@ import type {
   UserLeagueNoteResponse,
   AuctionDraftCenter,
   ValueBasis,
+  RookieWarHistory,
 } from '@/types';
 
 export const leaguesEndpoints = (
@@ -118,6 +119,22 @@ export const leaguesEndpoints = (
           search: search || undefined,
           page,
           page_size: pageSize,
+        },
+        signal,
+      },
+    ),
+
+  getRookieWarHistory: (
+    leagueId?: string,
+    rounds?: string,
+    signal?: AbortSignal,
+  ) =>
+    client.get<RookieWarHistory>(
+      `/sleeper/drafts/rookie-war/history`,
+      {
+        params: {
+          league_id: leagueId || undefined,
+          rounds: rounds || undefined,
         },
         signal,
       },

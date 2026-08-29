@@ -29,6 +29,10 @@ AGGREGATE_CACHE_KEY_PREFIX = "rookie_war:aggregates:"
 AGGREGATE_CACHE_VERSION = "v1"
 AGGREGATE_CACHE_TTL_SECONDS = 24 * 60 * 60
 
+HISTORY_CACHE_PREFIX = "rookie_war:history:"
+HISTORY_CACHE_VERSION = "v1"
+HISTORY_CACHE_TTL_SECONDS = 24 * 60 * 60
+
 PLAYERS_CACHE_KEY = "v1"
 PLAYERS_CACHE_TTL_SECONDS = 30 * 60
 
@@ -495,3 +499,288 @@ async def get_rookie_pick_war_values_by_key(
         )
 
     return resolved
+
+
+def _build_history_cache_key(
+    league_id: str,
+    rounds: list[int],
+) -> str:
+    return (
+        f"{HISTORY_CACHE_PREFIX}"
+        f"{HISTORY_CACHE_VERSION}:{league_id}:"
+        f"{'-'.join(str(r) for r in rounds)}"
+    )
+
+
+async def get_rookie_war_history(
+    db: AsyncSession,
+    redis,
+    *,
+    league: object | None,
+    rounds: list[int] | None = None,
+) -> list[dict]:
+    shared = await _load_shared_data(
+        db,
+        redis,
+        rounds=rounds,
+    )
+
+    selections = [
+        s
+        for s in (shared.selections or [])
+        if _sel_attr(s, "player_id") is not None
+    ]
+
+    stat_seasons = shared.stat_seasons or []
+    latest_completed_season = (
+        max(stat_seasons) if stat_seasons else 0
+    )
+    selections = [
+        s
+        for s in selections
+        if int(_sel_attr(s, "season") or 0) <= latest_completed_season
+    ]
+
+    if not selections:
+        return []
+
+    players = await _get_cached_players(
+        db,
+    )
+
+    def _player_info(
+        player_id: str,
+    ) -> dict:
+        player = players.get(
+            player_id,
+        )
+        if player is None:
+            return {
+                "name": player_id,
+                "position": None,
+                "team": None,
+            }
+        return {
+            "name": (
+                getattr(player, "full_name", None)
+                or getattr(player, "name", None)
+                or player_id
+            ),
+            "position": getattr(
+                player,
+                "position",
+                None,
+            ),
+            "team": getattr(
+                player,
+                "team",
+                None,
+            ),
+        }
+
+    draft_year_by_player_id: dict[
+        str,
+        int,
+    ] = {}
+    for selection in selections:
+        player_id = _sel_attr(
+            selection,
+            "player_id",
+        )
+        draft_year_by_player_id.setdefault(
+            player_id,
+            int(
+                _sel_attr(selection, "season") or 0
+            ),
+        )
+
+    starter_war_by_player_id: dict[
+        str,
+        float,
+    ] = defaultdict(float)
+    roster_war_by_player_id: dict[
+        str,
+        float,
+    ] = defaultdict(float)
+
+    history_cache_key: str | None = None
+
+    if league is not None:
+        league_id = str(
+            getattr(league, "league_id", "canonical")
+        )
+        history_cache_key = _build_history_cache_key(
+            league_id,
+            rounds or [],
+        )
+
+        if redis is not None:
+            cached = await redis.get(
+                history_cache_key,
+            )
+            if cached:
+                cached_rows = json.loads(
+                    cached,
+                )
+                return [
+                    {
+                        "player_id": row[0],
+                        "name": row[1],
+                        "position": row[2],
+                        "team": row[3],
+                        "draft_year": row[4],
+                        "round": row[5],
+                        "round_slot": row[6],
+                        "starter_war": row[7],
+                        "roster_war": row[8],
+                    }
+                    for row in cached_rows
+                ]
+
+        league_settings = {
+            "scoring_settings": (
+                getattr(league, "scoring_settings", None)
+                or {}
+            ),
+            "roster_positions": list(
+                getattr(league, "roster_positions", None)
+                or []
+            ),
+            "total_rosters": int(
+                getattr(league, "total_rosters", 0) or 0
+            ),
+        }
+
+        for season in stat_seasons:
+            stats_rows = await _war_service.loader.get_season_stats(
+                db,
+                season,
+            )
+            if not stats_rows:
+                continue
+
+            season_results = await _war_service.calculate_with_data(
+                league=SimpleNamespace(
+                    season=str(season),
+                    scoring_settings=league_settings[
+                        "scoring_settings"
+                    ],
+                    roster_positions=league_settings[
+                        "roster_positions"
+                    ],
+                    total_rosters=league_settings[
+                        "total_rosters"
+                    ],
+                ),
+                shared=WARSharedData(
+                    players=players,
+                    projections=stats_rows,
+                ),
+            )
+
+            result_by_player_id = {
+                result.player_id: result
+                for result in season_results
+            }
+
+            for (
+                player_id,
+                draft_year,
+            ) in draft_year_by_player_id.items():
+                if season < draft_year:
+                    continue
+
+                result = result_by_player_id.get(
+                    player_id,
+                )
+                if result is None:
+                    continue
+
+                starter_war_by_player_id[player_id] += (
+                    result.starter_war
+                    or 0.0
+                )
+                roster_war_by_player_id[player_id] += (
+                    result.roster_war
+                    or 0.0
+                )
+
+    has_war = league is not None
+
+    rows: list[dict] = []
+    for selection in selections:
+        player_id = _sel_attr(
+            selection,
+            "player_id",
+        )
+        info = _player_info(
+            player_id,
+        )
+        rows.append(
+            {
+                "player_id": player_id,
+                "name": info["name"],
+                "position": info["position"],
+                "team": info["team"],
+                "draft_year": int(
+                    _sel_attr(selection, "season") or 0
+                ),
+                "round": int(
+                    _sel_attr(selection, "round") or 0
+                ),
+                "round_slot": int(
+                    _sel_attr(selection, "round_slot") or 0
+                ),
+                "starter_war": (
+                    round(
+                        starter_war_by_player_id.get(
+                            player_id,
+                            0.0,
+                        ),
+                        2,
+                    )
+                    if has_war
+                    else None
+                ),
+                "roster_war": (
+                    round(
+                        roster_war_by_player_id.get(
+                            player_id,
+                            0.0,
+                        ),
+                        2,
+                    )
+                    if has_war
+                    else None
+                ),
+            }
+        )
+
+    if (
+        has_war
+        and history_cache_key is not None
+        and redis is not None
+        and rows
+    ):
+        await redis.set(
+            history_cache_key,
+            json.dumps(
+                [
+                    [
+                        row["player_id"],
+                        row["name"],
+                        row["position"],
+                        row["team"],
+                        row["draft_year"],
+                        row["round"],
+                        row["round_slot"],
+                        row["starter_war"],
+                        row["roster_war"],
+                    ]
+                    for row in rows
+                ]
+            ),
+            ttl_seconds=HISTORY_CACHE_TTL_SECONDS,
+        )
+
+    return rows
