@@ -5,25 +5,15 @@
   ],
   "service": "api",
   "workspaceFolder": "/workspace",
-  "shutdownAction": "stopCompose",
-  "features": {
-    "ghcr.io/devcontainers/features/git:1": {
-        "version": "os-provided"
-    }
-  },
+  "shutdownAction": "none",
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "ms-python.debugpy",
-        "ms-azuretools.vscode-docker",
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "ms-vscode.vscode-typescript-next"
+        "ms-python.debugpy"
       ]
     }
   },
-  "postCreateCommand": "echo 'Dev container ready'",
   "remoteUser": "appuser"
 }
