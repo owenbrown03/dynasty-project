@@ -451,7 +451,7 @@ function SendTradeSection({
   const [sent, setSent] = useState(false);
   const [expiresInSecs, setExpiresInSecs] = useState<
     number | null
-  >(null);
+  >(172800);
   const [sendDm, setSendDm] = useState(false);
 
   if (sent) {
@@ -561,6 +561,7 @@ function SendTradeSection({
             { label: '1 hour', value: 3600 },
             { label: '6 hours', value: 21600 },
             { label: '24 hours', value: 86400 },
+            { label: '2 days', value: 172800 },
             { label: '3 days', value: 259200 },
             { label: '7 days', value: 604800 },
           ].map((option) => (

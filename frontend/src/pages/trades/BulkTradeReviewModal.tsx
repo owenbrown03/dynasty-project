@@ -4,6 +4,7 @@ import {
   Send,
   X,
 } from 'lucide-react';
+import { useState } from 'react';
 
 import type {
   BulkTradeOfferRequest,
@@ -12,6 +13,17 @@ import type {
   BulkTradeProposalResult,
 } from '@/types';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+
+
+const EXPIRY_OPTIONS: { label: string; value: number | null }[] = [
+  { label: 'No timer', value: null },
+  { label: '1 hour', value: 3_600 },
+  { label: '6 hours', value: 21_600 },
+  { label: '24 hours', value: 86_400 },
+  { label: '2 days', value: 172_800 },
+  { label: '3 days', value: 259_200 },
+  { label: '7 days', value: 604_800 },
+];
 
 
 interface ReviewOffer {
@@ -36,7 +48,7 @@ interface BulkTradeReviewModalProps {
   error: Error | null;
 
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (expiresInSecs: number | null) => void;
 }
 
 
@@ -74,6 +86,8 @@ export const BulkTradeReviewModal = ({
   onClose,
   onSubmit,
 }: BulkTradeReviewModalProps) => {
+  const [expiresInSecs, setExpiresInSecs] = useState<number | null>(172_800);
+
   const hasResults = results.length > 0;
 
   const successfulCount = results.filter(
@@ -253,6 +267,35 @@ export const BulkTradeReviewModal = ({
             : null
         }
 
+        {
+          !hasResults
+            ? (
+              <div className="advisor-expiry bulk-trade-expiry">
+                <span className="advisor-expiry-label">
+                  Offer expires
+                </span>
+
+                <div className="advisor-expiry-options">
+                  {EXPIRY_OPTIONS.map((option) => (
+                    <button
+                      key={option.label}
+                      type="button"
+                      className={`advisor-expiry-option ${
+                        expiresInSecs === option.value
+                          ? 'advisor-expiry-active'
+                          : ''
+                      }`}
+                      onClick={() => setExpiresInSecs(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+            : null
+        }
+
         <div className="bulk-trade-review-actions">
           <button
             className="button-secondary"
@@ -271,7 +314,7 @@ export const BulkTradeReviewModal = ({
               ? (
                 <button
                   className="button-secondary bulk-trade-submit-button"
-                  onClick={onSubmit}
+                  onClick={() => onSubmit(expiresInSecs)}
                   disabled={
                     submitting
                     || offers.length === 0
@@ -304,6 +347,7 @@ export const BulkTradeReviewModal = ({
               : null
           }
         </div>
+
 
         <div className="bulk-trade-review-footer">
           <span>

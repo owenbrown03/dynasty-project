@@ -229,7 +229,6 @@ export const BulkOffersTab = ({
   const [receivePicks, setReceivePicks] = useState<BulkTradePickRequest[]>([]);
   const [selectionsByLeagueId, setSelectionsByLeagueId] = useState<Record<string, BulkTradeLeagueSelection>>({});
   const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [expiresInSecs, setExpiresInSecs] = useState<number | null>(null);
 
   const availabilityPayload = useMemo(
     () => buildAvailabilityPayload(
@@ -392,10 +391,7 @@ export const BulkOffersTab = ({
                   og_roster_id: pick.og_roster_id,
                 }),
               ),
-              expires_at:
-                expiresInSecs != null
-                  ? Math.floor(Date.now() / 1000) + expiresInSecs
-                  : null,
+              expires_at: null,
             } satisfies BulkTradeOfferRequest,
           ];
         },
@@ -403,7 +399,6 @@ export const BulkOffersTab = ({
     });
   }, [
     availability.data,
-    expiresInSecs,
     receivePicks.length,
     receivePlayers,
     selectionsByLeagueId,
@@ -488,13 +483,21 @@ export const BulkOffersTab = ({
     reset();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (expiresInSecs: number | null) => {
     if (offers.length === 0) {
       return;
     }
 
+    const expiresAt =
+      expiresInSecs != null
+        ? Math.floor(Date.now() / 1000) + expiresInSecs
+        : null;
+
     submitOffers({
-      offers,
+      offers: offers.map(offer => ({
+        ...offer,
+        expires_at: expiresAt,
+      })),
     });
   };
 
@@ -816,38 +819,8 @@ export const BulkOffersTab = ({
             )
             : null
         }
-
-        <div className="advisor-expiry">
-          <span className="advisor-expiry-label">
-            Offer expires
-          </span>
-          <div className="advisor-expiry-options">
-            {[
-              { label: 'No timer', value: null },
-              { label: '1 hour', value: 3600 },
-              { label: '6 hours', value: 21600 },
-              { label: '24 hours', value: 86400 },
-              { label: '3 days', value: 259200 },
-              { label: '7 days', value: 604800 },
-            ].map((option) => (
-              <button
-                key={option.label}
-                type="button"
-                className={`advisor-expiry-option ${
-                  expiresInSecs === option.value
-                    ? 'advisor-expiry-active'
-                    : ''
-                }`}
-                onClick={() =>
-                  setExpiresInSecs(option.value)
-                }
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
+
 
       {
         (sendPlayers.length > 0

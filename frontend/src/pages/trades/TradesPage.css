@@ -656,6 +656,11 @@
   padding: 15px 18px;
 }
 
+.bulk-trade-expiry {
+  border-top: 1px solid var(--color-border);
+  padding: 12px 18px 4px;
+}
+
 .bulk-trade-review-footer {
   padding: 0 18px 16px;
 }
