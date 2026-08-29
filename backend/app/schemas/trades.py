@@ -167,7 +167,7 @@ class BulkTradeOfferRequest(Base):
 class BulkTradeProposalRequest(Base):
     offers: list[BulkTradeOfferRequest] = Field(
         min_length=1,
-        max_length=50,
+        max_length=500,
     )
 
 
