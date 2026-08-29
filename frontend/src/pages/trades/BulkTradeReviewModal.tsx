@@ -80,6 +80,20 @@ export const BulkTradeReviewModal = ({
     result => result.success,
   ).length;
 
+  const counterpartyNameById = new Map<number, string>();
+  offers.forEach(item => {
+    if (item.offer.counterparty_roster_id != null) {
+      counterpartyNameById.set(
+        item.offer.counterparty_roster_id,
+        item.counterpartyName,
+      );
+    }
+  });
+
+  const leagueCount = new Set(
+    offers.map(item => item.offer.league_id),
+  ).size;
+
   return (
     <div className="bulk-trade-modal-backdrop">
       <div className="bulk-trade-review-modal">
@@ -126,7 +140,11 @@ export const BulkTradeReviewModal = ({
                 {
                   results.map(result => (
                     <div
-                      key={result.league_id}
+                      key={
+                        `${result.league_id}-${
+                          result.counterparty_roster_id ?? 'unknown'
+                        }`
+                      }
                       className={
                         `bulk-trade-result ${
                           result.success
@@ -141,12 +159,31 @@ export const BulkTradeReviewModal = ({
                           : <X size={15} />
                       }
 
-                      <span>
-                        {result.success
-                          ? 'Trade offer submitted'
-                          : result.error
+                      <div className="bulk-trade-result-copy">
+                        <span>
+                          {result.success
+                            ? 'Trade offer submitted'
+                            : result.error
+                          }
+                        </span>
+
+                        {
+                          result.counterparty_roster_id != null
+                            && counterpartyNameById.has(
+                              result.counterparty_roster_id,
+                            )
+                            ? (
+                              <small>
+                                with {
+                                  counterpartyNameById.get(
+                                    result.counterparty_roster_id,
+                                  )
+                                }
+                              </small>
+                            )
+                            : null
                         }
-                      </span>
+                      </div>
                     </div>
                   ))
                 }
@@ -157,7 +194,11 @@ export const BulkTradeReviewModal = ({
                 {
                   offers.map(item => (
                     <article
-                      key={item.offer.league_id}
+                      key={
+                        `${item.offer.league_id}-${
+                          item.offer.counterparty_roster_id ?? 'unknown'
+                        }`
+                      }
                       className="bulk-trade-review-row"
                     >
                       <strong>
@@ -270,7 +311,7 @@ export const BulkTradeReviewModal = ({
             {' '}
             players · {sendPicks.length + receivePicks.length}
             {' '}
-            picks · {offers.length} leagues
+            picks · {leagueCount} leagues
           </span>
         </div>
       </div>

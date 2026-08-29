@@ -27,6 +27,7 @@ import type {
 
 import {
   BulkTradeLeagueRow,
+  createLeagueSelection,
   type BulkTradeLeagueSelection,
 } from './BulkTradeLeagueRow';
 import { BulkTradePlayerSearch } from './BulkTradePlayerSearch';
@@ -141,50 +142,6 @@ function BulkTradeAvailabilitySkeleton() {
 }
 
 
-function buildPickSelectionMap(
-  pickChoices: {
-    request_index: number;
-    matching_picks: TradeDraftPickAsset[];
-  }[],
-): Record<number, number | null> {
-  return Object.fromEntries(
-    pickChoices.map(
-      pickChoice => [
-        pickChoice.request_index,
-        pickChoice.matching_picks[0]?.og_roster_id ?? null,
-      ],
-    ),
-  );
-}
-
-
-function createInitialSelection(
-  league: BulkTradeLeagueAvailability,
-): BulkTradeLeagueSelection {
-  if (!league.is_eligible) {
-    return {
-      selected: false,
-      counterpartyRosterId: null,
-      sendPickOgRosterIdsByRequestIndex: {},
-      receivePickOgRosterIdsByRequestIndex: {},
-    };
-  }
-
-  const firstCounterparty = league.counterparty_options[0];
-
-  return {
-    selected: true,
-    counterpartyRosterId: firstCounterparty?.roster_id ?? null,
-    sendPickOgRosterIdsByRequestIndex: buildPickSelectionMap(
-      firstCounterparty?.send_pick_choices ?? [],
-    ),
-    receivePickOgRosterIdsByRequestIndex: buildPickSelectionMap(
-      firstCounterparty?.receive_pick_choices ?? [],
-    ),
-  };
-}
-
-
 function getCounterpartyByRosterId(
   league: BulkTradeLeagueAvailability,
   rosterId: number | null,
@@ -272,6 +229,7 @@ export const BulkOffersTab = ({
   const [receivePicks, setReceivePicks] = useState<BulkTradePickRequest[]>([]);
   const [selectionsByLeagueId, setSelectionsByLeagueId] = useState<Record<string, BulkTradeLeagueSelection>>({});
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [expiresInSecs, setExpiresInSecs] = useState<number | null>(null);
 
   const availabilityPayload = useMemo(
     () => buildAvailabilityPayload(
@@ -330,7 +288,7 @@ export const BulkOffersTab = ({
       Object.fromEntries(
         data.leagues.map((league: BulkTradeLeagueAvailability) => [
           league.league_id,
-          createInitialSelection(
+          createLeagueSelection(
             league,
           ),
         ]),
@@ -373,66 +331,79 @@ export const BulkOffersTab = ({
     }
 
     return data.leagues.flatMap((league: BulkTradeLeagueAvailability) => {
+      if (!league.is_eligible) {
+        return [];
+      }
+
       const selection = selectionsByLeagueId[league.league_id];
-      const counterparty = getCounterpartyByRosterId(
-        league,
-        selection?.counterpartyRosterId ?? null,
-      );
 
-      if (
-        !league.is_eligible
-        || !selection?.selected
-        || !counterparty
-      ) {
+      if (!selection?.selected) {
         return [];
       }
 
-      const selectedSendPicks = resolveSelectedPicks(
-        counterparty.send_pick_choices,
-        selection.sendPickOgRosterIdsByRequestIndex,
-      );
-      const selectedReceivePicks = resolveSelectedPicks(
-        counterparty.receive_pick_choices,
-        selection.receivePickOgRosterIdsByRequestIndex,
-      );
+      return league.counterparty_options.flatMap(
+        (counterparty) => {
+          const counterSelection = selection.counterparties[
+            counterparty.roster_id
+          ];
 
-      if (
-        selectedSendPicks.length !== sendPicks.length
-        || selectedReceivePicks.length !== receivePicks.length
-      ) {
-        return [];
-      }
+          if (!counterSelection?.selected) {
+            return [];
+          }
 
-      return [
-        {
-          league_id: league.league_id,
-          your_roster_id: league.your_roster_id,
-          counterparty_roster_id: counterparty.roster_id,
-          send_player_ids: sendPlayers.map(
-            player => player.player_id,
-          ),
-          send_picks: selectedSendPicks.map(
-            pick => ({
-              season: pick.season,
-              round: pick.round,
-              og_roster_id: pick.og_roster_id,
-            }),
-          ),
-          receive_player_ids: receivePlayers.map(
-            player => player.player_id,
-          ),
-          receive_picks: selectedReceivePicks.map(
-            pick => ({
-              season: pick.season,
-              round: pick.round,
-              og_roster_id: pick.og_roster_id,
-            }),
-          ),
-        } satisfies BulkTradeOfferRequest,
-      ];
+          const selectedSendPicks = resolveSelectedPicks(
+            counterparty.send_pick_choices,
+            counterSelection.sendPickOgRosterIdsByRequestIndex,
+          );
+          const selectedReceivePicks = resolveSelectedPicks(
+            counterparty.receive_pick_choices,
+            counterSelection.receivePickOgRosterIdsByRequestIndex,
+          );
+
+          if (
+            selectedSendPicks.length !== sendPicks.length
+            || selectedReceivePicks.length !== receivePicks.length
+          ) {
+            return [];
+          }
+
+          return [
+            {
+              league_id: league.league_id,
+              your_roster_id: league.your_roster_id,
+              counterparty_roster_id: counterparty.roster_id,
+              send_player_ids: sendPlayers.map(
+                player => player.player_id,
+              ),
+              send_picks: selectedSendPicks.map(
+                pick => ({
+                  season: pick.season,
+                  round: pick.round,
+                  og_roster_id: pick.og_roster_id,
+                }),
+              ),
+              receive_player_ids: receivePlayers.map(
+                player => player.player_id,
+              ),
+              receive_picks: selectedReceivePicks.map(
+                pick => ({
+                  season: pick.season,
+                  round: pick.round,
+                  og_roster_id: pick.og_roster_id,
+                }),
+              ),
+              expires_at:
+                expiresInSecs != null
+                  ? Math.floor(Date.now() / 1000) + expiresInSecs
+                  : null,
+            } satisfies BulkTradeOfferRequest,
+          ];
+        },
+      );
     });
   }, [
     availability.data,
+    expiresInSecs,
     receivePicks.length,
     receivePlayers,
     selectionsByLeagueId,
@@ -456,23 +427,27 @@ export const BulkOffersTab = ({
         return [];
       }
 
-      const selection = selectionsByLeagueId[league.league_id];
       const counterparty = getCounterpartyByRosterId(
         league,
-        selection?.counterpartyRosterId ?? null,
+        offer.counterparty_roster_id,
       );
 
       if (!counterparty) {
         return [];
       }
 
+      const counterSelection =
+        selectionsByLeagueId[league.league_id]?.counterparties[
+          offer.counterparty_roster_id
+        ];
+
       const selectedSendPicks = resolveSelectedPicks(
         counterparty.send_pick_choices,
-        selection.sendPickOgRosterIdsByRequestIndex,
+        counterSelection?.sendPickOgRosterIdsByRequestIndex ?? {},
       );
       const selectedReceivePicks = resolveSelectedPicks(
         counterparty.receive_pick_choices,
-        selection.receivePickOgRosterIdsByRequestIndex,
+        counterSelection?.receivePickOgRosterIdsByRequestIndex ?? {},
       );
 
       return [
@@ -841,6 +816,37 @@ export const BulkOffersTab = ({
             )
             : null
         }
+
+        <div className="advisor-expiry">
+          <span className="advisor-expiry-label">
+            Offer expires
+          </span>
+          <div className="advisor-expiry-options">
+            {[
+              { label: 'No timer', value: null },
+              { label: '1 hour', value: 3600 },
+              { label: '6 hours', value: 21600 },
+              { label: '24 hours', value: 86400 },
+              { label: '3 days', value: 259200 },
+              { label: '7 days', value: 604800 },
+            ].map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                className={`advisor-expiry-option ${
+                  expiresInSecs === option.value
+                    ? 'advisor-expiry-active'
+                    : ''
+                }`}
+                onClick={() =>
+                  setExpiresInSecs(option.value)
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {
@@ -930,7 +936,7 @@ export const BulkOffersTab = ({
                         league={league}
                         selection={
                           selectionsByLeagueId[league.league_id]
-                          ?? createInitialSelection(
+                          ?? createLeagueSelection(
                             league,
                           )
                         }
