@@ -2,8 +2,8 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeftRight,
+  Box,
   Calculator,
-  Flame,
   MoreHorizontal,
   Search,
   Trash2,
@@ -496,7 +496,7 @@ export function PlayerTable({
                                 handleToggleBlock(player);
                               }}
                             >
-                              <Flame size={13} color={player.on_block ? '#ef4444' : undefined} />
+                              <Box size={13} color={player.on_block ? '#f97316' : undefined} />
                               <span>{player.on_block ? 'Remove from Trade Block' : 'Put on Trade Block'}</span>
                             </button>
                           ) : null}

@@ -209,14 +209,14 @@
 }
 
 .player-table-btn-block.active {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #ef4444;
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #f97316;
 }
 
 .player-table-btn-block.active:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: #ef4444;
+  background: rgba(249, 115, 22, 0.2);
+  border-color: #f97316;
 }
 
 .player-table-otb-pill {
@@ -224,11 +224,11 @@
   align-items: center;
   font-size: 9px;
   font-weight: 800;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.35);
   margin-left: 6px;
   letter-spacing: 0.04em;
 }
