@@ -31,7 +31,10 @@ from app.services.values.war_settings import (
     normalize_war_value_settings,
 )
 
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["argon2", "pbkdf2_sha256", "bcrypt"],
+    deprecated="auto",
+)
 VALID_THEME_PREFERENCES = {"light", "dark", "system"}
 VALID_ACCENT_COLORS = {
     "blue", "green", "purple", "red", "orange", "teal", "pink",

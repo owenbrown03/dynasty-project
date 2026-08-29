@@ -82,7 +82,10 @@ from app.services.email import (
     send_email_verification_message,
 )
 
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["argon2", "pbkdf2_sha256", "bcrypt"],
+    deprecated="auto",
+)
 logger = logging.getLogger(__name__)
 
 def build_auth_session_response(
