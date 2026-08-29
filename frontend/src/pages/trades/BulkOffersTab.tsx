@@ -992,9 +992,7 @@ export const BulkOffersTab = ({
           ? (
             <BulkTradeReviewModal
               sendPlayers={sendPlayers}
-              sendPicks={sendPicks}
               receivePlayers={receivePlayers}
-              receivePicks={receivePicks}
               offers={reviewOffers}
               submitting={submitting}
               results={results}

@@ -40,9 +40,12 @@ from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
 )
 from app.utils.age import calculate_age
-from app.crud.sleeper.roster import get_all_rosters_by_league, get_owned_roster_rows
+from app.crud.sleeper.roster import get_all_rosters_by_league
 from app.crud.sleeper.user import get_user_names_by_id
-from app.crud.sleeper.personal import get_hidden_league_ids, get_league_sort_orders
+from app.services.leagues.selection import (
+    get_visible_owned_league_rows_by_sleeper_user_id,
+    get_visible_owned_league_rows_by_username,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -338,40 +341,26 @@ async def get_bulk_trade_availability(
         player_ids=receive_player_ids,
     )
 
-    owned_roster_rows = await get_owned_roster_rows(
-        db=db,
-        connection=connection,
-    )
-
     if connection.sleeper_user_id:
-        sort_order = await get_league_sort_orders(
+        owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
             db=db,
-            user_id=connection.sleeper_user_id,
-        )
-        owned_roster_rows.sort(
-            key=lambda row: sort_order.get(
-                row[1].league_id,
-                9999,
-            ),
-        )
-
-    hidden_league_ids: set[str] = set()
-    if connection.site_user_id:
-        hidden_league_ids = await get_hidden_league_ids(
-            db=db,
+            sleeper_user_id=connection.sleeper_user_id,
             site_user_id=connection.site_user_id,
+            include_hidden=False,
         )
-
-    if hidden_league_ids:
-        owned_roster_rows = [
-            row
-            for row in owned_roster_rows
-            if row[1].league_id not in hidden_league_ids
-        ]
+    elif connection.sleeper_username:
+        owned_rows = await get_visible_owned_league_rows_by_username(
+            db=db,
+            username=connection.sleeper_username,
+            site_user_id=connection.site_user_id,
+            include_hidden=False,
+        )
+    else:
+        owned_rows = []
 
     league_ids = [
-        league.league_id
-        for _, league in owned_roster_rows
+        row.league.league_id
+        for row in owned_rows
     ]
 
     rosters_by_league = await get_all_rosters_by_league(
@@ -428,7 +417,9 @@ async def get_bulk_trade_availability(
 
     availability_rows = []
 
-    for your_roster, league in owned_roster_rows:
+    for row in owned_rows:
+        your_roster = row.roster
+        league = row.league
         league_rosters = rosters_by_league.get(
             league.league_id,
             [],

@@ -138,8 +138,8 @@ async def maybe_send_trade_dm(
 
     sender_user_id = connection.sleeper_user_id
     sender_names = await get_user_names_by_id(
-        db,
-        {sender_user_id} if sender_user_id else set(),
+        db=db,
+        user_ids={sender_user_id} if sender_user_id else set(),
     )
     sender_display_name = (
         sender_names.get(sender_user_id)
@@ -156,8 +156,8 @@ async def maybe_send_trade_dm(
     )
 
     rosters_by_league = await get_all_rosters_by_league(
-        db,
-        [offer.league_id],
+        db=db,
+        league_ids=[offer.league_id],
     )
     rosters = rosters_by_league.get(offer.league_id, [])
     counterparty = next(

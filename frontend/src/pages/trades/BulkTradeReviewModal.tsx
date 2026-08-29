@@ -8,7 +8,6 @@ import { useState } from 'react';
 
 import type {
   BulkTradeOfferRequest,
-  BulkTradePickRequest,
   BulkTradePlayerSearchResult,
   BulkTradeProposalResult,
 } from '@/types';
@@ -37,9 +36,7 @@ interface ReviewOffer {
 
 interface BulkTradeReviewModalProps {
   sendPlayers: BulkTradePlayerSearchResult[];
-  sendPicks: BulkTradePickRequest[];
   receivePlayers: BulkTradePlayerSearchResult[];
-  receivePicks: BulkTradePickRequest[];
   offers: ReviewOffer[];
 
   submitting: boolean;
@@ -76,9 +73,7 @@ function renderAssetSummary(
 
 export const BulkTradeReviewModal = ({
   sendPlayers,
-  sendPicks,
   receivePlayers,
-  receivePicks,
   offers,
   submitting,
   results,
@@ -104,10 +99,6 @@ export const BulkTradeReviewModal = ({
       );
     }
   });
-
-  const leagueCount = new Set(
-    offers.map(item => item.offer.league_id),
-  ).size;
 
   return (
     <div className="bulk-trade-modal-backdrop">
@@ -362,17 +353,6 @@ export const BulkTradeReviewModal = ({
               )
               : null
           }
-        </div>
-
-
-        <div className="bulk-trade-review-footer">
-          <span>
-            {sendPlayers.length + receivePlayers.length}
-            {' '}
-            players · {sendPicks.length + receivePicks.length}
-            {' '}
-            picks · {leagueCount} leagues
-          </span>
         </div>
       </div>
     </div>
