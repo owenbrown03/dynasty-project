@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/feedback/Skeleton';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import { useRecentlyDroppedPlayers } from '@/hooks/sleeper/useWaivers';
 
@@ -337,8 +338,14 @@ export const RecentlyDroppedTab = ({
 
                       <div className="player-with-avatar-copy">
                         <strong>{player.name}</strong>
-                        <span>
-                          {[player.position, player.team].filter(Boolean).join(' · ')}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span>{player.position ?? '—'}</span>
+                          {player.team ? (
+                            <>
+                              <span>·</span>
+                              <TeamBadge team={player.team} size="xs" />
+                            </>
+                          ) : null}
                         </span>
                       </div>
                     </div>

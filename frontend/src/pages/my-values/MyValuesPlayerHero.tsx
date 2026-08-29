@@ -1,4 +1,5 @@
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import type { PersonalValuePlayer } from '@/types';
 import { getPositionColor } from '@/utils/positions';
 import { formatMarketNumber } from './myValues.utils';
@@ -38,7 +39,7 @@ export function MyValuesPlayerHero({
             >
               {player.position}
             </span>
-            <span>{player.team ?? '--'}</span>
+            <TeamBadge team={player.team} size="sm" fallbackText="--" />
             <span>Age {player.age ?? '--'}</span>
             <span>{player.underdog_position_rank ?? 'No UD rank'}</span>
             <span>KTC {formatMarketNumber(player.ktc_value)}</span>

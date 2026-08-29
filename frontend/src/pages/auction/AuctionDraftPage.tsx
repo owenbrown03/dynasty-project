@@ -17,6 +17,7 @@ import { useSearchParams } from 'react-router';
 
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import { ValueBasisSelector } from '@/pages/waivers/ValueBasisSelector';
 import { useValuePreference } from '@/context/useValuePreference';
 import { useAuctionDraftCenter } from '@/hooks/sleeper/useAuctionDraft';
@@ -353,7 +354,7 @@ export const AuctionDraftPage = () => {
 
                           <div>
                             <h4>{player.name}</h4>
-                            <p>
+                            <p style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <span
                                 style={{
                                   color: getPositionColor(
@@ -363,11 +364,10 @@ export const AuctionDraftPage = () => {
                               >
                                 {player.position ?? '--'}
                               </span>
-                              {' · '}
-                              {player.team ?? '--'}
-                              {' · '}
-                              {player.underdog_position_rank
-                                ?? 'UD --'}
+                              <span>·</span>
+                              <TeamBadge team={player.team} size="xs" fallbackText="--" />
+                              <span>·</span>
+                              <span>{player.underdog_position_rank ?? 'UD --'}</span>
                             </p>
                           </div>
                         </div>
@@ -537,7 +537,7 @@ export const AuctionDraftPage = () => {
 
                       <div>
                         <h4>{player.name}</h4>
-                        <p>
+                        <p style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <span
                             style={{
                               color: getPositionColor(
@@ -547,11 +547,10 @@ export const AuctionDraftPage = () => {
                           >
                             {player.position ?? '--'}
                           </span>
-                          {' · '}
-                          {player.team ?? '--'}
-                          {' · '}
-                          {player.underdog_position_rank
-                            ?? 'UD --'}
+                          <span>·</span>
+                          <TeamBadge team={player.team} size="xs" fallbackText="--" />
+                          <span>·</span>
+                          <span>{player.underdog_position_rank ?? 'UD --'}</span>
                         </p>
                       </div>
                     </div>

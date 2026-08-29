@@ -1,4 +1,5 @@
 import type { ADPPlayerRow } from '@/types';
+import { TeamBadge } from '@/components/players/TeamBadge';
 
 import { formatPercent } from './adp.utils';
 
@@ -31,7 +32,9 @@ export function AdpTable({
               <td>{player.overall_adp.toFixed(2)}</td>
               <td>{player.name}</td>
               <td>{player.position ?? '—'}</td>
-              <td>{player.team ?? '—'}</td>
+              <td>
+                <TeamBadge team={player.team} size="sm" fallbackText="—" />
+              </td>
               <td>{player.median_pick.toFixed(1)}</td>
               <td>{player.min_pick} - {player.max_pick}</td>
               <td>{player.standard_deviation?.toFixed(2) ?? '—'}</td>

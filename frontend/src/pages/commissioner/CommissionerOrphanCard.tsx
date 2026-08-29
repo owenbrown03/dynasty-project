@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import type {
   CommissionerLineupSlot,
   CommissionerOrphanRoster,
@@ -29,12 +30,14 @@ function CommissionerPlayerRow({
 
         <div className="player-with-avatar-copy">
           <strong>{player.name}</strong>
-          <span>
-            {
-              [player.position, player.team]
-                .filter(Boolean)
-                .join(' · ') || '—'
-            }
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span>{player.position ?? '—'}</span>
+            {player.team ? (
+              <>
+                <span>·</span>
+                <TeamBadge team={player.team} size="xs" />
+              </>
+            ) : null}
           </span>
         </div>
       </div>
@@ -77,15 +80,14 @@ function CommissionerLineupRow({
 
                 <div className="player-with-avatar-copy">
                   <strong>{slot.player.name}</strong>
-                  <span>
-                    {
-                      [
-                        slot.player.position,
-                        slot.player.team,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ') || '—'
-                    }
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span>{slot.player.position ?? '—'}</span>
+                    {slot.player.team ? (
+                      <>
+                        <span>·</span>
+                        <TeamBadge team={slot.player.team} size="xs" />
+                      </>
+                    ) : null}
                   </span>
                 </div>
               </div>

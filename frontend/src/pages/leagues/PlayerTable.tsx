@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router';
 
 import './PlayerTable.css';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import { useToggleTradeBlock } from '@/hooks/sleeper/useTrades';
 import { useSubmitWaiverClaim } from '@/hooks/sleeper/useWaivers';
 import { notify } from '@/utils/notify';
@@ -368,7 +369,7 @@ export function PlayerTable({
                 </td>
 
                 <td className="player-table-team-cell">
-                  {player.team ?? 'FA'}
+                  <TeamBadge team={player.team} size="sm" />
                 </td>
 
                 <td className="player-table-num-cell">
@@ -454,7 +455,11 @@ export function PlayerTable({
                                 <span className="player-table-otb-pill" title="On Sleeper Trade Block">OTB</span>
                               ) : null}
                             </div>
-                            <small>{player.position} · {player.team ?? 'FA'}</small>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                              <span>{player.position}</span>
+                              <span>·</span>
+                              <TeamBadge team={player.team} size="xs" />
+                            </div>
                           </div>
 
                           <button

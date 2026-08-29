@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { useValuePreference } from '@/context/useValuePreference';
@@ -404,12 +405,14 @@ export const TiersPage = () => {
                                     </div>
 
                                     <div className="tier-player-subline">
-                                      <span className="tier-player-meta">
-                                        {
-                                          [player.position, player.team]
-                                            .filter(Boolean)
-                                            .join(' · ') || '—'
-                                        }
+                                      <span className="tier-player-meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        <span>{player.position}</span>
+                                        {player.team ? (
+                                          <>
+                                            <span>·</span>
+                                            <TeamBadge team={player.team} size="xs" />
+                                          </>
+                                        ) : null}
                                       </span>
 
                                       {

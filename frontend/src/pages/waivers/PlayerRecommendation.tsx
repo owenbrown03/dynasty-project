@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import type {
   PlayerValue,
@@ -18,14 +19,15 @@ import {
 
 interface PlayerRecommendationProps {
   title: string;
-  player: PlayerValue | null;
-  selectedValue: number | null;
+  player: PlayerValue | null | undefined;
+  selectedValue?: number | null;
   valueBasis: ValueBasis;
-  variant: 'add' | 'drop';
+  variant?: 'add' | 'drop';
+  type?: 'add' | 'drop';
+  loading?: boolean;
   emptyMessage?: string;
   isCheap?: boolean;
 }
-
 
 export const PlayerRecommendation = ({
   title,
@@ -33,45 +35,38 @@ export const PlayerRecommendation = ({
   selectedValue,
   valueBasis,
   variant,
+  type,
+  loading = false,
   emptyMessage,
-  isCheap,
+  isCheap = false,
 }: PlayerRecommendationProps) => {
-  const isAdd = variant === 'add';
+  const effectiveType = type ?? variant ?? 'add';
+  const isAdd = effectiveType === 'add';
+  const Icon = isAdd
+    ? ArrowUpFromLine
+    : ArrowDownToLine;
 
   return (
-    <div
-      className={
-        `waiver-player-card ${
-          isAdd
-            ? 'waiver-player-card-add'
-            : 'waiver-player-card-drop'
-        }`
-      }
-    >
+    <div className={`waiver-player-card ${isAdd ? 'waiver-player-card-add' : 'waiver-player-card-drop'}`}>
       <div className="waiver-player-card-header">
         <div className="waiver-player-title">
-          {
-            isAdd
-              ? <ArrowUpFromLine size={16} />
-              : <ArrowDownToLine size={16} />
-          }
-
+          <Icon size={16} />
           <span>{title}</span>
         </div>
 
-        <span className="waiver-player-value">
-          {isCheap ? (
-            <Skeleton variant="text" width="30px" height="14px" />
-          ) : (
-            formatSelectedValue(
+        {isCheap ? (
+          <Skeleton variant="text" width="30px" height="14px" />
+        ) : player ? (
+          <span className="waiver-player-value">
+            {formatSelectedValue(
               selectedValue,
               valueBasis,
-            )
-          )}
-        </span>
+            )}
+          </span>
+        ) : null}
       </div>
 
-      {isCheap ? (
+      {isCheap || loading ? (
         <div className="waiver-player-identity">
           <Skeleton variant="circle" width="32px" height="32px" />
           <div className="waiver-player-copy" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
@@ -80,39 +75,27 @@ export const PlayerRecommendation = ({
           </div>
         </div>
       ) : player ? (
-        <>
-          <div className="waiver-player-identity">
-            <PlayerAvatar
-              playerId={player.player_id}
-              name={player.name}
-              size="sm"
-            />
+        <div className="waiver-player-identity">
+          <PlayerAvatar
+            playerId={player.player_id}
+            name={player.name}
+            size="sm"
+          />
 
-            <div className="waiver-player-copy">
-              <div className="waiver-player-name">
-                {player.name}
-              </div>
+          <div className="waiver-player-copy">
+            <div className="waiver-player-name">
+              {player.name}
+            </div>
 
-              <div className="waiver-player-meta">
-                <span>
-                  {player.position ?? '—'}
-                </span>
-
-                <span>•</span>
-
-                <span>
-                  {player.team ?? 'FA'}
-                </span>
-
-                <span>•</span>
-
-                <span>
-                  Age {formatAge(player.age)}
-                </span>
-              </div>
+            <div className="waiver-player-meta">
+              <span>{player.position ?? '—'}</span>
+              <span>•</span>
+              <TeamBadge team={player.team} size="xs" />
+              <span>•</span>
+              <span>Age {formatAge(player.age)}</span>
             </div>
           </div>
-        </>
+        </div>
       ) : (
         <div className="waiver-player-empty">
           {emptyMessage ?? 'No player found for this value basis.'}

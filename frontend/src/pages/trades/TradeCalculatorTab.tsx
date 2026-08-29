@@ -6,6 +6,7 @@ import {
 
 import { api } from '@/api/v1/endpoints';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
 import {
@@ -505,8 +506,14 @@ export function TradeCalculatorTab({
 
                           <div className="player-with-avatar-copy">
                             <strong>{player.name}</strong>
-                            <span>
-                              {[player.position, player.team].filter(Boolean).join(' · ')}
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span>{player.position}</span>
+                              {player.team ? (
+                                <>
+                                  <span>·</span>
+                                  <TeamBadge team={player.team} size="xs" />
+                                </>
+                              ) : null}
                             </span>
                           </div>
                         </div>

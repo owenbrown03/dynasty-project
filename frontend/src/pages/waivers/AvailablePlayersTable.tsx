@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import type {
   ValueBasis,
   WaiverAvailableLeagueAvailability,
@@ -126,7 +127,7 @@ const AvailablePlayersRow = ({
         </td>
 
         <td>
-          {player.team ?? 'FA'}
+          <TeamBadge team={player.team} size="sm" />
         </td>
 
         {

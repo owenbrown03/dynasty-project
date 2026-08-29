@@ -1,6 +1,7 @@
 import { LoadingState } from '@/components/feedback/LoadingState';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import type { PersonalValuePoolItem } from '@/types';
 import { getPositionColor } from '@/utils/positions';
 
@@ -337,7 +338,9 @@ export function MyValuesPoolPanel({
                             {item.player.position}
                           </span>
                         </td>
-                        <td>{item.player.team ?? '--'}</td>
+                        <td>
+                          <TeamBadge team={item.player.team} size="sm" fallbackText="--" />
+                        </td>
                         <td>{item.player.underdog_position_rank ?? '--'}</td>
                         <td>{formatMarketNumber(item.player.ktc_value)}</td>
                         <td>{formatMarketNumber(item.player.fc_value)}</td>

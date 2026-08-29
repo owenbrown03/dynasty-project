@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getPlayerInitials,
   getSleeperPlayerHeadshotUrl,
+  getSleeperTeamLogoUrl,
 } from './players';
 
 
@@ -31,5 +32,20 @@ describe('players utils', () => {
     expect(
       getPlayerInitials('Madonna'),
     ).toBe('MA');
+  });
+
+  it('builds sleeper team logo urls for valid NFL teams', () => {
+    expect(getSleeperTeamLogoUrl('BAL')).toBe(
+      'https://sleepercdn.com/images/team_logos/nfl/bal.png',
+    );
+    expect(getSleeperTeamLogoUrl('kc')).toBe(
+      'https://sleepercdn.com/images/team_logos/nfl/kc.png',
+    );
+  });
+
+  it('returns null for non-NFL team or FA', () => {
+    expect(getSleeperTeamLogoUrl('FA')).toBeNull();
+    expect(getSleeperTeamLogoUrl(null)).toBeNull();
+    expect(getSleeperTeamLogoUrl('UNKNOWN')).toBeNull();
   });
 });

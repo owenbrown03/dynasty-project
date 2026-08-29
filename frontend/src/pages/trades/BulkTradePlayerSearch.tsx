@@ -8,6 +8,7 @@ import {
 
 import { useBulkTradePlayerSearch } from '@/hooks/sleeper/useBulkTrades';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import { Skeleton } from '@/components/feedback/Skeleton';
 
 import type {
@@ -120,15 +121,14 @@ export const BulkTradePlayerSearch = ({
                           {player.name}
                         </strong>
 
-                        <span>
-                          {
-                            [
-                              player.position,
-                              player.team,
-                            ]
-                              .filter(Boolean)
-                              .join(' · ')
-                          }
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span>{player.position}</span>
+                          {player.team ? (
+                            <>
+                              <span>·</span>
+                              <TeamBadge team={player.team} size="xs" />
+                            </>
+                          ) : null}
                         </span>
                       </div>
                     </div>
@@ -218,16 +218,20 @@ export const BulkTradePlayerSearch = ({
                           {player.name}
                         </strong>
 
-                        <span>
-                          {
-                            [
-                              player.position,
-                              player.team,
-                              player.underdog_position_rank,
-                            ]
-                              .filter(Boolean)
-                              .join(' · ')
-                          }
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span>{player.position}</span>
+                          {player.team ? (
+                            <>
+                              <span>·</span>
+                              <TeamBadge team={player.team} size="xs" />
+                            </>
+                          ) : null}
+                          {player.underdog_position_rank ? (
+                            <>
+                              <span>·</span>
+                              <span>{player.underdog_position_rank}</span>
+                            </>
+                          ) : null}
                         </span>
                       </div>
                     </div>

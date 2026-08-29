@@ -8,6 +8,28 @@ export function getSleeperPlayerHeadshotUrl(
   return `https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg`;
 }
 
+const VALID_NFL_TEAMS = new Set([
+  'ARI', 'ATL', 'BAL', 'BUF', 'CAR', 'CHI', 'CIN', 'CLE',
+  'DAL', 'DEN', 'DET', 'GB', 'HOU', 'IND', 'JAX', 'KC',
+  'LAC', 'LAR', 'LV', 'MIA', 'MIN', 'NE', 'NO', 'NYG',
+  'NYJ', 'PHI', 'PIT', 'SEA', 'SF', 'TB', 'TEN', 'WAS',
+]);
+
+export function getSleeperTeamLogoUrl(
+  team: string | null | undefined,
+): string | null {
+  if (!team) {
+    return null;
+  }
+
+  const normalized = team.trim().toUpperCase();
+  if (!VALID_NFL_TEAMS.has(normalized)) {
+    return null;
+  }
+
+  return `https://sleepercdn.com/images/team_logos/nfl/${normalized.toLowerCase()}.png`;
+}
+
 
 export function getPlayerInitials(
   name: string | null | undefined,

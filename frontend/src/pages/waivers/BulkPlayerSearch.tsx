@@ -3,6 +3,7 @@ import {
 } from 'lucide-react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import type {
   BulkWaiverPlayerSearchResult,
@@ -128,12 +129,16 @@ export const BulkPlayerSearch = ({
                           {player.name}
                         </strong>
 
-                        <span>
-                          {player.position ?? '—'}
-                          {' · '}
-                          {player.team ?? 'FA'}
-                          {' · '}
-                          Age {formatAge(player.age)}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span>{player.position ?? '—'}</span>
+                          {player.team ? (
+                            <>
+                              <span>·</span>
+                              <TeamBadge team={player.team} size="xs" />
+                            </>
+                          ) : null}
+                          <span>·</span>
+                          <span>Age {formatAge(player.age)}</span>
                         </span>
                       </div>
                     </div>

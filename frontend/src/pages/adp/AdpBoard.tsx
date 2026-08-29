@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 
 import {
   DRAFT_ORDER_LABELS,
@@ -103,12 +104,10 @@ export function AdpBoard({
                           <div className="adp-player-main">
                             <div className="adp-player-copy">
                               <strong className="adp-player-name">{player.name}</strong>
-                              <span className="adp-player-meta-compact">
-                                {player.position ?? '—'}
-                                {' '}
-                                ·
-                                {' '}
-                                {player.team ?? '—'}
+                              <span className="adp-player-meta-compact" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                <span>{player.position ?? '—'}</span>
+                                <span>·</span>
+                                <TeamBadge team={player.team} size="xs" fallbackText="—" />
                               </span>
                             </div>
 

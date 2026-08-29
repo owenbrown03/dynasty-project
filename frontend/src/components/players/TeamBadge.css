@@ -1,0 +1,32 @@
+.team-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.team-badge-logo {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.team-badge-xs .team-badge-logo {
+  width: 12px;
+  height: 12px;
+}
+
+.team-badge-sm .team-badge-logo {
+  width: 14px;
+  height: 14px;
+}
+
+.team-badge-md .team-badge-logo {
+  width: 18px;
+  height: 18px;
+}
+
+.team-badge-label {
+  font-weight: 500;
+  white-space: nowrap;
+}

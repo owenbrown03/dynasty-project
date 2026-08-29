@@ -1,5 +1,6 @@
 import './OrphanCard.css';
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
+import { TeamBadge } from '@/components/players/TeamBadge';
 import type { Orphan } from '../../types';
 
 interface Props {
@@ -34,12 +35,14 @@ export function OrphanCard({ orphan }: Props) {
               <div className="player-with-avatar-copy">
                 <strong>{player.name}</strong>
 
-                <span>
-                  {
-                    [player.position, player.team]
-                      .filter(Boolean)
-                      .join(' · ') || '—'
-                  }
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span>{player.position ?? '—'}</span>
+                  {player.team ? (
+                    <>
+                      <span>·</span>
+                      <TeamBadge team={player.team} size="xs" />
+                    </>
+                  ) : null}
                 </span>
               </div>
             </div>
