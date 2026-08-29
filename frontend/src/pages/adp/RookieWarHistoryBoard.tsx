@@ -8,7 +8,6 @@ import { Skeleton } from '@/components/feedback/Skeleton';
 import { useRookieWarHistory } from '@/hooks/useRookieWarHistory';
 import { useLeagueOverview } from '@/hooks/sleeper/useLeagues';
 import type { RookieWarHistoryRow } from '@/types';
-import { getPositionColor } from '@/utils/positions';
 import { formatNumber } from '@/utils/format';
 
 import './RookieWarHistoryBoard.css';
