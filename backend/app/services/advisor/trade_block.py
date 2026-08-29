@@ -35,15 +35,18 @@ class TradeBlockSnapshot:
             if blocking_roster_id is None:
                 continue
 
-            raw_id = str(entry.get("player_id", ""))
-            pick = _parse_pick_id(raw_id)
+            raw_id = str(entry.get("player_id", "")).strip()
+            if not raw_id:
+                continue
 
-            if pick is not None:
-                round_, season, og_roster_id = pick
-                snapshot.picks[(round_, season, og_roster_id)] = (
-                    int(blocking_roster_id)
-                )
-            elif raw_id.isdigit():
+            if "," in raw_id:
+                pick = _parse_pick_id(raw_id)
+                if pick is not None:
+                    round_, season, og_roster_id = pick
+                    snapshot.picks[(round_, season, og_roster_id)] = (
+                        int(blocking_roster_id)
+                    )
+            elif raw_id.isalnum():
                 snapshot.player_ids[raw_id] = int(
                     blocking_roster_id
                 )
@@ -63,34 +66,46 @@ def _parse_pick_id(raw_id: str) -> tuple[int, str, int] | None:
         return None
 
 
-async def get_trade_block_snapshot(
-    ctx: ContextDep,
+async def fetch_trade_block_snapshot(
     league_id: str,
+    redis=None,
+    sleeper: SleeperClient | None = None,
 ) -> TradeBlockSnapshot:
     cache_key = f"advisor:trade_block:{league_id}"
 
-    if ctx.redis is not None:
-        cached = await ctx.redis.get(cache_key)
-
+    if redis is not None:
+        cached = await redis.get(cache_key)
         if cached:
             return _snapshot_from_json(cached)
 
-    client: SleeperClient = ctx.sleeper
-    data = await client.read.get_league_players_status(
-        league_id,
-    )
+    if sleeper is None:
+        from app.integrations.sleeper.factory import get_sleeper_client
+        sleeper = await get_sleeper_client()
+
+    data = await sleeper.read.get_league_players_status(league_id)
     snapshot = TradeBlockSnapshot.from_league_players(data)
 
-    if ctx.redis is not None and (
+    if redis is not None and (
         snapshot.player_ids or snapshot.picks
     ):
-        await ctx.redis.set(
+        await redis.set(
             cache_key,
             _snapshot_to_json(snapshot),
             ttl_seconds=TRADE_BLOCK_CACHE_TTL_SECONDS,
         )
 
     return snapshot
+
+
+async def get_trade_block_snapshot(
+    ctx: ContextDep,
+    league_id: str,
+) -> TradeBlockSnapshot:
+    return await fetch_trade_block_snapshot(
+        league_id=league_id,
+        redis=ctx.redis,
+        sleeper=ctx.sleeper,
+    )
 
 
 def _snapshot_to_json(snapshot: TradeBlockSnapshot) -> str:

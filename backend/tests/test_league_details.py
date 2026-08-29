@@ -213,3 +213,26 @@ def test_settings_details_render_trade_deadline_none_sentinel():
     }
 
     assert details["Trade Deadline"] == "None"
+
+
+def test_trade_block_snapshot_parses_players_defenses_and_picks():
+    from app.services.advisor.trade_block import TradeBlockSnapshot
+
+    raw_entries = [
+        {"player_id": "5967", "settings": {"otb": 1, "otb_added_at": 1766614334344}},
+        {"player_id": "BAL", "settings": {"otb": 1}},
+        {"player_id": "8,2025,3", "settings": {"otb": 8}},
+        {"player_id": "4040", "settings": None},
+        {"player_id": "1234", "settings": {"waiver_clears_at": 1759557748}},
+    ]
+
+    snapshot = TradeBlockSnapshot.from_league_players(raw_entries)
+    assert "5967" in snapshot.player_ids
+    assert snapshot.player_ids["5967"] == 1
+    assert "BAL" in snapshot.player_ids
+    assert snapshot.player_ids["BAL"] == 1
+    assert (8, "2025", 3) in snapshot.picks
+    assert snapshot.picks[(8, "2025", 3)] == 8
+    assert "4040" not in snapshot.player_ids
+    assert "1234" not in snapshot.player_ids
+

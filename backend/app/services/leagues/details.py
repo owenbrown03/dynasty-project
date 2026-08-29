@@ -883,11 +883,17 @@ class LeagueDetails:
 
         trade_block_snapshot = None
         try:
-            trade_block_data = await sleeper.read.get_league_players_status(league_id)
-            from app.services.advisor.trade_block import TradeBlockSnapshot
-            trade_block_snapshot = TradeBlockSnapshot.from_league_players(trade_block_data)
-        except Exception:
-            pass
+            from app.services.advisor.trade_block import fetch_trade_block_snapshot
+            trade_block_snapshot = await fetch_trade_block_snapshot(
+                league_id=league_id,
+                redis=redis,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to fetch trade block snapshot for league %s: %s",
+                league_id,
+                exc,
+            )
 
         empty_starter_slots_by_roster_id: dict[int, list[str]] = {}
         roster_players_by_roster_id: dict[
