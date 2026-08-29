@@ -35,13 +35,14 @@ from app.services.trades.picks import (
     get_current_pick_assets_by_league,
     get_owned_matching_picks,
 )
+from app.services.trades.trade_dm import maybe_send_trade_dm
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
 )
 from app.utils.age import calculate_age
 from app.crud.sleeper.roster import get_all_rosters_by_league, get_owned_roster_rows
 from app.crud.sleeper.user import get_user_names_by_id
-from app.crud.sleeper.personal import get_league_sort_orders
+from app.crud.sleeper.personal import get_hidden_league_ids, get_league_sort_orders
 
 logger = logging.getLogger(__name__)
 
@@ -53,12 +54,14 @@ BULK_WRITE_DELAY_SECONDS = 1.0
 def build_bulk_trade_result(
     *,
     league_id: str,
+    counterparty_roster_id: int | None = None,
     success: bool,
     transaction_id: str | None = None,
     error: str | None = None,
 ) -> BulkTradeProposalResult:
     return BulkTradeProposalResult(
         league_id=league_id,
+        counterparty_roster_id=counterparty_roster_id,
         success=success,
         transaction_id=transaction_id,
         error=error,
@@ -351,6 +354,20 @@ async def get_bulk_trade_availability(
                 9999,
             ),
         )
+
+    hidden_league_ids: set[str] = set()
+    if connection.site_user_id:
+        hidden_league_ids = await get_hidden_league_ids(
+            db=db,
+            site_user_id=connection.site_user_id,
+        )
+
+    if hidden_league_ids:
+        owned_roster_rows = [
+            row
+            for row in owned_roster_rows
+            if row[1].league_id not in hidden_league_ids
+        ]
 
     league_ids = [
         league.league_id
@@ -903,22 +920,6 @@ async def submit_bulk_trade_offers(
             ),
         )
 
-    seen_league_ids = set()
-
-    for offer in request.offers:
-        if offer.league_id in seen_league_ids:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "Bulk trade requests can include only "
-                    "one offer per league."
-                ),
-            )
-
-        seen_league_ids.add(
-            offer.league_id,
-        )
-
     validated_offers: list[
         tuple[
             BulkTradeOfferRequest,
@@ -979,6 +980,7 @@ async def submit_bulk_trade_offers(
             results=[
                 build_bulk_trade_result(
                     league_id=offer.league_id,
+                    counterparty_roster_id=offer.counterparty_roster_id,
                     success=False,
                     error=(
                         preflight_errors_by_league_id.get(
@@ -1009,14 +1011,23 @@ async def submit_bulk_trade_offers(
                 **variables,
             )
 
+            transaction_id = find_transaction_id(response)
+
             results.append(
                 build_bulk_trade_result(
                     league_id=offer.league_id,
+                    counterparty_roster_id=offer.counterparty_roster_id,
                     success=True,
-                    transaction_id=find_transaction_id(
-                        response,
-                    ),
+                    transaction_id=transaction_id,
                 )
+            )
+
+            await maybe_send_trade_dm(
+                db=db,
+                sleeper=sleeper,
+                connection=connection,
+                offer=offer,
+                transaction_id=transaction_id,
             )
 
         except SleeperGraphQLError as error:
@@ -1032,6 +1043,7 @@ async def submit_bulk_trade_offers(
             results.append(
                 build_bulk_trade_result(
                     league_id=offer.league_id,
+                    counterparty_roster_id=offer.counterparty_roster_id,
                     success=False,
                     error=str(error),
                 )
@@ -1046,6 +1058,7 @@ async def submit_bulk_trade_offers(
             results.append(
                 build_bulk_trade_result(
                     league_id=offer.league_id,
+                    counterparty_roster_id=offer.counterparty_roster_id,
                     success=False,
                     error=(
                         "Unexpected error while proposing "

@@ -161,6 +161,8 @@ class BulkTradeOfferRequest(Base):
 
     expires_at: int | None = None
 
+    send_dm: bool = False
+
 
 class BulkTradeProposalRequest(Base):
     offers: list[BulkTradeOfferRequest] = Field(
@@ -171,6 +173,7 @@ class BulkTradeProposalRequest(Base):
 
 class BulkTradeProposalResult(Base):
     league_id: str
+    counterparty_roster_id: int | None = None
 
     success: bool
 

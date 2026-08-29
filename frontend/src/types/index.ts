@@ -1362,6 +1362,7 @@ export interface BulkTradeOfferRequest {
   receive_player_ids: string[];
   receive_picks: BulkTradePickReference[];
   expires_at?: number | null;
+  send_dm?: boolean;
 }
 
 export interface BulkTradeProposalRequest {
@@ -1370,6 +1371,7 @@ export interface BulkTradeProposalRequest {
 
 export interface BulkTradeProposalResult {
   league_id: string;
+  counterparty_roster_id: number | null;
   success: boolean;
   transaction_id: string | null;
   error: string | null;

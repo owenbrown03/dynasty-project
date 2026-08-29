@@ -66,10 +66,88 @@
   margin: 0 0 8px;
 }
 
+.advisor-send-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.advisor-send-copy {
+  opacity: 0.75;
+}
+
+.advisor-send-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.advisor-send-line-label {
+  flex: 0 0 auto;
+  min-width: 72px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+
+.advisor-send-line-value {
+  flex: 1;
+  min-width: 0;
+}
+
 .advisor-send-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.advisor-expiry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.advisor-expiry-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+
+.advisor-expiry-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.advisor-expiry-option {
+  font-size: 0.74rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, #e2e2e2);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.advisor-expiry-active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.advisor-dm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.advisor-dm-toggle input {
+  accent-color: #3b82f6;
 }
 
 .advisor-cards {
@@ -143,6 +221,7 @@
 .advisor-player-chip {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   padding: 0.45rem 0.6rem;
   border-radius: 8px;
   margin-top: 0.35rem;
@@ -157,19 +236,38 @@
 }
 
 .advisor-chip-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 600;
   font-size: 0.88rem;
 }
 
+.advisor-chip-name-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .advisor-chip-meta {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px 10px;
+  min-width: 0;
+  margin-top: 1px;
   font-size: 0.74rem;
   opacity: 0.8;
 }
 
+.advisor-chip-fact {
+  white-space: nowrap;
+}
+
 .advisor-totals {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
   font-size: 0.78rem;
   opacity: 0.85;
 }
@@ -392,6 +490,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
   border-radius: 10px;
   padding: 0.5rem 0.7rem;
@@ -410,13 +509,16 @@
   gap: 6px;
   font-weight: 600;
   font-size: 0.86rem;
+  white-space: nowrap;
 }
 
 .advisor-delta-badge {
+  display: inline-block;
   padding: 1px 6px;
   border-radius: 999px;
   font-size: 0.68rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .advisor-delta-badge.positive {

@@ -6,11 +6,19 @@ import type {
   AdvisorPickRef,
   AdvisorProposal,
   BulkTradeProposalRequest,
+  BulkTradeProposalResult,
 } from '@/types';
 import { extractErrorDetail } from './useAdvisor';
 
+export interface AdvisorOfferOptions {
+  expiresAt?: number | null;
+  sendDm?: boolean;
+  onSuccess?: (result: BulkTradeProposalResult | null) => void;
+}
+
 function buildOfferPayload(
   proposal: AdvisorProposal,
+  options?: AdvisorOfferOptions,
 ): BulkTradeProposalRequest {
   const toPickRefs = (picks: AdvisorPickRef[] = []) =>
     picks.map((pick) => ({
@@ -36,6 +44,8 @@ function buildOfferPayload(
         receive_picks: toPickRefs(
           proposal.receive_picks,
         ),
+        expires_at: options?.expiresAt ?? null,
+        send_dm: options?.sendDm ?? false,
       },
     ],
   };
@@ -43,14 +53,18 @@ function buildOfferPayload(
 
 export function useSendAdvisorOffer() {
   const mutation = useMutation({
-    mutationFn: async (proposal: AdvisorProposal) => {
+    mutationFn: async (variables: {
+      proposal: AdvisorProposal;
+      options?: AdvisorOfferOptions;
+    }) => {
+      const { proposal, options } = variables;
       const response = await api.trades.submitBulkOffers(
-        buildOfferPayload(proposal),
+        buildOfferPayload(proposal, options),
       );
 
       return response.data.results[0] ?? null;
     },
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (result?.success) {
         notify.success('Trade offer sent on Sleeper.');
       } else {
@@ -59,6 +73,7 @@ export function useSendAdvisorOffer() {
             ?? 'Sleeper rejected this offer.',
         );
       }
+      variables.options?.onSuccess?.(result);
     },
     onError: (error) => {
       notify.error(
@@ -69,7 +84,10 @@ export function useSendAdvisorOffer() {
   });
 
   return {
-    sendOffer: mutation.mutate,
+    sendOffer: (
+      proposal: AdvisorProposal,
+      options?: AdvisorOfferOptions,
+    ) => mutation.mutate({ proposal, options }),
     sending: mutation.isPending,
   };
 }

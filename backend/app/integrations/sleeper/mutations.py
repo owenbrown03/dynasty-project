@@ -76,9 +76,100 @@ SUBMIT_WAIVER_CLAIM_MUTATION = """
     }
 """
 
+GET_DM_BY_MEMBERS_QUERY = """
+    query get_dm_by_members($members: [String]) {
+        get_dm_by_members(members: $members) {
+            dm_id
+            dm_type
+            hidden_at
+            last_author_avatar
+            last_author_display_name
+            last_author_real_name
+            last_author_id
+            last_message_id
+            last_message_text
+            last_message_text_map
+            last_message_time
+            last_pinned_message_id
+            last_read_id
+            member_can_invite
+            recent_users
+            title
+        }
+    }
+"""
+
+CREATE_DM_MUTATION = """
+    mutation create_dm($dm_type: String, $members: [String]) {
+        create_dm(dm_type: $dm_type, members: $members) {
+            dm_id
+            dm_type
+            last_author_avatar
+            last_author_display_name
+            last_author_real_name
+            last_author_id
+            last_message_id
+            last_message_text
+            last_message_text_map
+            last_message_time
+            last_pinned_message_id
+            last_read_id
+            member_can_invite
+            hidden_at
+            recent_users
+            title
+        }
+    }
+"""
+
+CREATE_MESSAGE_MUTATION = """
+    mutation create_message(
+        $parent_id: String,
+        $client_id: String,
+        $parent_type: String,
+        $text: String,
+        $attachment_type: String,
+        $k_attachment_data: [String],
+        $v_attachment_data: [String]
+    ) {
+        create_message(
+            parent_id: $parent_id,
+            client_id: $client_id,
+            parent_type: $parent_type,
+            text: $text,
+            shard_min: null,
+            shard_max: null,
+            attachment_type: $attachment_type,
+            k_attachment_data: $k_attachment_data,
+            v_attachment_data: $v_attachment_data
+        ) {
+            attachment
+            author_avatar
+            author_display_name
+            author_real_name
+            author_id
+            author_is_bot
+            author_role_id
+            client_id
+            created
+            message_id
+            parent_id
+            parent_type
+            pinned
+            reactions
+            user_reactions
+            text
+            text_map
+        }
+    }
+"""
+
 MUTATIONS: dict[str, str] = {
     "create_verification_code": CREATE_VERIFICATION_CODE_MUTATION,
     "login": LOGIN_QUERY,
     "propose_trade": PROPOSE_TRADE_MUTATION,
     "submit_waiver_claim": SUBMIT_WAIVER_CLAIM_MUTATION,
+    "get_dm_by_members": GET_DM_BY_MEMBERS_QUERY,
+    "create_dm": CREATE_DM_MUTATION,
+    "create_message": CREATE_MESSAGE_MUTATION,
 }
