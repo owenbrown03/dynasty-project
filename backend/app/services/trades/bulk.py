@@ -1013,12 +1013,19 @@ async def submit_bulk_trade_offers(
                 )
             )
 
+            player_map = (
+                response.get("propose_trade", {}).get("player_map")
+                if isinstance(response, dict)
+                else None
+            )
+
             await maybe_send_trade_dm(
                 db=db,
                 sleeper=sleeper,
                 connection=connection,
                 offer=offer,
                 transaction_id=transaction_id,
+                player_map=player_map,
             )
 
         except SleeperGraphQLError as error:

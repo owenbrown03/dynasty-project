@@ -48,6 +48,9 @@ PROPOSE_TRADE_MUTATION = """
             expires_at: $expires_at
         ) {
             transaction_id
+            player_map
+            status
+            league_id
         }
     }
 """

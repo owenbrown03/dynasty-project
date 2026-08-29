@@ -20,11 +20,56 @@ _DM_PROPOSED_STATUS = "proposed"
 
 _ATTACHMENT_KEYS = [
     "status",
+    "transactions_by_roster",
     "transaction_id",
     "league_id",
-    "transactions_by_roster",
     "users_in_league_map",
 ]
+
+
+def _build_player_entry(
+    player_id: str,
+    player_map: dict | None,
+    db_players: dict[str, model.Player],
+) -> dict:
+    if player_map and str(player_id) in player_map:
+        return player_map[str(player_id)]
+
+    db_player = db_players.get(str(player_id))
+    if db_player:
+        return {
+            "player_id": str(db_player.player_id),
+            "first_name": db_player.first_name or "",
+            "last_name": db_player.last_name or "",
+            "position": db_player.position or "",
+            "team": db_player.team,
+            "number": db_player.number,
+            "status": db_player.status or "Active",
+            "sport": "nfl",
+            "fantasy_positions": [db_player.position] if db_player.position else [],
+            "injury_status": db_player.injury_status,
+            "years_exp": db_player.years_exp,
+            "team_abbr": None,
+            "team_changed_at": None,
+            "news_updated": None,
+        }
+
+    return {
+        "player_id": str(player_id),
+        "first_name": "",
+        "last_name": f"Player {player_id}",
+        "position": "BN",
+        "team": None,
+        "number": None,
+        "status": "Active",
+        "sport": "nfl",
+        "fantasy_positions": [],
+        "injury_status": None,
+        "years_exp": None,
+        "team_abbr": None,
+        "team_changed_at": None,
+        "news_updated": None,
+    }
 
 
 def _extract_dm_id(payload) -> str | None:
@@ -93,7 +138,7 @@ async def send_trade_dm_to_manager(
 
     # 2. Post the trade card message.
     text = (
-        f"<@{sender_display_name}> has proposed a trade"
+        f"@{sender_display_name} has proposed a trade"
         f" in {league_name}"
     )
 
@@ -105,9 +150,9 @@ async def send_trade_dm_to_manager(
         k_attachment_data=_ATTACHMENT_KEYS,
         v_attachment_data=[
             _DM_PROPOSED_STATUS,
+            json.dumps(transactions_by_roster),
             str(transaction_id),
             str(league_id),
-            json.dumps(transactions_by_roster),
             json.dumps(users_in_league_map),
         ],
     )
@@ -120,6 +165,7 @@ async def maybe_send_trade_dm(
     *,
     offer: BulkTradeOfferRequest,
     transaction_id: str | None,
+    player_map: dict | None = None,
 ) -> None:
     """Send the trade DM to the counterparty manager when `offer.send_dm` is
     set and the trade was proposed successfully. Non-fatal on failure — a DM
@@ -179,25 +225,45 @@ async def maybe_send_trade_dm(
         )
         return
 
-    # Build users_in_league_map for the trade card
+    # Build users_in_league_map for the trade card with live avatars
+    users_in_league_map = {}
+    try:
+        api_users = await sleeper.transport.get(f"league/{offer.league_id}/users")
+        if isinstance(api_users, list):
+            for u in api_users:
+                uid = u.get("user_id")
+                if uid:
+                    users_in_league_map[uid] = u
+    except Exception as exc:
+        logger.debug("Failed to fetch live league users: %s", exc)
+
     all_owner_ids = {r.owner_id for r in rosters if r.owner_id}
     users_result = await db.execute(
         select(model.User).where(model.User.user_id.in_(all_owner_ids))
     )
     user_map = {u.user_id: u for u in users_result.scalars()}
 
-    users_in_league_map = {}
     for uid, u in user_map.items():
-        users_in_league_map[uid] = {
-            "user_id": u.user_id,
-            "display_name": u.display_name,
-            "avatar": u.avatar,
-            "is_bot": False,
-            "is_owner": (uid == sender_user_id),
-            "league_id": offer.league_id,
-            "metadata": {},
-            "settings": None,
-        }
+        if uid not in users_in_league_map:
+            users_in_league_map[uid] = {
+                "user_id": u.user_id,
+                "display_name": u.display_name,
+                "avatar": u.avatar,
+                "is_bot": False,
+                "is_owner": (uid == sender_user_id),
+                "league_id": offer.league_id,
+                "metadata": {},
+                "settings": None,
+            }
+
+    # Fetch DB player info as fallback if player_map is missing any players
+    all_player_ids = set(offer.send_player_ids or []) | set(offer.receive_player_ids or [])
+    db_players: dict[str, model.Player] = {}
+    if all_player_ids:
+        players_result = await db.execute(
+            select(model.Player).where(model.Player.player_id.in_(all_player_ids))
+        )
+        db_players = {str(p.player_id): p for p in players_result.scalars()}
 
     # Build added_picks for each side
     your_added_picks = [
@@ -224,10 +290,19 @@ async def maybe_send_trade_dm(
         for p in (offer.send_picks or [])
     ]
 
+    your_adds = [
+        _build_player_entry(pid, player_map, db_players)
+        for pid in (offer.receive_player_ids or [])
+    ]
+    counterparty_adds = [
+        _build_player_entry(pid, player_map, db_players)
+        for pid in (offer.send_player_ids or [])
+    ]
+
     transactions_by_roster = {
         str(offer.your_roster_id): {
-            "adds": offer.receive_player_ids or [],
-            "drops": offer.send_player_ids or [],
+            "adds": your_adds,
+            "drops": [],
             "added_picks": your_added_picks,
             "dropped_picks": [],
             "added_budget": [],
@@ -245,8 +320,8 @@ async def maybe_send_trade_dm(
             }),
         },
         str(offer.counterparty_roster_id): {
-            "adds": offer.send_player_ids or [],
-            "drops": offer.receive_player_ids or [],
+            "adds": counterparty_adds,
+            "drops": [],
             "added_picks": counterparty_added_picks,
             "dropped_picks": [],
             "added_budget": [],
