@@ -5,20 +5,18 @@ import {
 } from 'react';
 
 import { api } from '@/api/v1/endpoints';
-import { PlayerAvatar } from '@/components/players/PlayerAvatar';
-import { TeamBadge } from '@/components/players/TeamBadge';
-import { Skeleton } from '@/components/feedback/Skeleton';
 import { useValuePreference } from '@/context/useValuePreference';
 import {
   fetchTradeCalculatorPickValue,
-  useBulkTradePlayerSearch,
 } from '@/hooks/sleeper/useBulkTrades';
 import type {
   BulkTradePlayerSearchResult,
   BulkTradePickRequest,
 } from '@/types';
 import { notify } from '@/utils/notify';
-import { formatMarketValue } from '@/utils/valueFormat';
+import { TradeSideCard, type TradeSideAsset } from '@/components/trades/TradeSideCard';
+import { TradeWinningBar } from '@/components/trades/TradeWinningBar';
+import './TradeCalculatorTab.css';
 
 
 type CalculatorBasis =
@@ -61,7 +59,7 @@ function getAssetValue(
 
 function buildPlayerAsset(
   player: BulkTradePlayerSearchResult,
-) {
+): CalculatorAsset {
   return {
     id: `player-${player.player_id}`,
     type: 'player' as const,
@@ -70,7 +68,7 @@ function buildPlayerAsset(
       player.position,
       player.team,
       player.age !== null
-        ? `Age ${player.age}`
+        ? `${player.age} y.o.`
         : null,
     ]
       .filter(Boolean)
@@ -79,6 +77,24 @@ function buildPlayerAsset(
     fcValue: player.fc_value,
     player,
   };
+}
+
+function toTradeSideAssets(
+  assets: CalculatorAsset[],
+  basis: CalculatorBasis,
+): TradeSideAsset[] {
+  return assets.map((a) => ({
+    id: a.id,
+    type: a.type,
+    label: a.label,
+    meta: a.meta,
+    value: getAssetValue(a, basis),
+    position: a.player?.position ?? (a.type === 'pick' ? 'PICK' : null),
+    team: a.player?.team ?? null,
+    age: a.player?.age ?? null,
+    playerId: a.player?.player_id ?? null,
+    underdogRank: a.player?.underdog_position_rank ?? null,
+  }));
 }
 
 function buildBulkOfferSeed({
@@ -149,54 +165,74 @@ function buildBulkOfferSeed({
   };
 }
 
-export function TradeCalculatorTab({
-  onSendToBulkOffers,
-}: {
+
+interface TradeCalculatorTabProps {
+  seed?: TradeCalculatorBulkOfferSeed | null;
   onSendToBulkOffers?: (
     seed: TradeCalculatorBulkOfferSeed,
   ) => void;
-}) {
-  const valuePreference = useValuePreference();
-  const valueBasis: CalculatorBasis = (
-    valuePreference.preference === 'fantasycalc'
+}
+
+export function TradeCalculatorTab({
+  seed,
+  onSendToBulkOffers,
+}: TradeCalculatorTabProps) {
+  const { preference } = useValuePreference();
+  const valueBasis: CalculatorBasis =
+    preference === 'fantasycalc'
       ? 'fantasycalc'
-      : 'ktc'
-  );
-  const [searchQuery, setSearchQuery] = useState('');
-  const [teamAReceives, setTeamAReceives] = useState<CalculatorAsset[]>([]);
-  const [teamBReceives, setTeamBReceives] = useState<CalculatorAsset[]>([]);
-  const [mySide, setMySide] = useState<CalculatorSide>('team-a');
-  const [pickSide, setPickSide] = useState<CalculatorSide>('team-a');
-  const [pickSeason, setPickSeason] = useState('2027');
-  const [pickRound, setPickRound] = useState(1);
-  const [pickSlot, setPickSlot] = useState('6');
+      : 'ktc';
+
+  const [waiverValue, setWaiverValue] = useState(500);
   const [totalRosters, setTotalRosters] = useState(12);
   const [numQbs, setNumQbs] = useState(2);
   const [ppr, setPpr] = useState(1);
-  const [waiverValue, setWaiverValue] = useState(
-    valueBasis === 'ktc'
-      ? 250
-      : 200,
-  );
-  const [addingPick, setAddingPick] = useState(false);
+  const [mySide, setMySide] = useState<CalculatorSide>('team-a');
 
-  const playerSearch = useBulkTradePlayerSearch(
-    searchQuery,
-  );
-
-  useEffect(() => {
-    setWaiverValue(
-      valueBasis === 'ktc'
-        ? 250
-        : 200,
-    );
-  }, [valueBasis]);
+  const [teamAReceives, setTeamAReceives] = useState<CalculatorAsset[]>([]);
+  const [teamBReceives, setTeamBReceives] = useState<CalculatorAsset[]>([]);
 
   const [waiverCredits, setWaiverCredits] = useState<{
-    a: number | null;
-    b: number | null;
+    a: number;
+    b: number;
   } | null>(null);
 
+  // Apply seeds when passed
+  useEffect(() => {
+    if (!seed) {
+      return;
+    }
+
+    setTeamAReceives([
+      ...seed.sendPlayers.map(buildPlayerAsset),
+      ...seed.sendPicks.map((pick, index) => ({
+        id: `seed-send-pick-${pick.season}-${pick.round}-${index}`,
+        type: 'pick' as const,
+        label: `${pick.season} Round ${pick.round}`,
+        meta: 'Draft pick',
+        ktcValue: 0,
+        fcValue: 0,
+        pickSeason: pick.season,
+        pickRound: pick.round,
+      })),
+    ]);
+
+    setTeamBReceives([
+      ...seed.receivePlayers.map(buildPlayerAsset),
+      ...seed.receivePicks.map((pick, index) => ({
+        id: `seed-receive-pick-${pick.season}-${pick.round}-${index}`,
+        type: 'pick' as const,
+        label: `${pick.season} Round ${pick.round}`,
+        meta: 'Draft pick',
+        ktcValue: 0,
+        fcValue: 0,
+        pickSeason: pick.season,
+        pickRound: pick.round,
+      })),
+    ]);
+  }, [seed]);
+
+  // Query waiver ladder adjustments dynamically
   useEffect(() => {
     const aOut = teamBReceives.filter(
       (asset) => asset.type !== 'pick',
@@ -223,8 +259,8 @@ export function TradeCalculatorTab({
       )
       .then((response) => {
         setWaiverCredits({
-          a: response.data.my_credit,
-          b: response.data.their_credit,
+          a: response.data.my_credit ?? 0,
+          b: response.data.their_credit ?? 0,
         });
       })
       .catch(() => {
@@ -254,7 +290,7 @@ export function TradeCalculatorTab({
       ...current,
       {
         ...asset,
-        id: `${asset.id}-${current.length + 1}`,
+        id: `${asset.id}-${current.length + 1}-${Date.now()}`,
       },
     ]);
   };
@@ -270,6 +306,42 @@ export function TradeCalculatorTab({
     setter((current) => current.filter(
       (asset) => asset.id !== assetId,
     ));
+  };
+
+  const handleAddPick = async (
+    side: CalculatorSide,
+    season: string,
+    round: number,
+    slot?: number | null,
+  ) => {
+    try {
+      const pickValue = await fetchTradeCalculatorPickValue(
+        season,
+        round,
+        slot ?? null,
+        totalRosters,
+        numQbs,
+        ppr,
+      );
+
+      addAssetToSide(
+        side,
+        {
+          id: `pick-${season}-${round}-${pickValue.slot ?? 'generic'}`,
+          type: 'pick',
+          label: pickValue.slot !== null
+            ? `${season} Pick ${round}.${String(pickValue.slot).padStart(2, '0')}`
+            : `${season} Round ${round}`,
+          meta: `${totalRosters} tm · ${numQbs === 2 ? 'SF' : '1QB'} · ${ppr} PPR`,
+          ktcValue: pickValue.ktc_value,
+          fcValue: pickValue.fc_value,
+          pickSeason: season,
+          pickRound: round,
+        },
+      );
+    } catch {
+      notify.error('Unable to load pick value.');
+    }
   };
 
   const teamATotal = useMemo(
@@ -294,14 +366,14 @@ export function TradeCalculatorTab({
     teamAReceives.length - teamBReceives.length
   ) * waiverValue;
 
-  // Real FantasyCalc-style ladder credits when available; the flat
-  // per-spot constant is only a fallback while loading.
   const rosterSpotAdjustmentA =
     waiverCredits?.a ?? flatAdjustmentA;
   const rosterSpotAdjustmentB =
     waiverCredits?.b ?? flatAdjustmentB;
+
   const teamANet = teamATotal + rosterSpotAdjustmentA;
   const teamBNet = teamBTotal + rosterSpotAdjustmentB;
+
   const bulkOfferSeed = useMemo(
     () => buildBulkOfferSeed({
       mySide,
@@ -315,77 +387,27 @@ export function TradeCalculatorTab({
     ],
   );
 
-  const addPick = async () => {
-    setAddingPick(true);
-
-    try {
-      const parsedSlot = pickSlot.trim()
-        ? Number(pickSlot)
-        : null;
-      const pickValue = await fetchTradeCalculatorPickValue(
-        pickSeason,
-        pickRound,
-        Number.isFinite(parsedSlot)
-          ? parsedSlot
-          : null,
-        totalRosters,
-        numQbs,
-        ppr,
-      );
-
-      addAssetToSide(
-        pickSide,
-        {
-          id: `pick-${pickSeason}-${pickRound}-${pickValue.slot ?? 'generic'}`,
-          type: 'pick',
-          label: pickValue.slot !== null
-            ? `${pickSeason} Pick ${pickRound}.${String(pickValue.slot).padStart(2, '0')}`
-            : `${pickSeason} Round ${pickRound}`,
-          meta: `${totalRosters} team · ${numQbs === 2 ? 'SF' : '1QB'} · ${ppr} PPR`,
-          ktcValue: pickValue.ktc_value,
-          fcValue: pickValue.fc_value,
-          pickSeason,
-          pickRound,
-        },
-      );
-    } catch {
-      notify.error('Unable to load pick value.');
-    } finally {
-      setAddingPick(false);
-    }
-  };
-
   return (
     <div className="trades-container">
       <section className="trade-calculator-shell">
         <div className="trades-section-header">
           <div>
             <p className="page-eyebrow">Calculator</p>
-            <h2 className="trades-section-title">Manual trade calculator</h2>
+            <h2 className="trades-section-title">Trade Calculator</h2>
           </div>
         </div>
 
+        {/* League & Format Controls */}
         <div className="trade-calculator-controls">
           <label>
             <span>Value basis</span>
             <input
               value={
                 valueBasis === 'ktc'
-                  ? 'KTC'
-                  : 'FantasyCalc'
+                  ? 'KeepTradeCut (KTC)'
+                  : 'FantasyCalc (FC)'
               }
               readOnly
-            />
-          </label>
-
-          <label>
-            <span>Waiver spot value</span>
-            <input
-              type="number"
-              value={waiverValue}
-              onChange={(event) => {
-                setWaiverValue(Number(event.target.value));
-              }}
             />
           </label>
 
@@ -403,6 +425,19 @@ export function TradeCalculatorTab({
           </label>
 
           <label>
+            <span>Waiver spot value</span>
+            <input
+              type="number"
+              min="0"
+              max="5000"
+              value={waiverValue}
+              onChange={(event) => {
+                setWaiverValue(Number(event.target.value));
+              }}
+            />
+          </label>
+
+          <label>
             <span>QB format</span>
             <select
               value={numQbs}
@@ -410,22 +445,23 @@ export function TradeCalculatorTab({
                 setNumQbs(Number(event.target.value));
               }}
             >
-              <option value={2}>Superflex</option>
+              <option value={2}>Superflex (2QB / SF)</option>
               <option value={1}>1QB</option>
             </select>
           </label>
 
           <label>
-            <span>PPR</span>
+            <span>PPR Scoring</span>
             <select
               value={ppr}
               onChange={(event) => {
                 setPpr(Number(event.target.value));
               }}
             >
-              <option value={0}>0</option>
-              <option value={1}>1</option>
-              <option value={2}>2</option>
+              <option value={0}>Standard (0 PPR)</option>
+              <option value={0.5}>Half PPR (0.5)</option>
+              <option value={1}>Full PPR (1.0)</option>
+              <option value={2}>2.0 PPR</option>
             </select>
           </label>
 
@@ -439,297 +475,59 @@ export function TradeCalculatorTab({
                 );
               }}
             >
-              <option value="team-a">Team A</option>
-              <option value="team-b">Team B</option>
+              <option value="team-a">Team 1 (Left)</option>
+              <option value="team-b">Team 2 (Right)</option>
             </select>
           </label>
         </div>
 
-        <div className="trade-calculator-builder">
-          <label className="bulk-trade-search-label">
-            <span>Add players</span>
-            <div className="bulk-trade-search-input-wrap">
-              <input
-                value={searchQuery}
-                onChange={(event) => {
-                  setSearchQuery(event.target.value);
-                }}
-                placeholder="Search player name"
-              />
-            </div>
-          </label>
+        {/* Side-by-Side KTC-Style Trade Builder */}
+        <div className="trade-calculator-two-column-grid">
+          <TradeSideCard
+            title="Team 1 gets..."
+            side="team-a"
+            assets={toTradeSideAssets(teamAReceives, valueBasis)}
+            totalValue={teamATotal}
+            adjustmentValue={rosterSpotAdjustmentA}
+            adjustmentLabel="Value Adjustment"
+            netValue={teamANet}
+            onAddPlayer={(player) => addAssetToSide('team-a', buildPlayerAsset(player))}
+            onAddPick={(season, round, slot) => handleAddPick('team-a', season, round, slot)}
+            onRemoveAsset={(assetId) => removeAsset('team-a', assetId)}
+            valueBasis={valueBasis}
+            searchPlaceholder="Search for a player to add to Team 1..."
+          />
 
-          {
-            searchQuery.trim().length >= 2
-              ? (
-                <div className="bulk-trade-search-results">
-                  {
-                    playerSearch.loading
-                      ? (
-                        Array.from({ length: 3 }).map((_, index) => (
-                          <div
-                            key={index}
-                            className="trade-calculator-search-row trade-calculator-search-row-skeleton"
-                          >
-                            <div className="player-with-avatar">
-                              <Skeleton width={28} height={28} radius={4} />
-                              <div className="player-with-avatar-copy">
-                                <Skeleton width={132} variant="title" />
-                                <Skeleton width={80} variant="text" />
-                              </div>
-                            </div>
-
-                            <div className="trade-calculator-search-actions">
-                              <Skeleton width={58} height={18} />
-                              <Skeleton width={76} height={34} />
-                              <Skeleton width={76} height={34} />
-                            </div>
-                          </div>
-                        ))
-                      )
-                      : null
-                  }
-
-                  {
-                    !playerSearch.loading
-                      ? playerSearch.data.map((player) => (
-                      <div
-                        key={player.player_id}
-                        className="trade-calculator-search-row"
-                      >
-                        <div className="player-with-avatar">
-                          <PlayerAvatar
-                            playerId={player.player_id}
-                            name={player.name}
-                            size="sm"
-                          />
-
-                          <div className="player-with-avatar-copy">
-                            <strong>{player.name}</strong>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <span>{player.position}</span>
-                              {player.team ? (
-                                <>
-                                  <span>·</span>
-                                  <TeamBadge team={player.team} size="xs" />
-                                </>
-                              ) : null}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="trade-calculator-search-actions">
-                          <span>
-                            {valueBasis === 'ktc'
-                              ? formatMarketValue(player.ktc_value ?? 0)
-                              : formatMarketValue(player.fc_value ?? 0)}
-                          </span>
-
-                          <button
-                            type="button"
-                            className="button-secondary"
-                            onClick={() => {
-                              addAssetToSide(
-                                'team-a',
-                                buildPlayerAsset(player),
-                              );
-                            }}
-                          >
-                            Add to A
-                          </button>
-
-                          <button
-                            type="button"
-                            className="button-secondary"
-                            onClick={() => {
-                              addAssetToSide(
-                                'team-b',
-                                buildPlayerAsset(player),
-                              );
-                            }}
-                          >
-                            Add to B
-                          </button>
-                        </div>
-                      </div>
-                      ))
-                      : null
-                  }
-
-                  {
-                    !playerSearch.loading
-                    && playerSearch.data.length === 0
-                      ? (
-                        <div className="bulk-trade-empty-search">
-                          No players found.
-                        </div>
-                      )
-                      : null
-                  }
-                </div>
-              )
-              : null
-          }
-
-          <div className="trade-calculator-pick-builder">
-            <label>
-              <span>Add future pick</span>
-              <select
-                value={pickSide}
-                onChange={(event) => {
-                  setPickSide(
-                    event.target.value as CalculatorSide,
-                  );
-                }}
-              >
-                <option value="team-a">Team A receives</option>
-                <option value="team-b">Team B receives</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Season</span>
-              <input
-                value={pickSeason}
-                onChange={(event) => {
-                  setPickSeason(event.target.value);
-                }}
-              />
-            </label>
-
-            <label>
-              <span>Round</span>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={pickRound}
-                onChange={(event) => {
-                  setPickRound(Number(event.target.value));
-                }}
-              />
-            </label>
-
-            <label>
-              <span>Slot</span>
-              <input
-                type="number"
-                min="1"
-                max="32"
-                value={pickSlot}
-                onChange={(event) => {
-                  setPickSlot(event.target.value);
-                }}
-                placeholder="Optional"
-              />
-            </label>
-
-            <button
-              type="button"
-              className="button-primary"
-              onClick={() => {
-                void addPick();
-              }}
-              disabled={addingPick}
-            >
-              {addingPick ? 'Adding...' : 'Add pick'}
-            </button>
-          </div>
+          <TradeSideCard
+            title="Team 2 gets..."
+            side="team-b"
+            assets={toTradeSideAssets(teamBReceives, valueBasis)}
+            totalValue={teamBTotal}
+            adjustmentValue={rosterSpotAdjustmentB}
+            adjustmentLabel="Value Adjustment"
+            netValue={teamBNet}
+            onAddPlayer={(player) => addAssetToSide('team-b', buildPlayerAsset(player))}
+            onAddPick={(season, round, slot) => handleAddPick('team-b', season, round, slot)}
+            onRemoveAsset={(assetId) => removeAsset('team-b', assetId)}
+            valueBasis={valueBasis}
+            searchPlaceholder="Search for a player to add to Team 2..."
+          />
         </div>
 
-        <div className="trade-calculator-grid">
-          {
-            [
-              {
-                side: 'team-a' as const,
-                title: 'Team A receives',
-                assets: teamAReceives,
-                total: teamATotal,
-                adjustment: rosterSpotAdjustmentA,
-                net: teamANet,
-              },
-              {
-                side: 'team-b' as const,
-                title: 'Team B receives',
-                assets: teamBReceives,
-                total: teamBTotal,
-                adjustment: rosterSpotAdjustmentB,
-                net: teamBNet,
-              },
-            ].map((panel) => (
-              <section
-                key={panel.side}
-                className="trade-calculator-panel"
-              >
-                <div className="trade-calculator-panel-header">
-                  <h3>{panel.title}</h3>
-                  <strong>{formatMarketValue(panel.net)}</strong>
-                </div>
+        {/* Visual Winning Meter & Advice Bar */}
+        <TradeWinningBar
+          teamAName="Team 1"
+          teamBName="Team 2"
+          teamANet={teamANet}
+          teamBNet={teamBNet}
+        />
 
-                <div className="trade-calculator-asset-list">
-                  {
-                    panel.assets.length > 0
-                      ? panel.assets.map((asset) => (
-                          <div
-                            key={asset.id}
-                            className="trade-calculator-asset-row"
-                          >
-                            <div>
-                              <strong>{asset.label}</strong>
-                              <span>{asset.meta}</span>
-                            </div>
-
-                            <div className="trade-calculator-asset-actions">
-                              <span>
-                                {
-                                  formatMarketValue(
-                                    getAssetValue(asset, valueBasis),
-                                  )
-                                }
-                              </span>
-                              <button
-                                type="button"
-                                className="button-secondary"
-                                onClick={() => {
-                                  removeAsset(
-                                    panel.side,
-                                    asset.id,
-                                  );
-                                }}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      : (
-                        <div className="commissioner-empty-note">
-                          No assets added yet.
-                        </div>
-                      )
-                  }
-                </div>
-
-                <div className="trade-calculator-summary">
-                  <div>
-                    <span>Asset total</span>
-                    <strong>{formatMarketValue(panel.total)}</strong>
-                  </div>
-                  <div>
-                    <span>Roster spots</span>
-                    <strong>{formatMarketValue(panel.adjustment)}</strong>
-                  </div>
-                </div>
-              </section>
-            ))
-          }
-        </div>
-
+        {/* Bulk Send Integration Footer */}
         <div className="trade-calculator-bulk-send">
           <div>
-            <span className="page-eyebrow">Bulk send</span>
+            <span className="page-eyebrow">Bulk Send</span>
             <p>
-              Seed the Bulk Offers tab with any mix of players and picks on either side.
+              Seed the Bulk Offers tab with this trade package across your eligible leagues.
             </p>
           </div>
 
@@ -747,7 +545,7 @@ export function TradeCalculatorTab({
               );
             }}
           >
-            Send to bulk offers
+            Send to Bulk Offers
           </button>
         </div>
       </section>

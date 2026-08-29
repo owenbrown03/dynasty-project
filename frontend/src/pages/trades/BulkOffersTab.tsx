@@ -30,13 +30,13 @@ import {
   createLeagueSelection,
   type BulkTradeLeagueSelection,
 } from './BulkTradeLeagueRow';
-import { BulkTradePlayerSearch } from './BulkTradePlayerSearch';
 import { BulkTradeReviewModal } from './BulkTradeReviewModal';
+import { TradeSideCard, type TradeSideAsset } from '@/components/trades/TradeSideCard';
+import { TradeWinningBar } from '@/components/trades/TradeWinningBar';
+import { useValuePreference } from '@/context/useValuePreference';
 import type { TradeCalculatorBulkOfferSeed } from './TradeCalculatorTab';
 
 
-const DEFAULT_PICK_SEASON = '2027';
-const DEFAULT_PICK_ROUND = 2;
 const ROOKIE_DRAFT_ROLLOVER_MONTH = 5;
 const ROOKIE_DRAFT_ROLLOVER_DAY = 1;
 
@@ -97,14 +97,6 @@ function dedupePicks(
   );
 }
 
-
-function formatPickPackage(
-  picks: BulkTradePickRequest[],
-): string {
-  return picks.map(
-    pick => `${pick.season} R${pick.round}`,
-  ).join(', ');
-}
 
 function BulkTradeAvailabilitySkeleton() {
   return (
@@ -218,17 +210,70 @@ export const BulkOffersTab = ({
     [],
   );
 
-  const [sendPickSeason, setSendPickSeason] = useState(validPickYears[0] ?? DEFAULT_PICK_SEASON);
-  const [sendPickRound, setSendPickRound] = useState(DEFAULT_PICK_ROUND);
-  const [receivePickSeason, setReceivePickSeason] = useState(validPickYears[0] ?? DEFAULT_PICK_SEASON);
-  const [receivePickRound, setReceivePickRound] = useState(DEFAULT_PICK_ROUND);
-
   const [sendPlayers, setSendPlayers] = useState<BulkTradePlayerSearchResult[]>([]);
   const [sendPicks, setSendPicks] = useState<BulkTradePickRequest[]>([]);
   const [receivePlayers, setReceivePlayers] = useState<BulkTradePlayerSearchResult[]>([]);
   const [receivePicks, setReceivePicks] = useState<BulkTradePickRequest[]>([]);
   const [selectionsByLeagueId, setSelectionsByLeagueId] = useState<Record<string, BulkTradeLeagueSelection>>({});
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+  const { preference } = useValuePreference();
+  const valueBasis = preference === 'fantasycalc' ? 'fantasycalc' : 'ktc';
+
+  const sendPlayerAssets: TradeSideAsset[] = useMemo(() => [
+    ...sendPlayers.map((p) => ({
+      id: `player-${p.player_id}`,
+      type: 'player' as const,
+      label: p.name,
+      meta: [p.position, p.team, p.age != null ? `${p.age} y.o.` : null].filter(Boolean).join(' · '),
+      value: (valueBasis === 'ktc' ? p.ktc_value : p.fc_value) ?? 0,
+      position: p.position,
+      team: p.team,
+      age: p.age,
+      playerId: p.player_id,
+      underdogRank: p.underdog_position_rank,
+    })),
+    ...sendPicks.map((pick, index) => ({
+      id: `pick-${pick.season}-${pick.round}-${index}`,
+      type: 'pick' as const,
+      label: `${pick.season} Round ${pick.round}`,
+      meta: 'Draft pick',
+      value: 0,
+      position: 'PICK',
+    })),
+  ], [sendPlayers, sendPicks, valueBasis]);
+
+  const receivePlayerAssets: TradeSideAsset[] = useMemo(() => [
+    ...receivePlayers.map((p) => ({
+      id: `player-${p.player_id}`,
+      type: 'player' as const,
+      label: p.name,
+      meta: [p.position, p.team, p.age != null ? `${p.age} y.o.` : null].filter(Boolean).join(' · '),
+      value: (valueBasis === 'ktc' ? p.ktc_value : p.fc_value) ?? 0,
+      position: p.position,
+      team: p.team,
+      age: p.age,
+      playerId: p.player_id,
+      underdogRank: p.underdog_position_rank,
+    })),
+    ...receivePicks.map((pick, index) => ({
+      id: `pick-${pick.season}-${pick.round}-${index}`,
+      type: 'pick' as const,
+      label: `${pick.season} Round ${pick.round}`,
+      meta: 'Draft pick',
+      value: 0,
+      position: 'PICK',
+    })),
+  ], [receivePlayers, receivePicks, valueBasis]);
+
+  const sendTotal = useMemo(
+    () => sendPlayerAssets.reduce((sum, a) => sum + a.value, 0),
+    [sendPlayerAssets],
+  );
+  const receiveTotal = useMemo(
+    () => receivePlayerAssets.reduce((sum, a) => sum + a.value, 0),
+    [receivePlayerAssets],
+  );
 
   const availabilityPayload = useMemo(
     () => buildAvailabilityPayload(
@@ -256,24 +301,6 @@ export const BulkOffersTab = ({
     error: submitError,
     reset,
   } = useSubmitBulkTradeOffers();
-
-  useEffect(() => {
-    if (!validPickYears.includes(sendPickSeason)) {
-      setSendPickSeason(
-        validPickYears[0] ?? DEFAULT_PICK_SEASON,
-      );
-    }
-
-    if (!validPickYears.includes(receivePickSeason)) {
-      setReceivePickSeason(
-        validPickYears[0] ?? DEFAULT_PICK_SEASON,
-      );
-    }
-  }, [
-    receivePickSeason,
-    sendPickSeason,
-    validPickYears,
-  ]);
 
   useEffect(() => {
     const data = availability.data;
@@ -591,289 +618,86 @@ export const BulkOffersTab = ({
         }
       </div>
 
-      <div className="bulk-trade-config-card">
-        <BulkTradePlayerSearch
-          label="You send players"
-          placeholder="Search a player you want to send..."
-          selectedPlayers={sendPlayers}
-          onAddPlayer={player => {
-            setSendPlayers(current => dedupePlayers([
-              ...current,
-              player,
-            ]));
+      <div className="trade-calculator-two-column-grid">
+        <TradeSideCard
+          title="You send..."
+          side="team-a"
+          assets={sendPlayerAssets}
+          totalValue={sendTotal}
+          netValue={sendTotal}
+          onAddPlayer={(player) => {
+            setSendPlayers((current) => dedupePlayers([...current, player]));
             setSelectionsByLeagueId({});
             reset();
           }}
-          onRemovePlayer={playerId => {
-            setSendPlayers(current => current.filter(
-              player => player.player_id !== playerId,
-            ));
+          onAddPick={(season, round) => {
+            setSendPicks((current) => dedupePicks([...current, { season, round }]));
             setSelectionsByLeagueId({});
             reset();
           }}
+          onRemoveAsset={(assetId) => {
+            if (assetId.startsWith('player-')) {
+              const pid = assetId.replace('player-', '');
+              setSendPlayers((current) => current.filter((p) => p.player_id !== pid));
+            } else {
+              const match = assetId.match(/^pick-(.+?)-(\d+)-(\d+)$/);
+              if (match) {
+                const idx = Number(match[3]);
+                setSendPicks((current) => current.filter((_, i) => i !== idx));
+              }
+            }
+            setSelectionsByLeagueId({});
+            reset();
+          }}
+          valueBasis={valueBasis}
+          searchPlaceholder="Search player or pick to send..."
+          validPickYears={validPickYears}
         />
 
-        <div className="bulk-trade-price-controls">
-          <label>
-            <span>
-              Send pick year
-            </span>
-
-            <select
-              value={sendPickSeason}
-              onChange={event => {
-                setSendPickSeason(event.target.value);
-              }}
-            >
-              {
-                validPickYears.map(year => (
-                  <option
-                    key={`send-${year}`}
-                    value={year}
-                  >
-                    {year}
-                  </option>
-                ))
-              }
-            </select>
-          </label>
-
-          <label>
-            <span>
-              Send round
-            </span>
-
-            <select
-              value={sendPickRound}
-              onChange={event => {
-                setSendPickRound(Number(event.target.value));
-              }}
-            >
-              {
-                Array.from(
-                  {
-                    length: 8,
-                  },
-                  (_, index) => index + 1,
-                ).map(round => (
-                  <option
-                    key={`send-round-${round}`}
-                    value={round}
-                  >
-                    Round {round}
-                  </option>
-                ))
-              }
-            </select>
-          </label>
-
-          <div className="bulk-trade-price-summary">
-            <span>
-              Send pick package
-            </span>
-
-            <strong>
-              {sendPicks.length > 0
-                ? formatPickPackage(sendPicks)
-                : 'None selected'}
-            </strong>
-          </div>
-
-          <button
-            className="button-secondary"
-            type="button"
-            onClick={() => {
-              setSendPicks(current => dedupePicks([
-                ...current,
-                {
-                  season: sendPickSeason,
-                  round: sendPickRound,
-                },
-              ]));
-              setSelectionsByLeagueId({});
-              reset();
-            }}
-          >
-            Add send pick
-          </button>
-        </div>
-
-        {
-          sendPicks.length > 0
-            ? (
-              <div className="bulk-trade-search-results">
-                {
-                  sendPicks.map((pick, index) => (
-                    <div
-                      key={`send-${pick.season}-${pick.round}-${index}`}
-                      className="bulk-trade-selected-player"
-                    >
-                      <div className="player-with-avatar-copy">
-                        <strong>{pick.season} Round {pick.round}</strong>
-                        <span>Pick you send</span>
-                      </div>
-
-                      <button
-                        className="button-secondary"
-                        onClick={() => {
-                          setSendPicks(current => current.filter(
-                            (_, currentIndex) => currentIndex !== index,
-                          ));
-                          setSelectionsByLeagueId({});
-                          reset();
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                }
-              </div>
-            )
-            : null
-        }
-
-        <BulkTradePlayerSearch
-          label="You receive players"
-          placeholder="Search a player you want to receive..."
-          selectedPlayers={receivePlayers}
-          onAddPlayer={player => {
-            setReceivePlayers(current => dedupePlayers([
-              ...current,
-              player,
-            ]));
+        <TradeSideCard
+          title="You receive..."
+          side="team-b"
+          assets={receivePlayerAssets}
+          totalValue={receiveTotal}
+          netValue={receiveTotal}
+          onAddPlayer={(player) => {
+            setReceivePlayers((current) => dedupePlayers([...current, player]));
             setSelectionsByLeagueId({});
             reset();
           }}
-          onRemovePlayer={playerId => {
-            setReceivePlayers(current => current.filter(
-              player => player.player_id !== playerId,
-            ));
+          onAddPick={(season, round) => {
+            setReceivePicks((current) => dedupePicks([...current, { season, round }]));
             setSelectionsByLeagueId({});
             reset();
           }}
+          onRemoveAsset={(assetId) => {
+            if (assetId.startsWith('player-')) {
+              const pid = assetId.replace('player-', '');
+              setReceivePlayers((current) => current.filter((p) => p.player_id !== pid));
+            } else {
+              const match = assetId.match(/^pick-(.+?)-(\d+)-(\d+)$/);
+              if (match) {
+                const idx = Number(match[3]);
+                setReceivePicks((current) => current.filter((_, i) => i !== idx));
+              }
+            }
+            setSelectionsByLeagueId({});
+            reset();
+          }}
+          valueBasis={valueBasis}
+          searchPlaceholder="Search player or pick to receive..."
+          validPickYears={validPickYears}
         />
-
-        <div className="bulk-trade-price-controls">
-          <label>
-            <span>
-              Receive pick year
-            </span>
-
-            <select
-              value={receivePickSeason}
-              onChange={event => {
-                setReceivePickSeason(event.target.value);
-              }}
-            >
-              {
-                validPickYears.map(year => (
-                  <option
-                    key={`receive-${year}`}
-                    value={year}
-                  >
-                    {year}
-                  </option>
-                ))
-              }
-            </select>
-          </label>
-
-          <label>
-            <span>
-              Receive round
-            </span>
-
-            <select
-              value={receivePickRound}
-              onChange={event => {
-                setReceivePickRound(Number(event.target.value));
-              }}
-            >
-              {
-                Array.from(
-                  {
-                    length: 8,
-                  },
-                  (_, index) => index + 1,
-                ).map(round => (
-                  <option
-                    key={`receive-round-${round}`}
-                    value={round}
-                  >
-                    Round {round}
-                  </option>
-                ))
-              }
-            </select>
-          </label>
-
-          <div className="bulk-trade-price-summary">
-            <span>
-              Receive pick package
-            </span>
-
-            <strong>
-              {receivePicks.length > 0
-                ? formatPickPackage(receivePicks)
-                : 'None selected'}
-            </strong>
-          </div>
-
-          <button
-            className="button-secondary"
-            type="button"
-            onClick={() => {
-              setReceivePicks(current => dedupePicks([
-                ...current,
-                {
-                  season: receivePickSeason,
-                  round: receivePickRound,
-                },
-              ]));
-              setSelectionsByLeagueId({});
-              reset();
-            }}
-          >
-            Add receive pick
-          </button>
-        </div>
-
-        {
-          receivePicks.length > 0
-            ? (
-              <div className="bulk-trade-search-results">
-                {
-                  receivePicks.map((pick, index) => (
-                    <div
-                      key={`receive-${pick.season}-${pick.round}-${index}`}
-                      className="bulk-trade-selected-player"
-                    >
-                      <div className="player-with-avatar-copy">
-                        <strong>{pick.season} Round {pick.round}</strong>
-                        <span>Pick you receive</span>
-                      </div>
-
-                      <button
-                        className="button-secondary"
-                        onClick={() => {
-                          setReceivePicks(current => current.filter(
-                            (_, currentIndex) => currentIndex !== index,
-                          ));
-                          setSelectionsByLeagueId({});
-                          reset();
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                }
-              </div>
-            )
-            : null
-        }
       </div>
+
+      {(sendPlayerAssets.length > 0 || receivePlayerAssets.length > 0) ? (
+        <TradeWinningBar
+          teamAName="You send"
+          teamBName="You receive"
+          teamANet={sendTotal}
+          teamBNet={receiveTotal}
+        />
+      ) : null}
 
 
       {
