@@ -229,7 +229,7 @@ def test_aggregate_cache_hit_skips_recomputation(monkeypatch):
     )
 
     first = asyncio.run(get_rookie_pick_war_values_by_key(db=None, **kwargs))
-    assert first[("2027", 1, 5)].roster_war == 0.5
+    assert first[("2027", 1, 5)].roster_war == 0.19
     assert calc_calls["count"] == 2
 
     second = asyncio.run(get_rookie_pick_war_values_by_key(db=None, **kwargs))

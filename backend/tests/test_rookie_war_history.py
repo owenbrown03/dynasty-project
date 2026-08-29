@@ -158,3 +158,70 @@ def test_smooth_rookie_war_curve_monotonicity():
     assert smoothed[0] > smoothed[1]
     assert smoothed[9] > smoothed[10] # 1.10 > 1.11
 
+
+def test_future_pick_discounting_by_year(monkeypatch):
+    import asyncio
+    from app.services.draft.rookie_war import get_rookie_pick_war_values_by_key
+
+    shared = SimpleNamespace(
+        selections=[("111", "2025", 1, 1, "Player 1", "RB")],
+        stat_seasons=[2024, 2025, 2026],
+    )
+
+    async def fake_load_shared_data(db, redis, *, rounds):
+        return shared
+
+    async def fake_get_cached_players(db):
+        return {"111": SimpleNamespace()}
+
+    class _FakeLoader:
+        async def get_season_stats(self, db, season):
+            return [SimpleNamespace(player_id="111")]
+
+    class FakeWarService:
+        def __init__(self):
+            self.loader = _FakeLoader()
+
+        async def calculate_with_data(self, league, shared):
+            return [
+                SimpleNamespace(
+                    player_id="111",
+                    starter_war=3.0,
+                    roster_war=3.0,
+                )
+            ]
+
+    monkeypatch.setattr("app.services.draft.rookie_war._load_shared_data", fake_load_shared_data)
+    monkeypatch.setattr("app.services.draft.rookie_war._get_cached_players", fake_get_cached_players)
+    monkeypatch.setattr("app.services.draft.rookie_war._war_service", FakeWarService())
+
+    # Create picks for current year (2026), 1-yr future (2027), 2-yr future (2028), 3-yr future (2029)
+    picks = [
+        SimpleNamespace(season="2026", round=1, og_roster_id=1, slot=1, projected_slot=1),
+        SimpleNamespace(season="2027", round=1, og_roster_id=2, slot=1, projected_slot=1),
+        SimpleNamespace(season="2028", round=1, og_roster_id=3, slot=1, projected_slot=1),
+        SimpleNamespace(season="2029", round=1, og_roster_id=4, slot=1, projected_slot=1),
+    ]
+
+    res = asyncio.run(
+        get_rookie_pick_war_values_by_key(
+            db=None,
+            picks=picks,
+            league_total_rosters=12,
+            league_scoring_settings={"rec": 1.0},
+            league_roster_positions=["QB", "RB", "BN"],
+            redis=None,
+        )
+    )
+
+    p2026 = res[("2026", 1, 1)].roster_war
+    p2027 = res[("2027", 1, 2)].roster_war
+    p2028 = res[("2028", 1, 3)].roster_war
+    p2029 = res[("2029", 1, 4)].roster_war
+
+    # Future picks must decrease monotonically with time: 2026 > 2027 > 2028 > 2029
+    assert p2026 > p2027 > p2028 > p2029
+    # 2027 is discounted by ~15% (multiplier ~0.86)
+    assert round(p2026 * 0.86, 1) == round(p2027, 1)
+
+

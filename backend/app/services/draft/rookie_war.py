@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 from app.analytics.war.consensus_rookie_drafts import (
     FANTASYCALC_CONSENSUS_ROOKIE_DRAFTS,
 )
+from app.analytics.war.dynasty.discount import DiscountCurve
+from app.analytics.war.redraft.constants import FANTASY_GAMES_PER_SEASON
 from app.analytics.war.redraft.service import (
     WARService,
     WARSharedData,
@@ -47,7 +49,7 @@ SHARED_DATA_CACHE_KEY_PREFIX = "rookie_war:shared:"
 SHARED_DATA_CACHE_TTL_SECONDS = 6 * 60 * 60
 
 AGGREGATE_CACHE_KEY_PREFIX = "rookie_war:aggregates:"
-AGGREGATE_CACHE_VERSION = "v2"
+AGGREGATE_CACHE_VERSION = "v3"
 AGGREGATE_CACHE_TTL_SECONDS = 24 * 60 * 60
 
 HISTORY_CACHE_PREFIX = "rookie_war:history:"
@@ -485,11 +487,8 @@ async def get_rookie_pick_war_values_by_key(
         raw_starter = starter_war_by_player_id.get(player_id, 0.0)
         raw_roster = roster_war_by_player_id.get(player_id, 0.0)
 
-        # Normalize by active played seasons, scaled to standard 3-season baseline horizon
-        rate_starter = (raw_starter / years_in_league) * 3.0
-        rate_roster = (raw_roster / years_in_league) * 3.0
-
-        sample = (rate_starter, rate_roster)
+        # Baseline career WAR sample for this pick slot
+        sample = (raw_starter, raw_roster)
 
         exact_samples[
             (
@@ -530,6 +529,9 @@ async def get_rookie_pick_war_values_by_key(
         round_smoothed_starter[rnd] = round(sum(smoothed_starter[start_idx:end_idx]) / 12.0, 2)
         round_smoothed_roster[rnd] = round(sum(smoothed_roster[start_idx:end_idx]) / 12.0, 2)
 
+    discount_curve = DiscountCurve(annual_discount_rate=0.15)
+    current_season = max(stat_seasons) if stat_seasons else 2026
+
     resolved: dict[
         tuple[str, int, int],
         RookiePickWarAggregate,
@@ -568,6 +570,17 @@ async def get_rookie_pick_war_values_by_key(
             roster_val = 0.0
             sample_count = 0
             source_label = f"Estimated rookie WAR for round {rnd}"
+
+        # Apply dynasty discount curve for future picks (cost of waiting)
+        pick_season = int(pick.season)
+        years_ahead = max(0, pick_season - current_season)
+        if years_ahead > 0:
+            discount_multiplier = discount_curve.multiplier(
+                games_from_now=years_ahead * FANTASY_GAMES_PER_SEASON,
+            )
+            starter_val = round(starter_val * discount_multiplier, 2)
+            roster_val = round(roster_val * discount_multiplier, 2)
+            source_label = f"{source_label} ({years_ahead}yr delay, x{discount_multiplier:.2f})"
 
         resolved[
             (
