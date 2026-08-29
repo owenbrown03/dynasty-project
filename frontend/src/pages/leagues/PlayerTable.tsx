@@ -266,7 +266,11 @@ export function PlayerTable({
                 </td>
 
                 <td className="player-table-ud-cell">
-                  {player.underdog_position_rank ? `${player.position}${player.underdog_position_rank}` : '—'}
+                  {player.underdog_position_rank ? (
+                    player.position && player.underdog_position_rank.toUpperCase().startsWith(player.position.toUpperCase())
+                      ? player.underdog_position_rank
+                      : `${player.position ?? ''}${player.underdog_position_rank}`
+                  ) : '—'}
                 </td>
 
                 <td className="player-table-num-cell">
