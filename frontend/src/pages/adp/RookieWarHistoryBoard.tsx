@@ -387,36 +387,23 @@ export function RookieWarHistoryBoard() {
                 <div className="rkwh-table-scroll">
                   <table className="rkwh-table rkwh-board-matrix">
                     <thead>
-                      <tr className="rkwh-head-row-top">
-                        <th className="rkwh-freeze-col rkwh-col-pick" rowSpan={hasWar ? 2 : 1}>Pick</th>
+                      <tr className="rkwh-head-row">
+                        <th className="rkwh-freeze-col rkwh-col-pick">Pick</th>
                         {hasWar ? (
                           <>
-                            <th className="rkwh-freeze-col rkwh-col-avg" rowSpan={2}>Avg</th>
-                            <th className="rkwh-freeze-col rkwh-col-med" rowSpan={2}>Med</th>
-                            <th className="rkwh-freeze-col rkwh-col-hit" rowSpan={2}>Hit</th>
-                            <th className="rkwh-freeze-col rkwh-col-bust" rowSpan={2}>Bust</th>
+                            <th className="rkwh-freeze-col rkwh-col-avg">Avg</th>
+                            <th className="rkwh-freeze-col rkwh-col-med">Med</th>
+                            <th className="rkwh-freeze-col rkwh-col-hit">Hit</th>
+                            <th className="rkwh-freeze-col rkwh-col-bust">Bust</th>
                           </>
                         ) : null}
                         {years.map((year) => (
-                          <th
-                            key={year}
-                            colSpan={hasWar ? 2 : 1}
-                            className="rkwh-th-year-group"
-                          >
-                            {year}
-                          </th>
+                          <React.Fragment key={year}>
+                            <th className="rkwh-th-year-player">{year}</th>
+                            {hasWar ? <th className="rkwh-th-year-war">WAR</th> : null}
+                          </React.Fragment>
                         ))}
                       </tr>
-                      {hasWar ? (
-                        <tr className="rkwh-head-row-sub">
-                          {years.map((year) => (
-                            <React.Fragment key={year}>
-                              <th className="rkwh-th-sub-player">Player</th>
-                              <th className="rkwh-th-sub-war">WAR</th>
-                            </React.Fragment>
-                          ))}
-                        </tr>
-                      ) : null}
                     </thead>
                     <tbody>
                       {pickSlotSummaries.map((summary) => (

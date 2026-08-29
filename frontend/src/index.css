@@ -367,7 +367,8 @@ a:focus-visible {
 
 table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: var(--color-surface);
 }
 
