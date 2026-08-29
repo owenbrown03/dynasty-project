@@ -440,6 +440,49 @@ At minimum, verify:
 - migrations still apply if schema changed
 - recent FastAPI logs do not show new runtime errors for the changed flow
 
+#### Verifying a worktree's backend changes (IMPORTANT — worktree flow)
+
+When you develop on a `git worktree` (isolated branch checkout, recommended
+when multiple agents run in parallel) and need to verify backend changes:
+
+- **The API container mounts the main repo tree (`/workspace`), NOT your
+  worktree.** `docker compose exec api ...` therefore tests the main tree, and
+  your worktree's changes are invisible to it.
+- **Do NOT copy your worktree files into the main tree to test them.** The main
+  tree working directory is frequently dirty (parallel agents commit there or
+  leave uncommitted edits), so overwriting files in it can stomp another agent's
+  in-flight work.
+- Instead, verify with an **ephemeral throwaway container** that bind-mounts
+  your worktree's backend over `/workspace/backend`, using the `project-api:latest`
+  image and the app's real env vars. This does not touch the main stack or the
+  main tree:
+
+  ```sh
+  # read real env from the running api container
+  DATABASE_URL=$(docker compose exec -T api sh -c 'echo $DATABASE_URL')
+  REDIS_URL=$(docker compose exec -T api sh -c 'echo $REDIS_URL')
+  ENCRYPTION_KEY=$(docker compose exec -T api sh -c 'echo $ENCRYPTION_KEY')
+
+  docker run --rm \
+    -e PYTHONPATH=/workspace/backend \
+    -e ENVIRONMENT=test \
+    -e DATABASE_URL="$DATABASE_URL" \
+    -e ENCRYPTION_KEY="$ENCRYPTION_KEY" \
+    -e REDIS_URL="$REDIS_URL" \
+    -v "<worktree>/backend":/workspace/backend \
+    -w /workspace/backend \
+    project-api:latest \
+    python -c "import app.api.v1.api as api; import <your_module_here>; print('IMPORT OK')"
+  ```
+
+  A clean import of the affected module(s) (and `app.api.v1.api` to confirm
+  router wiring) is a solid smoke test for endpoint/service/schema changes.
+- **Local cheap syntax check** when backend deps aren't installed on the host:
+  `python3 -m py_compile app/services/draft/rookie_war.py ...`
+- Use the image name `project-api:latest` (not a guessed name), and note the
+  app needs a working `DATABASE_URL` driver at import time — pass the real
+  postgres URL from the running api container so SQLAlchemy engine init succeeds.
+
 The repository also has a CI workflow at `.github/workflows/ci.yml` that runs:
 
 - backend `pytest`
@@ -588,6 +631,26 @@ Use these commands when helpful to:
 - run tests, migrations, shell commands, or database queries inside existing containers
 - verify backend endpoints and worker execution
 - investigate runtime errors
+
+### Worktree isolation when multiple agents run in parallel
+
+When several agents (or tools spawning sub-agents) work on this repo at the
+same time, the **main repo tree and its container bind-mount are shared**. That
+means:
+
+- The main tree's working directory is frequently **not clean** — dependencies,
+  migrations, node_modules, and even uncommitted source edits can appear there
+  at any moment from parallel work. Never assume the main tree is pristine.
+- Give each concurrent task its **own `git worktree`** on its own branch, and do
+  all edits/commits there. The main tree stays for mainline/merges.
+- **The Docker containers always operate on the main tree** (they bind-mount the
+  repo root to `/workspace`). Your worktree is a separate directory the
+  containers cannot see by default — so verify worktree backend changes with an
+  ephemeral `docker run --rm` bind-mount (see "Verifying a worktree's backend
+  changes" under Testing), and never copy files into the main tree to test.
+- After a branch merges, clean up its worktree (`git worktree remove <dir>
+  --force`) and delete the merged local + remote branch to keep `git worktree
+  list` readable.
 
 ### Restart restrictions
 
