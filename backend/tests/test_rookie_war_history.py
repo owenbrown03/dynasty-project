@@ -134,3 +134,27 @@ def test_rookie_war_history_custom_league(monkeypatch):
     assert burrow_row is not None
     # 6 active seasons (2020-2025) * 1.1 = 6.6
     assert burrow_row["starter_war"] == 6.6
+
+
+def test_smooth_rookie_war_curve_monotonicity():
+    from app.services.draft.rookie_war import smooth_rookie_war_curve
+
+    # Simulating raw noisy pick slot averages where 1.11 is artificially higher than 1.10
+    noisy_averages = [
+        3.0, 1.2, 1.8, 2.4, 2.1, 1.5, 1.6, 1.5, 1.1, 0.9, 1.9, -0.1,  # Round 1 (1.11 spike = 1.9)
+        -0.2, 0.2, 0.3, -0.3, 0.4, 0.4, 0.7, -0.3, -0.4, -0.2, 0.1, -0.7, # Round 2 (2.07 spike = 0.7)
+        -0.1, -0.5, -0.7, -0.3, -0.4, -0.1, -0.5, -0.2, -0.7, -0.3, -0.1, -0.3,
+        -0.2, 0.1, 0.6, -0.1, -0.4, -0.2, -0.1, -0.1, -0.2, 0.0, 0.0, -0.1,
+    ]
+
+    smoothed = smooth_rookie_war_curve(noisy_averages, sigma=2.0, min_decay_slope=0.01)
+    assert len(smoothed) == len(noisy_averages)
+
+    # Strictly monotonic decreasing: every higher pick is strictly valued more than the next
+    for i in range(len(smoothed) - 1):
+        assert smoothed[i] > smoothed[i + 1], f"Monotonicity violated at pick slot index {i}: {smoothed[i]} <= {smoothed[i+1]}"
+
+    # Pick 1.01 must be higher than 1.02, 1.10 must be higher than 1.11
+    assert smoothed[0] > smoothed[1]
+    assert smoothed[9] > smoothed[10] # 1.10 > 1.11
+

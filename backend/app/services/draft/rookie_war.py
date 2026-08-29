@@ -75,6 +75,57 @@ class _SharedData:
     stat_seasons: list[int]
 
 
+def smooth_rookie_war_curve(
+    values: list[float],
+    sigma: float = 2.0,
+    min_decay_slope: float = 0.01,
+) -> list[float]:
+    """
+    Computes a smoothed, strictly monotonic non-increasing expected WAR curve
+    across draft pick slots (1.01 to 4.12) using Gaussian kernel smoothing and
+    isotonically constrained Pool Adjacent Violators Algorithm (PAVA).
+    Prevents small-sample slot anomalies (e.g. 1.11 > 1.10) while preserving
+    overall historical production levels and draft slot hierarchy.
+    """
+    import math
+
+    n = len(values)
+    if not values:
+        return []
+
+    # 1. Local Gaussian kernel smoothing
+    kernel_smoothed: list[float] = []
+    for i in range(n):
+        weights = [math.exp(-((i - j) ** 2) / (2 * (sigma ** 2))) for j in range(n)]
+        total_w = sum(weights)
+        val = sum(w * v for w, v in zip(weights, values)) / total_w
+        kernel_smoothed.append(val)
+
+    # 2. PAVA with minimum slope constraint: y[i] >= y[i+1] + min_decay_slope
+    transformed = [val + i * min_decay_slope for i, val in enumerate(kernel_smoothed)]
+
+    blocks = [[-val, 1, [i]] for i, val in enumerate(transformed)]
+    i = 0
+    while i < len(blocks) - 1:
+        if blocks[i][0] > blocks[i + 1][0]:
+            w1, n1, idxs1 = blocks[i]
+            w2, n2, idxs2 = blocks[i + 1]
+            new_w = (w1 * n1 + w2 * n2) / (n1 + n2)
+            blocks[i] = [new_w, n1 + n2, idxs1 + idxs2]
+            blocks.pop(i + 1)
+            if i > 0:
+                i -= 1
+        else:
+            i += 1
+
+    result = [0.0] * n
+    for w, count, idxs in blocks:
+        for idx in idxs:
+            result[idx] = round(-w - idx * min_decay_slope, 2)
+
+    return result
+
+
 def _build_shared_cache_key(rounds: list[int] | None = None) -> str:
     if rounds:
         return f"{SHARED_DATA_CACHE_KEY_PREFIX}:{'-'.join(str(r) for r in sorted(rounds))}"
@@ -454,62 +505,69 @@ async def get_rookie_pick_war_values_by_key(
             sample,
         )
 
+    # Build raw 48-slot arrays for smoothing (Rounds 1-4, Slots 1-12)
+    raw_starter_by_slot: list[float] = []
+    raw_roster_by_slot: list[float] = []
+    for rnd in range(1, 5):
+        for sl in range(1, 13):
+            samples = exact_samples.get((rnd, sl), [])
+            if samples:
+                raw_starter_by_slot.append(sum(s for s, _ in samples) / len(samples))
+                raw_roster_by_slot.append(sum(r for _, r in samples) / len(samples))
+            else:
+                raw_starter_by_slot.append(0.0)
+                raw_roster_by_slot.append(0.0)
+
+    smoothed_starter = smooth_rookie_war_curve(raw_starter_by_slot)
+    smoothed_roster = smooth_rookie_war_curve(raw_roster_by_slot)
+
+    # Precalculate round smoothed averages for picks without exact slots
+    round_smoothed_starter: dict[int, float] = {}
+    round_smoothed_roster: dict[int, float] = {}
+    for rnd in range(1, 5):
+        start_idx = (rnd - 1) * 12
+        end_idx = start_idx + 12
+        round_smoothed_starter[rnd] = round(sum(smoothed_starter[start_idx:end_idx]) / 12.0, 2)
+        round_smoothed_roster[rnd] = round(sum(smoothed_roster[start_idx:end_idx]) / 12.0, 2)
+
     resolved: dict[
         tuple[str, int, int],
         RookiePickWarAggregate,
     ] = {}
 
     for pick in picks:
+        rnd = int(pick.round)
         slot = (
             pick.slot
             if pick.slot is not None
             else pick.projected_slot
         )
 
-        aggregate_samples: list[tuple[float, float]] | None = None
-        source_label: str | None = None
-
-        if slot is not None:
-            aggregate_samples = exact_samples.get(
-                (
-                    int(pick.round),
-                    int(slot),
-                )
+        if slot is not None and 1 <= int(slot) <= 12 and 1 <= rnd <= 4:
+            slot_int = int(slot)
+            slot_idx = (rnd - 1) * 12 + (slot_int - 1)
+            starter_val = smoothed_starter[slot_idx]
+            roster_val = smoothed_roster[slot_idx]
+            sample_count = len(exact_samples.get((rnd, slot_int), []))
+            source_label = (
+                f"Smoothed rookie WAR from "
+                f"{sample_count} past "
+                f"{rnd}.{slot_int:02d} outcomes"
             )
-
-            if aggregate_samples:
-                source_label = (
-                    f"Historical rookie WAR from "
-                    f"{len(aggregate_samples)} past "
-                    f"{pick.round}.{int(slot):02d} outcomes"
-                )
-
-        if not aggregate_samples:
-            aggregate_samples = round_samples.get(
-                int(pick.round),
+        elif 1 <= rnd <= 4:
+            starter_val = round_smoothed_starter.get(rnd, 0.0)
+            roster_val = round_smoothed_roster.get(rnd, 0.0)
+            sample_count = len(round_samples.get(rnd, []))
+            source_label = (
+                f"Smoothed rookie WAR from "
+                f"{sample_count} past "
+                f"round {rnd} outcomes"
             )
-
-            if aggregate_samples:
-                source_label = (
-                    f"Historical rookie WAR from "
-                    f"{len(aggregate_samples)} past "
-                    f"round {pick.round} outcomes"
-                )
-
-        if not aggregate_samples or source_label is None:
-            continue
-
-        sample_count = len(
-            aggregate_samples,
-        )
-        starter_average = sum(
-            starter
-            for starter, _ in aggregate_samples
-        ) / sample_count
-        roster_average = sum(
-            roster
-            for _, roster in aggregate_samples
-        ) / sample_count
+        else:
+            starter_val = 0.0
+            roster_val = 0.0
+            sample_count = 0
+            source_label = f"Estimated rookie WAR for round {rnd}"
 
         resolved[
             (
@@ -518,14 +576,8 @@ async def get_rookie_pick_war_values_by_key(
                 pick.og_roster_id,
             )
         ] = RookiePickWarAggregate(
-            starter_war=round(
-                starter_average,
-                2,
-            ),
-            roster_war=round(
-                roster_average,
-                2,
-            ),
+            starter_war=starter_val,
+            roster_war=roster_val,
             sample_size=sample_count,
             source_label=source_label,
         )

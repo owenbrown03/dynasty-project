@@ -17,10 +17,67 @@ interface PickSlotSummary {
   slot: number;
   pickLabel: string;
   avgWar: number | null;
+  smoothWar: number | null;
   medWar: number | null;
   hitRate: number | null;
   bustRate: number | null;
   byYear: Record<number, RookieWarHistoryRow>;
+}
+
+function smoothRookieWarCurve(
+  values: number[],
+  sigma = 2.0,
+  minDecaySlope = 0.01,
+): number[] {
+  const n = values.length;
+  if (n === 0) return [];
+
+  // 1. Gaussian kernel smoothing
+  const kernelSmoothed: number[] = [];
+  for (let i = 0; i < n; i += 1) {
+    let totalWeight = 0;
+    let weightedSum = 0;
+    for (let j = 0; j < n; j += 1) {
+      const w = Math.exp(-((i - j) ** 2) / (2 * (sigma ** 2)));
+      totalWeight += w;
+      weightedSum += w * values[j];
+    }
+    kernelSmoothed.push(weightedSum / totalWeight);
+  }
+
+  // 2. PAVA with minDecaySlope constraint: y[i] >= y[i+1] + minDecaySlope
+  const transformed = kernelSmoothed.map((v, i) => v + i * minDecaySlope);
+  const blocks: { weight: number; count: number; indices: number[] }[] = transformed.map(
+    (v, i) => ({ weight: -v, count: 1, indices: [i] }),
+  );
+
+  let i = 0;
+  while (i < blocks.length - 1) {
+    if (blocks[i].weight > blocks[i + 1].weight) {
+      const b1 = blocks[i];
+      const b2 = blocks[i + 1];
+      const newWeight = (b1.weight * b1.count + b2.weight * b2.count) / (b1.count + b2.count);
+      blocks[i] = {
+        weight: newWeight,
+        count: b1.count + b2.count,
+        indices: [...b1.indices, ...b2.indices],
+      };
+      blocks.splice(i + 1, 1);
+      if (i > 0) {
+        i -= 1;
+      }
+    } else {
+      i += 1;
+    }
+  }
+
+  const result: number[] = new Array(n).fill(0);
+  for (const block of blocks) {
+    for (const idx of block.indices) {
+      result[idx] = Number((-block.weight - idx * minDecaySlope).toFixed(2));
+    }
+  }
+  return result;
 }
 
 function HistoryTableSkeleton({
@@ -28,7 +85,7 @@ function HistoryTableSkeleton({
 }: {
   withWar: boolean;
 }) {
-  const columns = withWar ? 8 : 6;
+  const columns = withWar ? 9 : 6;
   return (
     <div className="rkwh-table-card" role="status" aria-live="polite">
       <div className="rkwh-table-header">
@@ -104,17 +161,27 @@ export function RookieWarHistoryBoard() {
   // Current NFL season reference for seasons played
   const currentSeason = 2025;
 
-  // Build 48 pick slots (Rounds 1-4, Slots 1-12) with round filter and time weighting
+  // Build 48 pick slots (Rounds 1-4, Slots 1-12) with smoothing and round filter
   const pickSlotSummaries = useMemo<PickSlotSummary[]>(() => {
     const map = new Map<string, RookieWarHistoryRow>();
     for (const r of rows) {
       map.set(`${r.draft_year}-${r.round}-${r.round_slot}`, r);
     }
 
-    const summaries: PickSlotSummary[] = [];
-    const targetRounds = selectedRound === 'all' ? [1, 2, 3, 4] : [selectedRound];
+    // Step 1: Precompute raw slot averages across all 48 slots for smoothing
+    const all48Averages: number[] = [];
+    const all48Data: {
+      round: number;
+      slot: number;
+      pickLabel: string;
+      avgWar: number | null;
+      medWar: number | null;
+      hitRate: number | null;
+      bustRate: number | null;
+      byYear: Record<number, RookieWarHistoryRow>;
+    }[] = [];
 
-    for (const rnd of targetRounds) {
+    for (let rnd = 1; rnd <= 4; rnd += 1) {
       for (let sl = 1; sl <= 12; sl += 1) {
         const pickLabel = `${rnd}.${sl.toString().padStart(2, '0')}`;
         const byYear: Record<number, RookieWarHistoryRow> = {};
@@ -133,7 +200,6 @@ export function RookieWarHistoryBoard() {
                 : rawWar;
               wars.push(displayVal);
 
-              // Only evaluate Hit/Bust on draft classes with at least 1 played season
               if (yearsInLeague > 0) {
                 evaluatedWars.push({
                   value: displayVal,
@@ -168,7 +234,8 @@ export function RookieWarHistoryBoard() {
           bustRate = (busts / evaluatedWars.length) * 100;
         }
 
-        summaries.push({
+        all48Averages.push(avgWar ?? 0);
+        all48Data.push({
           round: rnd,
           slot: sl,
           pickLabel,
@@ -177,6 +244,23 @@ export function RookieWarHistoryBoard() {
           hitRate,
           bustRate,
           byYear,
+        });
+      }
+    }
+
+    // Step 2: Smooth all 48 slots monotonically
+    const smoothedValues = smoothRookieWarCurve(all48Averages);
+
+    // Step 3: Filter to selected round(s)
+    const targetRounds = selectedRound === 'all' ? [1, 2, 3, 4] : [selectedRound];
+    const summaries: PickSlotSummary[] = [];
+
+    for (let idx = 0; idx < all48Data.length; idx += 1) {
+      const item = all48Data[idx];
+      if (targetRounds.includes(item.round)) {
+        summaries.push({
+          ...item,
+          smoothWar: item.avgWar != null ? smoothedValues[idx] : null,
         });
       }
     }
@@ -320,10 +404,11 @@ export function RookieWarHistoryBoard() {
                       <th className="rkwh-freeze-col rkwh-col-pick">Pick</th>
                       {hasWar ? (
                         <>
-                          <th className="rkwh-freeze-col rkwh-col-avg">Avg</th>
-                          <th className="rkwh-freeze-col rkwh-col-med">Med</th>
-                          <th className="rkwh-freeze-col rkwh-col-hit">Hit</th>
-                          <th className="rkwh-freeze-col rkwh-col-bust">Bust</th>
+                          <th className="rkwh-freeze-col rkwh-col-avg" title="Raw historical arithmetic mean">Avg</th>
+                          <th className="rkwh-freeze-col rkwh-col-smooth" title="Smoothed monotonic expected WAR accounting for sample size & slot hierarchy">Smooth</th>
+                          <th className="rkwh-freeze-col rkwh-col-med" title="Historical median WAR">Med</th>
+                          <th className="rkwh-freeze-col rkwh-col-hit" title="Hit percentage (% with >= 2.5 career WAR or 0.9 WAR/yr)">Hit</th>
+                          <th className="rkwh-freeze-col rkwh-col-bust" title="Bust percentage (% with <= 0.8 career WAR or 0.3 WAR/yr)">Bust</th>
                         </>
                       ) : null}
                       {years.map((year) => (
@@ -344,6 +429,13 @@ export function RookieWarHistoryBoard() {
                           <>
                             <td className="rkwh-freeze-col rkwh-col-avg rkwh-stat-num">
                               {summary.avgWar != null ? formatNumber(summary.avgWar) : '—'}
+                            </td>
+                            <td className="rkwh-freeze-col rkwh-col-smooth rkwh-stat-num rkwh-stat-smooth">
+                              {summary.smoothWar != null ? (
+                                <strong className="rkwh-smooth-val">
+                                  {formatNumber(summary.smoothWar)}
+                                </strong>
+                              ) : '—'}
                             </td>
                             <td className="rkwh-freeze-col rkwh-col-med rkwh-stat-num">
                               {summary.medWar != null ? formatNumber(summary.medWar) : '—'}
