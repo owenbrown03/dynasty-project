@@ -15,7 +15,7 @@ from app.services.adp.report import (
 from app.schemas.adp import ADPFilters, ADPPlayerRow, ADPResponse, ADPSample
 
 ADP_CACHE_ROW_LIMIT = 5000
-ADP_CACHE_VERSION = "v2"
+ADP_CACHE_VERSION = "v3"
 logger = logging.getLogger(__name__)
 
 

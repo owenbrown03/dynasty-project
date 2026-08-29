@@ -447,6 +447,21 @@ def test_invalidate_adp_cache_clears_related_keys():
         )
     )
 
-    assert any(key.startswith("adp:v2:{") for key in redis.deleted)
+    from app.services.adp.service import ADP_CACHE_VERSION
+    assert any(key.startswith(f"adp:{ADP_CACHE_VERSION}:{{") for key in redis.deleted)
     assert "adp:report" in redis.deleted
     assert "adp:metadata:" in redis.deleted_prefixes
+
+
+def test_valid_adp_positions_excludes_defense():
+    from app.crud.adp import VALID_ADP_POSITIONS
+
+    assert "QB" in VALID_ADP_POSITIONS
+    assert "RB" in VALID_ADP_POSITIONS
+    assert "WR" in VALID_ADP_POSITIONS
+    assert "TE" in VALID_ADP_POSITIONS
+
+    # Defensive and special teams positions must be excluded from ADP
+    for def_pos in ("DL", "LB", "DB", "DE", "DT", "CB", "S", "DEF", "K", "IDP_FLEX"):
+        assert def_pos not in VALID_ADP_POSITIONS
+

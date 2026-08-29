@@ -94,6 +94,8 @@ DISCOVERY_STATUS_PROCESSING = "processing"
 DISCOVERY_STATUS_PROCESSED = "processed"
 DISCOVERY_STATUS_FAILED = "failed"
 
+VALID_ADP_POSITIONS: tuple[str, ...] = ("QB", "RB", "WR", "TE")
+
 
 def _dedupe_discovery_rows(
     rows: list[dict],
@@ -940,7 +942,10 @@ async def get_player_adp_aggregates(
         )
         .join(Draft, Draft.draft_id == DraftSelection.draft_id)
         .join(Player, Player.player_id == DraftSelection.player_id)
-        .where(DraftSelection.player_id.is_not(None))
+        .where(
+            DraftSelection.player_id.is_not(None),
+            Player.position.in_(VALID_ADP_POSITIONS),
+        )
         .group_by(
             DraftSelection.player_id,
             Player.first_name,
