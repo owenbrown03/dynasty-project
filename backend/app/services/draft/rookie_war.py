@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from types import SimpleNamespace
 
@@ -64,6 +64,7 @@ _SEL_PLAYER_ID = 0
 _SEL_SEASON = 1
 _SEL_ROUND = 2
 _SEL_ROUND_SLOT = 3
+_SEL_COUNT = 4
 
 
 def _sel_attr(selection, name: str):
@@ -73,8 +74,9 @@ def _sel_attr(selection, name: str):
             "season": _SEL_SEASON,
             "round": _SEL_ROUND,
             "round_slot": _SEL_ROUND_SLOT,
+            "count": _SEL_COUNT,
         }.get(name)
-        if idx is not None:
+        if idx is not None and len(selection) > idx:
             return selection[idx]
         return None
     if isinstance(selection, dict):
@@ -523,6 +525,8 @@ async def get_rookie_war_history(
     league: object | None,
     rounds: list[int] | None = None,
 ) -> list[dict]:
+    from collections import Counter, defaultdict
+
     shared = await _load_shared_data(
         db,
         redis,
@@ -535,18 +539,10 @@ async def get_rookie_war_history(
         if _sel_attr(s, "player_id") is not None
     ]
 
-    stat_seasons = shared.stat_seasons or []
-    latest_completed_season = (
-        max(stat_seasons) if stat_seasons else 0
-    )
-    selections = [
-        s
-        for s in selections
-        if int(_sel_attr(s, "season") or 0) <= latest_completed_season
-    ]
-
     if not selections:
         return []
+
+    stat_seasons = shared.stat_seasons or []
 
     players = await _get_cached_players(
         db,
@@ -582,20 +578,34 @@ async def get_rookie_war_history(
             ),
         }
 
+    # Aggregate selections to find consensus drafted player per (season, round, round_slot)
+    slot_counts: dict[tuple[int, int, int], Counter] = defaultdict(Counter)
+    for selection in selections:
+        player_id = _sel_attr(selection, "player_id")
+        try:
+            season = int(_sel_attr(selection, "season") or 0)
+            rnd = int(_sel_attr(selection, "round") or 0)
+            slot = int(_sel_attr(selection, "round_slot") or 0)
+            cnt = int(_sel_attr(selection, "count") or 1)
+            if player_id and season and rnd and slot:
+                slot_counts[(season, rnd, slot)][player_id] += cnt
+        except (ValueError, TypeError):
+            continue
+
+    consensus_picks: list[tuple[str, int, int, int]] = []
+    for (season, rnd, slot), counter in sorted(slot_counts.items()):
+        if counter:
+            top_player_id = counter.most_common(1)[0][0]
+            consensus_picks.append((top_player_id, season, rnd, slot))
+
     draft_year_by_player_id: dict[
         str,
         int,
     ] = {}
-    for selection in selections:
-        player_id = _sel_attr(
-            selection,
-            "player_id",
-        )
+    for player_id, season, rnd, slot in consensus_picks:
         draft_year_by_player_id.setdefault(
             player_id,
-            int(
-                _sel_attr(selection, "season") or 0
-            ),
+            season,
         )
 
     starter_war_by_player_id: dict[
@@ -712,11 +722,7 @@ async def get_rookie_war_history(
     has_war = league is not None
 
     rows: list[dict] = []
-    for selection in selections:
-        player_id = _sel_attr(
-            selection,
-            "player_id",
-        )
+    for player_id, season, rnd, slot in consensus_picks:
         info = _player_info(
             player_id,
         )
@@ -726,15 +732,9 @@ async def get_rookie_war_history(
                 "name": info["name"],
                 "position": info["position"],
                 "team": info["team"],
-                "draft_year": int(
-                    _sel_attr(selection, "season") or 0
-                ),
-                "round": int(
-                    _sel_attr(selection, "round") or 0
-                ),
-                "round_slot": int(
-                    _sel_attr(selection, "round_slot") or 0
-                ),
+                "draft_year": season,
+                "round": rnd,
+                "round_slot": slot,
                 "starter_war": (
                     round(
                         starter_war_by_player_id.get(

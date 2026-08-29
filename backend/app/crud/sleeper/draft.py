@@ -117,32 +117,37 @@ async def get_completed_draft_seasons_by_league_ids(
 async def get_historical_rookie_draft_selections(
     db: AsyncSession,
     rounds: list[int] | None = None,
-) -> list[tuple[str, str, int, int]]:
+) -> list[tuple[str, str, int, int, int]]:
+    target_rounds = rounds or [1, 2, 3, 4]
     query = (
         select(
             DraftSelection.player_id,
             DraftSelection.season,
             DraftSelection.round,
             DraftSelection.round_slot,
+            func.count(DraftSelection.id).label("cnt"),
         )
         .join(League, League.league_id == DraftSelection.league_id)
         .where(
             League.previous_league_id.is_not(None),
             DraftSelection.player_id.is_not(None),
+            DraftSelection.round.in_(target_rounds),
+            DraftSelection.round_slot <= 12,
+        )
+        .group_by(
+            DraftSelection.season,
+            DraftSelection.round,
+            DraftSelection.round_slot,
+            DraftSelection.player_id,
         )
     )
-
-    if rounds:
-        query = query.where(
-            DraftSelection.round.in_(rounds),
-        )
 
     result = await db.execute(
         query,
     )
 
     return [
-        (row.player_id, row.season, row.round, row.round_slot)
+        (row.player_id, row.season, row.round, row.round_slot, int(row.cnt))
         for row in result.all()
     ]
 
