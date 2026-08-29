@@ -373,7 +373,7 @@ export function RookieWarHistoryBoard() {
           : (
             <div className="rkwh-table-card">
               <div className="rkwh-table-header">
-                <div>
+                <div className="rkwh-table-header-title">
                   <strong>Rookie Pick WAR History Board</strong>
                   <small>
                     {hasWar
@@ -387,7 +387,7 @@ export function RookieWarHistoryBoard() {
                 <div className="rkwh-table-scroll">
                   <table className="rkwh-table rkwh-board-matrix">
                     <thead>
-                      <tr>
+                      <tr className="rkwh-head-row-top">
                         <th className="rkwh-freeze-col rkwh-col-pick" rowSpan={hasWar ? 2 : 1}>Pick</th>
                         {hasWar ? (
                           <>
@@ -408,7 +408,7 @@ export function RookieWarHistoryBoard() {
                         ))}
                       </tr>
                       {hasWar ? (
-                        <tr className="rkwh-subhead-row">
+                        <tr className="rkwh-head-row-sub">
                           {years.map((year) => (
                             <React.Fragment key={year}>
                               <th className="rkwh-th-sub-player">Player</th>
@@ -422,7 +422,7 @@ export function RookieWarHistoryBoard() {
                       {pickSlotSummaries.map((summary) => (
                         <tr key={summary.pickLabel}>
                           <td className="rkwh-freeze-col rkwh-col-pick rkwh-pick-label">
-                            <strong>{summary.pickLabel}</strong>
+                            {summary.pickLabel}
                           </td>
                           {hasWar ? (
                             <>
@@ -463,7 +463,7 @@ export function RookieWarHistoryBoard() {
                             const warVal = metric === 'starter_war' ? p.starter_war : p.roster_war;
                             return (
                               <React.Fragment key={year}>
-                                <td className={`rkwh-matrix-cell rkwh-pos-bg--${pos.toLowerCase()}`}>
+                                <td className={`rkwh-matrix-cell rkwh-player-box-cell rkwh-pos-bg--${pos.toLowerCase()}`}>
                                   <div className="rkwh-player-box">
                                     <span className={`rkwh-pos-tag rkwh-pos-tag--${pos.toLowerCase()}`}>
                                       {pos}
