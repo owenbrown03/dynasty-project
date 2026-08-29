@@ -199,64 +199,67 @@
   position: sticky;
   z-index: 4;
   background: var(--color-surface);
+  text-align: center !important;
 }
 
 /* Intersection: Frozen left columns in the sticky top header must be highest z-index */
 .rkwh-head-row th.rkwh-freeze-col {
   z-index: 10 !important;
   background: var(--color-surface-raised, var(--color-surface)) !important;
+  text-align: center !important;
+  padding: 8px 2px !important;
 }
 
 .rkwh-col-pick {
   left: 0;
-  min-width: 50px;
-  width: 50px;
-  max-width: 50px;
+  min-width: 54px;
+  width: 54px;
+  max-width: 54px;
   text-align: center !important;
   font-weight: 800;
   box-shadow: 1px 0 0 var(--color-border);
 }
 
 .rkwh-col-avg {
-  left: 50px;
-  min-width: 48px;
-  width: 48px;
-  max-width: 48px;
+  left: 54px;
+  min-width: 52px;
+  width: 52px;
+  max-width: 52px;
   text-align: center !important;
   color: var(--color-text-muted);
 }
 
 .rkwh-col-smooth {
-  left: 98px;
-  min-width: 66px;
-  width: 66px;
-  max-width: 66px;
+  left: 106px;
+  min-width: 78px;
+  width: 78px;
+  max-width: 78px;
   text-align: center !important;
   background: var(--color-surface-raised, var(--color-surface)) !important;
 }
 
 .rkwh-col-med {
-  left: 164px;
-  min-width: 48px;
-  width: 48px;
-  max-width: 48px;
+  left: 184px;
+  min-width: 52px;
+  width: 52px;
+  max-width: 52px;
   text-align: center !important;
   color: var(--color-text-muted);
 }
 
 .rkwh-col-hit {
-  left: 212px;
-  min-width: 48px;
-  width: 48px;
-  max-width: 48px;
+  left: 236px;
+  min-width: 52px;
+  width: 52px;
+  max-width: 52px;
   text-align: center !important;
 }
 
 .rkwh-col-bust {
-  left: 260px;
-  min-width: 48px;
-  width: 48px;
-  max-width: 48px;
+  left: 288px;
+  min-width: 52px;
+  width: 52px;
+  max-width: 52px;
   text-align: center !important;
   box-shadow: 2px 0 0 var(--color-border-strong);
 }
