@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowLeftRight,
   Calculator,
   Flame,
@@ -262,12 +263,12 @@ export function PlayerTable({
         drop_player_id: playerToCut.player_id,
         bid: 0,
       });
-      notify.success(`Successfully cut ${playerToCut.name}`);
+      notify.success(`Successfully dropped ${playerToCut.name}`);
       setPlayerToCut(null);
       setActiveMenuPlayerId(null);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } }; message?: string };
-      notify.error(error?.response?.data?.detail || error?.message || 'Failed to cut player');
+      notify.error(error?.response?.data?.detail || error?.message || 'Failed to drop player');
     }
   };
 
@@ -541,7 +542,7 @@ export function PlayerTable({
                               }}
                             >
                               <Trash2 size={13} />
-                              <span>Cut Player (Drop)</span>
+                              <span>Drop Player</span>
                             </button>
                           ) : null}
                         </div>
@@ -559,7 +560,10 @@ export function PlayerTable({
         <div className="player-cut-backdrop" onClick={() => setPlayerToCut(null)}>
           <div className="player-cut-modal" onClick={(e) => e.stopPropagation()}>
             <div className="player-cut-modal-header">
-              <h3>Cut Player</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={18} color="#ef4444" />
+                <h3>Drop Player</h3>
+              </div>
               <button
                 type="button"
                 className="player-cut-close"
@@ -570,12 +574,12 @@ export function PlayerTable({
             </div>
 
             <div className="player-cut-modal-body">
-              <p>
+              <p style={{ margin: '0 0 12px 0' }}>
                 Are you sure you want to drop <strong>{playerToCut.name}</strong> ({playerToCut.position} - {playerToCut.team ?? 'FA'}) from your roster?
               </p>
-              <p className="player-cut-warning">
-                This will submit a waiver drop transaction to Sleeper.
-              </p>
+              <div className="player-cut-warning">
+                ⚠️ This will submit an immediate drop transaction to Sleeper and release this player to waivers.
+              </div>
             </div>
 
             <div className="player-cut-modal-actions">
@@ -593,7 +597,7 @@ export function PlayerTable({
                 onClick={() => void handleConfirmCut()}
                 disabled={submitClaim.submitting}
               >
-                {submitClaim.submitting ? 'Dropping...' : 'Confirm Cut'}
+                {submitClaim.submitting ? 'Dropping...' : 'Drop Player'}
               </button>
             </div>
           </div>
