@@ -709,6 +709,27 @@ When possible, prefer non-disruptive alternatives such as inspecting logs, relyi
   - Merge the PR via `gh pr merge` once all checks pass — but only after the user has already given approval for the push/PR step.
 - Do not push, open a PR, or merge without explicit user approval for that specific action.
 
+#### Autonomous push/PR/merge on isolated worktrees
+
+When work is developed on an **isolated `git worktree`** (its own branch, not in
+the shared main tree), the user generally cannot independently inspect or
+verify that branch (the dev container mirrors the main tree), so the
+ask-before-push/PR/merge rule is relaxed for worktree branches **only**:
+
+- An agent may autonomously **push**, **open a PR**, wait for **CI to pass**,
+  and **merge** a worktree branch — **provided** the agent has already verified
+  the change (backend pytest + frontend lint/build/vitest where applicable) and
+  CI is green.
+- The source branch is auto-deleted on merge, and once merged the worktree
+  should be removed (`git worktree remove <dir> --force`) and pruned.
+- **After merging**, run a `git pull` in the main tree so the user's container
+  picks up the merged commit.
+- If CI fails or the change is not fully verified, do NOT merge; report back to
+  the user instead.
+- This relaxation applies ONLY to worktree branches. Commits or changes made
+  directly in the shared main tree still require explicit approval before
+  push/PR/merge.
+
 ### Testing after changes
 
 - After any significant backend change (endpoints, services, CRUD, models, deps, workers), run the test suite before committing:
