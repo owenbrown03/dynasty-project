@@ -88,7 +88,7 @@ function PlayerChip({
       className={`advisor-player-chip advisor-chip-${direction}`}
     >
       <span className="advisor-chip-name">
-        {player.name}
+        <span className="advisor-chip-name-text">{player.name}</span>
         {player.injury_status ? (
           <span className="advisor-injury-badge">
             {player.injury_status.toUpperCase()}
@@ -99,16 +99,20 @@ function PlayerChip({
         ) : null}
       </span>
       <span className="advisor-chip-meta">
-        {[
-          player.position ?? '?',
-          player.team ?? null,
-          `FC ${formatValue(player.market_value)}`,
-          player.personal_war != null
-            ? `${player.personal_war.toFixed(1)} W`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
+        <span className="advisor-chip-fact">
+          {player.position ?? '?'}
+        </span>
+        {player.team ? (
+          <span className="advisor-chip-fact">{player.team}</span>
+        ) : null}
+        <span className="advisor-chip-fact">
+          {`FC ${formatValue(player.market_value)}`}
+        </span>
+        {player.personal_war != null ? (
+          <span className="advisor-chip-fact">
+            {`${player.personal_war.toFixed(1)} W`}
+          </span>
+        ) : null}
       </span>
     </div>
   );
@@ -126,13 +130,17 @@ function PickChip({
       className={`advisor-player-chip advisor-pick-chip advisor-chip-${direction}`}
     >
       <span className="advisor-chip-name">
-        {pick.season} Rd {pick.round}
+        <span className="advisor-chip-name-text">
+          {pick.season} Rd {pick.round}
+        </span>
         {pick.on_block ? (
           <span className="advisor-otb-badge">ON BLOCK</span>
         ) : null}
       </span>
       <span className="advisor-chip-meta">
-        FC {formatValue(pick.market_value)}
+        <span className="advisor-chip-fact">
+          FC {formatValue(pick.market_value)}
+        </span>
       </span>
     </div>
   );
@@ -173,16 +181,16 @@ function WaiverCreditChip({
         Waiver refill
       </span>
       <span className="advisor-chip-meta">
-        {[
-          creditFc
-            ? `+${Math.round(creditFc)} FC`
-            : null,
-          creditWar
-            ? `+${creditWar.toFixed(2)} W`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(' \u00b7 ')}
+        {creditFc ? (
+          <span className="advisor-chip-fact">
+            +{Math.round(creditFc)} FC
+          </span>
+        ) : null}
+        {creditWar ? (
+          <span className="advisor-chip-fact">
+            +{creditWar.toFixed(2)} W
+          </span>
+        ) : null}
       </span>
     </div>
   );
@@ -490,24 +498,54 @@ function SendTradeSection({
       role="alertdialog"
       aria-label="Confirm trade offer"
     >
-      <p>
-        This sends a real offer on Sleeper to{' '}
-        <strong>{proposal.counterparty_name}</strong>
-        {proposal.counterparty_fringe ? (
-          <span className="advisor-otb-badge">FRINGE</span>
-        ) : proposal.counterparty_strategy ? (
-          <span className="advisor-otb-badge">
-            {proposal.counterparty_strategy === 'win_now'
-              ? 'CONTENDER'
-              : proposal.counterparty_strategy.toUpperCase()}
+      <div className="advisor-send-summary">
+        <p className="advisor-send-copy">
+          This sends a real offer on Sleeper and notifies the manager.
+        </p>
+        <div className="advisor-send-line">
+          <span className="advisor-send-line-label">
+            To
           </span>
-        ) : null}
-        {' '}
-        you give{' '}
-        {proposal.send.map((p) => p.name).join(', ')} and
-        receive{' '}
-        {proposal.receive.map((p) => p.name).join(', ')}.
-      </p>
+          <span className="advisor-send-line-value">
+            <strong>{proposal.counterparty_name}</strong>
+            {proposal.counterparty_fringe ? (
+              <span className="advisor-otb-badge">FRINGE</span>
+            ) : proposal.counterparty_strategy ? (
+              <span className="advisor-otb-badge">
+                {proposal.counterparty_strategy === 'win_now'
+                  ? 'CONTENDER'
+                  : proposal.counterparty_strategy.toUpperCase()}
+              </span>
+            ) : null}
+          </span>
+        </div>
+        <div className="advisor-send-line">
+          <span className="advisor-send-line-label">
+            You give
+          </span>
+          <span className="advisor-send-line-value">
+            {proposal.send.map((p) => p.name).join(', ')}
+            {proposal.send_picks?.length
+              ? `, ${proposal.send_picks
+                  .map((pk) => `${pk.season} Rd ${pk.round}`)
+                  .join(', ')}`
+              : ''}
+          </span>
+        </div>
+        <div className="advisor-send-line">
+          <span className="advisor-send-line-label">
+            You receive
+          </span>
+          <span className="advisor-send-line-value">
+            {proposal.receive.map((p) => p.name).join(', ')}
+            {proposal.receive_picks?.length
+              ? `, ${proposal.receive_picks
+                  .map((pk) => `${pk.season} Rd ${pk.round}`)
+                  .join(', ')}`
+              : ''}
+          </span>
+        </div>
+      </div>
 
       <div className="advisor-send-actions">
         <button
@@ -764,7 +802,7 @@ function DirectiveDropChip({
   return (
     <div className="advisor-player-chip advisor-chip-send">
       <span className="advisor-chip-name">
-        {player.name}
+        <span className="advisor-chip-name-text">{player.name}</span>
         {player.injury_status ? (
           <span className="advisor-injury-badge">
             {player.injury_status.toUpperCase()}
@@ -772,13 +810,15 @@ function DirectiveDropChip({
         ) : null}
       </span>
       <span className="advisor-chip-meta">
-        {[
-          player.position ?? '?',
-          player.team ?? null,
-          `FC ${formatValue(player.market_value)}`,
-        ]
-          .filter(Boolean)
-          .join(' \u00b7 ')}
+        <span className="advisor-chip-fact">
+          {player.position ?? '?'}
+        </span>
+        {player.team ? (
+          <span className="advisor-chip-fact">{player.team}</span>
+        ) : null}
+        <span className="advisor-chip-fact">
+          {`FC ${formatValue(player.market_value)}`}
+        </span>
       </span>
     </div>
   );
