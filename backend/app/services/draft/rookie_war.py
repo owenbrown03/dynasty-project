@@ -124,25 +124,29 @@ async def _load_shared_data(
                 stat_seasons=data["stat_seasons"],
             )
 
-    t0 = time.monotonic()
-    db_selections = await get_historical_rookie_draft_selections(
-        db,
-        rounds=rounds,
-    )
-    logger.info("rookie_war get_selections took %.1fs", time.monotonic() - t0)
-
     fc_selections = [
         (player_id, season, rnd, slot, 1)
         for season, rnd, slot, player_id, name, pos in FANTASYCALC_CONSENSUS_ROOKIE_DRAFTS
         if rounds is None or rnd in rounds
     ]
-    selections = fc_selections if fc_selections else db_selections
+    if fc_selections:
+        selections = fc_selections
+    elif db is not None:
+        selections = await get_historical_rookie_draft_selections(
+            db,
+            rounds=rounds,
+        )
+    else:
+        selections = []
 
-    t0 = time.monotonic()
-    stat_seasons = await get_available_stat_seasons(
-        db,
-    )
-    logger.info("rookie_war get_seasons took %.1fs", time.monotonic() - t0)
+    if db is not None:
+        t0 = time.monotonic()
+        stat_seasons = await get_available_stat_seasons(
+            db,
+        )
+        logger.info("rookie_war get_seasons took %.1fs", time.monotonic() - t0)
+    else:
+        stat_seasons = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
 
     shared = _SharedData(
         selections=selections,
