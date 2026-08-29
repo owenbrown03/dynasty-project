@@ -281,12 +281,12 @@ export function RookieWarHistoryBoard() {
             onChange={(event) => setLeagueId(event.target.value)}
           >
             <option value="">
-              {hasWar ? 'Clear league (show ADP only)' : 'No league — ADP only'}
+              Consensus Superflex PPR (Default)
             </option>
             {
               leagueOverview.data.map((league) => (
                 <option key={league.league_id} value={league.league_id}>
-                  {league.league_name}
+                  {league.league_name} (Custom Scoring)
                 </option>
               ))
             }
@@ -297,9 +297,9 @@ export function RookieWarHistoryBoard() {
           <span className="rkwh-meta-label">Context</span>
           <strong>
             {
-              hasWar
-                ? selectedLeagueName ?? history.data?.league_name ?? 'Selected league'
-                : 'Consensus Rookie ADP'
+              selectedLeagueName
+                ? `${selectedLeagueName} (Custom)`
+                : 'Consensus Superflex PPR (May ADP)'
             }
           </strong>
         </div>

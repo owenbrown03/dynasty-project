@@ -99,8 +99,6 @@ async def rookie_war_history_endpoint(
     league = None
     league_name = None
     war_context = "adp"
-    has_war = False
-
     if league_id:
         league = await resolve_league_war_context(
             ctx=ctx,
@@ -108,6 +106,9 @@ async def rookie_war_history_endpoint(
         )
         league_name = league.name
         war_context = "league"
+        has_war = True
+    else:
+        war_context = "consensus_superflex_ppr"
         has_war = True
 
     parsed_rounds = None

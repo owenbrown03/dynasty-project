@@ -12,6 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
+from app.analytics.war.consensus_rookie_drafts import (
+    FANTASYCALC_CONSENSUS_ROOKIE_DRAFTS,
+)
 from app.analytics.war.redraft.service import (
     WARService,
     WARSharedData,
@@ -21,6 +24,24 @@ from app.crud.sleeper.draft import (
     get_historical_rookie_draft_selections,
 )
 from app.schemas.draft import DraftPickAsset
+
+DEFAULT_SUPERFLEX_PPR_SETTINGS = {
+    "scoring_settings": {
+        "pass_yd": 0.04,
+        "pass_td": 4.0,
+        "pass_int": -2.0,
+        "rush_yd": 0.1,
+        "rush_td": 6.0,
+        "rec": 1.0,
+        "rec_yd": 0.1,
+        "rec_td": 6.0,
+        "fum_lost": -2.0,
+    },
+    "roster_positions": [
+        "QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "SUPER_FLEX", "BN", "BN", "BN", "BN", "BN"
+    ],
+    "total_rosters": 12,
+}
 
 SHARED_DATA_CACHE_KEY_PREFIX = "rookie_war:shared:"
 SHARED_DATA_CACHE_TTL_SECONDS = 6 * 60 * 60
@@ -104,11 +125,18 @@ async def _load_shared_data(
             )
 
     t0 = time.monotonic()
-    selections = await get_historical_rookie_draft_selections(
+    db_selections = await get_historical_rookie_draft_selections(
         db,
         rounds=rounds,
     )
     logger.info("rookie_war get_selections took %.1fs", time.monotonic() - t0)
+
+    fc_selections = [
+        (player_id, season, rnd, slot, 1)
+        for season, rnd, slot, player_id, name, pos in FANTASYCALC_CONSENSUS_ROOKIE_DRAFTS
+        if rounds is None or rnd in rounds
+    ]
+    selections = fc_selections if fc_selections else db_selections
 
     t0 = time.monotonic()
     stat_seasons = await get_available_stat_seasons(
@@ -394,16 +422,19 @@ async def get_rookie_pick_war_values_by_key(
         if player_id is None:
             continue
 
-        sample = (
-            starter_war_by_player_id.get(
-                player_id,
-                0.0,
-            ),
-            roster_war_by_player_id.get(
-                player_id,
-                0.0,
-            ),
-        )
+        draft_yr = int(_sel_attr(selection, "season") or 0)
+        years_in_league = max(0, latest_completed_season - draft_yr + 1)
+        if years_in_league <= 0:
+            continue
+
+        raw_starter = starter_war_by_player_id.get(player_id, 0.0)
+        raw_roster = roster_war_by_player_id.get(player_id, 0.0)
+
+        # Normalize by active played seasons, scaled to standard 3-season baseline horizon
+        rate_starter = (raw_starter / years_in_league) * 3.0
+        rate_roster = (raw_roster / years_in_league) * 3.0
+
+        sample = (rate_starter, rate_roster)
 
         exact_samples[
             (
@@ -578,194 +609,112 @@ async def get_rookie_war_history(
             ),
         }
 
-    # Aggregate selections to find consensus drafted player per (season, round, round_slot)
-    slot_counts: dict[tuple[int, int, int], Counter] = defaultdict(Counter)
-    for selection in selections:
-        player_id = _sel_attr(selection, "player_id")
-        try:
-            season = int(_sel_attr(selection, "season") or 0)
-            rnd = int(_sel_attr(selection, "round") or 0)
-            slot = int(_sel_attr(selection, "round_slot") or 0)
-            cnt = int(_sel_attr(selection, "count") or 1)
-            if player_id and season and rnd and slot:
-                slot_counts[(season, rnd, slot)][player_id] += cnt
-        except (ValueError, TypeError):
-            continue
+    target_rounds = rounds or [1, 2, 3, 4]
 
-    consensus_picks: list[tuple[str, int, int, int]] = []
-    for (season, rnd, slot), counter in sorted(slot_counts.items()):
-        if counter:
-            top_player_id = counter.most_common(1)[0][0]
-            consensus_picks.append((top_player_id, season, rnd, slot))
+    # Use canonical FantasyCalc May Superflex Rookie Drafts (2020-2026)
+    consensus_picks = [
+        (player_id, season, rnd, slot, name, pos)
+        for season, rnd, slot, player_id, name, pos in FANTASYCALC_CONSENSUS_ROOKIE_DRAFTS
+        if rnd in target_rounds
+    ]
 
-    draft_year_by_player_id: dict[
-        str,
-        int,
-    ] = {}
-    for player_id, season, rnd, slot in consensus_picks:
-        draft_year_by_player_id.setdefault(
-            player_id,
-            season,
-        )
+    draft_year_by_player_id: dict[str, int] = {}
+    for player_id, season, rnd, slot, name, pos in consensus_picks:
+        draft_year_by_player_id.setdefault(player_id, season)
 
-    starter_war_by_player_id: dict[
-        str,
-        float,
-    ] = defaultdict(float)
-    roster_war_by_player_id: dict[
-        str,
-        float,
-    ] = defaultdict(float)
-
-    history_cache_key: str | None = None
+    starter_war_by_player_id: dict[str, float] = defaultdict(float)
+    roster_war_by_player_id: dict[str, float] = defaultdict(float)
 
     if league is not None:
-        league_id = str(
-            getattr(league, "league_id", "canonical")
-        )
-        history_cache_key = _build_history_cache_key(
-            league_id,
-            rounds or [],
-        )
-
-        if redis is not None:
-            cached = await redis.get(
-                history_cache_key,
-            )
-            if cached:
-                cached_rows = json.loads(
-                    cached,
-                )
-                return [
-                    {
-                        "player_id": row[0],
-                        "name": row[1],
-                        "position": row[2],
-                        "team": row[3],
-                        "draft_year": row[4],
-                        "round": row[5],
-                        "round_slot": row[6],
-                        "starter_war": row[7],
-                        "roster_war": row[8],
-                    }
-                    for row in cached_rows
-                ]
-
+        league_id = str(getattr(league, "league_id", "canonical"))
         league_settings = {
             "scoring_settings": (
                 getattr(league, "scoring_settings", None)
-                or {}
+                or DEFAULT_SUPERFLEX_PPR_SETTINGS["scoring_settings"]
             ),
             "roster_positions": list(
                 getattr(league, "roster_positions", None)
-                or []
+                or DEFAULT_SUPERFLEX_PPR_SETTINGS["roster_positions"]
             ),
             "total_rosters": int(
-                getattr(league, "total_rosters", 0) or 0
+                getattr(league, "total_rosters", 0)
+                or DEFAULT_SUPERFLEX_PPR_SETTINGS["total_rosters"]
             ),
         }
+    else:
+        league_id = "default_superflex_ppr"
+        league_settings = DEFAULT_SUPERFLEX_PPR_SETTINGS
 
-        for season in stat_seasons:
-            stats_rows = await _war_service.loader.get_season_stats(
-                db,
-                season,
-            )
-            if not stats_rows:
+    history_cache_key = _build_history_cache_key(league_id, target_rounds)
+
+    if redis is not None:
+        cached = await redis.get(history_cache_key)
+        if cached:
+            cached_rows = json.loads(cached)
+            return [
+                {
+                    "player_id": row[0],
+                    "name": row[1],
+                    "position": row[2],
+                    "team": row[3],
+                    "draft_year": row[4],
+                    "round": row[5],
+                    "round_slot": row[6],
+                    "starter_war": row[7],
+                    "roster_war": row[8],
+                }
+                for row in cached_rows
+            ]
+
+    for season in stat_seasons:
+        stats_rows = await _war_service.loader.get_season_stats(db, season)
+        if not stats_rows:
+            continue
+
+        season_results = await _war_service.calculate_with_data(
+            league=SimpleNamespace(
+                season=str(season),
+                scoring_settings=league_settings["scoring_settings"],
+                roster_positions=league_settings["roster_positions"],
+                total_rosters=league_settings["total_rosters"],
+            ),
+            shared=WARSharedData(
+                players=players,
+                projections=stats_rows,
+            ),
+        )
+
+        result_by_player_id = {result.player_id: result for result in season_results}
+
+        for player_id, draft_year in draft_year_by_player_id.items():
+            if season < draft_year:
                 continue
 
-            season_results = await _war_service.calculate_with_data(
-                league=SimpleNamespace(
-                    season=str(season),
-                    scoring_settings=league_settings[
-                        "scoring_settings"
-                    ],
-                    roster_positions=league_settings[
-                        "roster_positions"
-                    ],
-                    total_rosters=league_settings[
-                        "total_rosters"
-                    ],
-                ),
-                shared=WARSharedData(
-                    players=players,
-                    projections=stats_rows,
-                ),
-            )
+            result = result_by_player_id.get(player_id)
+            if result is None:
+                continue
 
-            result_by_player_id = {
-                result.player_id: result
-                for result in season_results
-            }
-
-            for (
-                player_id,
-                draft_year,
-            ) in draft_year_by_player_id.items():
-                if season < draft_year:
-                    continue
-
-                result = result_by_player_id.get(
-                    player_id,
-                )
-                if result is None:
-                    continue
-
-                starter_war_by_player_id[player_id] += (
-                    result.starter_war
-                    or 0.0
-                )
-                roster_war_by_player_id[player_id] += (
-                    result.roster_war
-                    or 0.0
-                )
-
-    has_war = league is not None
+            starter_war_by_player_id[player_id] += result.starter_war or 0.0
+            roster_war_by_player_id[player_id] += result.roster_war or 0.0
 
     rows: list[dict] = []
-    for player_id, season, rnd, slot in consensus_picks:
-        info = _player_info(
-            player_id,
-        )
+    for player_id, season, rnd, slot, name, pos in consensus_picks:
+        info = _player_info(player_id)
         rows.append(
             {
                 "player_id": player_id,
-                "name": info["name"],
-                "position": info["position"],
+                "name": info["name"] if info["name"] != player_id else name,
+                "position": info["position"] or pos,
                 "team": info["team"],
                 "draft_year": season,
                 "round": rnd,
                 "round_slot": slot,
-                "starter_war": (
-                    round(
-                        starter_war_by_player_id.get(
-                            player_id,
-                            0.0,
-                        ),
-                        2,
-                    )
-                    if has_war
-                    else None
-                ),
-                "roster_war": (
-                    round(
-                        roster_war_by_player_id.get(
-                            player_id,
-                            0.0,
-                        ),
-                        2,
-                    )
-                    if has_war
-                    else None
-                ),
+                "starter_war": round(starter_war_by_player_id.get(player_id, 0.0), 2),
+                "roster_war": round(roster_war_by_player_id.get(player_id, 0.0), 2),
             }
         )
 
-    if (
-        has_war
-        and history_cache_key is not None
-        and redis is not None
-        and rows
-    ):
+    if history_cache_key is not None and redis is not None and rows:
         await redis.set(
             history_cache_key,
             json.dumps(
