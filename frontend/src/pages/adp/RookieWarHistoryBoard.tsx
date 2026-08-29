@@ -1,4 +1,4 @@
-import {
+import React, {
   useMemo,
   useState,
 } from 'react';
@@ -115,6 +115,8 @@ export function RookieWarHistoryBoard() {
   const leagueOverview = useLeagueOverview();
   const [leagueId, setLeagueId] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('board');
+  const [selectedRound, setSelectedRound] = useState<number | 'all'>('all');
+  const [metric, setMetric] = useState<'starter_war' | 'roster_war'>('starter_war');
   const [sort, setSort] = useState<{ column: SortColumn; direction: SortDirection }>({
     column: 'draft_year',
     direction: 'asc',
@@ -148,7 +150,7 @@ export function RookieWarHistoryBoard() {
     return Array.from(set).sort((a, b) => a - b);
   }, [rows]);
 
-  // Build 48 pick slots (Rounds 1-4, Slots 1-12)
+  // Build 48 pick slots (Rounds 1-4, Slots 1-12) with round filter
   const pickSlotSummaries = useMemo<PickSlotSummary[]>(() => {
     const map = new Map<string, RookieWarHistoryRow>();
     for (const r of rows) {
@@ -156,7 +158,9 @@ export function RookieWarHistoryBoard() {
     }
 
     const summaries: PickSlotSummary[] = [];
-    for (let rnd = 1; rnd <= 4; rnd += 1) {
+    const targetRounds = selectedRound === 'all' ? [1, 2, 3, 4] : [selectedRound];
+
+    for (const rnd of targetRounds) {
       for (let sl = 1; sl <= 12; sl += 1) {
         const pickLabel = `${rnd}.${sl.toString().padStart(2, '0')}`;
         const byYear: Record<number, RookieWarHistoryRow> = {};
@@ -166,8 +170,9 @@ export function RookieWarHistoryBoard() {
           const row = map.get(`${yr}-${rnd}-${sl}`);
           if (row) {
             byYear[yr] = row;
-            if (row.starter_war != null) {
-              wars.push(row.starter_war);
+            const warVal = metric === 'starter_war' ? row.starter_war : row.roster_war;
+            if (warVal != null) {
+              wars.push(warVal);
             }
           }
         }
@@ -206,7 +211,7 @@ export function RookieWarHistoryBoard() {
     }
 
     return summaries;
-  }, [rows, years]);
+  }, [rows, years, selectedRound, metric]);
 
   const sortedRows = useMemo(() => {
     const next = [...rows];
@@ -279,11 +284,49 @@ export function RookieWarHistoryBoard() {
           </strong>
         </div>
 
+        {hasWar ? (
+          <div className="rkwh-toolbar-meta">
+            <span className="rkwh-meta-label">Metric</span>
+            <div className="rkwh-pill-group">
+              <button
+                type="button"
+                className={`rkwh-filter-pill ${metric === 'starter_war' ? 'rkwh-filter-pill--active' : ''}`}
+                onClick={() => setMetric('starter_war')}
+              >
+                Starter WAR
+              </button>
+              <button
+                type="button"
+                className={`rkwh-filter-pill ${metric === 'roster_war' ? 'rkwh-filter-pill--active' : ''}`}
+                onClick={() => setMetric('roster_war')}
+              >
+                Roster WAR
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="rkwh-toolbar-meta">
-          <span className="rkwh-meta-label">Picks Loaded</span>
-          <strong>
-            {isLoading ? '…' : `${rows.length} across ${years.length} draft classes`}
-          </strong>
+          <span className="rkwh-meta-label">Rounds</span>
+          <div className="rkwh-pill-group">
+            <button
+              type="button"
+              className={`rkwh-filter-pill ${selectedRound === 'all' ? 'rkwh-filter-pill--active' : ''}`}
+              onClick={() => setSelectedRound('all')}
+            >
+              All (48)
+            </button>
+            {[1, 2, 3, 4].map((rnd) => (
+              <button
+                key={rnd}
+                type="button"
+                className={`rkwh-filter-pill ${selectedRound === rnd ? 'rkwh-filter-pill--active' : ''}`}
+                onClick={() => setSelectedRound(rnd)}
+              >
+                Rd {rnd}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="rkwh-view-mode-toggle" role="group" aria-label="View mode">
@@ -332,58 +375,72 @@ export function RookieWarHistoryBoard() {
             <div className="rkwh-table-card">
               <div className="rkwh-table-header">
                 <div>
-                  <strong>Rookie pick WAR history board</strong>
+                  <strong>Rookie Pick WAR History Board</strong>
                   <small>
                     {hasWar
-                      ? `Career WAR under ${selectedLeagueName ?? 'selected league'}`
-                      : 'Select a league above to calculate WAR metrics'}
+                      ? `Career ${metric === 'starter_war' ? 'Starter' : 'Roster'} WAR under ${selectedLeagueName ?? 'selected league'}`
+                      : 'Consensus draft selections across historical rookie classes'}
                   </small>
                 </div>
               </div>
 
               {viewMode === 'board' ? (
                 <div className="rkwh-table-scroll">
-                  <table className="rkwh-table rkwh-board-grid">
+                  <table className="rkwh-table rkwh-board-matrix">
                     <thead>
                       <tr>
-                        <th className="rkwh-sticky-col rkwh-th-pick">Pick</th>
+                        <th className="rkwh-freeze-col rkwh-col-pick" rowSpan={hasWar ? 2 : 1}>Pick</th>
                         {hasWar ? (
                           <>
-                            <th className="rkwh-th-stat">Avg</th>
-                            <th className="rkwh-th-stat">Med</th>
-                            <th className="rkwh-th-stat">Hit</th>
-                            <th className="rkwh-th-stat">Bust</th>
+                            <th className="rkwh-freeze-col rkwh-col-avg" rowSpan={2}>Avg</th>
+                            <th className="rkwh-freeze-col rkwh-col-med" rowSpan={2}>Med</th>
+                            <th className="rkwh-freeze-col rkwh-col-hit" rowSpan={2}>Hit</th>
+                            <th className="rkwh-freeze-col rkwh-col-bust" rowSpan={2}>Bust</th>
                           </>
                         ) : null}
                         {years.map((year) => (
-                          <th key={year} className="rkwh-th-year">
+                          <th
+                            key={year}
+                            colSpan={hasWar ? 2 : 1}
+                            className="rkwh-th-year-group"
+                          >
                             {year}
                           </th>
                         ))}
                       </tr>
+                      {hasWar ? (
+                        <tr className="rkwh-subhead-row">
+                          {years.map((year) => (
+                            <React.Fragment key={year}>
+                              <th className="rkwh-th-sub-player">Player</th>
+                              <th className="rkwh-th-sub-war">WAR</th>
+                            </React.Fragment>
+                          ))}
+                        </tr>
+                      ) : null}
                     </thead>
                     <tbody>
                       {pickSlotSummaries.map((summary) => (
                         <tr key={summary.pickLabel}>
-                          <td className="rkwh-sticky-col rkwh-td-pick">
+                          <td className="rkwh-freeze-col rkwh-col-pick rkwh-pick-label">
                             <strong>{summary.pickLabel}</strong>
                           </td>
                           {hasWar ? (
                             <>
-                              <td className="rkwh-td-stat">
+                              <td className="rkwh-freeze-col rkwh-col-avg rkwh-stat-num">
                                 {summary.avgWar != null ? formatNumber(summary.avgWar) : '—'}
                               </td>
-                              <td className="rkwh-td-stat">
+                              <td className="rkwh-freeze-col rkwh-col-med rkwh-stat-num">
                                 {summary.medWar != null ? formatNumber(summary.medWar) : '—'}
                               </td>
-                              <td className="rkwh-td-stat">
+                              <td className="rkwh-freeze-col rkwh-col-hit rkwh-stat-num">
                                 {summary.hitRate != null ? (
-                                  <span className={`rkwh-rate-pill ${summary.hitRate >= 50 ? 'rkwh-rate-pill--good' : ''}`}>
+                                  <span className={`rkwh-rate-pill ${summary.hitRate >= 60 ? 'rkwh-rate-pill--good' : ''}`}>
                                     {Math.round(summary.hitRate)}%
                                   </span>
                                 ) : '—'}
                               </td>
-                              <td className="rkwh-td-stat">
+                              <td className="rkwh-freeze-col rkwh-col-bust rkwh-stat-num">
                                 {summary.bustRate != null ? (
                                   <span className={`rkwh-rate-pill ${summary.bustRate >= 50 ? 'rkwh-rate-pill--bad' : ''}`}>
                                     {Math.round(summary.bustRate)}%
@@ -396,32 +453,37 @@ export function RookieWarHistoryBoard() {
                             const p = summary.byYear[year];
                             if (!p) {
                               return (
-                                <td key={year} className="rkwh-td-cell rkwh-td-cell--empty">
-                                  —
-                                </td>
+                                <React.Fragment key={year}>
+                                  <td className="rkwh-matrix-cell rkwh-matrix-cell--empty" colSpan={hasWar ? 2 : 1}>
+                                    —
+                                  </td>
+                                </React.Fragment>
                               );
                             }
                             const pos = p.position ?? '??';
-                            const posColor = getPositionColor(pos);
+                            const warVal = metric === 'starter_war' ? p.starter_war : p.roster_war;
                             return (
-                              <td key={year} className="rkwh-td-cell">
-                                <div className="rkwh-grid-player">
-                                  <span
-                                    className="rkwh-pos-pill"
-                                    style={{ backgroundColor: posColor }}
-                                  >
-                                    {pos}
-                                  </span>
-                                  <span className="rkwh-player-name" title={p.name}>
-                                    {p.name}
-                                  </span>
-                                  {hasWar && p.starter_war != null ? (
-                                    <span className="rkwh-grid-war-score">
-                                      {formatNumber(p.starter_war)}
+                              <React.Fragment key={year}>
+                                <td className={`rkwh-matrix-cell rkwh-pos-bg--${pos.toLowerCase()}`}>
+                                  <div className="rkwh-player-box">
+                                    <span className={`rkwh-pos-tag rkwh-pos-tag--${pos.toLowerCase()}`}>
+                                      {pos}
                                     </span>
-                                  ) : null}
-                                </div>
-                              </td>
+                                    <span className="rkwh-player-name-text" title={p.name}>
+                                      {p.name}
+                                    </span>
+                                  </div>
+                                </td>
+                                {hasWar ? (
+                                  <td className={`rkwh-matrix-cell rkwh-war-val-cell rkwh-pos-bg--${pos.toLowerCase()}`}>
+                                    {warVal != null ? (
+                                      <span className={`rkwh-war-score ${warVal >= 3.0 ? 'rkwh-war-score--hit' : (warVal <= 1.0 ? 'rkwh-war-score--bust' : '')}`}>
+                                        {formatNumber(warVal)}
+                                      </span>
+                                    ) : '—'}
+                                  </td>
+                                ) : null}
+                              </React.Fragment>
                             );
                           })}
                         </tr>
@@ -465,12 +527,11 @@ export function RookieWarHistoryBoard() {
                           </td>
                           <td className="rkwh-player-cell">
                             <span
-                              className="rkwh-pos-pill"
-                              style={{ backgroundColor: getPositionColor(row.position) }}
+                              className={`rkwh-pos-tag rkwh-pos-tag--${(row.position ?? '??').toLowerCase()}`}
                             >
                               {row.position ?? '??'}
                             </span>
-                            <span className="rkwh-player-name">{row.name}</span>
+                            <span className="rkwh-player-name-text">{row.name}</span>
                             {row.team && (
                               <span className="rkwh-player-team">({row.team})</span>
                             )}
