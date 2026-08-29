@@ -20,7 +20,7 @@ vi.mock('@/hooks/sleeper/useBulkTrades', () => ({
 }));
 
 describe('TradeCalculatorTab', () => {
-  it('renders KTC-style trade calculator layout with two side cards, winning meter, and value basis dropdown', () => {
+  it('renders KTC-style trade calculator layout with two side cards, winning meter, and value basis dropdown with WAR options', () => {
     render(<TradeCalculatorTab />);
 
     expect(screen.getByText('Trade Calculator')).toBeInTheDocument();
@@ -33,8 +33,13 @@ describe('TradeCalculatorTab', () => {
     expect(basisSelect).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /KeepTradeCut \(KTC\)/i })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /FantasyCalc \(FC\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Dynasty WAR \(Starters\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Dynasty WAR \(Full Roster\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Redraft WAR \(Starters\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Redraft WAR \(Full Roster\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /My Dynasty WAR/i })).toBeInTheDocument();
 
-    fireEvent.change(basisSelect, { target: { value: 'fantasycalc' } });
-    expect(mockSetPreference).toHaveBeenCalledWith('fantasycalc');
+    fireEvent.change(basisSelect, { target: { value: 'dynasty_starter_war' } });
+    expect(mockSetPreference).toHaveBeenCalledWith('dynasty_starter_war');
   });
 });

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import { formatMarketValue } from '@/utils/valueFormat';
+import { formatSelectedValue, isMarketValueBasis } from '@/utils/valueFormat';
+import type { ValueBasis } from '@/types';
 import './TradeWinningBar.css';
 
 export interface TradeWinningBarProps {
@@ -8,7 +9,7 @@ export interface TradeWinningBarProps {
   teamBName?: string;
   teamANet: number;
   teamBNet: number;
-  isMarketValue?: boolean;
+  valueBasis?: ValueBasis | string;
 }
 
 export function TradeWinningBar({
@@ -16,7 +17,10 @@ export function TradeWinningBar({
   teamBName = 'Team 2',
   teamANet,
   teamBNet,
+  valueBasis = 'ktc',
 }: TradeWinningBarProps) {
+  const isMarket = isMarketValueBasis(valueBasis as ValueBasis);
+
   const { winner, diff, ratioA, ratioB } = useMemo(() => {
     const a = Math.max(0, teamANet);
     const b = Math.max(0, teamBNet);
@@ -37,8 +41,9 @@ export function TradeWinningBar({
     const clampedA = Math.min(92, Math.max(8, rawRatioA));
     const clampedB = 100 - clampedA;
 
-    // Consider even if within 2% or less than 50 points
-    if (difference <= 50 || (total > 0 && Math.abs(rawRatioA - 50) < 2)) {
+    // Consider even if within 2% or less than 50 points (or 0.1 WAR for WAR metrics)
+    const threshold = isMarket ? 50 : 0.1;
+    if (difference <= threshold || (total > 0 && Math.abs(rawRatioA - 50) < 2)) {
       return {
         winner: 'even' as const,
         diff: difference,
@@ -62,7 +67,7 @@ export function TradeWinningBar({
       ratioA: clampedA,
       ratioB: clampedB,
     };
-  }, [teamANet, teamBNet]);
+  }, [teamANet, teamBNet, isMarket]);
 
   const hasAssets = teamANet > 0 || teamBNet > 0;
 
@@ -100,7 +105,7 @@ export function TradeWinningBar({
               <ArrowLeft size={16} className="trade-result-icon" /> Favors {teamAName}
             </span>
             <span className="trade-result-advice">
-              Add a player or pick worth <strong>{formatMarketValue(diff)}</strong> to {teamBName} to even trade <ArrowRight size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />
+              Add a player or pick worth <strong>{formatSelectedValue(diff, valueBasis as ValueBasis)}{!isMarket ? ' WAR' : ''}</strong> to {teamBName} to even trade <ArrowRight size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />
             </span>
           </div>
         ) : (
@@ -109,7 +114,7 @@ export function TradeWinningBar({
               Favors {teamBName} <ArrowRight size={16} className="trade-result-icon" />
             </span>
             <span className="trade-result-advice">
-              <ArrowLeft size={13} style={{ display: 'inline', verticalAlign: 'middle' }} /> Add a player or pick worth <strong>{formatMarketValue(diff)}</strong> to {teamAName} to even trade
+              <ArrowLeft size={13} style={{ display: 'inline', verticalAlign: 'middle' }} /> Add a player or pick worth <strong>{formatSelectedValue(diff, valueBasis as ValueBasis)}{!isMarket ? ' WAR' : ''}</strong> to {teamAName} to even trade
             </span>
           </div>
         )}

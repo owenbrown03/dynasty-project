@@ -23,6 +23,13 @@ class BulkTradePlayerSearchResult(Base):
     ktc_value: int | None = None
     fc_value: int | None = None
 
+    dynasty_starter_war: float | None = None
+    dynasty_roster_war: float | None = None
+    redraft_starter_war: float | None = None
+    redraft_roster_war: float | None = None
+    my_dynasty_starter_war: float | None = None
+    projected_points: float | None = None
+
     underdog_position_rank: str | None = None
 
 

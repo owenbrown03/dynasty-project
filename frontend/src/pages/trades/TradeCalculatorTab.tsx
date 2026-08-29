@@ -19,9 +19,14 @@ import { TradeWinningBar } from '@/components/trades/TradeWinningBar';
 import './TradeCalculatorTab.css';
 
 
-type CalculatorBasis =
+export type CalculatorBasis =
   | 'ktc'
-  | 'fantasycalc';
+  | 'fantasycalc'
+  | 'dynasty_starter_war'
+  | 'dynasty_roster_war'
+  | 'redraft_starter_war'
+  | 'redraft_roster_war'
+  | 'my_war';
 
 type CalculatorSide =
   | 'team-a'
@@ -34,6 +39,7 @@ type CalculatorAsset = {
   meta: string;
   ktcValue: number | null;
   fcValue: number | null;
+  rookieWarValue?: number | null;
   player?: BulkTradePlayerSearchResult;
   pickSeason?: string;
   pickRound?: number;
@@ -51,9 +57,42 @@ function getAssetValue(
   asset: CalculatorAsset,
   basis: CalculatorBasis,
 ) {
-  return basis === 'ktc'
-    ? asset.ktcValue ?? 0
-    : asset.fcValue ?? 0;
+  if (asset.type === 'pick') {
+    if (basis === 'fantasycalc') {
+      return asset.fcValue ?? 0;
+    }
+    if (basis.includes('war')) {
+      return asset.rookieWarValue ?? 0;
+    }
+    return asset.ktcValue ?? 0;
+  }
+
+  const p = asset.player;
+  if (!p) {
+    if (basis === 'fantasycalc') {
+      return asset.fcValue ?? 0;
+    }
+    return asset.ktcValue ?? 0;
+  }
+
+  switch (basis) {
+    case 'ktc':
+      return p.ktc_value ?? 0;
+    case 'fantasycalc':
+      return p.fc_value ?? 0;
+    case 'dynasty_starter_war':
+      return p.dynasty_starter_war ?? 0;
+    case 'dynasty_roster_war':
+      return p.dynasty_roster_war ?? 0;
+    case 'redraft_starter_war':
+      return p.redraft_starter_war ?? 0;
+    case 'redraft_roster_war':
+      return p.redraft_roster_war ?? 0;
+    case 'my_war':
+      return p.my_dynasty_starter_war ?? p.dynasty_starter_war ?? 0;
+    default:
+      return p.ktc_value ?? 0;
+  }
 }
 
 
@@ -338,6 +377,7 @@ export function TradeCalculatorTab({
           meta: `${totalRosters} tm · ${numQbs === 2 ? 'SF' : '1QB'} · ${ppr} PPR`,
           ktcValue: pickValue.ktc_value,
           fcValue: pickValue.fc_value,
+          rookieWarValue: pickValue.rookie_war_value,
           pickSeason: season,
           pickRound: round,
         },
@@ -409,11 +449,20 @@ export function TradeCalculatorTab({
               onChange={(e) => {
                 const next = e.target.value as CalculatorBasis;
                 setValueBasis(next);
-                void setPreference(next);
+                void setPreference(next as any);
               }}
             >
-              <option value="ktc">KeepTradeCut (KTC)</option>
-              <option value="fantasycalc">FantasyCalc (FC)</option>
+              <optgroup label="Market Values">
+                <option value="ktc">KeepTradeCut (KTC)</option>
+                <option value="fantasycalc">FantasyCalc (FC)</option>
+              </optgroup>
+              <optgroup label="WAR (Wins Above Replacement)">
+                <option value="dynasty_starter_war">Dynasty WAR (Starters)</option>
+                <option value="dynasty_roster_war">Dynasty WAR (Full Roster)</option>
+                <option value="redraft_starter_war">Redraft WAR (Starters)</option>
+                <option value="redraft_roster_war">Redraft WAR (Full Roster)</option>
+                <option value="my_war">My Dynasty WAR</option>
+              </optgroup>
             </select>
           </label>
 
@@ -526,6 +575,7 @@ export function TradeCalculatorTab({
           teamBName="Team 2"
           teamANet={teamANet}
           teamBNet={teamBNet}
+          valueBasis={valueBasis}
         />
 
         {/* Bulk Send Integration Footer */}

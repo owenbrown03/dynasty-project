@@ -95,6 +95,10 @@ async def search_bulk_trade_players(
             underdog_position_rank=(
                 result.underdog_position_rank
             ),
+            dynasty_starter_war=result.dynasty_starter_war,
+            dynasty_roster_war=result.dynasty_roster_war,
+            redraft_starter_war=result.redraft_starter_war,
+            redraft_roster_war=result.redraft_roster_war,
         )
         for result in results
     ]

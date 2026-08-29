@@ -4,8 +4,8 @@ import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { TeamBadge } from '@/components/players/TeamBadge';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { useBulkTradePlayerSearch } from '@/hooks/sleeper/useBulkTrades';
-import type { BulkTradePlayerSearchResult } from '@/types';
-import { formatMarketValue } from '@/utils/valueFormat';
+import type { BulkTradePlayerSearchResult, ValueBasis } from '@/types';
+import { formatSelectedValue } from '@/utils/valueFormat';
 import { getPositionColor } from '@/utils/positions';
 import './TradeSideCard.css';
 
@@ -33,9 +33,35 @@ export interface TradeSideCardProps {
   onAddPlayer: (player: BulkTradePlayerSearchResult) => void;
   onAddPick?: (season: string, round: number, slot?: number | null) => void;
   onRemoveAsset: (assetId: string) => void;
-  valueBasis?: 'ktc' | 'fantasycalc';
+  valueBasis?: ValueBasis | string;
   searchPlaceholder?: string;
   validPickYears?: string[];
+}
+
+function getPlayerDisplayValue(
+  player: BulkTradePlayerSearchResult,
+  valueBasis: ValueBasis | string,
+): number {
+  switch (valueBasis) {
+    case 'ktc':
+      return player.ktc_value ?? 0;
+    case 'fantasycalc':
+      return player.fc_value ?? 0;
+    case 'dynasty_starter_war':
+      return player.dynasty_starter_war ?? 0;
+    case 'dynasty_roster_war':
+      return player.dynasty_roster_war ?? 0;
+    case 'redraft_starter_war':
+      return player.redraft_starter_war ?? 0;
+    case 'redraft_roster_war':
+      return player.redraft_roster_war ?? 0;
+    case 'my_war':
+      return player.my_dynasty_starter_war ?? player.dynasty_starter_war ?? 0;
+    case 'sleeper_projection':
+      return player.projected_points ?? 0;
+    default:
+      return player.ktc_value ?? 0;
+  }
 }
 
 export function TradeSideCard({
@@ -194,7 +220,7 @@ export function TradeSideCard({
                   ))
                 ) : playerSearch.data.length > 0 ? (
                   playerSearch.data.map((player) => {
-                    const val = valueBasis === 'ktc' ? player.ktc_value : player.fc_value;
+                    const val = getPlayerDisplayValue(player, valueBasis);
                     return (
                       <button
                         key={player.player_id}
@@ -230,7 +256,7 @@ export function TradeSideCard({
                           </div>
                         </div>
                         <span className="trade-side-result-value">
-                          {formatMarketValue(val ?? 0)}
+                          {formatSelectedValue(val, valueBasis as ValueBasis)}
                         </span>
                       </button>
                     );
@@ -349,7 +375,7 @@ export function TradeSideCard({
 
               <div className="trade-side-asset-end">
                 <span className="trade-side-asset-value">
-                  {formatMarketValue(asset.value)}
+                  {formatSelectedValue(asset.value, valueBasis as ValueBasis)}
                 </span>
                 <button
                   type="button"
@@ -370,7 +396,9 @@ export function TradeSideCard({
           <div className="trade-side-adjustment-card">
             <span className="trade-side-adjustment-title">{adjustmentLabel}</span>
             <span className="trade-side-adjustment-value">
-              {adjustmentValue > 0 ? `+${formatMarketValue(adjustmentValue)}` : formatMarketValue(adjustmentValue)}
+              {adjustmentValue > 0
+                ? `+${formatSelectedValue(adjustmentValue, valueBasis as ValueBasis)}`
+                : formatSelectedValue(adjustmentValue, valueBasis as ValueBasis)}
             </span>
           </div>
         ) : null}
@@ -386,7 +414,7 @@ export function TradeSideCard({
         </div>
         <div className="trade-side-footer-total">
           <strong className="trade-side-total-value">
-            {formatMarketValue(netValue || totalValue)}
+            {formatSelectedValue(netValue || totalValue, valueBasis as ValueBasis)}
           </strong>
         </div>
       </div>

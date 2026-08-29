@@ -1304,6 +1304,12 @@ export interface BulkTradePlayerSearchResult {
   ktc_value: number | null;
   fc_value: number | null;
   underdog_position_rank: string | null;
+  dynasty_starter_war?: number | null;
+  dynasty_roster_war?: number | null;
+  redraft_starter_war?: number | null;
+  redraft_roster_war?: number | null;
+  my_dynasty_starter_war?: number | null;
+  projected_points?: number | null;
 }
 
 export interface TradeDraftPickAsset {

@@ -27,6 +27,10 @@ class LocalPlayerSearchResult:
     fc_value: int | None
     adp_value: float | None
     underdog_position_rank: str | None
+    dynasty_starter_war: float | None = None
+    dynasty_roster_war: float | None = None
+    redraft_starter_war: float | None = None
+    redraft_roster_war: float | None = None
 
 
 async def search_local_dynasty_players(
@@ -125,6 +129,28 @@ async def search_local_dynasty_players(
                 row.player_id
             ] = row
 
+    dynasty_war_by_pid: dict = {}
+    redraft_war_by_pid: dict = {}
+    try:
+        from types import SimpleNamespace
+        from app.analytics.war.redraft.singleton import war_service
+        from app.services.war.shared import build_cached_dynasty_projections_by_player_id
+
+        shared = await war_service.load_shared_data(db, 2026)
+        league = SimpleNamespace(
+            season="2026",
+            scoring_settings={"rec": 1.0},
+            roster_positions=["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "SUPER_FLEX"],
+            total_rosters=12,
+        )
+        war_players = await war_service.calculate_with_data(league=league, shared=shared)
+        redraft_war_by_pid = {p.player_id: p for p in war_players}
+        dynasty_war_by_pid = await build_cached_dynasty_projections_by_player_id(
+            redis=None, player_wars=war_players
+        )
+    except Exception:
+        pass
+
     return [
         LocalPlayerSearchResult(
             player_id=player.player_id,
@@ -162,6 +188,26 @@ async def search_local_dynasty_players(
                     player.player_id
                 ].position_rank
                 if player.player_id in underdog_by_player_id
+                else None
+            ),
+            dynasty_starter_war=(
+                round(dynasty_war_by_pid[player.player_id].total_starter_war, 2)
+                if player.player_id in dynasty_war_by_pid
+                else None
+            ),
+            dynasty_roster_war=(
+                round(dynasty_war_by_pid[player.player_id].total_roster_war, 2)
+                if player.player_id in dynasty_war_by_pid
+                else None
+            ),
+            redraft_starter_war=(
+                round(redraft_war_by_pid[player.player_id].starter_war, 2)
+                if player.player_id in redraft_war_by_pid
+                else None
+            ),
+            redraft_roster_war=(
+                round(redraft_war_by_pid[player.player_id].roster_war, 2)
+                if player.player_id in redraft_war_by_pid
                 else None
             ),
         )
