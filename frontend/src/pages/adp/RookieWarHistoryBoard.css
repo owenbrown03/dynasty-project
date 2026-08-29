@@ -228,15 +228,15 @@
 
 .rkwh-col-smooth {
   left: 98px;
-  min-width: 54px;
-  width: 54px;
-  max-width: 54px;
+  min-width: 66px;
+  width: 66px;
+  max-width: 66px;
   text-align: center !important;
   background: var(--color-surface-raised, var(--color-surface)) !important;
 }
 
 .rkwh-col-med {
-  left: 152px;
+  left: 164px;
   min-width: 48px;
   width: 48px;
   max-width: 48px;
@@ -245,18 +245,18 @@
 }
 
 .rkwh-col-hit {
-  left: 200px;
-  min-width: 50px;
-  width: 50px;
-  max-width: 50px;
+  left: 212px;
+  min-width: 48px;
+  width: 48px;
+  max-width: 48px;
   text-align: center !important;
 }
 
 .rkwh-col-bust {
-  left: 250px;
-  min-width: 50px;
-  width: 50px;
-  max-width: 50px;
+  left: 260px;
+  min-width: 48px;
+  width: 48px;
+  max-width: 48px;
   text-align: center !important;
   box-shadow: 2px 0 0 var(--color-border-strong);
 }

@@ -47,11 +47,11 @@ SHARED_DATA_CACHE_KEY_PREFIX = "rookie_war:shared:"
 SHARED_DATA_CACHE_TTL_SECONDS = 6 * 60 * 60
 
 AGGREGATE_CACHE_KEY_PREFIX = "rookie_war:aggregates:"
-AGGREGATE_CACHE_VERSION = "v1"
+AGGREGATE_CACHE_VERSION = "v2"
 AGGREGATE_CACHE_TTL_SECONDS = 24 * 60 * 60
 
 HISTORY_CACHE_PREFIX = "rookie_war:history:"
-HISTORY_CACHE_VERSION = "v1"
+HISTORY_CACHE_VERSION = "v2"
 HISTORY_CACHE_TTL_SECONDS = 24 * 60 * 60
 
 PLAYERS_CACHE_KEY = "v1"
@@ -635,6 +635,8 @@ async def get_rookie_war_history(
         db,
     )
 
+    VALID_ROOKIE_POSITIONS = {"QB", "RB", "WR", "TE"}
+
     def _player_info(
         player_id: str,
     ) -> dict:
@@ -647,17 +649,16 @@ async def get_rookie_war_history(
                 "position": None,
                 "team": None,
             }
+        pos = getattr(player, "position", None)
+        if pos not in VALID_ROOKIE_POSITIONS:
+            pos = None
         return {
             "name": (
                 getattr(player, "full_name", None)
                 or getattr(player, "name", None)
                 or player_id
             ),
-            "position": getattr(
-                player,
-                "position",
-                None,
-            ),
+            "position": pos,
             "team": getattr(
                 player,
                 "team",
@@ -760,7 +761,7 @@ async def get_rookie_war_history(
             {
                 "player_id": player_id,
                 "name": info["name"] if info["name"] != player_id else name,
-                "position": info["position"] or pos,
+                "position": info["position"] or (pos if pos in VALID_ROOKIE_POSITIONS else "WR"),
                 "team": info["team"],
                 "draft_year": season,
                 "round": rnd,
