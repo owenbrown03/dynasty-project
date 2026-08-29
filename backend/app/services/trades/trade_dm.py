@@ -1,24 +1,17 @@
-"""Send a Sleeper DM to the counterparty manager announcing a proposed
-trade, with the trade embedded as a native `trade_dm` card.
+from __future__ import annotations
 
-Sleeper's web client normally embeds large `transactions_by_roster` and
-`users_in_league_map` snapshots in the message attachment. That data is for
-the sending client's optimistic preview; the receiving app resolves the trade
-card from the authoritative `transaction_id`. We intentionally send just the
-core attachment keys (`status`, `transaction_id`, `league_id`) and let Sleeper
-do the loading, avoiding a fragile re-implementation of its client data.
-"""
-
+import json
 import logging
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud.sleeper.roster import get_all_rosters_by_league
+from app.crud.sleeper.user import get_user_names_by_id
 from app.integrations.sleeper.client import SleeperClient
 from app.integrations.sleeper.exceptions import SleeperError
 from app.models.db.sleeper import api as model
 from app.models.db.sleeper.connection import SleeperConnection
-from app.crud.sleeper.roster import get_all_rosters_by_league
-from app.crud.sleeper.user import get_user_names_by_id
 from app.schemas.trades import BulkTradeOfferRequest
 
 logger = logging.getLogger(__name__)
@@ -29,6 +22,8 @@ _ATTACHMENT_KEYS = [
     "status",
     "transaction_id",
     "league_id",
+    "transactions_by_roster",
+    "users_in_league_map",
 ]
 
 
@@ -62,6 +57,8 @@ async def send_trade_dm_to_manager(
     league_name: str,
     sender_display_name: str,
     manager_user_id: str,
+    transactions_by_roster: dict,
+    users_in_league_map: dict,
 ) -> dict:
     """Ensure a 1:1 DM channel with the manager exists, then post a message
     announcing the proposed trade with the trade card embedded."""
@@ -96,7 +93,7 @@ async def send_trade_dm_to_manager(
 
     # 2. Post the trade card message.
     text = (
-        f"@{sender_display_name} has proposed a trade"
+        f"<@{sender_display_name}> has proposed a trade"
         f" in {league_name}"
     )
 
@@ -108,8 +105,10 @@ async def send_trade_dm_to_manager(
         k_attachment_data=_ATTACHMENT_KEYS,
         v_attachment_data=[
             _DM_PROPOSED_STATUS,
-            transaction_id,
-            league_id,
+            str(transaction_id),
+            str(league_id),
+            json.dumps(transactions_by_roster),
+            json.dumps(users_in_league_map),
         ],
     )
 
@@ -180,6 +179,92 @@ async def maybe_send_trade_dm(
         )
         return
 
+    # Build users_in_league_map for the trade card
+    all_owner_ids = {r.owner_id for r in rosters if r.owner_id}
+    users_result = await db.execute(
+        select(model.User).where(model.User.user_id.in_(all_owner_ids))
+    )
+    user_map = {u.user_id: u for u in users_result.scalars()}
+
+    users_in_league_map = {}
+    for uid, u in user_map.items():
+        users_in_league_map[uid] = {
+            "user_id": u.user_id,
+            "display_name": u.display_name,
+            "avatar": u.avatar,
+            "is_bot": False,
+            "is_owner": (uid == sender_user_id),
+            "league_id": offer.league_id,
+            "metadata": {},
+            "settings": None,
+        }
+
+    # Build added_picks for each side
+    your_added_picks = [
+        {
+            "roster_id": str(p.og_roster_id or offer.your_roster_id),
+            "season": str(p.season),
+            "round": str(p.round),
+            "owner_id": str(sender_user_id or ""),
+            "previous_owner_id": str(manager_user_id or ""),
+            "original_owner_id": str(p.og_roster_id or offer.counterparty_roster_id),
+        }
+        for p in (offer.receive_picks or [])
+    ]
+
+    counterparty_added_picks = [
+        {
+            "roster_id": str(p.og_roster_id or offer.counterparty_roster_id),
+            "season": str(p.season),
+            "round": str(p.round),
+            "owner_id": str(manager_user_id or ""),
+            "previous_owner_id": str(sender_user_id or ""),
+            "original_owner_id": str(p.og_roster_id or offer.your_roster_id),
+        }
+        for p in (offer.send_picks or [])
+    ]
+
+    transactions_by_roster = {
+        str(offer.your_roster_id): {
+            "adds": offer.receive_player_ids or [],
+            "drops": offer.send_player_ids or [],
+            "added_picks": your_added_picks,
+            "dropped_picks": [],
+            "added_budget": [],
+            "dropped_budget": [],
+            "status": "proposed",
+            "user": users_in_league_map.get(sender_user_id or "", {
+                "user_id": sender_user_id or "",
+                "display_name": sender_display_name,
+                "avatar": None,
+                "is_bot": False,
+                "is_owner": True,
+                "league_id": offer.league_id,
+                "metadata": {},
+                "settings": None,
+            }),
+        },
+        str(offer.counterparty_roster_id): {
+            "adds": offer.send_player_ids or [],
+            "drops": offer.receive_player_ids or [],
+            "added_picks": counterparty_added_picks,
+            "dropped_picks": [],
+            "added_budget": [],
+            "dropped_budget": [],
+            "status": "proposed",
+            "user": users_in_league_map.get(manager_user_id, {
+                "user_id": manager_user_id,
+                "display_name": user_map[manager_user_id].display_name if manager_user_id in user_map else f"Roster {offer.counterparty_roster_id}",
+                "avatar": None,
+                "is_bot": False,
+                "is_owner": False,
+                "league_id": offer.league_id,
+                "metadata": {},
+                "settings": None,
+            }),
+        },
+    }
+
     try:
         await send_trade_dm_to_manager(
             sleeper,
@@ -188,6 +273,8 @@ async def maybe_send_trade_dm(
             league_name=league_name,
             sender_display_name=sender_display_name,
             manager_user_id=manager_user_id,
+            transactions_by_roster=transactions_by_roster,
+            users_in_league_map=users_in_league_map,
         )
     except Exception:
         logger.exception(
