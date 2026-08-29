@@ -1,7 +1,11 @@
 import logging
+import uuid
 
 from .mutations import (
+    CREATE_DM_MUTATION,
+    CREATE_MESSAGE_MUTATION,
     CREATE_VERIFICATION_CODE_MUTATION,
+    GET_DM_BY_MEMBERS_QUERY,
     LOGIN_QUERY,
     MUTATIONS,
 )
@@ -138,3 +142,61 @@ class SleeperWrite:
             raise SleeperAuthError(
                 "Not authenticated. Complete the verification flow first."
             )
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Direct-message / chat operations (requires a token)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    async def get_dm_by_members(
+        self,
+        members: list[str],
+    ) -> list[dict]:
+        """Find existing 1:1 DMs with the given member user ids."""
+        self._require_auth()
+        data = await self.transport.post(
+            query=GET_DM_BY_MEMBERS_QUERY,
+            variables={"members": members},
+        )
+        return data.get("get_dm_by_members") or []
+
+    async def create_dm(
+        self,
+        members: list[str],
+    ) -> dict:
+        """Create (or return) a 1:1 DM channel with the given members."""
+        self._require_auth()
+        data = await self.transport.post(
+            query=CREATE_DM_MUTATION,
+            variables={
+                "dm_type": "single",
+                "members": members,
+            },
+        )
+        return data.get("create_dm") or {}
+
+    async def create_message(
+        self,
+        *,
+        parent_id: str,
+        parent_type: str,
+        text: str,
+        attachment_type: str,
+        k_attachment_data: list[str],
+        v_attachment_data: list[object],
+    ) -> dict:
+        """Post a message (optionally with an embedded attachment) to a
+        DM/thread parent."""
+        self._require_auth()
+        data = await self.transport.post(
+            query=CREATE_MESSAGE_MUTATION,
+            variables={
+                "parent_id": parent_id,
+                "client_id": str(uuid.uuid4()),
+                "parent_type": parent_type,
+                "text": text,
+                "attachment_type": attachment_type,
+                "k_attachment_data": k_attachment_data,
+                "v_attachment_data": v_attachment_data,
+            },
+        )
+        return data.get("create_message") or {}

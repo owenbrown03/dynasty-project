@@ -12,12 +12,13 @@ import { extractErrorDetail } from './useAdvisor';
 
 export interface AdvisorOfferOptions {
   expiresAt?: number | null;
+  sendDm?: boolean;
   onSuccess?: (result: BulkTradeProposalResult | null) => void;
 }
 
 function buildOfferPayload(
   proposal: AdvisorProposal,
-  expiresAt?: number | null,
+  options?: AdvisorOfferOptions,
 ): BulkTradeProposalRequest {
   const toPickRefs = (picks: AdvisorPickRef[] = []) =>
     picks.map((pick) => ({
@@ -43,7 +44,8 @@ function buildOfferPayload(
         receive_picks: toPickRefs(
           proposal.receive_picks,
         ),
-        expires_at: expiresAt ?? null,
+        expires_at: options?.expiresAt ?? null,
+        send_dm: options?.sendDm ?? false,
       },
     ],
   };
@@ -57,10 +59,7 @@ export function useSendAdvisorOffer() {
     }) => {
       const { proposal, options } = variables;
       const response = await api.trades.submitBulkOffers(
-        buildOfferPayload(
-          proposal,
-          options?.expiresAt,
-        ),
+        buildOfferPayload(proposal, options),
       );
 
       return response.data.results[0] ?? null;

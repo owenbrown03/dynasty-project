@@ -161,6 +161,8 @@ class BulkTradeOfferRequest(Base):
 
     expires_at: int | None = None
 
+    send_dm: bool = False
+
 
 class BulkTradeProposalRequest(Base):
     offers: list[BulkTradeOfferRequest] = Field(

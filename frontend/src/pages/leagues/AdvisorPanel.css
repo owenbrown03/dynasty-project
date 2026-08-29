@@ -137,6 +137,19 @@
   border-color: rgba(59, 130, 246, 0.5);
 }
 
+.advisor-dm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.advisor-dm-toggle input {
+  accent-color: #3b82f6;
+}
+
 .advisor-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

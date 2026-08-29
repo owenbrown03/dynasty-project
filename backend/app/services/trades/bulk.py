@@ -35,6 +35,7 @@ from app.services.trades.picks import (
     get_current_pick_assets_by_league,
     get_owned_matching_picks,
 )
+from app.services.trades.trade_dm import maybe_send_trade_dm
 from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
 )
@@ -1009,14 +1010,22 @@ async def submit_bulk_trade_offers(
                 **variables,
             )
 
+            transaction_id = find_transaction_id(response)
+
             results.append(
                 build_bulk_trade_result(
                     league_id=offer.league_id,
                     success=True,
-                    transaction_id=find_transaction_id(
-                        response,
-                    ),
+                    transaction_id=transaction_id,
                 )
+            )
+
+            await maybe_send_trade_dm(
+                db=db,
+                sleeper=sleeper,
+                connection=connection,
+                offer=offer,
+                transaction_id=transaction_id,
             )
 
         except SleeperGraphQLError as error:

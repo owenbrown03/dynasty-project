@@ -452,6 +452,7 @@ function SendTradeSection({
   const [expiresInSecs, setExpiresInSecs] = useState<
     number | null
   >(null);
+  const [sendDm, setSendDm] = useState(false);
 
   if (sent) {
     return (
@@ -581,6 +582,20 @@ function SendTradeSection({
         </div>
       </div>
 
+      <label className="advisor-dm-toggle">
+        <input
+          type="checkbox"
+          checked={sendDm}
+          onChange={(event) =>
+            setSendDm(event.target.checked)
+          }
+        />
+        <span>
+          DM {proposal.counterparty_name} this trade on
+          Sleeper
+        </span>
+      </label>
+
       <div className="advisor-send-actions">
         <button
           type="button"
@@ -601,6 +616,7 @@ function SendTradeSection({
                   ? Math.floor(Date.now() / 1000)
                     + expiresInSecs
                   : null,
+              sendDm,
               onSuccess: () => setSent(true),
             })
           }
