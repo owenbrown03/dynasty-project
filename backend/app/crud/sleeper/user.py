@@ -13,24 +13,42 @@ SLEEPER_HISTORY_START_SEASON = 2017
 HISTORICAL_SYNC_WEEK = 18
 
 async def get_userid_by_username(db: AsyncSession, sleeper: SleeperClient, username: str) -> str:
-    """
-    Looks up the user ID locally first to completely bypass the network semaphore.
-    Falls back to the network ONLY if it's a completely new user profile signature.
-    """
     clean_username = username.strip()
+
+    try:
+        username_details = await sleeper.read.get_user_details_by_username(clean_username)
+        if username_details and username_details.user_id:
+            db_user = await db.get(User, username_details.user_id)
+            if not db_user:
+                db_user = User(
+                    user_id=username_details.user_id,
+                    display_name=username_details.display_name,
+                    avatar=username_details.avatar,
+                )
+                db.add(db_user)
+            else:
+                db_user.display_name = username_details.display_name
+                db_user.avatar = username_details.avatar
+                db.add(db_user)
+            await db.commit()
+            return username_details.user_id
+    except Exception as exc:
+        logger.warning(
+            "Failed to fetch live Sleeper user details for %s: %s",
+            clean_username,
+            exc,
+        )
+
     result = await db.execute(select(User.user_id).where(User.display_name == clean_username))
     user_id = result.scalar_one_or_none()
-    
-    if not user_id:
-        username_details = await sleeper.read.get_user_details_by_username(clean_username)
-        if not username_details:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User '{clean_username}' could not be resolved."
-            )
-        return username_details.user_id
-        
-    return user_id
+    if user_id:
+        return user_id
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"User '{clean_username}' could not be resolved."
+    )
+
 
 async def get_username_by_userid(db: AsyncSession, sleeper: SleeperClient, user_id: str) -> str:
     """

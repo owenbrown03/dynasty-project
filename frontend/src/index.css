@@ -5,6 +5,7 @@
   --radius-md: 6px;
   --radius-lg: 10px;
   --radius-full: 999px;
+  --navbar-height: 61px;
   --page-max-width: none;
   --page-copy-max-width: 860px;
 
@@ -384,7 +385,7 @@ td {
 
 th {
   position: sticky;
-  top: 0;
+  top: var(--navbar-height, 61px);
   z-index: 2;
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
@@ -392,6 +393,10 @@ th {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  /* Use box-shadow instead of border-bottom so the separator line is drawn
+     in the th's own paint layer and doesn't collapse/disappear when scrolling
+     under border-collapse: collapse tables. */
+  box-shadow: inset 0 -1px 0 var(--color-border);
 }
 
 .table-hover tbody tr:hover {

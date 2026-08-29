@@ -12,6 +12,7 @@ from app.crud.sleeper.league import (
 )
 from app.crud.sleeper.personal import get_hidden_league_ids, get_league_sort_orders
 from app.models.db.sleeper.api import League, Roster, User
+from app.models.db.sleeper.connection import SleeperConnection
 
 
 @dataclass(frozen=True)
@@ -153,9 +154,40 @@ async def get_visible_owned_league_rows_by_username(
     site_user_id: UUID | None = None,
     include_hidden: bool = False,
 ) -> list[OwnedLeagueRow]:
+    clean_username = username.strip()
+
+    # 1. Resolve sleeper_user_id from SleeperConnection (by linked username or user ID)
+    conn_result = await db.execute(
+        select(SleeperConnection.sleeper_user_id).where(
+            (SleeperConnection.sleeper_username == clean_username)
+            | (SleeperConnection.sleeper_user_id == clean_username)
+        )
+    )
+    sleeper_user_id = conn_result.scalars().first()
+
+    # 2. If not found in SleeperConnection, check User table by display_name or user_id
+    if not sleeper_user_id:
+        user_result = await db.execute(
+            select(User.user_id).where(
+                (User.display_name == clean_username)
+                | (User.user_id == clean_username)
+            )
+        )
+        sleeper_user_id = user_result.scalar_one_or_none()
+
+    # 3. If sleeper_user_id resolved, delegate to the sleeper_user_id selection helper
+    if sleeper_user_id:
+        return await get_visible_owned_league_rows_by_sleeper_user_id(
+            db=db,
+            sleeper_user_id=sleeper_user_id,
+            site_user_id=site_user_id,
+            include_hidden=include_hidden,
+        )
+
+    # 4. Fallback to raw user leagues query if ID could not be resolved
     raw_rows = await get_user_leagues(
         db,
-        username,
+        clean_username,
     )
     hidden_league_ids = set()
     sort_order = None
@@ -164,17 +196,6 @@ async def get_visible_owned_league_rows_by_username(
         hidden_league_ids = await get_hidden_league_ids(
             db=db,
             site_user_id=site_user_id,
-        )
-
-    user_result = await db.execute(
-        select(User.user_id).where(User.display_name == username.strip())
-    )
-    sleeper_user_id = user_result.scalar_one_or_none()
-
-    if sleeper_user_id:
-        sort_order = await get_league_sort_orders(
-            db=db,
-            user_id=sleeper_user_id,
         )
 
     return select_latest_owned_league_rows(
@@ -189,6 +210,7 @@ async def get_visible_owned_league_rows_by_username(
         include_hidden=include_hidden,
         sort_order=sort_order,
     )
+
 
 
 async def get_visible_owned_league_rows_by_sleeper_user_id(
