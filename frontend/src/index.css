@@ -385,7 +385,7 @@ td {
 
 th {
   position: sticky;
-  top: var(--navbar-height, 61px);
+  top: 0;
   z-index: 2;
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
