@@ -99,12 +99,13 @@ def get_claim_block_reason(
     *,
     roster: Roster,
     league: League,
+    is_drop_only: bool = False,
 ) -> str | None:
     roster_spots_available = roster.open_roster_spots(
         league,
     )
 
-    if roster_spots_available < 0:
+    if roster_spots_available < 0 and not is_drop_only:
         return (
             "This roster is "
             f"{abs(roster_spots_available)} player"
@@ -132,9 +133,12 @@ def validate_claim(
       leaves the roster over capacity.
     """
 
+    is_drop_only = claim.drop_player_id is not None and claim.add_player_id is None
+
     claim_block_reason = get_claim_block_reason(
         roster=roster,
         league=league,
+        is_drop_only=is_drop_only,
     )
 
     if claim_block_reason is not None:
