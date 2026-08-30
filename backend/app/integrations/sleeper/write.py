@@ -229,3 +229,49 @@ class SleeperWrite:
         )
         return data.get("remove_league_player_trade_block") or {}
 
+    async def create_poll(self, prompt: str, choices: list[str], is_private: bool = True, poll_type: str | None = None) -> str:
+        self._require_auth()
+        k_metadata = []
+        v_metadata = []
+        if is_private:
+            k_metadata.append("private")
+            v_metadata.append("true")
+        if poll_type:
+            k_metadata.append("type")
+            v_metadata.append(poll_type)
+
+        data = await self.mutation(
+            "create_poll",
+            {
+                "prompt": prompt,
+                "choices": choices,
+                "k_metadata": k_metadata,
+                "v_metadata": v_metadata,
+            },
+        )
+        poll = data.get("create_poll")
+        if not poll or "poll_id" not in poll:
+            raise SleeperValidationError("Failed to create poll")
+        return poll["poll_id"]
+
+    async def set_poll_expiration(self, poll_id: str, closes_at_timestamp_ms: int) -> bool:
+        self._require_auth()
+        data = await self.mutation(
+            "poll_set_closes_at",
+            {
+                "poll_id": poll_id,
+                "closes_at": closes_at_timestamp_ms,
+            },
+        )
+        return bool(data.get("poll_set_closes_at"))
+
+    async def send_poll_message(self, league_id: str, poll_id: str, text: str = "") -> dict:
+        return await self.create_message(
+            parent_id=league_id,
+            parent_type="league",
+            text=text,
+            attachment_type="poll",
+            k_attachment_data=["poll_id"],
+            v_attachment_data=[poll_id],
+        )
+
