@@ -103,3 +103,27 @@ class CommissionerLeagueDuesUpdate(Base):
 class CommissionerLeagueSettingsUpdate(Base):
     league_id: str
     paid_years_ahead: int = 1
+
+
+class CommissionerPollBroadcastRequest(Base):
+    prompt: str
+    choices: list[str]
+    is_private: bool = True
+    poll_type: str | None = None
+    expiration_days: int | None = 7
+    follow_up_message: str | None = None
+    league_ids: list[str]
+
+
+class CommissionerPollBroadcastResult(Base):
+    league_id: str
+    league_name: str | None = None
+    poll_id: str | None = None
+    success: bool
+    error: str | None = None
+
+
+class CommissionerPollBroadcastResponse(Base):
+    total_leagues: int
+    successful_leagues: int
+    results: list[CommissionerPollBroadcastResult]

@@ -31,13 +31,15 @@ import {
   getValueBasisOptions,
 } from '@/pages/waivers/waiver.constants';
 import { CommissionerOrphanCard } from './CommissionerOrphanCard';
+import { CommissionerPollsTab } from './CommissionerPollsTab';
 
 import './CommissionerPage.css';
 
 
 type CommissionerTab =
   | 'orphans'
-  | 'workspace';
+  | 'workspace'
+  | 'polls';
 
 
 function isValueBasis(
@@ -722,6 +724,25 @@ export const CommissionerPage = () => {
             )
             : null
         }
+        {
+          canManageWorkspace
+            ? (
+              <button
+                className={
+                  activeTab === 'polls'
+                    ? 'commissioner-tab-button active'
+                    : 'commissioner-tab-button'
+                }
+                type="button"
+                onClick={() => {
+                  setTab('polls');
+                }}
+              >
+                Poll Automation
+              </button>
+            )
+            : null
+        }
       </div>
 
       {
@@ -795,6 +816,11 @@ export const CommissionerPage = () => {
           ? (
             <CommissionerCardGridSkeleton mode="workspace" />
           )
+          : null
+      }
+      {
+        activeTab === 'polls' && canManageWorkspace
+          ? <CommissionerPollsTab />
           : null
       }
 

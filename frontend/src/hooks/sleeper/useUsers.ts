@@ -8,6 +8,8 @@ import type {
   CommissionerLeagueSettingsUpdate,
   CommissionerOrphansResponse,
   CommissionerWorkspaceResponse,
+  CommissionerPollBroadcastRequest,
+  CommissionerPollBroadcastResponse,
   FinanceDefaultsUpdate,
   FinanceLeagueDefaultsUpdate,
   FinanceLeagueSeasonUpdate,
@@ -357,5 +359,13 @@ export function useTestSendReminder() {
     ) => api.users
       .testSendReminder(body)
       .then((res) => res.data as ReminderTestSendResponse),
+  });
+}
+
+
+export function useBroadcastCommissionerPoll() {
+  const queryClient = useQueryClient();
+  return useMutation<CommissionerPollBroadcastResponse, Error, CommissionerPollBroadcastRequest>({
+    mutationFn: (body) => api.sleeper.user.broadcastCommissionerPoll(body).then(res => res.data),
   });
 }

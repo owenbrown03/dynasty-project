@@ -10,6 +10,8 @@ from app.schemas.commissioner import (
     CommissionerOrphansResponse,
     CommissionerWorkspaceLeague,
     CommissionerWorkspaceResponse,
+    CommissionerPollBroadcastRequest,
+    CommissionerPollBroadcastResponse,
 )
 from app.schemas.finance import (
     FinanceDefaultsUpdate,
@@ -34,6 +36,7 @@ from app.services.commissioner.workspace import (
     save_commissioner_note,
     save_commissioner_settings,
 )
+from app.services.commissioner.polls import broadcast_commissioner_poll
 from app.services.finance import (
     get_finance_summary,
     reset_finance_entry,
@@ -146,6 +149,20 @@ async def save_commissioner_settings_endpoint(
     ctx: ContextDep,
 ):
     return await save_commissioner_settings(
+        body,
+        ctx,
+    )
+
+
+@router.post(
+    "/commissioner/polls/broadcast",
+    response_model=CommissionerPollBroadcastResponse,
+)
+async def broadcast_commissioner_poll_endpoint(
+    body: CommissionerPollBroadcastRequest,
+    ctx: ContextDep,
+):
+    return await broadcast_commissioner_poll(
         body,
         ctx,
     )

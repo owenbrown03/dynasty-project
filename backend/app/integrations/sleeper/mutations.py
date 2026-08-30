@@ -187,6 +187,26 @@ REMOVE_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION = """
     }
 """
 
+CREATE_POLL_MUTATION = """
+    mutation create_poll($prompt: String, $choices: [String], $k_metadata: [String], $v_metadata: [String]) {
+        create_poll(prompt: $prompt, choices: $choices, k_metadata: $k_metadata, v_metadata: $v_metadata) {
+            poll_id
+            prompt
+            choices
+            metadata
+        }
+    }
+"""
+
+POLL_SET_CLOSES_AT_MUTATION = """
+    mutation poll_set_closes_at($poll_id: Snowflake!, $closes_at: Int!) {
+        poll_set_closes_at(poll_id: $poll_id, closes_at: $closes_at) {
+            poll_id
+            closes_at
+        }
+    }
+"""
+
 MUTATIONS: dict[str, str] = {
     "create_verification_code": CREATE_VERIFICATION_CODE_MUTATION,
     "login": LOGIN_QUERY,
@@ -197,4 +217,6 @@ MUTATIONS: dict[str, str] = {
     "create_message": CREATE_MESSAGE_MUTATION,
     "add_league_player_trade_block": ADD_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION,
     "remove_league_player_trade_block": REMOVE_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION,
+    "create_poll": CREATE_POLL_MUTATION,
+    "poll_set_closes_at": POLL_SET_CLOSES_AT_MUTATION,
 }
