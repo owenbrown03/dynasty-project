@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useCommissionerFaabOverview, useResetCommissionerFaab } from '@/hooks/sleeper/useUsers';
 import { notify } from '@/utils/notify';
-import { CommissionerFaabLeagueInfo } from '@/api/v1/endpoints/sleeper/user.endpoints';
 import { Skeleton } from '@/components/feedback/Skeleton';
 
 export const CommissionerFaabTab = () => {
@@ -52,7 +51,7 @@ export const CommissionerFaabTab = () => {
       });
       notify.success('FAAB reset successfully');
       setSelectedLeagues(new Set());
-    } catch (e) {
+    } catch {
       notify.error('Failed to reset FAAB');
     }
   };
