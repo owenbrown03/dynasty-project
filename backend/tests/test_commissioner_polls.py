@@ -16,10 +16,10 @@ async def test_broadcast_commissioner_poll_success(monkeypatch):
     mock_sleeper_write.set_poll_expiration.return_value = True
     mock_sleeper_write.send_poll_message.return_value = {}
 
-    ctx = Context(
+    ctx = SimpleNamespace(
         db=mock_db,
         redis=None,
-        session_token="token",
+        session=SimpleNamespace(),
         site_user=SimpleNamespace(id="site_user_id"),
         connection=SimpleNamespace(sleeper_user_id="sleeper_user_id"),
         sleeper_write=mock_sleeper_write,
