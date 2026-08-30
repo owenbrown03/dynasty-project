@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useCommissionerWorkspace, useBroadcastCommissionerPoll } from '@/hooks/sleeper/useUsers';
 import { notify } from '@/utils/notify';
-import { CommissionerWorkspaceLeague, CommissionerPollBroadcastResult } from '@/types';
+import type { CommissionerPollBroadcastResult } from '@/types';
 
 export function CommissionerPollsTab() {
   const { data: workspace, loading } = useCommissionerWorkspace(true);
@@ -60,7 +60,7 @@ export function CommissionerPollsTab() {
       });
       setResults(res.results);
       notify.success(`Broadcast complete: ${res.successful_leagues}/${res.total_leagues} succeeded`);
-    } catch (e) {
+    } catch {
       notify.error("Error broadcasting polls");
     } finally {
       setBroadcasting(false);

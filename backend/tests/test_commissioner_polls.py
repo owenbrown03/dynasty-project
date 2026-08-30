@@ -6,7 +6,7 @@ from app.core.context import Context
 from types import SimpleNamespace
 from fastapi import HTTPException
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_broadcast_commissioner_poll_success(monkeypatch):
     mock_db = AsyncMock()
     

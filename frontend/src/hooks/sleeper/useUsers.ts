@@ -69,7 +69,7 @@ export function useOrphans() {
 }
 
 export function useSync() {
-  const queryClient = useQueryClient();
+  
 
   const mutation = useMutation({
     mutationFn: api.users.sync,
@@ -364,8 +364,7 @@ export function useTestSendReminder() {
 
 
 export function useBroadcastCommissionerPoll() {
-  const queryClient = useQueryClient();
   return useMutation<CommissionerPollBroadcastResponse, Error, CommissionerPollBroadcastRequest>({
-    mutationFn: (body) => api.sleeper.user.broadcastCommissionerPoll(body).then(res => res.data),
+    mutationFn: (body) => api.users.broadcastCommissionerPoll(body).then((res: any) => res.data),
   });
 }
