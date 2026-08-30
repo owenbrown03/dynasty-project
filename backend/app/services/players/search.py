@@ -31,6 +31,7 @@ class LocalPlayerSearchResult:
     dynasty_roster_war: float | None = None
     redraft_starter_war: float | None = None
     redraft_roster_war: float | None = None
+    my_dynasty_starter_war: float | None = None
 
 
 async def search_local_dynasty_players(
@@ -210,6 +211,7 @@ async def search_local_dynasty_players(
                 if player.player_id in redraft_war_by_pid
                 else None
             ),
+            my_dynasty_starter_war=None,
         )
         for player in players
     ]
