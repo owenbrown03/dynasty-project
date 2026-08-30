@@ -23,7 +23,6 @@ import type {
   ValueBasis,
   CommissionerCutdownLeague,
   CommissionerCutdownActionRequest,
-  CommissionerCutdownActionResponse,
 } from '@/types';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
