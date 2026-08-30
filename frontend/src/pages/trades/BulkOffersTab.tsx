@@ -23,6 +23,7 @@ import type {
   BulkTradePickRequest,
   BulkTradePlayerSearchResult,
   TradeDraftPickAsset,
+  ValueBasis,
 } from '@/types';
 
 import {
@@ -35,6 +36,30 @@ import { TradeSideCard, type TradeSideAsset } from '@/components/trades/TradeSid
 import { TradeWinningBar } from '@/components/trades/TradeWinningBar';
 import { useValuePreference } from '@/context/useValuePreference';
 import type { TradeCalculatorBulkOfferSeed } from './TradeCalculatorTab';
+
+function getBulkPlayerValue(
+  player: BulkTradePlayerSearchResult,
+  valueBasis: ValueBasis | string,
+): number {
+  switch (valueBasis) {
+    case 'ktc':
+      return player.ktc_value ?? 0;
+    case 'fantasycalc':
+      return player.fc_value ?? 0;
+    case 'dynasty_starter_war':
+      return player.dynasty_starter_war ?? 0;
+    case 'dynasty_roster_war':
+      return player.dynasty_roster_war ?? 0;
+    case 'redraft_starter_war':
+      return player.redraft_starter_war ?? 0;
+    case 'redraft_roster_war':
+      return player.redraft_roster_war ?? 0;
+    case 'my_war':
+      return player.my_dynasty_starter_war ?? player.dynasty_starter_war ?? 0;
+    default:
+      return player.ktc_value ?? 0;
+  }
+}
 
 
 const ROOKIE_DRAFT_ROLLOVER_MONTH = 5;
@@ -217,8 +242,16 @@ export const BulkOffersTab = ({
   const [selectionsByLeagueId, setSelectionsByLeagueId] = useState<Record<string, BulkTradeLeagueSelection>>({});
   const [isReviewOpen, setIsReviewOpen] = useState(false);
 
-  const { preference } = useValuePreference();
-  const valueBasis = preference === 'fantasycalc' ? 'fantasycalc' : 'ktc';
+  const { preference, setPreference } = useValuePreference();
+  const [valueBasis, setValueBasis] = useState<ValueBasis | string>(
+    preference ?? 'ktc',
+  );
+
+  useEffect(() => {
+    if (preference) {
+      setValueBasis(preference);
+    }
+  }, [preference]);
 
   const sendPlayerAssets: TradeSideAsset[] = useMemo(() => [
     ...sendPlayers.map((p) => ({
@@ -226,7 +259,7 @@ export const BulkOffersTab = ({
       type: 'player' as const,
       label: p.name,
       meta: [p.position, p.team, p.age != null ? `${p.age} y.o.` : null].filter(Boolean).join(' · '),
-      value: (valueBasis === 'ktc' ? p.ktc_value : p.fc_value) ?? 0,
+      value: getBulkPlayerValue(p, valueBasis),
       position: p.position,
       team: p.team,
       age: p.age,
@@ -249,7 +282,7 @@ export const BulkOffersTab = ({
       type: 'player' as const,
       label: p.name,
       meta: [p.position, p.team, p.age != null ? `${p.age} y.o.` : null].filter(Boolean).join(' · '),
-      value: (valueBasis === 'ktc' ? p.ktc_value : p.fc_value) ?? 0,
+      value: getBulkPlayerValue(p, valueBasis),
       position: p.position,
       team: p.team,
       age: p.age,
@@ -587,35 +620,63 @@ export const BulkOffersTab = ({
       <div className="bulk-trade-intro">
         <div>
           <span className="page-eyebrow">
-            Cross-league offers
+            Trade Builder
           </span>
 
           <h1>
-            Bulk Trade Offers
+            Trade Builder
           </h1>
 
           <p>
-            Build the same mixed asset package across your leagues, review each one, and send only the leagues you select.
+            Build your trade package, calculate market and WAR value balance, and review or send offers across all your leagues simultaneously.
           </p>
         </div>
 
-        {
-          sendPlayers.length > 0
-          || sendPicks.length > 0
-          || receivePlayers.length > 0
-          || receivePicks.length > 0
-            ? (
-              <button
-                className="button-secondary"
-                onClick={handleReset}
-                disabled={submitting}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="trade-calculator-controls" style={{ margin: 0 }}>
+            <label>
+              <span>Value basis</span>
+              <select
+                value={valueBasis}
+                onChange={(e) => {
+                  const next = e.target.value as ValueBasis;
+                  setValueBasis(next);
+                  void setPreference(next as any);
+                }}
               >
-                <RotateCcw size={15} />
-                Reset
-              </button>
-            )
-            : null
-        }
+                <optgroup label="Market Values">
+                  <option value="ktc">KeepTradeCut (KTC)</option>
+                  <option value="fantasycalc">FantasyCalc (FC)</option>
+                </optgroup>
+                <optgroup label="WAR (Wins Above Replacement)">
+                  <option value="dynasty_starter_war">Dynasty WAR (Starters)</option>
+                  <option value="dynasty_roster_war">Dynasty WAR (Full Roster)</option>
+                  <option value="redraft_starter_war">Redraft WAR (Starters)</option>
+                  <option value="redraft_roster_war">Redraft WAR (Full Roster)</option>
+                  <option value="my_war">My Dynasty WAR</option>
+                </optgroup>
+              </select>
+            </label>
+          </div>
+
+          {
+            sendPlayers.length > 0
+            || sendPicks.length > 0
+            || receivePlayers.length > 0
+            || receivePicks.length > 0
+              ? (
+                <button
+                  className="button-secondary"
+                  onClick={handleReset}
+                  disabled={submitting}
+                >
+                  <RotateCcw size={15} />
+                  Reset
+                </button>
+              )
+              : null
+          }
+        </div>
       </div>
 
       <div className="trade-calculator-two-column-grid">
@@ -696,6 +757,7 @@ export const BulkOffersTab = ({
           teamBName="You receive"
           teamANet={sendTotal}
           teamBNet={receiveTotal}
+          valueBasis={valueBasis}
         />
       ) : null}
 
@@ -832,3 +894,6 @@ export const BulkOffersTab = ({
     </section>
   );
 };
+
+export const TradeBuilderTab = BulkOffersTab;
+export const TradeCenterTab = BulkOffersTab;

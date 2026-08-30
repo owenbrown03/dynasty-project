@@ -4,19 +4,15 @@ import {
 } from 'react';
 import { useLocation } from 'react-router';
 
-import { BulkOffersTab } from './BulkOffersTab';
-import {
-  TradeCalculatorTab,
-  type TradeCalculatorBulkOfferSeed,
-} from './TradeCalculatorTab';
+import { TradeBuilderTab } from './BulkOffersTab';
 import { TradeSignalsTab } from './TradeSignalsTab';
+import type { TradeCalculatorBulkOfferSeed } from './TradeCalculatorTab';
 
 import './TradesPage.css';
 
 
 type TradesTab =
-  | 'bulk-offers'
-  | 'calculator'
+  | 'trade-builder'
   | 'signals';
 
 
@@ -24,7 +20,7 @@ export const TradesPage = () => {
   const location = useLocation();
   const locationSeed = (location.state as { seed?: TradeCalculatorBulkOfferSeed } | null)?.seed ?? null;
   const [activeTab, setActiveTab] = useState<TradesTab>(
-    'bulk-offers',
+    'trade-builder',
   );
   const [bulkOfferSeed, setBulkOfferSeed] = useState<TradeCalculatorBulkOfferSeed | null>(
     locationSeed,
@@ -34,7 +30,7 @@ export const TradesPage = () => {
     const nextSeed = (location.state as { seed?: TradeCalculatorBulkOfferSeed } | null)?.seed;
     if (nextSeed) {
       setBulkOfferSeed(nextSeed);
-      setActiveTab('bulk-offers');
+      setActiveTab('trade-builder');
     }
   }, [location.state]);
 
@@ -43,10 +39,10 @@ export const TradesPage = () => {
       <section className="page-header">
         <div>
           <p className="page-eyebrow">Trades</p>
-          <h1 className="page-title">Trade tools</h1>
+          <h1 className="page-title">Trade Builder</h1>
           <p className="page-description">
-            Research completed deals and build repeatable cross-league offers
-            without leaving the dashboard.
+            Evaluate player and pick values, calculate deal balance, and dispatch
+            cross-league trade offers across all your rosters.
           </p>
         </div>
       </section>
@@ -54,30 +50,16 @@ export const TradesPage = () => {
       <div className="trades-tabs" role="tablist" aria-label="Trade tools">
         <button
           className={
-            activeTab === 'bulk-offers'
+            activeTab === 'trade-builder'
               ? 'trades-tab-button active'
               : 'trades-tab-button'
           }
           onClick={() => {
-            setActiveTab('bulk-offers');
+            setActiveTab('trade-builder');
           }}
           type="button"
         >
-          Bulk Offers
-        </button>
-
-        <button
-          className={
-            activeTab === 'calculator'
-              ? 'trades-tab-button active'
-              : 'trades-tab-button'
-          }
-          onClick={() => {
-            setActiveTab('calculator');
-          }}
-          type="button"
-        >
-          Calculator
+          Trade Builder
         </button>
 
         <button
@@ -96,18 +78,9 @@ export const TradesPage = () => {
       </div>
 
       {
-        activeTab === 'bulk-offers'
-          ? <BulkOffersTab seed={bulkOfferSeed} />
-          : activeTab === 'calculator'
-            ? (
-              <TradeCalculatorTab
-                onSendToBulkOffers={(seed) => {
-                  setBulkOfferSeed(seed);
-                  setActiveTab('bulk-offers');
-                }}
-              />
-            )
-            : <TradeSignalsTab />
+        activeTab === 'trade-builder'
+          ? <TradeBuilderTab seed={bulkOfferSeed} />
+          : <TradeSignalsTab />
       }
     </main>
   );
