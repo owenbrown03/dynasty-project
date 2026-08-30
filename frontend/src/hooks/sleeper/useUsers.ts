@@ -365,6 +365,6 @@ export function useTestSendReminder() {
 
 export function useBroadcastCommissionerPoll() {
   return useMutation<CommissionerPollBroadcastResponse, Error, CommissionerPollBroadcastRequest>({
-    mutationFn: (body) => api.users.broadcastCommissionerPoll(body).then((res: any) => res.data),
+    mutationFn: (body) => api.users.broadcastCommissionerPoll(body).then((res) => res.data as CommissionerPollBroadcastResponse),
   });
 }
