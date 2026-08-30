@@ -486,7 +486,7 @@ export function TradeCalculatorTab({
               onChange={(e) => {
                 const next = e.target.value as CalculatorBasis;
                 setValueBasis(next);
-                void setPreference(next as any);
+                void setPreference(next as ValueBasis);
               }}
             >
               <optgroup label="Market Values">
