@@ -245,34 +245,71 @@ export function TradeCalculatorTab({
       return;
     }
 
-    setTeamAReceives([
-      ...seed.sendPlayers.map(buildPlayerAsset),
-      ...seed.sendPicks.map((pick, index) => ({
-        id: `seed-send-pick-${pick.season}-${pick.round}-${index}`,
-        type: 'pick' as const,
-        label: `${pick.season} Round ${pick.round}`,
-        meta: 'Draft pick',
-        ktcValue: 0,
-        fcValue: 0,
-        pickSeason: pick.season,
-        pickRound: pick.round,
-      })),
-    ]);
+    let isMounted = true;
 
-    setTeamBReceives([
-      ...seed.receivePlayers.map(buildPlayerAsset),
-      ...seed.receivePicks.map((pick, index) => ({
-        id: `seed-receive-pick-${pick.season}-${pick.round}-${index}`,
-        type: 'pick' as const,
-        label: `${pick.season} Round ${pick.round}`,
-        meta: 'Draft pick',
-        ktcValue: 0,
-        fcValue: 0,
-        pickSeason: pick.season,
-        pickRound: pick.round,
-      })),
-    ]);
-  }, [seed]);
+    const loadSeed = async () => {
+      const resolvePick = async (pick: { season: string; round: number }, index: number, prefix: string) => {
+        try {
+          const value = await fetchTradeCalculatorPickValue(
+            pick.season,
+            pick.round,
+            null,
+            totalRosters,
+            numQbs,
+            ppr,
+          );
+          return {
+            id: `seed-${prefix}-pick-${pick.season}-${pick.round}-${index}`,
+            type: 'pick' as const,
+            label: `${pick.season} Round ${pick.round}`,
+            meta: `${totalRosters} tm · ${numQbs === 2 ? 'SF' : '1QB'} · ${ppr} PPR`,
+            ktcValue: value.ktc_value,
+            fcValue: value.fc_value,
+            rookieWarValue: value.rookie_war_value,
+            pickSeason: pick.season,
+            pickRound: pick.round,
+          };
+        } catch {
+          return {
+            id: `seed-${prefix}-pick-${pick.season}-${pick.round}-${index}`,
+            type: 'pick' as const,
+            label: `${pick.season} Round ${pick.round}`,
+            meta: 'Draft pick',
+            ktcValue: 0,
+            fcValue: 0,
+            rookieWarValue: 0,
+            pickSeason: pick.season,
+            pickRound: pick.round,
+          };
+        }
+      };
+
+      const sendPicks = await Promise.all(
+        seed.sendPicks.map((p, i) => resolvePick(p, i, 'send')),
+      );
+      const receivePicks = await Promise.all(
+        seed.receivePicks.map((p, i) => resolvePick(p, i, 'receive')),
+      );
+
+      if (!isMounted) return;
+
+      setTeamAReceives([
+        ...seed.sendPlayers.map(buildPlayerAsset),
+        ...sendPicks,
+      ]);
+
+      setTeamBReceives([
+        ...seed.receivePlayers.map(buildPlayerAsset),
+        ...receivePicks,
+      ]);
+    };
+
+    void loadSeed();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [seed]); // We do not depend on format controls here intentionally, so it doesn't reset user edits when changing format.
 
   // Query waiver ladder adjustments dynamically
   useEffect(() => {

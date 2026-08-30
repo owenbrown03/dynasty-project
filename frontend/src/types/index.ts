@@ -1353,6 +1353,9 @@ export interface BulkTradeAvailabilityResponse {
 export interface BulkTradePickRequest {
   season: string;
   round: number;
+  ktc_value?: number;
+  fc_value?: number;
+  rookie_war_value?: number;
 }
 
 export interface BulkTradePickChoice {

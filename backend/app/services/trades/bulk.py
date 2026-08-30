@@ -99,6 +99,7 @@ async def search_bulk_trade_players(
             dynasty_roster_war=result.dynasty_roster_war,
             redraft_starter_war=result.redraft_starter_war,
             redraft_roster_war=result.redraft_roster_war,
+            my_dynasty_starter_war=result.my_dynasty_starter_war,
         )
         for result in results
     ]
