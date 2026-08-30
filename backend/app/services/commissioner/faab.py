@@ -39,11 +39,25 @@ async def get_commissioner_faab_overview(
     _require_commissioner_faab_context(ctx)
 
     owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
-        ctx.db,
-        ctx.connection.sleeper_user_id,
+        db=ctx.db,
+        sleeper_user_id=ctx.connection.sleeper_user_id,
+        site_user_id=ctx.site_user.id,
+        include_hidden=False,
     )
     if not owned_rows:
         return []
+
+    rosters_by_league = await get_all_rosters_by_league(
+        db=ctx.db,
+        league_ids=[row.league.league_id for row in owned_rows],
+    )
+    owner_ids = {
+        roster.owner_id
+        for rosters in rosters_by_league.values()
+        for roster in rosters
+        if roster.owner_id
+    }
+    users_by_id = await get_users(ctx.db, owner_ids)
 
     overview: list[CommissionerFaabLeagueInfo] = []
 
@@ -55,13 +69,7 @@ async def get_commissioner_faab_overview(
         settings = getattr(league, "settings", {}) or {}
         default_budget = settings.get("waiver_budget", 100) or 100
 
-        rosters = await get_all_rosters_by_league(
-            ctx.db,
-            league.league_id,
-        )
-        user_ids = [r.owner_id for r in rosters if r.owner_id]
-        users = await get_users(ctx.db, user_ids)
-        users_by_id = {u.user_id: u for u in users}
+        rosters = rosters_by_league.get(league.league_id, [])
 
         rosters_info: list[CommissionerFaabRosterInfo] = []
         rosters_with_spent_faab = 0
@@ -108,8 +116,10 @@ async def reset_commissioner_faab(
     _require_commissioner_faab_context(ctx)
 
     owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
-        ctx.db,
-        ctx.connection.sleeper_user_id,
+        db=ctx.db,
+        sleeper_user_id=ctx.connection.sleeper_user_id,
+        site_user_id=ctx.site_user.id,
+        include_hidden=False,
     )
     owned_by_id = {row.league.league_id: row.league for row in owned_rows if row.league}
 
@@ -140,10 +150,11 @@ async def reset_commissioner_faab(
         )
         target_used = max(0, default_budget - target)
 
-        rosters = await get_all_rosters_by_league(
-            ctx.db,
-            league.league_id,
+        rosters_by_league = await get_all_rosters_by_league(
+            db=ctx.db,
+            league_ids=[league.league_id],
         )
+        rosters = rosters_by_league.get(league.league_id, [])
         rosters_reset = 0
         success = True
         error = None

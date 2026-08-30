@@ -10,25 +10,13 @@ import type {
   CommissionerCutdownViolation,
 } from '@/types';
 
-export function CommissionerCutdownsTab({
-  canManageWorkspace,
-}: {
-  canManageWorkspace: boolean;
-}) {
-  const { data: leagues, loading, error } = useCommissionerCutdowns(canManageWorkspace);
+export function CommissionerCutdownsTab() {
+  const { data: leagues, loading, error } = useCommissionerCutdowns(true);
   const actionMutation = useExecuteCommissionerCutdownAction();
 
   const [selectedRosters, setSelectedRosters] = useState<Record<string, number[]>>({});
   const [actionType, setActionType] = useState<string>('notify');
   const [customMessage, setCustomMessage] = useState<string>('');
-
-  if (!canManageWorkspace) {
-    return (
-      <div className="commissioner-empty-state">
-        Link your Sleeper account and open your own username to use the cutdowns tracker.
-      </div>
-    );
-  }
 
   if (loading) {
     return (
