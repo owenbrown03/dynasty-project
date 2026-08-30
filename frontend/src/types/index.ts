@@ -1549,7 +1549,6 @@ export interface AdvisorDigestResponse {
   model?: string | null;
   reason?: string;
 }
-<<<<<<< HEAD
 export interface CommissionerCutdownPlayer {
   player_id: string;
   name: string;
