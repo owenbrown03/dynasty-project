@@ -21,6 +21,9 @@ import {
   type ReminderUpdate,
   type Roster,
   type ValueBasis,
+  type CommissionerCutdownLeague,
+  type CommissionerCutdownActionRequest,
+  type CommissionerCutdownActionResponse,
 } from '@/types';
 
 export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
@@ -123,6 +126,18 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     `${prefix}/reminders/delete`,
     body,
   ),
+  getCommissionerCutdowns: (signal?: AbortSignal) =>
+    client.get<CommissionerCutdownLeague[]>(
+      `${prefix}/commissioner/cutdowns`,
+      { signal },
+    ),
+  executeCommissionerCutdownAction: (
+    body: CommissionerCutdownActionRequest,
+  ) => client.post<CommissionerCutdownActionResponse>(
+    `${prefix}/commissioner/cutdowns/action`,
+    body,
+  ),
+
   testSendReminder: (
     body: ReminderDelete,
   ) => client.post<ReminderTestSendResponse>(
