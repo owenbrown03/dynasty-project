@@ -69,7 +69,7 @@ export function useOrphans() {
 }
 
 export function useSync() {
-  
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: api.users.sync,
