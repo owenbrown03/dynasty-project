@@ -1549,6 +1549,7 @@ export interface AdvisorDigestResponse {
   model?: string | null;
   reason?: string;
 }
+<<<<<<< HEAD
 export interface CommissionerCutdownPlayer {
   player_id: string;
   name: string;
@@ -1595,4 +1596,28 @@ export interface CommissionerCutdownActionResult {
 
 export interface CommissionerCutdownActionResponse {
   results: CommissionerCutdownActionResult[];
+}
+
+export interface CommissionerPollBroadcastRequest {
+  prompt: string;
+  choices: string[];
+  is_private?: boolean;
+  poll_type?: string | null;
+  expiration_days?: number | null;
+  follow_up_message?: string | null;
+  league_ids: string[];
+}
+
+export interface CommissionerPollBroadcastResult {
+  league_id: string;
+  league_name?: string | null;
+  poll_id?: string | null;
+  success: boolean;
+  error?: string | null;
+}
+
+export interface CommissionerPollBroadcastResponse {
+  total_leagues: number;
+  successful_leagues: number;
+  results: CommissionerPollBroadcastResult[];
 }

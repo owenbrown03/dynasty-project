@@ -8,6 +8,8 @@ import type {
   CommissionerLeagueSettingsUpdate,
   CommissionerOrphansResponse,
   CommissionerWorkspaceResponse,
+  CommissionerPollBroadcastRequest,
+  CommissionerPollBroadcastResponse,
   FinanceDefaultsUpdate,
   FinanceLeagueDefaultsUpdate,
   FinanceLeagueSeasonUpdate,
@@ -390,5 +392,11 @@ export function useExecuteCommissionerCutdownAction() {
         queryKey: queryKeys.users.commissionerCutdowns,
       });
     },
+  });
+}
+
+export function useBroadcastCommissionerPoll() {
+  return useMutation<CommissionerPollBroadcastResponse, Error, CommissionerPollBroadcastRequest>({
+    mutationFn: (body) => api.users.broadcastCommissionerPoll(body).then((res) => res.data as CommissionerPollBroadcastResponse),
   });
 }

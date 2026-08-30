@@ -6,6 +6,8 @@ import {
   type CommissionerLeagueSettingsUpdate,
   type CommissionerOrphansResponse,
   type CommissionerWorkspaceResponse,
+  type CommissionerPollBroadcastRequest,
+  type CommissionerPollBroadcastResponse,
   type FinanceDefaultsUpdate,
   type FinanceLeagueDefaultsUpdate,
   type FinanceLeagueSeasonUpdate,
@@ -140,6 +142,12 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     body: ReminderDelete,
   ) => client.post<ReminderTestSendResponse>(
     `${prefix}/reminders/test-send`,
+    body,
+  ),
+  broadcastCommissionerPoll: (
+    body: CommissionerPollBroadcastRequest,
+  ) => client.post<CommissionerPollBroadcastResponse>(
+    `${prefix}/commissioner/polls/broadcast`,
     body,
   ),
 });

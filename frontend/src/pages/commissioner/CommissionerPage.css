@@ -434,6 +434,7 @@
   }
 }
 
+<<<<<<< HEAD
 .commissioner-cutdowns-tab {
   display: flex;
   flex-direction: column;
@@ -495,4 +496,90 @@
   margin: 0;
   accent-color: var(--color-accent, #7aa2ff);
   cursor: pointer;
+}
+
+/* Commissioner Polls Tab */
+.commissioner-polls-tab {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.polls-form h2, .polls-preview h2, .polls-results h2 {
+  margin-bottom: 1rem;
+}
+
+.polls-form label, .settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.polls-form input[type="text"], .polls-form select, .polls-form textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.choice-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.choices {
+  margin-bottom: 1rem;
+}
+
+.settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.settings label {
+  flex-direction: row;
+  align-items: center;
+}
+
+.league-selection {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.league-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.league-list li {
+  margin-bottom: 0.5rem;
+}
+
+.league-list label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.warning {
+  color: var(--danger);
+  font-weight: bold;
+  padding: 1rem;
+  background: var(--danger-light);
+  border-radius: var(--radius-sm);
+  margin: 1rem 0;
 }

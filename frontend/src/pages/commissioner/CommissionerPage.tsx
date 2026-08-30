@@ -32,6 +32,7 @@ import {
 } from '@/pages/waivers/waiver.constants';
 import { CommissionerOrphanCard } from './CommissionerOrphanCard';
 import { CommissionerCutdownsTab } from './CommissionerCutdownsTab';
+import { CommissionerPollsTab } from './CommissionerPollsTab';
 
 import './CommissionerPage.css';
 
@@ -39,6 +40,7 @@ import './CommissionerPage.css';
 type CommissionerTab =
   | 'orphans'
   | 'workspace'
+  | 'polls'
   | 'cutdowns';
 
 
@@ -732,20 +734,34 @@ export const CommissionerPage = () => {
         {
           canManageWorkspace
             ? (
-              <button
-                className={
-                  activeTab === 'cutdowns'
-                    ? 'commissioner-tab-button active'
-                    : 'commissioner-tab-button'
-                }
-                type="button"
-                onClick={() => {
-                  setTab('cutdowns');
-                }}
-              >
-                Roster Cutdowns
-              </button>
-
+              <>
+                <button
+                  className={
+                    activeTab === 'polls'
+                      ? 'commissioner-tab-button active'
+                      : 'commissioner-tab-button'
+                  }
+                  type="button"
+                  onClick={() => {
+                    setTab('polls');
+                  }}
+                >
+                  Poll Automation
+                </button>
+                <button
+                  className={
+                    activeTab === 'cutdowns'
+                      ? 'commissioner-tab-button active'
+                      : 'commissioner-tab-button'
+                  }
+                  type="button"
+                  onClick={() => {
+                    setTab('cutdowns');
+                  }}
+                >
+                  Roster Cutdowns
+                </button>
+              </>
             )
             : null
         }
@@ -822,6 +838,11 @@ export const CommissionerPage = () => {
           ? (
             <CommissionerCardGridSkeleton mode="workspace" />
           )
+          : null
+      }
+      {
+        activeTab === 'polls' && canManageWorkspace
+          ? <CommissionerPollsTab />
           : null
       }
 
