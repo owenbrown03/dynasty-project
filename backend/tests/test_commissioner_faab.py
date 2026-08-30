@@ -13,10 +13,10 @@ from app.services.commissioner.faab import (
 @pytest.mark.anyio
 async def test_get_commissioner_faab_overview_empty(monkeypatch):
     mock_db = AsyncMock()
-    ctx = Context(
+    ctx = SimpleNamespace(
         db=mock_db,
         redis=None,
-        session_token="token",
+        session=SimpleNamespace(),
         site_user=SimpleNamespace(id="site_user_id"),
         connection=SimpleNamespace(sleeper_user_id="sleeper_123"),
         sleeper_write=None,
@@ -40,10 +40,10 @@ async def test_reset_commissioner_faab_calls_sleeper_write(monkeypatch):
     mock_sleeper_write.auth.is_authenticated = MagicMock(return_value=True)
     mock_sleeper_write.reset_roster_faab = AsyncMock()
 
-    ctx = Context(
+    ctx = SimpleNamespace(
         db=mock_db,
         redis=None,
-        session_token="token",
+        session=SimpleNamespace(),
         site_user=SimpleNamespace(id="site_user_id"),
         connection=SimpleNamespace(sleeper_user_id="sleeper_123"),
         sleeper_write=mock_sleeper_write,
