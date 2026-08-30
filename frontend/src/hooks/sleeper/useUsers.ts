@@ -3,6 +3,11 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import type {
+  CommissionerFaabLeagueInfo,
+  CommissionerFaabResetRequest,
+  CommissionerFaabResetResponse,
+} from '@/api/v1/endpoints/sleeper/user.endpoints';
+import type {
   CommissionerLeagueDuesUpdate,
   CommissionerLeagueNoteUpdate,
   CommissionerLeagueSettingsUpdate,
@@ -363,6 +368,34 @@ export function useTestSendReminder() {
       .then((res) => res.data as ReminderTestSendResponse),
   });
 }
+
+export function useCommissionerFaabOverview() {
+  return useQuery<CommissionerFaabLeagueInfo[], Error>({
+    queryKey: ['commissioner-faab-overview'],
+    queryFn: async () => {
+      const res = await api.users.getCommissionerFaabOverview();
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export const useResetCommissionerFaab = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    CommissionerFaabResetResponse,
+    Error,
+    CommissionerFaabResetRequest
+  >({
+    mutationFn: async (payload: CommissionerFaabResetRequest) => {
+      const res = await api.users.resetCommissionerFaab(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commissioner-faab-overview'] });
+    },
+  });
+};
 
 export function useCommissionerCutdowns(enabled: boolean) {
   const query = useQuery<CommissionerCutdownLeague[]>({

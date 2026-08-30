@@ -31,6 +31,7 @@ import {
   getValueBasisOptions,
 } from '@/pages/waivers/waiver.constants';
 import { CommissionerOrphanCard } from './CommissionerOrphanCard';
+import { CommissionerFaabTab } from './CommissionerFaabTab';
 import { CommissionerCutdownsTab } from './CommissionerCutdownsTab';
 import { CommissionerPollsTab } from './CommissionerPollsTab';
 
@@ -40,6 +41,7 @@ import './CommissionerPage.css';
 type CommissionerTab =
   | 'orphans'
   | 'workspace'
+  | 'faab'
   | 'polls'
   | 'cutdowns';
 
@@ -737,6 +739,19 @@ export const CommissionerPage = () => {
               <>
                 <button
                   className={
+                    activeTab === 'faab'
+                      ? 'commissioner-tab-button active'
+                      : 'commissioner-tab-button'
+                  }
+                  type="button"
+                  onClick={() => {
+                    setTab('faab');
+                  }}
+                >
+                  FAAB Reset Tool
+                </button>
+                <button
+                  className={
                     activeTab === 'polls'
                       ? 'commissioner-tab-button active'
                       : 'commissioner-tab-button'
@@ -880,6 +895,13 @@ export const CommissionerPage = () => {
           : null
       }
 
+      {
+        activeTab === 'faab' && canManageWorkspace
+          ? (
+            <CommissionerFaabTab />
+          )
+          : null
+      }
       {
         activeTab === 'cutdowns' && (
           <CommissionerCutdownsTab canManageWorkspace={canManageWorkspace} />

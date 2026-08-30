@@ -104,6 +104,37 @@ class CommissionerLeagueSettingsUpdate(Base):
     league_id: str
     paid_years_ahead: int = 1
 
+class CommissionerFaabRosterInfo(Base):
+    roster_id: int
+    owner_name: str | None
+    owner_avatar: str | None
+    current_budget: int
+    budget_used: int
+
+class CommissionerFaabLeagueInfo(Base):
+    league_id: str
+    league_name: str
+    avatar: str | None
+    default_budget: int
+    total_rosters: int
+    rosters_with_spent_faab: int
+    rosters: list[CommissionerFaabRosterInfo]
+
+class CommissionerFaabResetRequest(Base):
+    league_ids: list[str]
+    target_budget: int | None = None
+
+class CommissionerFaabResetResult(Base):
+    league_id: str
+    league_name: str
+    rosters_reset: int
+    success: bool
+    error: str | None
+
+class CommissionerFaabResetResponse(Base):
+    total_leagues: int
+    successful_leagues: int
+    results: list[CommissionerFaabResetResult]
 
 class CommissionerCutdownPlayer(Base):
     player_id: str
@@ -175,4 +206,3 @@ class CommissionerPollBroadcastResponse(Base):
     total_leagues: int
     successful_leagues: int
     results: list[CommissionerPollBroadcastResult]
-

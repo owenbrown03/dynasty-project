@@ -15,6 +15,9 @@ from app.schemas.commissioner import (
     CommissionerCutdownActionResponse,
     CommissionerPollBroadcastRequest,
     CommissionerPollBroadcastResponse,
+    CommissionerFaabLeagueInfo,
+    CommissionerFaabResetRequest,
+    CommissionerFaabResetResponse,
 )
 from app.schemas.finance import (
     FinanceDefaultsUpdate,
@@ -42,6 +45,10 @@ from app.services.commissioner.workspace import (
 from app.services.commissioner.cutdowns import (
     get_commissioner_cutdown_violations,
     execute_cutdown_action,
+)
+from app.services.commissioner.faab import (
+    get_commissioner_faab_overview,
+    reset_commissioner_faab,
 )
 from app.services.commissioner.polls import broadcast_commissioner_poll
 from app.services.finance import (
@@ -309,6 +316,25 @@ async def test_send_reminder_endpoint(
         body,
         ctx,
     )
+
+@router.get(
+    "/commissioner/faab",
+    response_model=list[CommissionerFaabLeagueInfo],
+)
+async def get_commissioner_faab_endpoint(
+    ctx: ContextDep,
+):
+    return await get_commissioner_faab_overview(ctx)
+
+@router.post(
+    "/commissioner/faab/reset",
+    response_model=CommissionerFaabResetResponse,
+)
+async def reset_commissioner_faab_endpoint(
+    body: CommissionerFaabResetRequest,
+    ctx: ContextDep,
+):
+    return await reset_commissioner_faab(ctx, body)
 
 @router.get(
     "/commissioner/cutdowns",

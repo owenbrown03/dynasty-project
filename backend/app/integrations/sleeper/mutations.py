@@ -220,3 +220,22 @@ MUTATIONS: dict[str, str] = {
     "create_poll": CREATE_POLL_MUTATION,
     "poll_set_closes_at": POLL_SET_CLOSES_AT_MUTATION,
 }
+UPDATE_ROSTER_MUTATION = """
+    mutation update_roster(
+        $league_id: String!,
+        $roster_id: Int!,
+        $k_settings: [String],
+        $v_settings: [Int]
+    ) {
+        update_roster(
+            league_id: $league_id,
+            roster_id: $roster_id,
+            k_settings: $k_settings,
+            v_settings: $v_settings
+        ) {
+            roster_id
+        }
+    }
+"""
+
+MUTATIONS["update_roster"] = UPDATE_ROSTER_MUTATION
