@@ -23,8 +23,7 @@ async def retry(
             return await func()
 
         except (
-            httpx.TimeoutException,
-            httpx.NetworkError,
+            httpx.TransportError,
             httpx.HTTPStatusError,
         ) as e:
 
