@@ -70,7 +70,7 @@ async def test_reset_commissioner_faab_calls_sleeper_write(monkeypatch):
     )
     monkeypatch.setattr(
         "app.services.commissioner.faab.get_all_rosters_by_league",
-        AsyncMock(return_value=[roster]),
+        AsyncMock(return_value={"league_1": [roster]}),
     )
 
     req = CommissionerFaabResetRequest(

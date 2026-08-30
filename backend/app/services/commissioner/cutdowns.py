@@ -38,17 +38,24 @@ async def get_commissioner_cutdown_violations(ctx: Context) -> list[Commissioner
         include_hidden=False,
     )
     
+    rosters_by_league_id = await get_all_rosters_by_league(
+        db=ctx.db,
+        league_ids=[row.league.league_id for row in rows],
+    )
+    
     leagues = []
     
     for row in rows:
         league = row.league
         
-        rosters = await get_all_rosters_by_league(ctx.db, league.league_id)
+        rosters = rosters_by_league_id.get(league.league_id, [])
         if not rosters:
             continue
             
-        users = await get_users(ctx.db, [r.owner_id for r in rosters if r.owner_id])
-        user_by_id = {u.user_id: u for u in users if u}
+        user_by_id = await get_users(
+            ctx.db,
+            {r.owner_id for r in rosters if r.owner_id},
+        )
         
         violations = []
         
@@ -90,7 +97,7 @@ async def get_commissioner_cutdown_violations(ctx: Context) -> list[Commissioner
                         
                 def get_value(pid):
                     if pid in items_by_player_id:
-                        return items_by_player_id[pid].market_value or 0.0
+                        return items_by_player_id[pid].player.ktc_value or 0.0
                     return 0.0
                     
                 drops = sorted(
@@ -107,7 +114,7 @@ async def get_commissioner_cutdown_violations(ctx: Context) -> list[Commissioner
                             name=item.player.name,
                             position=item.player.position,
                             team=item.player.team,
-                            ktc_value=item.market_value
+                            ktc_value=item.player.ktc_value
                         ))
                     else:
                         proposed_drops.append(CommissionerCutdownPlayer(
