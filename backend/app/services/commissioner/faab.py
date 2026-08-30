@@ -47,6 +47,18 @@ async def get_commissioner_faab_overview(
     if not owned_rows:
         return []
 
+    rosters_by_league = await get_all_rosters_by_league(
+        db=ctx.db,
+        league_ids=[row.league.league_id for row in owned_rows],
+    )
+    owner_ids = {
+        roster.owner_id
+        for rosters in rosters_by_league.values()
+        for roster in rosters
+        if roster.owner_id
+    }
+    users_by_id = await get_users(ctx.db, owner_ids)
+
     overview: list[CommissionerFaabLeagueInfo] = []
 
     for row in owned_rows:
@@ -57,13 +69,7 @@ async def get_commissioner_faab_overview(
         settings = getattr(league, "settings", {}) or {}
         default_budget = settings.get("waiver_budget", 100) or 100
 
-        rosters_by_league = await get_all_rosters_by_league(
-            db=ctx.db,
-            league_ids=[league.league_id],
-        )
         rosters = rosters_by_league.get(league.league_id, [])
-        user_ids = {r.owner_id for r in rosters if r.owner_id}
-        users_by_id = await get_users(ctx.db, user_ids)
 
         rosters_info: list[CommissionerFaabRosterInfo] = []
         rosters_with_spent_faab = 0
