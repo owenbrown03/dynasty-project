@@ -3,11 +3,18 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@/api/query-keys';
 import { api } from '@/api/v1/endpoints';
 import type {
+  CommissionerFaabLeagueInfo,
+  CommissionerFaabResetRequest,
+  CommissionerFaabResetResponse,
+} from '@/api/v1/endpoints/sleeper/user.endpoints';
+import type {
   CommissionerLeagueDuesUpdate,
   CommissionerLeagueNoteUpdate,
   CommissionerLeagueSettingsUpdate,
   CommissionerOrphansResponse,
   CommissionerWorkspaceResponse,
+  CommissionerPollBroadcastRequest,
+  CommissionerPollBroadcastResponse,
   FinanceDefaultsUpdate,
   FinanceLeagueDefaultsUpdate,
   FinanceLeagueSeasonUpdate,
@@ -21,6 +28,8 @@ import type {
   ReminderUpdate,
   Roster,
   ValueBasis,
+  CommissionerCutdownLeague,
+  CommissionerCutdownActionRequest,
 } from '@/types';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
@@ -360,15 +369,16 @@ export function useTestSendReminder() {
   });
 }
 
-import type { CommissionerFaabLeagueInfo, CommissionerFaabResetRequest, CommissionerFaabResetResponse } from '@/api/v1/endpoints/sleeper/user.endpoints';
-
-export const useCommissionerFaabOverview = () => {
+export function useCommissionerFaabOverview() {
   return useQuery<CommissionerFaabLeagueInfo[], Error>({
     queryKey: ['commissioner-faab-overview'],
-    queryFn: async () => { const res = await api.users.getCommissionerFaabOverview(); return res.data; },
+    queryFn: async () => {
+      const res = await api.users.getCommissionerFaabOverview();
+      return res.data;
+    },
     staleTime: 1000 * 60 * 5,
   });
-};
+}
 
 export const useResetCommissionerFaab = () => {
   const queryClient = useQueryClient();
@@ -377,9 +387,49 @@ export const useResetCommissionerFaab = () => {
     Error,
     CommissionerFaabResetRequest
   >({
-    mutationFn: async (payload: CommissionerFaabResetRequest) => { const res = await api.users.resetCommissionerFaab(payload); return res.data; },
+    mutationFn: async (payload: CommissionerFaabResetRequest) => {
+      const res = await api.users.resetCommissionerFaab(payload);
+      return res.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['commissioner-faab-overview'] });
     },
   });
 };
+
+export function useCommissionerCutdowns(enabled: boolean) {
+  const query = useQuery<CommissionerCutdownLeague[]>({
+    queryKey: queryKeys.users.commissionerCutdowns,
+    queryFn: async ({ signal }) => api.users
+      .getCommissionerCutdowns(signal)
+      .then((res) => res.data),
+    enabled,
+  });
+
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
+  };
+}
+
+export function useExecuteCommissionerCutdownAction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: CommissionerCutdownActionRequest) =>
+      api.users.executeCommissionerCutdownAction(body).then((res) => res.data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.commissionerCutdowns,
+      });
+    },
+  });
+}
+
+export function useBroadcastCommissionerPoll() {
+  return useMutation<CommissionerPollBroadcastResponse, Error, CommissionerPollBroadcastRequest>({
+    mutationFn: (body) => api.users.broadcastCommissionerPoll(body).then((res) => res.data as CommissionerPollBroadcastResponse),
+  });
+}

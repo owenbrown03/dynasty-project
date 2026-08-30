@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from typing import Dict, List, Optional
 from pydantic import Field
 
 from app.schemas.base import Base
@@ -135,3 +135,74 @@ class CommissionerFaabResetResponse(Base):
     total_leagues: int
     successful_leagues: int
     results: list[CommissionerFaabResetResult]
+
+class CommissionerCutdownPlayer(Base):
+    player_id: str
+    name: str
+    position: Optional[str] = None
+    team: Optional[str] = None
+    ktc_value: Optional[float] = None
+
+
+class CommissionerCutdownViolation(Base):
+    roster_id: int
+    owner_id: Optional[str] = None
+    owner_name: Optional[str] = None
+    owner_avatar: Optional[str] = None
+    roster_size: int
+    max_roster_size: int
+    over_limit_count: int
+    proposed_drops: List[CommissionerCutdownPlayer]
+
+
+class CommissionerCutdownLeague(Base):
+    league_id: str
+    league_name: str
+    avatar: Optional[str] = None
+    total_rosters: int
+    max_roster_size: int
+    violations: List[CommissionerCutdownViolation]
+
+
+class CommissionerCutdownActionRequest(Base):
+    league_ids: List[str]
+    action_type: str
+    custom_message: Optional[str] = None
+    selected_roster_ids: Optional[Dict[str, List[int]]] = None
+
+
+class CommissionerCutdownActionResult(Base):
+    league_id: str
+    roster_id: Optional[int] = None
+    action: str
+    success: bool
+    details: Optional[str] = None
+    error: Optional[str] = None
+
+
+class CommissionerCutdownActionResponse(Base):
+    results: List[CommissionerCutdownActionResult]
+
+
+class CommissionerPollBroadcastRequest(Base):
+    prompt: str
+    choices: list[str]
+    is_private: bool = True
+    poll_type: str | None = None
+    expiration_days: int | None = 7
+    follow_up_message: str | None = None
+    league_ids: list[str]
+
+
+class CommissionerPollBroadcastResult(Base):
+    league_id: str
+    league_name: str | None = None
+    poll_id: str | None = None
+    success: bool
+    error: str | None = None
+
+
+class CommissionerPollBroadcastResponse(Base):
+    total_leagues: int
+    successful_leagues: int
+    results: list[CommissionerPollBroadcastResult]

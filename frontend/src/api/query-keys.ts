@@ -28,6 +28,8 @@ export const queryKeys = {
         valueBasis,
       ] as const,
     commissionerWorkspace: ['commissioner-workspace'] as const,
+    commissionerCutdowns: ["users", "commissionerCutdowns"],
+
     financeSummary: ['finance-summary'] as const,
     reminders: ['reminders'] as const,
   },

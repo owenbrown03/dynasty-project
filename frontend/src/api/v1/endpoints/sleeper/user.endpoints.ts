@@ -6,6 +6,8 @@ import {
   type CommissionerLeagueSettingsUpdate,
   type CommissionerOrphansResponse,
   type CommissionerWorkspaceResponse,
+  type CommissionerPollBroadcastRequest,
+  type CommissionerPollBroadcastResponse,
   type FinanceDefaultsUpdate,
   type FinanceLeagueDefaultsUpdate,
   type FinanceLeagueSeasonUpdate,
@@ -19,6 +21,9 @@ import {
   type ReminderUpdate,
   type Roster,
   type ValueBasis,
+  type CommissionerCutdownLeague,
+  type CommissionerCutdownActionRequest,
+  type CommissionerCutdownActionResponse,
 } from '@/types';
 
 export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
@@ -121,14 +126,32 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     `${prefix}/reminders/delete`,
     body,
   ),
+  getCommissionerCutdowns: (signal?: AbortSignal) =>
+    client.get<CommissionerCutdownLeague[]>(
+      `${prefix}/commissioner/cutdowns`,
+      { signal },
+    ),
+  executeCommissionerCutdownAction: (
+    body: CommissionerCutdownActionRequest,
+  ) => client.post<CommissionerCutdownActionResponse>(
+    `${prefix}/commissioner/cutdowns/action`,
+    body,
+  ),
+
   testSendReminder: (
     body: ReminderDelete,
   ) => client.post<ReminderTestSendResponse>(
     `${prefix}/reminders/test-send`,
     body,
   ),
-  getCommissionerFaabOverview: () => client.get<CommissionerFaabLeagueInfo[]>(`${prefix}/commissioner/faab`),
+getCommissionerFaabOverview: () => client.get<CommissionerFaabLeagueInfo[]>(`${prefix}/commissioner/faab`),
   resetCommissionerFaab: (payload: CommissionerFaabResetRequest) => client.post<CommissionerFaabResetResponse>(`${prefix}/commissioner/faab/reset`, payload),
+  broadcastCommissionerPoll: (
+    body: CommissionerPollBroadcastRequest,
+  ) => client.post<CommissionerPollBroadcastResponse>(
+    `${prefix}/commissioner/polls/broadcast`,
+    body,
+  ),
 });
 
 export interface CommissionerFaabRosterInfo {

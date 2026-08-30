@@ -1549,3 +1549,74 @@ export interface AdvisorDigestResponse {
   model?: string | null;
   reason?: string;
 }
+export interface CommissionerCutdownPlayer {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  ktc_value: number | null;
+}
+
+export interface CommissionerCutdownViolation {
+  roster_id: number;
+  owner_id: string | null;
+  owner_name: string | null;
+  owner_avatar: string | null;
+  roster_size: number;
+  max_roster_size: number;
+  over_limit_count: number;
+  proposed_drops: CommissionerCutdownPlayer[];
+}
+
+export interface CommissionerCutdownLeague {
+  league_id: string;
+  league_name: string;
+  avatar: string | null;
+  total_rosters: number;
+  max_roster_size: number;
+  violations: CommissionerCutdownViolation[];
+}
+
+export interface CommissionerCutdownActionRequest {
+  league_ids: string[];
+  action_type: 'notify' | 'force_drop' | string;
+  custom_message?: string | null;
+  selected_roster_ids?: Record<string, number[]> | null;
+}
+
+export interface CommissionerCutdownActionResult {
+  league_id: string;
+  roster_id: number | null;
+  action: string;
+  success: boolean;
+  details: string | null;
+  error: string | null;
+}
+
+export interface CommissionerCutdownActionResponse {
+  results: CommissionerCutdownActionResult[];
+}
+
+export interface CommissionerPollBroadcastRequest {
+  prompt: string;
+  choices: string[];
+  is_private?: boolean;
+  poll_type?: string | null;
+  expiration_days?: number | null;
+  follow_up_message?: string | null;
+  league_ids: string[];
+}
+
+export interface CommissionerPollBroadcastResult {
+  league_id: string;
+  league_name?: string | null;
+  poll_id?: string | null;
+  success: boolean;
+  error?: string | null;
+}
+
+export interface CommissionerPollBroadcastResponse {
+  total_leagues: number;
+  successful_leagues: number;
+  results: CommissionerPollBroadcastResult[];
+}

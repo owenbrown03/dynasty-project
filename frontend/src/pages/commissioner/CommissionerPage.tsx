@@ -32,6 +32,8 @@ import {
 } from '@/pages/waivers/waiver.constants';
 import { CommissionerOrphanCard } from './CommissionerOrphanCard';
 import { CommissionerFaabTab } from './CommissionerFaabTab';
+import { CommissionerCutdownsTab } from './CommissionerCutdownsTab';
+import { CommissionerPollsTab } from './CommissionerPollsTab';
 
 import './CommissionerPage.css';
 
@@ -39,7 +41,9 @@ import './CommissionerPage.css';
 type CommissionerTab =
   | 'orphans'
   | 'workspace'
-  | 'faab';
+  | 'faab'
+  | 'polls'
+  | 'cutdowns';
 
 
 function isValueBasis(
@@ -53,7 +57,8 @@ function isValueBasis(
 function CommissionerCardSkeleton({
   mode,
 }: {
-  mode: 'orphans' | 'workspace';
+  mode: 'orphans' | 'workspace'
+  | 'cutdowns';
 }) {
   return (
     <article className="commissioner-card">
@@ -151,7 +156,8 @@ function CommissionerCardSkeleton({
 function CommissionerCardGridSkeleton({
   mode,
 }: {
-  mode: 'orphans' | 'workspace';
+  mode: 'orphans' | 'workspace'
+  | 'cutdowns';
 }) {
   return (
     <section
@@ -481,6 +487,8 @@ export const CommissionerPage = () => {
   const activeTab = (
     searchParams.get('tab') === 'workspace'
       ? 'workspace'
+      : searchParams.get('tab') === 'cutdowns'
+      ? 'cutdowns'
       : 'orphans'
   ) as CommissionerTab;
 
@@ -718,6 +726,7 @@ export const CommissionerPage = () => {
                 onClick={() => {
                   setTab('workspace');
                 }}
+              
               >
                 League Dues Tracker
               </button>
@@ -727,19 +736,47 @@ export const CommissionerPage = () => {
         {
           canManageWorkspace
             ? (
-              <button
-                className={
-                  activeTab === 'faab'
-                    ? 'commissioner-tab-button active'
-                    : 'commissioner-tab-button'
-                }
-                type="button"
-                onClick={() => {
-                  setTab('faab');
-                }}
-              >
-                FAAB Reset Tool
-              </button>
+              <>
+                <button
+                  className={
+                    activeTab === 'faab'
+                      ? 'commissioner-tab-button active'
+                      : 'commissioner-tab-button'
+                  }
+                  type="button"
+                  onClick={() => {
+                    setTab('faab');
+                  }}
+                >
+                  FAAB Reset Tool
+                </button>
+                <button
+                  className={
+                    activeTab === 'polls'
+                      ? 'commissioner-tab-button active'
+                      : 'commissioner-tab-button'
+                  }
+                  type="button"
+                  onClick={() => {
+                    setTab('polls');
+                  }}
+                >
+                  Poll Automation
+                </button>
+                <button
+                  className={
+                    activeTab === 'cutdowns'
+                      ? 'commissioner-tab-button active'
+                      : 'commissioner-tab-button'
+                  }
+                  type="button"
+                  onClick={() => {
+                    setTab('cutdowns');
+                  }}
+                >
+                  Roster Cutdowns
+                </button>
+              </>
             )
             : null
         }
@@ -818,6 +855,11 @@ export const CommissionerPage = () => {
           )
           : null
       }
+      {
+        activeTab === 'polls' && canManageWorkspace
+          ? <CommissionerPollsTab />
+          : null
+      }
 
       {
         activeTab === 'workspace' && canManageWorkspace && !workspace.loading && workspace.error
@@ -860,6 +902,12 @@ export const CommissionerPage = () => {
           )
           : null
       }
+      {
+        activeTab === 'cutdowns' && (
+          <CommissionerCutdownsTab canManageWorkspace={canManageWorkspace} />
+        )
+      }
     </main>
+
   );
 };

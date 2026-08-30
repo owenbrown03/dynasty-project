@@ -10,6 +10,14 @@ from app.schemas.commissioner import (
     CommissionerOrphansResponse,
     CommissionerWorkspaceLeague,
     CommissionerWorkspaceResponse,
+    CommissionerCutdownLeague,
+    CommissionerCutdownActionRequest,
+    CommissionerCutdownActionResponse,
+    CommissionerPollBroadcastRequest,
+    CommissionerPollBroadcastResponse,
+    CommissionerFaabLeagueInfo,
+    CommissionerFaabResetRequest,
+    CommissionerFaabResetResponse,
 )
 from app.schemas.finance import (
     FinanceDefaultsUpdate,
@@ -34,6 +42,15 @@ from app.services.commissioner.workspace import (
     save_commissioner_note,
     save_commissioner_settings,
 )
+from app.services.commissioner.cutdowns import (
+    get_commissioner_cutdown_violations,
+    execute_cutdown_action,
+)
+from app.services.commissioner.faab import (
+    get_commissioner_faab_overview,
+    reset_commissioner_faab,
+)
+from app.services.commissioner.polls import broadcast_commissioner_poll
 from app.services.finance import (
     get_finance_summary,
     reset_finance_entry,
@@ -146,6 +163,20 @@ async def save_commissioner_settings_endpoint(
     ctx: ContextDep,
 ):
     return await save_commissioner_settings(
+        body,
+        ctx,
+    )
+
+
+@router.post(
+    "/commissioner/polls/broadcast",
+    response_model=CommissionerPollBroadcastResponse,
+)
+async def broadcast_commissioner_poll_endpoint(
+    body: CommissionerPollBroadcastRequest,
+    ctx: ContextDep,
+):
+    return await broadcast_commissioner_poll(
         body,
         ctx,
     )
@@ -286,16 +317,6 @@ async def test_send_reminder_endpoint(
         ctx,
     )
 
-from app.schemas.commissioner import (
-    CommissionerFaabLeagueInfo,
-    CommissionerFaabResetRequest,
-    CommissionerFaabResetResponse,
-)
-from app.services.commissioner.faab import (
-    get_commissioner_faab_overview,
-    reset_commissioner_faab,
-)
-
 @router.get(
     "/commissioner/faab",
     response_model=list[CommissionerFaabLeagueInfo],
@@ -314,3 +335,22 @@ async def reset_commissioner_faab_endpoint(
     ctx: ContextDep,
 ):
     return await reset_commissioner_faab(ctx, body)
+
+@router.get(
+    "/commissioner/cutdowns",
+    response_model=list[CommissionerCutdownLeague],
+)
+async def get_commissioner_cutdowns_endpoint(
+    ctx: ContextDep,
+):
+    return await get_commissioner_cutdown_violations(ctx)
+
+@router.post(
+    "/commissioner/cutdowns/action",
+    response_model=CommissionerCutdownActionResponse,
+)
+async def execute_commissioner_cutdowns_action_endpoint(
+    body: CommissionerCutdownActionRequest,
+    ctx: ContextDep,
+):
+    return await execute_cutdown_action(body, ctx)
