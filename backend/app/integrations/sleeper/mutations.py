@@ -198,3 +198,22 @@ MUTATIONS: dict[str, str] = {
     "add_league_player_trade_block": ADD_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION,
     "remove_league_player_trade_block": REMOVE_LEAGUE_PLAYER_TRADE_BLOCK_MUTATION,
 }
+UPDATE_ROSTER_MUTATION = """
+    mutation update_roster(
+        $league_id: String!,
+        $roster_id: Int!,
+        $k_settings: [String],
+        $v_settings: [Int]
+    ) {
+        update_roster(
+            league_id: $league_id,
+            roster_id: $roster_id,
+            k_settings: $k_settings,
+            v_settings: $v_settings
+        ) {
+            roster_id
+        }
+    }
+"""
+
+MUTATIONS["update_roster"] = UPDATE_ROSTER_MUTATION

@@ -31,13 +31,15 @@ import {
   getValueBasisOptions,
 } from '@/pages/waivers/waiver.constants';
 import { CommissionerOrphanCard } from './CommissionerOrphanCard';
+import { CommissionerFaabTab } from './CommissionerFaabTab';
 
 import './CommissionerPage.css';
 
 
 type CommissionerTab =
   | 'orphans'
-  | 'workspace';
+  | 'workspace'
+  | 'faab';
 
 
 function isValueBasis(
@@ -722,6 +724,25 @@ export const CommissionerPage = () => {
             )
             : null
         }
+        {
+          canManageWorkspace
+            ? (
+              <button
+                className={
+                  activeTab === 'faab'
+                    ? 'commissioner-tab-button active'
+                    : 'commissioner-tab-button'
+                }
+                type="button"
+                onClick={() => {
+                  setTab('faab');
+                }}
+              >
+                FAAB Reset Tool
+              </button>
+            )
+            : null
+        }
       </div>
 
       {
@@ -828,6 +849,14 @@ export const CommissionerPage = () => {
                 ))
               }
             </section>
+          )
+          : null
+      }
+
+      {
+        activeTab === 'faab' && canManageWorkspace
+          ? (
+            <CommissionerFaabTab />
           )
           : null
       }

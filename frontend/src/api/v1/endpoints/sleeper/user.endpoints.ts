@@ -127,4 +127,43 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     `${prefix}/reminders/test-send`,
     body,
   ),
+  getCommissionerFaabOverview: () => client.get<CommissionerFaabLeagueInfo[]>(`${prefix}/commissioner/faab`),
+  resetCommissionerFaab: (payload: CommissionerFaabResetRequest) => client.post<CommissionerFaabResetResponse>(`${prefix}/commissioner/faab/reset`, payload),
 });
+
+export interface CommissionerFaabRosterInfo {
+  roster_id: number;
+  owner_name: string | null;
+  owner_avatar: string | null;
+  current_budget: number;
+  budget_used: number;
+}
+
+export interface CommissionerFaabLeagueInfo {
+  league_id: string;
+  league_name: string;
+  avatar: string | null;
+  default_budget: number;
+  total_rosters: number;
+  rosters_with_spent_faab: number;
+  rosters: CommissionerFaabRosterInfo[];
+}
+
+export interface CommissionerFaabResetRequest {
+  league_ids: string[];
+  target_budget?: number;
+}
+
+export interface CommissionerFaabResetResult {
+  league_id: string;
+  league_name: string;
+  rosters_reset: number;
+  success: boolean;
+  error: string | null;
+}
+
+export interface CommissionerFaabResetResponse {
+  total_leagues: number;
+  successful_leagues: number;
+  results: CommissionerFaabResetResult[];
+}

@@ -285,3 +285,32 @@ async def test_send_reminder_endpoint(
         body,
         ctx,
     )
+
+from app.schemas.commissioner import (
+    CommissionerFaabLeagueInfo,
+    CommissionerFaabResetRequest,
+    CommissionerFaabResetResponse,
+)
+from app.services.commissioner.faab import (
+    get_commissioner_faab_overview,
+    reset_commissioner_faab,
+)
+
+@router.get(
+    "/commissioner/faab",
+    response_model=list[CommissionerFaabLeagueInfo],
+)
+async def get_commissioner_faab_endpoint(
+    ctx: ContextDep,
+):
+    return await get_commissioner_faab_overview(ctx)
+
+@router.post(
+    "/commissioner/faab/reset",
+    response_model=CommissionerFaabResetResponse,
+)
+async def reset_commissioner_faab_endpoint(
+    body: CommissionerFaabResetRequest,
+    ctx: ContextDep,
+):
+    return await reset_commissioner_faab(ctx, body)

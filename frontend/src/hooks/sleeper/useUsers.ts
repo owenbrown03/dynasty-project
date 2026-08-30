@@ -359,3 +359,27 @@ export function useTestSendReminder() {
       .then((res) => res.data as ReminderTestSendResponse),
   });
 }
+
+import type { CommissionerFaabLeagueInfo, CommissionerFaabResetRequest, CommissionerFaabResetResponse } from '@/api/v1/endpoints/sleeper/user.endpoints';
+
+export const useCommissionerFaabOverview = () => {
+  return useQuery<CommissionerFaabLeagueInfo[], Error>({
+    queryKey: ['commissioner-faab-overview'],
+    queryFn: async () => { const res = await api.users.getCommissionerFaabOverview(); return res.data; },
+    staleTime: 1000 * 60 * 5,
+  });
+};
+
+export const useResetCommissionerFaab = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    CommissionerFaabResetResponse,
+    Error,
+    CommissionerFaabResetRequest
+  >({
+    mutationFn: async (payload: CommissionerFaabResetRequest) => { const res = await api.users.resetCommissionerFaab(payload); return res.data; },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commissioner-faab-overview'] });
+    },
+  });
+};
