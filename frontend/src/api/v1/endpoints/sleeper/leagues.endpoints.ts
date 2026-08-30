@@ -139,4 +139,9 @@ export const leaguesEndpoints = (
         signal,
       },
     ),
+
+  syncLeague: (leagueId: string) =>
+    client.post<{ status: string; league_id: string }>(
+      `${prefix}/${leagueId}/sync`,
+    ).then((res) => res.data),
 });

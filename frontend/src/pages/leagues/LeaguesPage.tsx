@@ -15,8 +15,10 @@ import {
   useLeagueFocus,
   useLeagueSelector,
   useLeagueVisibility,
+  useSyncLeague,
 } from '@/hooks/sleeper/useLeagues';
 import { notify } from '@/utils/notify';
+import { RefreshCw } from 'lucide-react';
 
 import { LeagueSelector } from './LeagueSelector';
 import { LeagueDashboard } from './LeagueDashboard';
@@ -74,6 +76,7 @@ export const LeaguesPage = () => {
   );
   const visibility = useLeagueVisibility();
   const focus = useLeagueFocus();
+  const sync = useSyncLeague();
 
   const cheapDetails = useLeagueDetails(
     debouncedSelectedLeague,
@@ -179,6 +182,19 @@ export const LeaguesPage = () => {
       }
     };
 
+  const handleSyncLeague = async () => {
+    if (!selectedLeague) {
+      return;
+    }
+
+    try {
+      await sync.syncLeague(selectedLeague);
+      notify.success('League synced with Sleeper.');
+    } catch {
+      notify.error('Failed to sync league with Sleeper.');
+    }
+  };
+
   return (
     <div className="leagues-container">
       <section className="page-header">
@@ -216,6 +232,28 @@ export const LeaguesPage = () => {
                 setSelectedLeague
               }
             />
+
+            {
+              selectedLeague
+                ? (
+                  <button
+                    type="button"
+                    className="button-secondary leagues-sync-button"
+                    disabled={sync.isSyncing}
+                    onClick={() => {
+                      void handleSyncLeague();
+                    }}
+                    title="Fetch latest rosters and transactions from Sleeper"
+                  >
+                    <RefreshCw
+                      size={14}
+                      className={sync.isSyncing ? 'spinning' : ''}
+                    />
+                    {sync.isSyncing ? 'Syncing...' : 'Sync League'}
+                  </button>
+                )
+                : null
+            }
 
             {
               bootstrap.data?.authenticated

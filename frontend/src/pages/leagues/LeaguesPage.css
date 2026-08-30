@@ -154,3 +154,24 @@
   color: var(--color-text-muted);
 }
 
+.leagues-sync-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.leagues-sync-button svg.spinning {
+  animation: leagues-spin 1s linear infinite;
+}
+
+@keyframes leagues-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+

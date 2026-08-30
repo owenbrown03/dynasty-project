@@ -94,3 +94,45 @@ async def sync_leaguemates_task(username: str, force: bool = False):
                 username,
                 lock_token,
             )
+
+
+@broker.task
+async def run_daily_leaguemate_syncs_task(force: bool = False):
+    """
+    Daily scheduled job that iterates through active users and enqueues
+    deep leaguemate synchronizations for each active user.
+    """
+    from app.crud.sleeper.user import get_active_sleeper_usernames
+
+    redis = await RedisManager.get()
+    last_run_key = "leaguemates:daily_sync:last_run"
+    last_run = await redis.get(last_run_key)
+
+    if not force and last_run:
+        logger.info("Skipping daily leaguemate syncs because it ran within the last 24h")
+        return {"status": "skipped", "reason": "already_ran_today"}
+
+    async with AsyncSessionLocal() as db:
+        active_usernames = await get_active_sleeper_usernames(db)
+
+    if not active_usernames:
+        return {"status": "skipped", "reason": "no_active_users"}
+
+    logger.info(
+        "Enqueuing daily leaguemate syncs for %d active users: %s",
+        len(active_usernames),
+        active_usernames,
+    )
+
+    for username in active_usernames:
+        await sync_leaguemates_task.kiq(username, force=True)
+
+    # Record 24h TTL for daily run
+    await redis.set(last_run_key, "1", ex=24 * 60 * 60)
+
+    return {
+        "status": "enqueued",
+        "active_users_count": len(active_usernames),
+        "usernames": active_usernames,
+    }
+

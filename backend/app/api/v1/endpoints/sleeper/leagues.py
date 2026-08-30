@@ -32,6 +32,7 @@ from app.services.leagues.visibility import (
     set_league_visibility,
 )
 from app.services.leagues.notes import save_user_note
+from app.services.leagues.sync import sync_single_league
 
 router = APIRouter()
 
@@ -179,3 +180,19 @@ async def save_user_note_endpoint(
         league_id=body.league_id,
         note=body.note,
     )
+
+
+@router.post(
+    "/{league_id}/sync",
+)
+async def sync_single_league_endpoint(
+    league_id: str,
+    ctx: ContextDep,
+):
+    return await sync_single_league(
+        db=ctx.db,
+        sleeper=ctx.sleeper,
+        redis=ctx.redis,
+        league_id=league_id,
+    )
+

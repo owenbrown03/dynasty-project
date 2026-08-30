@@ -553,3 +553,44 @@ def test_fetch_league_bundle_uses_full_refresh_for_incomplete_existing_league():
     assert ("get_rosters", "league-1", None) in sleeper.read.calls
     assert ("get_drafts_league", "league-1", None) in sleeper.read.calls
     assert ("get_traded_picks", "league-1", None) in sleeper.read.calls
+
+
+def test_sync_single_league(monkeypatch):
+    from app.services.leagues.sync import sync_single_league
+
+    deleted_prefixes = []
+
+    class FakeRedis:
+        async def delete_prefix(self, prefix):
+            deleted_prefixes.append(prefix)
+
+    class FakeRead:
+        async def get_league(self, league_id):
+            return SimpleNamespace(league_id=league_id, name="Test League")
+
+        async def get_nfl_state(self):
+            return SimpleNamespace(season="2026", week=1, effective_week=1)
+
+    sleeper = SimpleNamespace(read=FakeRead())
+    db = FakeDB()
+    redis = FakeRedis()
+
+    async def fake_sync_leagues(*args, **kwargs):
+        return {"status": "completed", "synced_count": 1}
+
+    monkeypatch.setattr("app.services.leagues.sync.sync_leagues", fake_sync_leagues)
+
+    result = asyncio.run(
+        sync_single_league(
+            db=db,
+            sleeper=sleeper,
+            redis=redis,
+            league_id="league-999",
+        )
+    )
+
+    assert result["status"] == "completed"
+    assert result["league_id"] == "league-999"
+    assert db.commit_calls == 1
+    assert len(deleted_prefixes) == 2
+

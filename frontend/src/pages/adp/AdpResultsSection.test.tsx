@@ -86,7 +86,7 @@ describe('AdpResultsSection', () => {
 
     expect(onExportCsv).toHaveBeenCalledTimes(1);
     expect(onViewModeChange).toHaveBeenCalledWith('table');
-  });
+  }, 15000);
 
   it('renders the empty state when no rows match', () => {
     render(

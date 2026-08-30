@@ -156,6 +156,78 @@ async def sync_user_data(db: AsyncSession, sleeper: SleeperClient, username: str
         "season_summaries": season_summaries,
     }
 
+
+async def sync_user_current_season_data(
+    db: AsyncSession,
+    sleeper: SleeperClient,
+    username: str,
+) -> dict:
+    """
+    Lightweight sync targeting only the current season for an active user.
+    Fast and non-blocking for periodic background refreshes.
+    """
+    user_id = await get_userid_by_username(db, sleeper, username)
+    state = await sleeper.read.get_nfl_state()
+    current_season = int(state.season)
+    curr_week = (
+        state.effective_week
+        if hasattr(state, "effective_week")
+        else max(int(state.week), 1)
+    )
+
+    leagues_result = await sleeper.read.get_leagues(user_id, str(current_season))
+    if not leagues_result:
+        return {"status": "skipped", "reason": "no_current_season_leagues", "username": username}
+
+    season_result = await sync_leagues(
+        db,
+        leagues_result,
+        curr_week,
+        sleeper,
+        force=True,
+        existing_refresh="full",
+        user_id=user_id,
+        is_current_season=True,
+    )
+
+    return {
+        "status": "completed",
+        "season": str(current_season),
+        "username": username,
+        **season_result,
+    }
+
+
+async def get_active_sleeper_usernames(db: AsyncSession) -> list[str]:
+    """
+    Returns list of distinct active sleeper usernames from linked connections and active sessions.
+    """
+    from app.models.db.sleeper.connection import SleeperConnection
+    from app.models.db.auth import UserSession
+
+    usernames: set[str] = set()
+
+    conn_result = await db.execute(
+        select(SleeperConnection.sleeper_username).where(
+            SleeperConnection.sleeper_username.is_not(None)
+        )
+    )
+    for u in conn_result.scalars():
+        if u and u.strip():
+            usernames.add(u.strip())
+
+    session_result = await db.execute(
+        select(UserSession.sleeper_username).where(
+            UserSession.sleeper_username.is_not(None)
+        )
+    )
+    for u in session_result.scalars():
+        if u and u.strip():
+            usernames.add(u.strip())
+
+    return sorted(list(usernames))
+
+
 async def get_users(db: AsyncSession, user_ids: set[str]):
     if not user_ids:
         return {}
