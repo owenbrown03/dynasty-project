@@ -6,7 +6,7 @@ from app.services.commissioner.cutdowns import (
 )
 from app.schemas.commissioner import CommissionerCutdownActionRequest
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_get_commissioner_cutdown_violations():
     ctx = MagicMock()
     ctx.site_user = MagicMock(id="user_123")
@@ -25,7 +25,7 @@ async def test_get_commissioner_cutdown_violations():
         result = await get_commissioner_cutdown_violations(ctx)
         assert result == []
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_execute_cutdown_action():
     ctx = MagicMock()
     ctx.site_user = MagicMock(id="user_123")
