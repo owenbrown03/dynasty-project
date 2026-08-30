@@ -487,6 +487,10 @@ export const CommissionerPage = () => {
   const activeTab = (
     searchParams.get('tab') === 'workspace'
       ? 'workspace'
+      : searchParams.get('tab') === 'faab'
+      ? 'faab'
+      : searchParams.get('tab') === 'polls'
+      ? 'polls'
       : searchParams.get('tab') === 'cutdowns'
       ? 'cutdowns'
       : 'orphans'
@@ -502,10 +506,7 @@ export const CommissionerPage = () => {
     activeUsername,
     valueBasis,
   );
-  const canManageWorkspace = (
-    Boolean(connection.username)
-    && activeUsername === connection.username
-  );
+  const canManageWorkspace = Boolean(connection.username);
   const workspace = useCommissionerWorkspace(
     canManageWorkspace,
   );
@@ -633,66 +634,74 @@ export const CommissionerPage = () => {
         </div>
 
         <div className="commissioner-toolbar">
-          <label className="commissioner-username-control">
-            <span>Sleeper username</span>
-
-            <div className="commissioner-username-row">
-              <input
-                value={usernameInput}
-                onChange={(event) => {
-                  setUsernameInput(event.target.value);
-                }}
-                placeholder="Enter Sleeper username"
-              />
-
-              <button
-                className="button-primary"
-                type="button"
-                onClick={handleOpen}
-              >
-                Open
-              </button>
-            </div>
-          </label>
-
-          <label className="waivers-value-selector">
-            <span>Value Basis</span>
-
-            <select
-              value={valueBasis}
-              onChange={(event) => {
-                setBasis(
-                  event.target.value as ValueBasis,
-                );
-              }}
-            >
-              {
-                getValueBasisOptions(auth.isLoggedIn).map((option) => (
-                  <option
-                    key={option.value}
-                    value={option.value}
-                  >
-                    {option.label}
-                  </option>
-                ))
-              }
-            </select>
-          </label>
-
           {
-            shareUrl && activeTab === 'orphans'
+            activeTab === 'orphans'
               ? (
-                <button
-                  className="button-secondary"
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(
-                      shareUrl,
-                    );
-                  }}
-                >
-                  Copy link
-                </button>
+                <>
+                  <label className="commissioner-username-control">
+                    <span>Sleeper username</span>
+
+                    <div className="commissioner-username-row">
+                      <input
+                        value={usernameInput}
+                        onChange={(event) => {
+                          setUsernameInput(event.target.value);
+                        }}
+                        placeholder="Enter Sleeper username"
+                      />
+
+                      <button
+                        className="button-primary"
+                        type="button"
+                        onClick={handleOpen}
+                      >
+                        Open
+                      </button>
+                    </div>
+                  </label>
+
+                  <label className="waivers-value-selector">
+                    <span>Value Basis</span>
+
+                    <select
+                      value={valueBasis}
+                      onChange={(event) => {
+                        setBasis(
+                          event.target.value as ValueBasis,
+                        );
+                      }}
+                    >
+                      {
+                        getValueBasisOptions(auth.isLoggedIn).map((option) => (
+                          <option
+                            key={option.value}
+                            value={option.value}
+                          >
+                            {option.label}
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </label>
+
+                  {
+                    shareUrl
+                      ? (
+                        <button
+                          className="button-secondary"
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(
+                              shareUrl,
+                            );
+                          }}
+                        >
+                          Copy link
+                        </button>
+                      )
+                      : null
+                  }
+                </>
               )
               : null
           }
@@ -783,10 +792,10 @@ export const CommissionerPage = () => {
       </div>
 
       {
-        !activeUsername
+        activeTab === 'orphans' && !activeUsername
           ? (
             <div className="commissioner-empty-state">
-              Enter a Sleeper username or link an account to open a shareable commissioner view.
+              Enter a Sleeper username to open a shareable orphan view.
             </div>
           )
           : null
@@ -842,7 +851,7 @@ export const CommissionerPage = () => {
         activeTab === 'workspace' && !canManageWorkspace
           ? (
             <div className="commissioner-empty-state">
-              Link your Sleeper account and open your own username to use the league dues tracker.
+              Link your Sleeper account to use the league dues tracker.
             </div>
           )
           : null
@@ -852,6 +861,15 @@ export const CommissionerPage = () => {
         activeTab === 'workspace' && canManageWorkspace && workspace.loading
           ? (
             <CommissionerCardGridSkeleton mode="workspace" />
+          )
+          : null
+      }
+      {
+        activeTab === 'polls' && !canManageWorkspace
+          ? (
+            <div className="commissioner-empty-state">
+              Link your Sleeper account to use poll automation.
+            </div>
           )
           : null
       }
@@ -896,6 +914,15 @@ export const CommissionerPage = () => {
       }
 
       {
+        activeTab === 'faab' && !canManageWorkspace
+          ? (
+            <div className="commissioner-empty-state">
+              Link your Sleeper account to use the FAAB reset tool.
+            </div>
+          )
+          : null
+      }
+      {
         activeTab === 'faab' && canManageWorkspace
           ? (
             <CommissionerFaabTab />
@@ -903,8 +930,17 @@ export const CommissionerPage = () => {
           : null
       }
       {
-        activeTab === 'cutdowns' && (
-          <CommissionerCutdownsTab canManageWorkspace={canManageWorkspace} />
+        activeTab === 'cutdowns' && !canManageWorkspace
+          ? (
+            <div className="commissioner-empty-state">
+              Link your Sleeper account to use the cutdowns tracker.
+            </div>
+          )
+          : null
+      }
+      {
+        activeTab === 'cutdowns' && canManageWorkspace && (
+          <CommissionerCutdownsTab />
         )
       }
     </main>
