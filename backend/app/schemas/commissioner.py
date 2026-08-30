@@ -1,105 +1,44 @@
-from datetime import datetime
+from pydantic import BaseModel
+from typing import List, Optional, Dict
 
-from pydantic import Field
-
-from app.schemas.base import Base
-from app.schemas.draft import DraftPickAsset
-from app.services.values.basis import ValueBasis
-
-
-class CommissionerPlayerAsset(Base):
+class CommissionerCutdownPlayer(BaseModel):
     player_id: str
     name: str
-    position: str | None = None
-    team: str | None = None
-    age: float | None = None
-    selected_value: float | None = None
+    position: Optional[str] = None
+    team: Optional[str] = None
+    ktc_value: Optional[float] = None
 
+class CommissionerCutdownViolation(BaseModel):
+    roster_id: int
+    owner_id: Optional[str] = None
+    owner_name: Optional[str] = None
+    owner_avatar: Optional[str] = None
+    roster_size: int
+    max_roster_size: int
+    over_limit_count: int
+    proposed_drops: List[CommissionerCutdownPlayer]
 
-class CommissionerLineupSlot(Base):
-    slot: str
-    player: CommissionerPlayerAsset | None = None
-
-
-class CommissionerOrphanRoster(Base):
+class CommissionerCutdownLeague(BaseModel):
     league_id: str
     league_name: str
-    league_season: str
-    roster_id: int
-    roster_name: str
+    avatar: Optional[str] = None
+    total_rosters: int
+    max_roster_size: int
+    violations: List[CommissionerCutdownViolation]
 
-    settings_badges: list[str] = Field(
-        default_factory=list,
-    )
+class CommissionerCutdownActionRequest(BaseModel):
+    league_ids: List[str]
+    action_type: str
+    custom_message: Optional[str] = None
+    selected_roster_ids: Optional[Dict[str, List[int]]] = None
 
-    roster_value: float = 0.0
-    league_average_value: float = 0.0
-    average_age: float | None = None
-
-    lineup: list[CommissionerLineupSlot] = Field(
-        default_factory=list,
-    )
-    bench: list[CommissionerPlayerAsset] = Field(
-        default_factory=list,
-    )
-    picks: list[DraftPickAsset] = Field(
-        default_factory=list,
-    )
-
-
-class CommissionerOrphansResponse(Base):
-    username: str
-    value_basis: ValueBasis
-    value_label: str
-    orphans: list[CommissionerOrphanRoster] = Field(
-        default_factory=list,
-    )
-
-
-class CommissionerLeagueDuesEntry(Base):
+class CommissionerCutdownActionResult(BaseModel):
     league_id: str
-    roster_id: int
-    roster_name: str
-    season: str
-    traded_pick_count: int = 0
-    traded_pick_labels: list[str] = Field(
-        default_factory=list,
-    )
-    buy_in_amount: float | None = None
-    is_paid: bool = False
-    paid_at: datetime | None = None
+    roster_id: Optional[int] = None
+    action: str
+    success: bool
+    details: Optional[str] = None
+    error: Optional[str] = None
 
-
-class CommissionerWorkspaceLeague(Base):
-    league_id: str
-    league_name: str
-    league_season: str
-    note: str = ""
-    paid_years_ahead: int = 1
-    dues: list[CommissionerLeagueDuesEntry] = Field(
-        default_factory=list,
-    )
-
-
-class CommissionerWorkspaceResponse(Base):
-    leagues: list[CommissionerWorkspaceLeague] = Field(
-        default_factory=list,
-    )
-
-
-class CommissionerLeagueNoteUpdate(Base):
-    league_id: str
-    note: str = ""
-
-
-class CommissionerLeagueDuesUpdate(Base):
-    league_id: str
-    roster_id: int
-    season: str
-    buy_in_amount: float | None = None
-    is_paid: bool = False
-
-
-class CommissionerLeagueSettingsUpdate(Base):
-    league_id: str
-    paid_years_ahead: int = 1
+class CommissionerCutdownActionResponse(BaseModel):
+    results: List[CommissionerCutdownActionResult]

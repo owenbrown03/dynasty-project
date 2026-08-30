@@ -10,6 +10,9 @@ from app.schemas.commissioner import (
     CommissionerOrphansResponse,
     CommissionerWorkspaceLeague,
     CommissionerWorkspaceResponse,
+    CommissionerCutdownLeague,
+    CommissionerCutdownActionRequest,
+    CommissionerCutdownActionResponse,
 )
 from app.schemas.finance import (
     FinanceDefaultsUpdate,
@@ -33,6 +36,10 @@ from app.services.commissioner.workspace import (
     save_commissioner_dues,
     save_commissioner_note,
     save_commissioner_settings,
+)
+from app.services.commissioner.cutdowns import (
+    get_commissioner_cutdown_violations,
+    execute_cutdown_action,
 )
 from app.services.finance import (
     get_finance_summary,
@@ -285,3 +292,22 @@ async def test_send_reminder_endpoint(
         body,
         ctx,
     )
+
+@router.get(
+    "/commissioner/cutdowns",
+    response_model=list[CommissionerCutdownLeague],
+)
+async def get_commissioner_cutdowns_endpoint(
+    ctx: ContextDep,
+):
+    return await get_commissioner_cutdown_violations(ctx)
+
+@router.post(
+    "/commissioner/cutdowns/action",
+    response_model=CommissionerCutdownActionResponse,
+)
+async def execute_commissioner_cutdowns_action_endpoint(
+    body: CommissionerCutdownActionRequest,
+    ctx: ContextDep,
+):
+    return await execute_cutdown_action(body, ctx)

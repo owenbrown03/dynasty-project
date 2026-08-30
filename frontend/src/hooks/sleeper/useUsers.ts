@@ -21,6 +21,9 @@ import type {
   ReminderUpdate,
   Roster,
   ValueBasis,
+  CommissionerCutdownLeague,
+  CommissionerCutdownActionRequest,
+  CommissionerCutdownActionResponse,
 } from '@/types';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 
@@ -357,5 +360,36 @@ export function useTestSendReminder() {
     ) => api.users
       .testSendReminder(body)
       .then((res) => res.data as ReminderTestSendResponse),
+  });
+}
+
+export function useCommissionerCutdowns(enabled: boolean) {
+  const query = useQuery<CommissionerCutdownLeague[]>({
+    queryKey: queryKeys.users.commissionerCutdowns,
+    queryFn: async ({ signal }) => api.users
+      .getCommissionerCutdowns(signal)
+      .then((res) => res.data),
+    enabled,
+  });
+
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    fetching: query.isFetching,
+    error: query.error,
+  };
+}
+
+export function useExecuteCommissionerCutdownAction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: CommissionerCutdownActionRequest) =>
+      api.users.executeCommissionerCutdownAction(body).then((res) => res.data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.users.commissionerCutdowns,
+      });
+    },
   });
 }

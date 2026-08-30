@@ -31,13 +31,15 @@ import {
   getValueBasisOptions,
 } from '@/pages/waivers/waiver.constants';
 import { CommissionerOrphanCard } from './CommissionerOrphanCard';
+import { CommissionerCutdownsTab } from './CommissionerCutdownsTab';
 
 import './CommissionerPage.css';
 
 
 type CommissionerTab =
   | 'orphans'
-  | 'workspace';
+  | 'workspace'
+  | 'cutdowns';
 
 
 function isValueBasis(
@@ -51,7 +53,8 @@ function isValueBasis(
 function CommissionerCardSkeleton({
   mode,
 }: {
-  mode: 'orphans' | 'workspace';
+  mode: 'orphans' | 'workspace'
+  | 'cutdowns';
 }) {
   return (
     <article className="commissioner-card">
@@ -149,7 +152,8 @@ function CommissionerCardSkeleton({
 function CommissionerCardGridSkeleton({
   mode,
 }: {
-  mode: 'orphans' | 'workspace';
+  mode: 'orphans' | 'workspace'
+  | 'cutdowns';
 }) {
   return (
     <section
@@ -479,6 +483,8 @@ export const CommissionerPage = () => {
   const activeTab = (
     searchParams.get('tab') === 'workspace'
       ? 'workspace'
+      : searchParams.get('tab') === 'cutdowns'
+      ? 'cutdowns'
       : 'orphans'
   ) as CommissionerTab;
 
@@ -716,9 +722,30 @@ export const CommissionerPage = () => {
                 onClick={() => {
                   setTab('workspace');
                 }}
+              
               >
                 League Dues Tracker
               </button>
+            )
+            : null
+        }
+        {
+          canManageWorkspace
+            ? (
+              <button
+                className={
+                  activeTab === 'cutdowns'
+                    ? 'commissioner-tab-button active'
+                    : 'commissioner-tab-button'
+                }
+                type="button"
+                onClick={() => {
+                  setTab('cutdowns');
+                }}
+              >
+                Roster Cutdowns
+              </button>
+
             )
             : null
         }
@@ -831,6 +858,13 @@ export const CommissionerPage = () => {
           )
           : null
       }
+
+      {
+        activeTab === 'cutdowns' && (
+          <CommissionerCutdownsTab canManageWorkspace={canManageWorkspace} />
+        )
+      }
     </main>
+
   );
 };
