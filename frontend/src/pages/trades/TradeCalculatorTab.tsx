@@ -12,6 +12,7 @@ import {
 import type {
   BulkTradePlayerSearchResult,
   BulkTradePickRequest,
+  ValueBasis,
 } from '@/types';
 import { notify } from '@/utils/notify';
 import { TradeSideCard, type TradeSideAsset } from '@/components/trades/TradeSideCard';
