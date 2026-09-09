@@ -91,7 +91,7 @@ async def test_reset_commissioner_faab_calls_sleeper_write(monkeypatch):
         league_id="league_1",
         roster_id=1,
         target_budget=0,
-        existing_settings={"waiver_budget_used": 10},
+        existing_settings={"waiver_budget_used": 10, "waiver_position": 1},
     )
 
 
@@ -167,13 +167,20 @@ async def test_reset_commissioner_faab_with_live_rosters(monkeypatch):
     assert res.total_leagues == 1
     assert res.successful_leagues == 1
     assert res.results[0].success is True
-    assert res.results[0].rosters_reset == 1
+    assert res.results[0].rosters_reset == 2
 
-    mock_sleeper_write.reset_roster_faab.assert_called_once_with(
+    assert mock_sleeper_write.reset_roster_faab.call_count == 2
+    mock_sleeper_write.reset_roster_faab.assert_any_call(
         league_id="league_1",
         roster_id=1,
         target_budget=0,
         existing_settings={"waiver_budget_used": 25, "waiver_position": 4, "wins": 3},
+    )
+    mock_sleeper_write.reset_roster_faab.assert_any_call(
+        league_id="league_1",
+        roster_id=2,
+        target_budget=0,
+        existing_settings={"waiver_budget_used": 0, "waiver_position": 2, "wins": 5},
     )
 
 
