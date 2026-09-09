@@ -19,17 +19,22 @@ vi.mock('@/hooks/sleeper/useBulkTrades', () => ({
   fetchTradeCalculatorPickValue: vi.fn(),
 }));
 
+const mockUseSleeperConnection = vi.fn(() => ({
+  canWrite: true,
+  connection: null,
+}));
+
+const mockOpenModal = vi.fn();
+const mockUseSleeperAuth = vi.fn(() => ({
+  openModal: mockOpenModal,
+}));
+
 vi.mock('@/hooks/sleeper/useConnection', () => ({
-  useSleeperConnection: () => ({
-    canWrite: true,
-    connection: null,
-  }),
+  useSleeperConnection: () => mockUseSleeperConnection(),
 }));
 
 vi.mock('@/hooks/sleeper/useAuth', () => ({
-  useSleeperAuth: () => ({
-    openModal: vi.fn(),
-  }),
+  useSleeperAuth: () => mockUseSleeperAuth(),
 }));
 
 describe('TradeCalculatorTab', () => {
@@ -56,17 +61,10 @@ describe('TradeCalculatorTab', () => {
     expect(mockSetPreference).toHaveBeenCalledWith('dynasty_starter_war');
   });
 
-  it('renders login banner when user does not have write access', async () => {
-    const { useSleeperConnection } = await import('@/hooks/sleeper/useConnection');
-    const { useSleeperAuth } = await import('@/hooks/sleeper/useAuth');
-    vi.mocked(useSleeperConnection).mockReturnValue({
+  it('renders login banner when user does not have write access', () => {
+    mockUseSleeperConnection.mockReturnValue({
       canWrite: false,
       connection: null,
-    } as never);
-
-    const mockOpen = vi.fn();
-    vi.mocked(useSleeperAuth).mockReturnValue({
-      openModal: mockOpen,
     } as never);
 
     render(<TradeCalculatorTab />);
@@ -76,6 +74,6 @@ describe('TradeCalculatorTab', () => {
     expect(loginButton).toBeInTheDocument();
 
     fireEvent.click(loginButton);
-    expect(mockOpen).toHaveBeenCalled();
+    expect(mockOpenModal).toHaveBeenCalled();
   });
 });
