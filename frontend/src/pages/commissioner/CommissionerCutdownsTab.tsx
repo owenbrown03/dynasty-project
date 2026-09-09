@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { notify } from '@/utils/notify';
 import {
@@ -6,9 +6,14 @@ import {
   useExecuteCommissionerCutdownAction,
 } from '@/hooks/sleeper/useUsers';
 import type {
+  CommissionerCutdownActionResult,
   CommissionerCutdownLeague,
   CommissionerCutdownViolation,
 } from '@/types';
+import {
+  CutdownReviewModal,
+  type CutdownRosterPreview,
+} from './CutdownReviewModal';
 
 const ACTION_DESCRIPTIONS: Record<string, string> = {
   chat_all: 'Post an announcement mentioning @all in league chat to remind all managers.',
@@ -30,6 +35,31 @@ export function CommissionerCutdownsTab() {
   const [selectedRosters, setSelectedRosters] = useState<Record<string, number[]>>({});
   const [actionType, setActionType] = useState<string>('chat_all');
   const [customMessage, setCustomMessage] = useState<string>('');
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [actionResults, setActionResults] = useState<CommissionerCutdownActionResult[]>([]);
+  const [actionError, setActionError] = useState<Error | null>(null);
+
+  const selectedPreviews: CutdownRosterPreview[] = useMemo(() => {
+    if (!leagues) return [];
+    const list: CutdownRosterPreview[] = [];
+    for (const league of leagues) {
+      const selected = selectedRosters[league.league_id] || [];
+      if (selected.length === 0) continue;
+      for (const v of league.violations) {
+        if (selected.includes(v.roster_id)) {
+          list.push({
+            leagueId: league.league_id,
+            leagueName: league.league_name,
+            rosterId: v.roster_id,
+            ownerName: v.owner_name || `Roster ${v.roster_id}`,
+            overLimitCount: v.over_limit_count,
+            drops: v.proposed_drops || [],
+          });
+        }
+      }
+    }
+    return list;
+  }, [leagues, selectedRosters]);
 
   if (loading) {
     return (
@@ -69,7 +99,7 @@ export function CommissionerCutdownsTab() {
     });
   };
 
-  const handleExecute = async () => {
+  const handleActionClick = () => {
     let leagueIds = Object.keys(selectedRosters).filter(id => selectedRosters[id].length > 0);
     if (leagueIds.length === 0) {
       if (actionType === 'chat_all' && leagues && leagues.length > 0) {
@@ -80,6 +110,17 @@ export function CommissionerCutdownsTab() {
       }
     }
 
+    if (actionType === 'force_drop') {
+      setActionResults([]);
+      setActionError(null);
+      setIsReviewOpen(true);
+      return;
+    }
+
+    void executeNonDropAction(leagueIds);
+  };
+
+  const executeNonDropAction = async (leagueIds: string[]) => {
     try {
       const res = await actionMutation.mutateAsync({
         league_ids: leagueIds,
@@ -101,6 +142,40 @@ export function CommissionerCutdownsTab() {
     } catch {
       notify.error('Failed to execute action.');
     }
+  };
+
+  const handleConfirmModalDrops = async () => {
+    const leagueIds = Object.keys(selectedRosters).filter(id => selectedRosters[id].length > 0);
+    if (leagueIds.length === 0) return;
+
+    try {
+      const res = await actionMutation.mutateAsync({
+        league_ids: leagueIds,
+        action_type: 'force_drop',
+        custom_message: null,
+        selected_roster_ids: selectedRosters,
+      });
+
+      setActionResults(res.results);
+      const failures = res.results.filter((r) => !r.success);
+      if (failures.length === 0) {
+        notify.success('Players force dropped successfully.');
+      } else {
+        notify.error('Some roster drops failed. Review details below.');
+      }
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err : new Error('Failed to execute drops'));
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsReviewOpen(false);
+    if (actionResults.length > 0) {
+      setSelectedRosters({});
+      void refetch();
+    }
+    setActionResults([]);
+    setActionError(null);
   };
 
   return (
@@ -142,10 +217,12 @@ export function CommissionerCutdownsTab() {
             )}
             <button
               className="button-primary"
-              onClick={() => void handleExecute()}
+              onClick={handleActionClick}
               disabled={actionMutation.isPending}
             >
-              {actionMutation.isPending ? 'Executing...' : 'Execute Action'}
+              {actionType === 'force_drop'
+                ? 'Review & Drop'
+                : (actionMutation.isPending ? 'Executing...' : 'Execute Action')}
             </button>
           </div>
         </div>
@@ -184,6 +261,18 @@ export function CommissionerCutdownsTab() {
                         <span>
                           {violation.roster_size} / {violation.max_roster_size} spots ({violation.over_limit_count} over)
                         </span>
+                        {violation.proposed_drops && violation.proposed_drops.length > 0 && (
+                          <div className="cutdown-violation-drops-preview">
+                            <span className="cutdown-drops-title">Proposed Drops (lowest KTC):</span>
+                            <div className="cutdown-drops-pills">
+                              {violation.proposed_drops.map(p => (
+                                <span key={p.player_id} className="cutdown-drop-pill">
+                                  {p.name} ({p.position || '—'}{p.team ? ` · ${p.team}` : ''}){p.ktc_value != null ? ` · ${p.ktc_value.toLocaleString()} KTC` : ''}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </label>
                   </div>
@@ -193,6 +282,17 @@ export function CommissionerCutdownsTab() {
           </div>
         ))}
       </div>
+
+      {isReviewOpen && (
+        <CutdownReviewModal
+          previews={selectedPreviews}
+          submitting={actionMutation.isPending}
+          results={actionResults}
+          error={actionError}
+          onClose={handleCloseModal}
+          onConfirm={handleConfirmModalDrops}
+        />
+      )}
     </div>
   );
 }
