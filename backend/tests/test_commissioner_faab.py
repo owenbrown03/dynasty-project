@@ -212,3 +212,88 @@ async def test_sleeper_write_reset_roster_faab_preserves_settings():
     assert settings_dict["waiver_budget_used"] == 0
     assert settings_dict["wins"] == 5
     assert settings_dict["losses"] == 2
+
+
+@pytest.mark.anyio
+async def test_reset_commissioner_faab_custom_amount_with_live_league_budget(monkeypatch):
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_sleeper_write = AsyncMock()
+    mock_sleeper_write.reset_roster_faab = AsyncMock()
+
+    # Live league has budget 67 (local DB had stale 100)
+    mock_sleeper_read = AsyncMock()
+    mock_sleeper_read.get_league = AsyncMock(
+        return_value=SimpleNamespace(
+            settings=SimpleNamespace(
+                model_dump=lambda: {"waiver_budget": 67}
+            )
+        )
+    )
+    mock_sleeper_read.get_rosters = AsyncMock(
+        return_value=[
+            SimpleNamespace(
+                roster_id=1,
+                settings=SimpleNamespace(
+                    model_dump=lambda: {"waiver_budget_used": 0, "waiver_position": 12}
+                ),
+            )
+        ]
+    )
+
+    mock_sleeper = MagicMock()
+    mock_sleeper.can_write = True
+    mock_sleeper.write = mock_sleeper_write
+    mock_sleeper.read = mock_sleeper_read
+
+    ctx = SimpleNamespace(
+        db=mock_db,
+        redis=None,
+        session=SimpleNamespace(),
+        site_user=SimpleNamespace(id="site_user_id"),
+        connection=SimpleNamespace(sleeper_user_id="sleeper_123"),
+        sleeper=mock_sleeper,
+        underdog=None,
+    )
+
+    roster = SimpleNamespace(
+        roster_id=1,
+        owner_id="owner_1",
+        settings={"waiver_budget_used": 0, "waiver_position": 12},
+    )
+    league = SimpleNamespace(
+        league_id="league_1",
+        name="League 1",
+        avatar=None,
+        settings={"waiver_budget": 100},  # Stale DB had 100
+    )
+    owned_row = SimpleNamespace(league=league)
+
+    monkeypatch.setattr(
+        "app.services.commissioner.faab.get_visible_owned_league_rows_by_sleeper_user_id",
+        AsyncMock(return_value=[owned_row]),
+    )
+    monkeypatch.setattr(
+        "app.services.commissioner.faab.get_all_rosters_by_league",
+        AsyncMock(return_value={"league_1": [roster]}),
+    )
+
+    # User requests custom reset to $23
+    req = CommissionerFaabResetRequest(
+        league_ids=["league_1"],
+        target_budget=23,
+    )
+    res = await reset_commissioner_faab(ctx, req)
+
+    assert res.total_leagues == 1
+    assert res.successful_leagues == 1
+    assert res.results[0].success is True
+    assert res.results[0].rosters_reset == 1
+
+    # Live budget = 67, target = 23 -> target_used must be 67 - 23 = 44
+    mock_sleeper_write.reset_roster_faab.assert_called_once_with(
+        league_id="league_1",
+        roster_id=1,
+        target_budget=44,
+        existing_settings={"waiver_budget_used": 0, "waiver_position": 12},
+    )

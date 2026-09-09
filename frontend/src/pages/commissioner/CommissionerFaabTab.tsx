@@ -4,7 +4,7 @@ import { notify } from '@/utils/notify';
 import { Skeleton } from '@/components/feedback/Skeleton';
 
 export const CommissionerFaabTab = () => {
-  const { data: leagues = [], isLoading, error } = useCommissionerFaabOverview();
+  const { data: leagues = [], isLoading, isFetching, error, refetch } = useCommissionerFaabOverview();
   const resetMutation = useResetCommissionerFaab();
 
   const [search, setSearch] = useState('');
@@ -92,6 +92,9 @@ export const CommissionerFaabTab = () => {
         </label>
         <button className="button-secondary" onClick={handleSelectAll}>Select All</button>
         <button className="button-secondary" onClick={handleSelectNone}>Select None</button>
+        <button className="button-secondary" onClick={() => refetch()} disabled={isFetching}>
+          {isFetching ? 'Refreshing...' : 'Refresh Status'}
+        </button>
       </div>
 
       <div className="commissioner-faab-reset-form">
