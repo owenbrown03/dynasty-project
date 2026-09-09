@@ -351,21 +351,20 @@ export function useSyncLeague() {
     mutationFn: async (leagueId: string) => {
       return api.leagues.syncLeague(leagueId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey;
-          if (!Array.isArray(key)) return false;
-          // Invalidate details for this league or any league/dashboard queries
-          if (key[0] === 'leagues' && (key[1] === 'details' || key[1] === 'overview' || key[1] === 'selector')) {
-            return true;
-          }
-          if (key[0] === 'dashboard' || key[0] === 'users') {
-            return true;
-          }
-          return false;
-        },
-      });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagues.detailsRoot }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagues.overviewRoot }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagues.selectorRoot }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagues.dashboardRoot }),
+        queryClient.invalidateQueries({ queryKey: ['rosters'] }),
+        queryClient.invalidateQueries({ queryKey: ['orphans'] }),
+        queryClient.invalidateQueries({ queryKey: ['commissioner-orphans'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.commissionerWorkspace }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.commissionerCutdowns }),
+        queryClient.invalidateQueries({ queryKey: ['trade-signals'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.waivers.overviewRoot }),
+      ]);
     },
   });
 
