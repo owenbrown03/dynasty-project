@@ -160,9 +160,25 @@ async def reset_commissioner_faab(
         error = None
 
         try:
+            live_used_by_roster: dict[int, int] = {}
+            if ctx.sleeper and hasattr(ctx.sleeper, "read") and hasattr(ctx.sleeper.read, "get_rosters"):
+                try:
+                    live_rosters = await ctx.sleeper.read.get_rosters(league.league_id)
+                    if isinstance(live_rosters, list):
+                        for lr in live_rosters:
+                            r_id = lr.get("roster_id")
+                            if r_id is not None:
+                                r_set = lr.get("settings") or {}
+                                live_used_by_roster[int(r_id)] = r_set.get("waiver_budget_used", 0) or 0
+                except Exception as ex:
+                    logger.warning("Could not fetch live rosters for FAAB reset on league %s: %s", league.league_id, ex)
+
             for roster in rosters:
                 r_settings = getattr(roster, "settings", {}) or {}
-                used = r_settings.get("waiver_budget_used", 0) or 0
+                used = live_used_by_roster.get(
+                    roster.roster_id,
+                    r_settings.get("waiver_budget_used", 0) or 0,
+                )
                 if default_budget - used != target:
                     if ctx.sleeper and ctx.sleeper.can_write:
                         await ctx.sleeper.write.reset_roster_faab(
