@@ -5,7 +5,12 @@ from rapidfuzz import process, fuzz
 SUFFIXES = re.compile(r"\b(jr|sr|ii|iii|iv|v)\b\.?", re.IGNORECASE)
 
 NAME_OVERRIDES: dict[str, str] = {
+    # KTC uses a player's legal name; Sleeper uses the preferred nickname.
+    # Map the KTC-normalized form → the Sleeper-normalized form so matching works.
     "hollywoodbrown": "marquisebrown",
+    "kennethgainwell": "kennygainwell",  # KTC: Kenneth, Sleeper: Kenny
+    "chigoziemokonkwo": "chigokonkwo",   # KTC: Chigoziem, Sleeper: Chig
+    "bamknight": "zonovanknight",        # KTC: Bam Knight (nickname), Sleeper: Zonovan Knight
 }
 
 
