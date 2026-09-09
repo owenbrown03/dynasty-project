@@ -243,24 +243,24 @@ async def reset_commissioner_faab(
                 existing_settings = {**db_settings, **live_settings}
                 if existing_settings.get("waiver_position") is None and db_settings.get("waiver_position") is not None:
                     existing_settings["waiver_position"] = db_settings["waiver_position"]
+                if existing_settings.get("waiver_position") is None:
+                    existing_settings["waiver_position"] = roster.roster_id
 
-                used = existing_settings.get("waiver_budget_used", 0) or 0
-                if default_budget - used != target:
-                    if ctx.sleeper and ctx.sleeper.can_write:
-                        await ctx.sleeper.write.reset_roster_faab(
-                            league_id=league.league_id,
-                            roster_id=roster.roster_id,
-                            target_budget=target_used,
-                            existing_settings=existing_settings,
-                        )
-                    rosters_reset += 1
+                if ctx.sleeper and ctx.sleeper.can_write:
+                    await ctx.sleeper.write.reset_roster_faab(
+                        league_id=league.league_id,
+                        roster_id=roster.roster_id,
+                        target_budget=target_used,
+                        existing_settings=existing_settings,
+                    )
+                rosters_reset += 1
 
-                    # Update local DB settings
-                    roster.settings = {
-                        **existing_settings,
-                        "waiver_budget_used": target_used,
-                    }
-                    ctx.db.add(roster)
+                # Update local DB settings
+                roster.settings = {
+                    **existing_settings,
+                    "waiver_budget_used": target_used,
+                }
+                ctx.db.add(roster)
 
             await ctx.db.commit()
             successful_leagues += 1
