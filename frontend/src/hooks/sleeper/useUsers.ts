@@ -411,6 +411,7 @@ export function useCommissionerCutdowns(enabled: boolean) {
     loading: query.isLoading,
     fetching: query.isFetching,
     error: query.error,
+    refetch: query.refetch,
   };
 }
 
