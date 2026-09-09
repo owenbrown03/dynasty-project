@@ -614,6 +614,12 @@ th {
     -webkit-text-size-adjust: 100%;
   }
 
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
   button,
   a,
   select,

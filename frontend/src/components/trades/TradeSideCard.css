@@ -425,3 +425,13 @@
   color: var(--color-text-strong, #ffffff);
   letter-spacing: -0.02em;
 }
+
+@media (max-width: 480px) {
+  .trade-side-custom-pick-inputs {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .trade-side-add-pick-btn {
+    grid-column: span 2;
+  }
+}

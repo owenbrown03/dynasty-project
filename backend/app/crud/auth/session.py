@@ -22,6 +22,8 @@ VALID_VALUE_PREFERENCES = {
     for basis in ValueBasis
 }
 
+SESSION_COOKIE_MAX_AGE = 60 * 24 * 3600  # 60 days
+
 async def create_session_by_userid(
     user_id: uuid.UUID, 
     response: Response, 
@@ -43,6 +45,7 @@ async def create_session_by_userid(
         secure=is_prod,
         samesite="lax",
         domain=None,
+        max_age=SESSION_COOKIE_MAX_AGE,
     )
     return new_session
 

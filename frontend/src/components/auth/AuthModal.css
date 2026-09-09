@@ -51,3 +51,15 @@
   font-weight: 600;
   margin-left: 5px;
 }
+
+@media (max-width: 480px) {
+  .auth-modal {
+    padding: 12px;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: 100%;
+    padding: 16px;
+  }
+}
