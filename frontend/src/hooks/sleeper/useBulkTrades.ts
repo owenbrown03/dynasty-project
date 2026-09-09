@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import {
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
@@ -11,6 +13,7 @@ import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
 import type {
   BulkTradeAvailabilityRequest,
   BulkTradeAvailabilityResponse,
+  BulkTradePickRequest,
   BulkTradePlayerSearchResult,
   BulkTradeProposalRequest,
   BulkTradeProposalResponse,
@@ -170,3 +173,50 @@ export async function fetchTradeCalculatorPickValue(
     ): TradeCalculatorPickValueResponse => response.data,
   );
 }
+
+
+export function useBulkTradePickValues(
+  picks: BulkTradePickRequest[],
+  totalRosters = 12,
+  numQbs = 2,
+  ppr = 1,
+): Map<string, TradeCalculatorPickValueResponse> {
+  const uniquePicks = useMemo(() => {
+    const map = new Map<string, BulkTradePickRequest>();
+    for (const p of picks) {
+      if (p.season && p.round) {
+        map.set(`${p.season}-${p.round}`, p);
+      }
+    }
+    return Array.from(map.values());
+  }, [picks]);
+
+  const results = useQueries({
+    queries: uniquePicks.map((pick) => ({
+      queryKey: ['tradeCalculatorPickValue', pick.season, pick.round, totalRosters, numQbs, ppr],
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        fetchTradeCalculatorPickValue(
+          pick.season,
+          pick.round,
+          null,
+          totalRosters,
+          numQbs,
+          ppr,
+          signal,
+        ),
+      staleTime: 1000 * 60 * 30,
+    })),
+  });
+
+  return useMemo(() => {
+    const pickMap = new Map<string, TradeCalculatorPickValueResponse>();
+    results.forEach((res, idx) => {
+      const pick = uniquePicks[idx];
+      if (pick && res.data) {
+        pickMap.set(`${pick.season}-${pick.round}`, res.data as TradeCalculatorPickValueResponse);
+      }
+    });
+    return pickMap;
+  }, [results, uniquePicks]);
+}
+

@@ -10,6 +10,7 @@ import {
 
 import {
   useBulkTradeAvailability,
+  useBulkTradePickValues,
   useSubmitBulkTradeOffers,
 } from '@/hooks/sleeper/useBulkTrades';
 import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
@@ -23,6 +24,7 @@ import type {
   BulkTradePickRequest,
   BulkTradePlayerSearchResult,
   TradeDraftPickAsset,
+  TradeCalculatorPickValueResponse,
   ValueBasis,
 } from '@/types';
 
@@ -35,6 +37,7 @@ import { BulkTradeReviewModal } from './BulkTradeReviewModal';
 import { TradeSideCard, type TradeSideAsset } from '@/components/trades/TradeSideCard';
 import { TradeWinningBar } from '@/components/trades/TradeWinningBar';
 import { useValuePreference } from '@/context/useValuePreference';
+import { getValidSleeperPickYears } from '@/utils/picks';
 import type { TradeCalculatorBulkOfferSeed } from './TradeCalculatorTab';
 
 function getBulkPlayerValue(
@@ -62,32 +65,24 @@ function getBulkPlayerValue(
 }
 
 
-const ROOKIE_DRAFT_ROLLOVER_MONTH = 5;
-const ROOKIE_DRAFT_ROLLOVER_DAY = 1;
-
-
-function getValidSleeperPickYears(
-  now = new Date(),
-): string[] {
-  const currentYear = now.getFullYear();
-  const rookieDraftRollover = new Date(
-    currentYear,
-    ROOKIE_DRAFT_ROLLOVER_MONTH,
-    ROOKIE_DRAFT_ROLLOVER_DAY,
-  );
-
-  const startYear = (
-    now >= rookieDraftRollover
-      ? currentYear + 1
-      : currentYear
-  );
-
-  return Array.from(
-    {
-      length: 3,
-    },
-    (_, index) => String(startYear + index),
-  );
+function getBulkPickValue(
+  pickValue: TradeCalculatorPickValueResponse | undefined,
+  valueBasis: ValueBasis | string,
+): number {
+  if (!pickValue) return 0;
+  switch (valueBasis) {
+    case 'fantasycalc':
+      return pickValue.fc_value ?? 0;
+    case 'dynasty_starter_war':
+    case 'dynasty_roster_war':
+    case 'redraft_starter_war':
+    case 'redraft_roster_war':
+    case 'my_war':
+      return pickValue.rookie_war_value ?? 0;
+    case 'ktc':
+    default:
+      return pickValue.ktc_value ?? 0;
+  }
 }
 
 
@@ -297,6 +292,12 @@ export const BulkOffersTab = ({
     }
   }, [preference]);
 
+  const allSelectedPicks = useMemo(
+    () => [...sendPicks, ...receivePicks],
+    [sendPicks, receivePicks],
+  );
+  const pickValuesMap = useBulkTradePickValues(allSelectedPicks);
+
   const sendPlayerAssets: TradeSideAsset[] = useMemo(() => [
     ...sendPlayers.map((p) => ({
       id: `player-${p.player_id}`,
@@ -310,15 +311,18 @@ export const BulkOffersTab = ({
       playerId: p.player_id,
       underdogRank: p.underdog_position_rank,
     })),
-    ...sendPicks.map((pick, index) => ({
-      id: `pick-${pick.season}-${pick.round}-${index}`,
-      type: 'pick' as const,
-      label: `${pick.season} Round ${pick.round}`,
-      meta: 'Draft pick',
-      value: 0,
-      position: 'PICK',
-    })),
-  ], [sendPlayers, sendPicks, valueBasis]);
+    ...sendPicks.map((pick, index) => {
+      const pickData = pickValuesMap.get(`${pick.season}-${pick.round}`);
+      return {
+        id: `pick-${pick.season}-${pick.round}-${index}`,
+        type: 'pick' as const,
+        label: `${pick.season} Round ${pick.round}`,
+        meta: 'Draft pick',
+        value: getBulkPickValue(pickData, valueBasis),
+        position: 'PICK',
+      };
+    }),
+  ], [sendPlayers, sendPicks, valueBasis, pickValuesMap]);
 
   const receivePlayerAssets: TradeSideAsset[] = useMemo(() => [
     ...receivePlayers.map((p) => ({
@@ -333,15 +337,18 @@ export const BulkOffersTab = ({
       playerId: p.player_id,
       underdogRank: p.underdog_position_rank,
     })),
-    ...receivePicks.map((pick, index) => ({
-      id: `pick-${pick.season}-${pick.round}-${index}`,
-      type: 'pick' as const,
-      label: `${pick.season} Round ${pick.round}`,
-      meta: 'Draft pick',
-      value: 0,
-      position: 'PICK',
-    })),
-  ], [receivePlayers, receivePicks, valueBasis]);
+    ...receivePicks.map((pick, index) => {
+      const pickData = pickValuesMap.get(`${pick.season}-${pick.round}`);
+      return {
+        id: `pick-${pick.season}-${pick.round}-${index}`,
+        type: 'pick' as const,
+        label: `${pick.season} Round ${pick.round}`,
+        meta: 'Draft pick',
+        value: getBulkPickValue(pickData, valueBasis),
+        position: 'PICK',
+      };
+    }),
+  ], [receivePlayers, receivePicks, valueBasis, pickValuesMap]);
 
   const sendTotal = useMemo(
     () => sendPlayerAssets.reduce((sum, a) => sum + a.value, 0),
