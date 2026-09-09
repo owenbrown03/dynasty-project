@@ -45,14 +45,23 @@ export const CommissionerFaabTab = () => {
     if (!confirmed) return;
 
     try {
-      await resetMutation.mutateAsync({
+      const res = await resetMutation.mutateAsync({
         league_ids: Array.from(selectedLeagues),
         target_budget: useDefault ? undefined : Number(targetBudget),
       });
-      notify.success('FAAB reset successfully');
-      setSelectedLeagues(new Set());
-    } catch {
-      notify.error('Failed to reset FAAB');
+      const failures = (res.results || []).filter((r) => !r.success);
+      if (failures.length > 0) {
+        const errorDetails = failures
+          .map((f) => `${f.league_name}: ${f.error || 'Failed'}`)
+          .join('; ');
+        notify.error(`Failed to reset FAAB for some leagues: ${errorDetails}`);
+      } else {
+        notify.success('FAAB reset successfully');
+        setSelectedLeagues(new Set());
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to reset FAAB';
+      notify.error(message);
     }
   };
 

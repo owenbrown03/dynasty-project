@@ -141,16 +141,16 @@ class SleeperWrite:
         self,
         league_id: str,
         roster_id: int,
-        target_budget: int
+        target_budget: int,
     ) -> dict:
         self._require_auth()
         return await self.league_mutation(
-            "update_roster",
+            "roster_update_settings",
             league_id,
             {
                 "roster_id": roster_id,
                 "k_settings": ["waiver_budget_used"],
-                "v_settings": [-target_budget] # It resets to waiver_budget_used = waiver_budget - target_budget... Wait, what does sleeper do? If default budget is 100, and target is 100, we want used = 0. Wait, if target budget is X, how does sleeper track it? Usually `waiver_budget_used` is set directly. The requirement says: update_roster(league_id, roster_id, k_settings, v_settings)
+                "v_settings": [target_budget],
             },
         )
 

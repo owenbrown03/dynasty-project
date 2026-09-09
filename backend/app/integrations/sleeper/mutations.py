@@ -220,25 +220,27 @@ MUTATIONS: dict[str, str] = {
     "create_poll": CREATE_POLL_MUTATION,
     "poll_set_closes_at": POLL_SET_CLOSES_AT_MUTATION,
 }
-UPDATE_ROSTER_MUTATION = """
-    mutation update_roster(
-        $league_id: String!,
+ROSTER_UPDATE_SETTINGS_MUTATION = """
+    mutation roster_update_settings(
+        $league_id: Snowflake!,
         $roster_id: Int!,
         $k_settings: [String],
         $v_settings: [Int]
     ) {
-        update_roster(
+        roster_update_settings(
             league_id: $league_id,
             roster_id: $roster_id,
             k_settings: $k_settings,
             v_settings: $v_settings
         ) {
             roster_id
+            settings
         }
     }
 """
 
-MUTATIONS["update_roster"] = UPDATE_ROSTER_MUTATION
+MUTATIONS["roster_update_settings"] = ROSTER_UPDATE_SETTINGS_MUTATION
+MUTATIONS["update_roster"] = ROSTER_UPDATE_SETTINGS_MUTATION
 
 LEAGUE_CREATE_TRANSACTION_MUTATION = """
     mutation league_create_transaction(
