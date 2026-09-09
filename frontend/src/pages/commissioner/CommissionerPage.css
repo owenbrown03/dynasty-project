@@ -566,15 +566,24 @@
 .cutdowns-controls {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.cutdowns-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
 .cutdowns-action-description {
   color: var(--color-text-muted);
   font-size: 12px;
   font-style: italic;
+  align-self: flex-end;
 }
 
 .cutdowns-actions {

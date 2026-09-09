@@ -106,47 +106,48 @@ export function CommissionerCutdownsTab() {
   return (
     <div className="commissioner-cutdowns-tab">
       <div className="cutdowns-controls">
-        <button
-          type="button"
-          className="button-secondary"
-          onClick={() => refetch()}
-          disabled={loading || fetching}
-          style={{ marginRight: 'auto' }}
-        >
-          {fetching ? 'Refreshing...' : 'Refresh Status'}
-        </button>
-
-        <div className="cutdowns-actions">
-          <label>
-            <span>Action</span>
-            <select
-              value={actionType}
-              onChange={(e) => setActionType(e.target.value)}
-            >
-              <option value="chat_all">@all League Chat Announcement</option>
-              <option value="chat_tag">Tag Violators in League Chat</option>
-              <option value="dm_warning">Direct Message (DM) Warning</option>
-              <option value="force_drop">Force Drop Lowest KTC Players</option>
-            </select>
-          </label>
-          {actionType !== 'force_drop' && (
-            <label>
-              <span>Custom Message (Optional)</span>
-              <input
-                type="text"
-                value={customMessage}
-                onChange={(e) => setCustomMessage(e.target.value)}
-                placeholder={ACTION_PLACEHOLDERS[actionType] || 'Message to include...'}
-              />
-            </label>
-          )}
+        <div className="cutdowns-controls-row">
           <button
-            className="button-primary"
-            onClick={() => void handleExecute()}
-            disabled={actionMutation.isPending}
+            type="button"
+            className="button-secondary"
+            onClick={() => refetch()}
+            disabled={loading || fetching}
           >
-            {actionMutation.isPending ? 'Executing...' : 'Execute Action'}
+            {fetching ? 'Refreshing...' : 'Refresh Status'}
           </button>
+
+          <div className="cutdowns-actions">
+            <label>
+              <span>Action</span>
+              <select
+                value={actionType}
+                onChange={(e) => setActionType(e.target.value)}
+              >
+                <option value="chat_all">@all League Chat Announcement</option>
+                <option value="chat_tag">Tag Violators in League Chat</option>
+                <option value="dm_warning">Direct Message (DM) Warning</option>
+                <option value="force_drop">Force Drop Lowest KTC Players</option>
+              </select>
+            </label>
+            {actionType !== 'force_drop' && (
+              <label>
+                <span>Custom Message (Optional)</span>
+                <input
+                  type="text"
+                  value={customMessage}
+                  onChange={(e) => setCustomMessage(e.target.value)}
+                  placeholder={ACTION_PLACEHOLDERS[actionType] || 'Message to include...'}
+                />
+              </label>
+            )}
+            <button
+              className="button-primary"
+              onClick={() => void handleExecute()}
+              disabled={actionMutation.isPending}
+            >
+              {actionMutation.isPending ? 'Executing...' : 'Execute Action'}
+            </button>
+          </div>
         </div>
         {ACTION_DESCRIPTIONS[actionType] && (
           <div className="cutdowns-action-description">
