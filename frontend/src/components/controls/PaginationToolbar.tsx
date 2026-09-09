@@ -10,6 +10,7 @@ interface PaginationToolbarProps {
   onPageSizeChange: (pageSize: number) => void;
   pageSizeOptions?: number[];
   leadingControls?: ReactNode;
+  className?: string;
 }
 
 export function PaginationToolbar({
@@ -24,9 +25,14 @@ export function PaginationToolbar({
     150,
   ],
   leadingControls,
+  className,
 }: PaginationToolbarProps) {
+  const rootClassName = className
+    ? `available-pagination-toolbar ${className}`
+    : 'available-pagination-toolbar';
+
   return (
-    <div className="available-pagination-toolbar">
+    <div className={rootClassName}>
       {leadingControls}
 
       <label className="available-page-size-selector">

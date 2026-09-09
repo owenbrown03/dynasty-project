@@ -179,6 +179,7 @@ class SleeperWrite:
     async def create_dm(
         self,
         members: list[str],
+        message_text: str | None = None,
     ) -> dict:
         """Create (or return) a 1:1 DM channel with the given members."""
         self._require_auth()
@@ -189,7 +190,25 @@ class SleeperWrite:
                 "members": members,
             },
         )
-        return data.get("create_dm") or {}
+        res = data.get("create_dm") or {}
+        if message_text:
+            dm_id = res.get("dm_id")
+            if not dm_id:
+                try:
+                    existing = await self.get_dm_by_members(members)
+                    if isinstance(existing, list) and existing:
+                        dm_id = existing[0].get("dm_id")
+                    elif isinstance(existing, dict):
+                        dm_id = existing.get("dm_id")
+                except Exception:
+                    pass
+            if dm_id:
+                await self.create_message(
+                    parent_id=dm_id,
+                    parent_type="dm",
+                    text=message_text,
+                )
+        return res
 
     async def create_message(
         self,
@@ -197,24 +216,25 @@ class SleeperWrite:
         parent_id: str,
         parent_type: str,
         text: str,
-        attachment_type: str,
-        k_attachment_data: list[str],
-        v_attachment_data: list[object],
+        attachment_type: str | None = None,
+        k_attachment_data: list[str] | None = None,
+        v_attachment_data: list[object] | None = None,
     ) -> dict:
         """Post a message (optionally with an embedded attachment) to a
         DM/thread parent."""
         self._require_auth()
+        variables = {
+            "parent_id": parent_id,
+            "client_id": str(uuid.uuid4()),
+            "parent_type": parent_type,
+            "text": text,
+            "attachment_type": attachment_type,
+            "k_attachment_data": k_attachment_data,
+            "v_attachment_data": v_attachment_data,
+        }
         data = await self.transport.post(
             query=CREATE_MESSAGE_MUTATION,
-            variables={
-                "parent_id": parent_id,
-                "client_id": str(uuid.uuid4()),
-                "parent_type": parent_type,
-                "text": text,
-                "attachment_type": attachment_type,
-                "k_attachment_data": k_attachment_data,
-                "v_attachment_data": v_attachment_data,
-            },
+            variables=variables,
         )
         return data.get("create_message") or {}
 

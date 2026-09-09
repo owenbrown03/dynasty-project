@@ -10,12 +10,25 @@ import type {
   CommissionerCutdownViolation,
 } from '@/types';
 
+const ACTION_DESCRIPTIONS: Record<string, string> = {
+  chat_all: 'Post an announcement mentioning @all in league chat to remind all managers.',
+  chat_tag: 'Tag violating managers directly in league chat with the cutdown reminder.',
+  dm_warning: 'Send a private direct message (DM) warning to each violating manager.',
+  force_drop: 'Commissioner enforcement: forcefully drop the lowest KTC value player(s) on violating rosters.',
+};
+
+const ACTION_PLACEHOLDERS: Record<string, string> = {
+  chat_all: "@all Friendly reminder from the commissioner: Please check your rosters and cut down...",
+  chat_tag: "Optional prefix (e.g. 'Roster Cutdown Reminder:')",
+  dm_warning: "Hi @manager, reminder that your roster is over the limit...",
+};
+
 export function CommissionerCutdownsTab() {
   const { data: leagues, loading, error } = useCommissionerCutdowns(true);
   const actionMutation = useExecuteCommissionerCutdownAction();
 
   const [selectedRosters, setSelectedRosters] = useState<Record<string, number[]>>({});
-  const [actionType, setActionType] = useState<string>('notify');
+  const [actionType, setActionType] = useState<string>('chat_all');
   const [customMessage, setCustomMessage] = useState<string>('');
 
   if (loading) {
@@ -57,10 +70,14 @@ export function CommissionerCutdownsTab() {
   };
 
   const handleExecute = async () => {
-    const leagueIds = Object.keys(selectedRosters).filter(id => selectedRosters[id].length > 0);
+    let leagueIds = Object.keys(selectedRosters).filter(id => selectedRosters[id].length > 0);
     if (leagueIds.length === 0) {
-      notify.error('Select at least one roster to execute an action.');
-      return;
+      if (actionType === 'chat_all' && leagues && leagues.length > 0) {
+        leagueIds = leagues.map((l) => l.league_id);
+      } else {
+        notify.error('Select at least one roster to execute an action.');
+        return;
+      }
     }
 
     try {
@@ -88,18 +105,20 @@ export function CommissionerCutdownsTab() {
               value={actionType}
               onChange={(e) => setActionType(e.target.value)}
             >
-              <option value="notify">Notify Managers</option>
-              <option value="force_drop">Force Drop Lowest KTC Value Players</option>
+              <option value="chat_all">@all League Chat Announcement</option>
+              <option value="chat_tag">Tag Violators in League Chat</option>
+              <option value="dm_warning">Direct Message (DM) Warning</option>
+              <option value="force_drop">Force Drop Lowest KTC Players</option>
             </select>
           </label>
-          {actionType === 'notify' && (
+          {actionType !== 'force_drop' && (
             <label>
               <span>Custom Message (Optional)</span>
               <input
                 type="text"
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}
-                placeholder="Message to include..."
+                placeholder={ACTION_PLACEHOLDERS[actionType] || 'Message to include...'}
               />
             </label>
           )}
@@ -111,6 +130,11 @@ export function CommissionerCutdownsTab() {
             {actionMutation.isPending ? 'Executing...' : 'Execute Action'}
           </button>
         </div>
+        {ACTION_DESCRIPTIONS[actionType] && (
+          <div className="cutdowns-action-description">
+            {ACTION_DESCRIPTIONS[actionType]}
+          </div>
+        )}
       </div>
 
       <div className="commissioner-card-grid">

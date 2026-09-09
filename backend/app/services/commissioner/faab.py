@@ -164,8 +164,8 @@ async def reset_commissioner_faab(
                 r_settings = getattr(roster, "settings", {}) or {}
                 used = r_settings.get("waiver_budget_used", 0) or 0
                 if default_budget - used != target:
-                    if ctx.sleeper_write and ctx.sleeper_write.auth.is_authenticated():
-                        await ctx.sleeper_write.reset_roster_faab(
+                    if ctx.sleeper and ctx.sleeper.can_write:
+                        await ctx.sleeper.write.reset_roster_faab(
                             league_id=league.league_id,
                             roster_id=roster.roster_id,
                             target_budget=target_used,
