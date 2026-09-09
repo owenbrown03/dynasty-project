@@ -239,3 +239,29 @@ UPDATE_ROSTER_MUTATION = """
 """
 
 MUTATIONS["update_roster"] = UPDATE_ROSTER_MUTATION
+
+LEAGUE_CREATE_TRANSACTION_MUTATION = """
+    mutation league_create_transaction(
+        $league_id: String!,
+        $type: String,
+        $k_adds: [String],
+        $v_adds: [Int],
+        $k_drops: [String],
+        $v_drops: [Int]
+    ) {
+        league_create_transaction(
+            league_id: $league_id,
+            type: $type,
+            k_adds: $k_adds,
+            v_adds: $v_adds,
+            k_drops: $k_drops,
+            v_drops: $v_drops
+        ) {
+            transaction_id
+            status
+            type
+        }
+    }
+"""
+
+MUTATIONS["league_create_transaction"] = LEAGUE_CREATE_TRANSACTION_MUTATION

@@ -37,8 +37,11 @@ async def test_get_commissioner_faab_overview_empty(monkeypatch):
 async def test_reset_commissioner_faab_calls_sleeper_write(monkeypatch):
     mock_db = AsyncMock()
     mock_sleeper_write = AsyncMock()
-    mock_sleeper_write.auth.is_authenticated = MagicMock(return_value=True)
     mock_sleeper_write.reset_roster_faab = AsyncMock()
+
+    mock_sleeper = MagicMock()
+    mock_sleeper.can_write = True
+    mock_sleeper.write = mock_sleeper_write
 
     ctx = SimpleNamespace(
         db=mock_db,
@@ -46,8 +49,7 @@ async def test_reset_commissioner_faab_calls_sleeper_write(monkeypatch):
         session=SimpleNamespace(),
         site_user=SimpleNamespace(id="site_user_id"),
         connection=SimpleNamespace(sleeper_user_id="sleeper_123"),
-        sleeper_write=mock_sleeper_write,
-        sleeper=None,
+        sleeper=mock_sleeper,
         underdog=None,
     )
 

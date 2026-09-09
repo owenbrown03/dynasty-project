@@ -11,10 +11,13 @@ async def test_broadcast_commissioner_poll_success(monkeypatch):
     mock_db = AsyncMock()
     
     mock_sleeper_write = AsyncMock()
-    mock_sleeper_write.auth.is_authenticated = MagicMock(return_value=True)
     mock_sleeper_write.create_poll.return_value = "poll_123"
     mock_sleeper_write.set_poll_expiration.return_value = True
     mock_sleeper_write.send_poll_message.return_value = {}
+
+    mock_sleeper = MagicMock()
+    mock_sleeper.can_write = True
+    mock_sleeper.write = mock_sleeper_write
 
     ctx = SimpleNamespace(
         db=mock_db,
@@ -22,8 +25,7 @@ async def test_broadcast_commissioner_poll_success(monkeypatch):
         session=SimpleNamespace(),
         site_user=SimpleNamespace(id="site_user_id"),
         connection=SimpleNamespace(sleeper_user_id="sleeper_user_id"),
-        sleeper_write=mock_sleeper_write,
-        sleeper=None,
+        sleeper=mock_sleeper,
         underdog=None,
     )
     
