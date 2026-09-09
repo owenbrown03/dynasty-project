@@ -1510,7 +1510,6 @@ async def get_owned_leagues_by_sleeper_user_id(
         )
         .where(
             model.Roster.owner_id == sleeper_user_id,
-            model.Roster.is_owner == True,
         )
     )
     return result.all()
