@@ -56,6 +56,8 @@ function AvailablePlayersSkeleton({
         <Skeleton width={210} height={40} />
 
         <AvailablePlayersTableSkeleton />
+
+        <Skeleton width={210} height={40} />
       </div>
     );
   }
@@ -91,6 +93,8 @@ function AvailablePlayersSkeleton({
       <Skeleton width={210} height={40} />
 
       <AvailablePlayersTableSkeleton />
+
+      <Skeleton width={210} height={40} />
     </section>
   );
 }
@@ -347,6 +351,14 @@ export const AvailablePlayersTab = ({
                 data={data}
                 canWrite={canWrite}
                 onClaim={setClaimPlayer}
+              />
+
+              <PaginationToolbar
+                page={data.page}
+                pageSize={pageSize}
+                totalPages={data.total_pages}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
               />
                   </>
                 );
