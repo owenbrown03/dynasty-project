@@ -64,6 +64,11 @@ function getPlayerDisplayValue(
   }
 }
 
+function getDefaultPickYears(): string[] {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 4 }, (_, i) => String(currentYear + i));
+}
+
 export function TradeSideCard({
   title,
   assets,
@@ -76,14 +81,24 @@ export function TradeSideCard({
   onRemoveAsset,
   valueBasis = 'ktc',
   searchPlaceholder = 'Search for a player or pick...',
-  validPickYears = ['2025', '2026', '2027'],
+  validPickYears,
 }: TradeSideCardProps) {
+  const pickYears = useMemo(() => {
+    return validPickYears && validPickYears.length > 0 ? validPickYears : getDefaultPickYears();
+  }, [validPickYears]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activeSearchTab, setActiveSearchTab] = useState<'players' | 'picks'>('players');
-  const [customPickSeason, setCustomPickSeason] = useState(validPickYears[0] ?? '2026');
+  const [customPickSeason, setCustomPickSeason] = useState(pickYears[0] ?? '2026');
   const [customPickRound, setCustomPickRound] = useState(1);
   const [customPickSlot, setCustomPickSlot] = useState('');
+
+  useEffect(() => {
+    if (pickYears.length > 0 && !pickYears.includes(customPickSeason)) {
+      setCustomPickSeason(pickYears[0]);
+    }
+  }, [pickYears, customPickSeason]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const playerSearch = useBulkTradePlayerSearch(searchQuery);
@@ -270,7 +285,7 @@ export function TradeSideCard({
                 <div className="trade-side-quick-picks">
                   <span className="trade-side-picks-subtitle">Quick Add Picks:</span>
                   <div className="trade-side-quick-picks-grid">
-                    {validPickYears.map((year) =>
+                    {pickYears.map((year) =>
                       [1, 2, 3, 4].map((round) => (
                         <button
                           key={`${year}-${round}`}
@@ -292,7 +307,7 @@ export function TradeSideCard({
                       value={customPickSeason}
                       onChange={(e) => setCustomPickSeason(e.target.value)}
                     >
-                      {validPickYears.map((year) => (
+                      {pickYears.map((year) => (
                         <option key={year} value={year}>
                           {year}
                         </option>

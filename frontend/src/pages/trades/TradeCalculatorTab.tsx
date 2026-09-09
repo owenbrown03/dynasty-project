@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -19,6 +20,7 @@ import type {
 import { notify } from '@/utils/notify';
 import { TradeSideCard, type TradeSideAsset } from '@/components/trades/TradeSideCard';
 import { TradeWinningBar } from '@/components/trades/TradeWinningBar';
+import { getValidSleeperPickYears } from '@/utils/picks';
 import './TradeCalculatorTab.css';
 
 
@@ -316,6 +318,71 @@ export function TradeCalculatorTab({
     };
   }, [seed]); // We do not depend on format controls here intentionally, so it doesn't reset user edits when changing format.
 
+  const validPickYears = useMemo(() => getValidSleeperPickYears(), []);
+  const teamARef = useRef(teamAReceives);
+  const teamBRef = useRef(teamBReceives);
+
+  useEffect(() => {
+    teamARef.current = teamAReceives;
+  }, [teamAReceives]);
+
+  useEffect(() => {
+    teamBRef.current = teamBReceives;
+  }, [teamBReceives]);
+
+  // Revalue picks when format controls change
+  useEffect(() => {
+    let isMounted = true;
+    const currentA = teamARef.current;
+    const currentB = teamBRef.current;
+    const hasPicksA = currentA.some((a) => a.type === 'pick');
+    const hasPicksB = currentB.some((a) => a.type === 'pick');
+    if (!hasPicksA && !hasPicksB) return;
+
+    const revaluePicks = async (assets: CalculatorAsset[]) => {
+      return Promise.all(
+        assets.map(async (asset) => {
+          if (asset.type !== 'pick' || !asset.pickSeason || !asset.pickRound) {
+            return asset;
+          }
+          try {
+            const val = await fetchTradeCalculatorPickValue(
+              asset.pickSeason,
+              asset.pickRound,
+              null,
+              totalRosters,
+              numQbs,
+              ppr,
+            );
+            return {
+              ...asset,
+              ktcValue: val.ktc_value,
+              fcValue: val.fc_value,
+              rookieWarValue: val.rookie_war_value,
+              meta: `${totalRosters} tm · ${numQbs === 2 ? 'SF' : '1QB'} · ${ppr} PPR`,
+            };
+          } catch {
+            return asset;
+          }
+        }),
+      );
+    };
+
+    void (async () => {
+      const [newA, newB] = await Promise.all([
+        hasPicksA ? revaluePicks(currentA) : currentA,
+        hasPicksB ? revaluePicks(currentB) : currentB,
+      ]);
+      if (!isMounted) return;
+      if (hasPicksA) setTeamAReceives(newA);
+      if (hasPicksB) setTeamBReceives(newB);
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [totalRosters, numQbs, ppr]);
+
   // Query waiver ladder adjustments dynamically
   useEffect(() => {
     const aOut = teamBReceives.filter(
@@ -593,6 +660,7 @@ export function TradeCalculatorTab({
             onRemoveAsset={(assetId) => removeAsset('team-a', assetId)}
             valueBasis={valueBasis}
             searchPlaceholder="Search for a player to add to Team 1..."
+            validPickYears={validPickYears}
           />
 
           <TradeSideCard
@@ -608,6 +676,7 @@ export function TradeCalculatorTab({
             onRemoveAsset={(assetId) => removeAsset('team-b', assetId)}
             valueBasis={valueBasis}
             searchPlaceholder="Search for a player to add to Team 2..."
+            validPickYears={validPickYears}
           />
         </div>
 
