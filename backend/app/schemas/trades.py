@@ -55,6 +55,7 @@ class BulkTradeCounterparty(Base):
     roster_id: int
     user_id: str | None = None
     name: str
+    faab_available: int = 0
 
     send_pick_choices: list["BulkTradePickChoice"] = Field(
         default_factory=list,
@@ -70,6 +71,7 @@ class BulkTradeLeagueAvailability(Base):
     league_avatar: str | None = None
 
     your_roster_id: int
+    your_faab_available: int = 0
 
     is_eligible: bool
     ineligibility_reason: str | None = None
@@ -165,6 +167,9 @@ class BulkTradeOfferRequest(Base):
         default_factory=list,
         max_length=8,
     )
+
+    send_faab: int = 0
+    receive_faab: int = 0
 
     expires_at: int | None = None
 

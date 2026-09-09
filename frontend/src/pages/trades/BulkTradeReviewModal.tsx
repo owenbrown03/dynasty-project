@@ -63,11 +63,18 @@ function getErrorMessage(
 function renderAssetSummary(
   playerNames: string[],
   pickLabels: string[],
+  faab?: number,
 ): string {
-  return [
+  const parts = [
     ...playerNames,
     ...pickLabels,
-  ].join(', ');
+  ];
+
+  if (faab && faab > 0) {
+    parts.push(`$${faab} FAAB`);
+  }
+
+  return parts.length > 0 ? parts.join(', ') : 'Nothing';
 }
 
 
@@ -225,6 +232,7 @@ export const BulkTradeReviewModal = ({
                             renderAssetSummary(
                               sendPlayers.map(player => player.name),
                               item.sendPickLabels,
+                              item.offer.send_faab,
                             )
                           }
                         </strong>
@@ -238,6 +246,7 @@ export const BulkTradeReviewModal = ({
                             renderAssetSummary(
                               receivePlayers.map(player => player.name),
                               item.receivePickLabels,
+                              item.offer.receive_faab,
                             )
                           }
                         </strong>

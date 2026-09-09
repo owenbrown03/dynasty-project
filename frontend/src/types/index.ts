@@ -1325,6 +1325,7 @@ export interface BulkTradeCounterparty {
   roster_id: number;
   user_id: string | null;
   name: string;
+  faab_available?: number;
   send_pick_choices: BulkTradePickChoice[];
   receive_pick_choices: BulkTradePickChoice[];
 }
@@ -1335,6 +1336,7 @@ export interface BulkTradeLeagueAvailability {
   league_avatar: string | null;
 
   your_roster_id: number;
+  your_faab_available?: number;
 
   is_eligible: boolean;
   ineligibility_reason: string | null;
@@ -1386,6 +1388,8 @@ export interface BulkTradeOfferRequest {
   send_picks: BulkTradePickReference[];
   receive_player_ids: string[];
   receive_picks: BulkTradePickReference[];
+  send_faab?: number;
+  receive_faab?: number;
   expires_at?: number | null;
   send_dm?: boolean;
 }

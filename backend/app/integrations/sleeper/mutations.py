@@ -34,7 +34,7 @@ PROPOSE_TRADE_MUTATION = """
         $k_drops: [String],
         $v_drops: [Int],
         $draft_picks: [String],
-        $waiver_budget: [Int],
+        $waiver_budget: [String],
         $expires_at: Int
     ) {
         propose_trade(
