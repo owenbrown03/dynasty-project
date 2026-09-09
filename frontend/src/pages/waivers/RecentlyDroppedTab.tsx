@@ -117,6 +117,8 @@ function RecentDropsSkeleton() {
           ))
         }
       </div>
+
+      <Skeleton width={240} height={40} />
     </section>
   );
 }
@@ -423,6 +425,31 @@ export const RecentlyDroppedTab = ({
           })
         }
       </div>
+
+      <PaginationToolbar
+        page={data.page}
+        pageSize={pageSize}
+        totalPages={data.total_pages}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        leadingControls={(
+          <label className="available-page-size-selector">
+            <span>Sort</span>
+
+            <select
+              value={sortBy}
+              onChange={(event) => {
+                setSortBy(
+                  event.target.value as 'value' | 'recency',
+                );
+              }}
+            >
+              <option value="value">Value</option>
+              <option value="recency">Recency</option>
+            </select>
+          </label>
+        )}
+      />
 
       {
         claimPlayer && modalLeague && modalPlayer

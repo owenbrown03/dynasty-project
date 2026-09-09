@@ -97,6 +97,8 @@ function TradeSignalsSkeleton() {
 
       <Skeleton width={160} variant="text" />
 
+      <Skeleton width={210} height={40} />
+
       <div className="trade-cards">
         {
           Array.from({ length: 4 }).map((_, index) => (
@@ -157,6 +159,8 @@ function TradeSignalsSkeleton() {
           ))
         }
       </div>
+
+      <Skeleton width={210} height={40} />
     </div>
   );
 }
@@ -625,6 +629,20 @@ export const TradeSignalsTab = () => {
                 No trades matched the current filters.
               </p>
             )
+        }
+
+        {
+          filteredTrades.length > 0
+            ? (
+              <PaginationToolbar
+                page={page}
+                pageSize={pageSize}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            )
+            : null
         }
       </div>
     );
