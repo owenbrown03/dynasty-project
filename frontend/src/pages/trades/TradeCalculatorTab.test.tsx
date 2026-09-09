@@ -19,6 +19,19 @@ vi.mock('@/hooks/sleeper/useBulkTrades', () => ({
   fetchTradeCalculatorPickValue: vi.fn(),
 }));
 
+vi.mock('@/hooks/sleeper/useConnection', () => ({
+  useSleeperConnection: () => ({
+    canWrite: true,
+    connection: null,
+  }),
+}));
+
+vi.mock('@/hooks/sleeper/useAuth', () => ({
+  useSleeperAuth: () => ({
+    openModal: vi.fn(),
+  }),
+}));
+
 describe('TradeCalculatorTab', () => {
   it('renders KTC-style trade calculator layout with two side cards, winning meter, and value basis dropdown with WAR options', () => {
     render(<TradeCalculatorTab />);
@@ -41,5 +54,28 @@ describe('TradeCalculatorTab', () => {
 
     fireEvent.change(basisSelect, { target: { value: 'dynasty_starter_war' } });
     expect(mockSetPreference).toHaveBeenCalledWith('dynasty_starter_war');
+  });
+
+  it('renders login banner when user does not have write access', async () => {
+    const { useSleeperConnection } = await import('@/hooks/sleeper/useConnection');
+    const { useSleeperAuth } = await import('@/hooks/sleeper/useAuth');
+    vi.mocked(useSleeperConnection).mockReturnValue({
+      canWrite: false,
+      connection: null,
+    } as never);
+
+    const mockOpen = vi.fn();
+    vi.mocked(useSleeperAuth).mockReturnValue({
+      openModal: mockOpen,
+    } as never);
+
+    render(<TradeCalculatorTab />);
+
+    expect(screen.getByText('Trade Execution')).toBeInTheDocument();
+    const loginButton = screen.getByRole('button', { name: /Log In for Write Access/i });
+    expect(loginButton).toBeInTheDocument();
+
+    fireEvent.click(loginButton);
+    expect(mockOpen).toHaveBeenCalled();
   });
 });
