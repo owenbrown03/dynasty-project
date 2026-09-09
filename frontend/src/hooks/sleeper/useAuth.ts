@@ -16,6 +16,7 @@ export const useSleeperAuth = () => {
     setUsername,
     setStep,
     close,
+    open,
   } = useSleeperAuthContext();
 
   const sendMutation = useMutation({
@@ -90,5 +91,7 @@ export const useSleeperAuth = () => {
     verify,
     isSending: sendMutation.isPending,
     isVerifying: verifyMutation.isPending,
+    openModal: open,
+    closeModal: close,
   };
 };

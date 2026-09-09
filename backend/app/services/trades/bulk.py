@@ -444,6 +444,7 @@ async def get_bulk_trade_availability(
                     league_name=league.name,
                     league_avatar=league.avatar,
                     your_roster_id=your_roster.roster_id,
+                    your_faab_available=your_roster.faab_remaining(league),
                     is_eligible=False,
                     ineligibility_reason=(
                         "You do not roster every selected send player in this league."
@@ -465,6 +466,7 @@ async def get_bulk_trade_availability(
                     league_name=league.name,
                     league_avatar=league.avatar,
                     your_roster_id=your_roster.roster_id,
+                    your_faab_available=your_roster.faab_remaining(league),
                     is_eligible=False,
                     ineligibility_reason=(
                         "You do not currently own every selected send pick in this league."
@@ -502,6 +504,7 @@ async def get_bulk_trade_availability(
                         roster.owner_id,
                         f"Roster {roster.roster_id}",
                     ),
+                    faab_available=roster.faab_remaining(league),
                     send_pick_choices=send_pick_choices,
                     receive_pick_choices=receive_pick_choices,
                 )
@@ -514,6 +517,7 @@ async def get_bulk_trade_availability(
                     league_name=league.name,
                     league_avatar=league.avatar,
                     your_roster_id=your_roster.roster_id,
+                    your_faab_available=your_roster.faab_remaining(league),
                     is_eligible=False,
                     ineligibility_reason=(
                         "No single opposing roster can satisfy every selected receive asset in this league."
@@ -528,6 +532,7 @@ async def get_bulk_trade_availability(
                 league_name=league.name,
                 league_avatar=league.avatar,
                 your_roster_id=your_roster.roster_id,
+                your_faab_available=your_roster.faab_remaining(league),
                 is_eligible=True,
                 counterparty_options=counterparty_options,
             )
@@ -643,14 +648,17 @@ async def validate_and_build_trade_variables(
             ),
         )
 
-    if (
+    send_asset_count = (
         len(offer.send_player_ids)
         + len(offer.send_picks)
-        == 0
-        or len(offer.receive_player_ids)
+        + (1 if offer.send_faab > 0 else 0)
+    )
+    receive_asset_count = (
+        len(offer.receive_player_ids)
         + len(offer.receive_picks)
-        == 0
-    ):
+        + (1 if offer.receive_faab > 0 else 0)
+    )
+    if send_asset_count == 0 or receive_asset_count == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -811,6 +819,44 @@ async def validate_and_build_trade_variables(
         ],
     ]
 
+    waiver_budget: list[str] = []
+
+    if offer.send_faab < 0 or offer.receive_faab < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="FAAB amount cannot be negative.",
+        )
+
+    if offer.send_faab > 0:
+        your_available = (
+            league.waiver_budget - your_roster.waiver_budget_used
+        )
+        if your_available < offer.send_faab:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"You do not have enough FAAB available (available: {your_available}, requested: {offer.send_faab})."
+                ),
+            )
+        waiver_budget.append(
+            f"{your_roster.roster_id},{counterparty_roster.roster_id},{offer.send_faab}"
+        )
+
+    if offer.receive_faab > 0:
+        counterparty_available = (
+            league.waiver_budget - counterparty_roster.waiver_budget_used
+        )
+        if counterparty_available < offer.receive_faab:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"The counterparty does not have enough FAAB available (available: {counterparty_available}, requested: {offer.receive_faab})."
+                ),
+            )
+        waiver_budget.append(
+            f"{counterparty_roster.roster_id},{your_roster.roster_id},{offer.receive_faab}"
+        )
+
     return {
         "league_id": league.league_id,
 
@@ -846,7 +892,7 @@ async def validate_and_build_trade_variables(
 
         "draft_picks": draft_picks,
 
-        "waiver_budget": [],
+        "waiver_budget": waiver_budget,
         "expires_at": expires_at,
     }
 

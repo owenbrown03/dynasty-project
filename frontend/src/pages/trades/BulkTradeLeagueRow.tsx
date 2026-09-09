@@ -11,6 +11,8 @@ export interface BulkTradeCounterpartySelection {
   selected: boolean;
   sendPickOgRosterIdsByRequestIndex: Record<number, number | null>;
   receivePickOgRosterIdsByRequestIndex: Record<number, number | null>;
+  sendFaab?: number;
+  receiveFaab?: number;
 }
 
 
@@ -23,8 +25,10 @@ export interface BulkTradeLeagueSelection {
 }
 
 
-function createCounterpartySelection(
+export function createCounterpartySelection(
   counterparty: BulkTradeCounterparty,
+  defaultSendFaab = 0,
+  defaultReceiveFaab = 0,
 ): BulkTradeCounterpartySelection {
   return {
     selected: true,
@@ -44,12 +48,16 @@ function createCounterpartySelection(
         ],
       ),
     ),
+    sendFaab: defaultSendFaab,
+    receiveFaab: defaultReceiveFaab,
   };
 }
 
 
 export function createLeagueSelection(
   league: BulkTradeLeagueAvailability,
+  defaultSendFaab = 0,
+  defaultReceiveFaab = 0,
 ): BulkTradeLeagueSelection {
   const counterparties = Object.fromEntries(
     league.counterparty_options.map(
@@ -57,6 +65,8 @@ export function createLeagueSelection(
         counterparty.roster_id,
         createCounterpartySelection(
           counterparty,
+          defaultSendFaab,
+          defaultReceiveFaab,
         ),
       ],
     ),
@@ -245,12 +255,54 @@ export const BulkTradeLeagueRow = ({
 
                     <span />
 
-                    <strong>
-                      {counterparty.name}
-                    </strong>
+                    <div className="bulk-trade-counterparty-info">
+                      <strong>
+                        {counterparty.name}
+                      </strong>
+                      {(league.your_faab_available != null || counterparty.faab_available != null) && (
+                        <span className="bulk-trade-counterparty-faab-info">
+                          FAAB: You ${league.your_faab_available ?? 0} · Them ${counterparty.faab_available ?? 0}
+                        </span>
+                      )}
+                    </div>
                   </label>
 
                   <div className="bulk-trade-row-select-group">
+                    <label className="bulk-trade-row-select bulk-trade-row-faab">
+                      <span>Send FAAB ($)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={league.your_faab_available ?? undefined}
+                        value={counterSelection.sendFaab ?? 0}
+                        disabled={!counterSelection.selected}
+                        onChange={event => {
+                          const val = Math.max(0, parseInt(event.target.value, 10) || 0);
+                          setCounterparty({
+                            sendFaab: val,
+                          });
+                        }}
+                        onClick={event => event.stopPropagation()}
+                      />
+                    </label>
+
+                    <label className="bulk-trade-row-select bulk-trade-row-faab">
+                      <span>Receive FAAB ($)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={counterparty.faab_available ?? undefined}
+                        value={counterSelection.receiveFaab ?? 0}
+                        disabled={!counterSelection.selected}
+                        onChange={event => {
+                          const val = Math.max(0, parseInt(event.target.value, 10) || 0);
+                          setCounterparty({
+                            receiveFaab: val,
+                          });
+                        }}
+                        onClick={event => event.stopPropagation()}
+                      />
+                    </label>
                     {
                       counterparty.send_pick_choices.map(
                         pickChoice => (

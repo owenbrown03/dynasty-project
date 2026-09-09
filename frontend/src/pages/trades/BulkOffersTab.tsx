@@ -239,8 +239,52 @@ export const BulkOffersTab = ({
   const [sendPicks, setSendPicks] = useState<BulkTradePickRequest[]>([]);
   const [receivePlayers, setReceivePlayers] = useState<BulkTradePlayerSearchResult[]>([]);
   const [receivePicks, setReceivePicks] = useState<BulkTradePickRequest[]>([]);
+  const [defaultSendFaab, setDefaultSendFaab] = useState<number>(0);
+  const [defaultReceiveFaab, setDefaultReceiveFaab] = useState<number>(0);
   const [selectionsByLeagueId, setSelectionsByLeagueId] = useState<Record<string, BulkTradeLeagueSelection>>({});
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+  const handleDefaultSendFaabChange = (amount: number) => {
+    setDefaultSendFaab(amount);
+    setSelectionsByLeagueId(current => {
+      const next = { ...current };
+      for (const [leagueId, leagueSel] of Object.entries(next)) {
+        const nextCounterparties = { ...leagueSel.counterparties };
+        for (const [cpId, cpSel] of Object.entries(nextCounterparties)) {
+          nextCounterparties[Number(cpId)] = {
+            ...cpSel,
+            sendFaab: amount,
+          };
+        }
+        next[leagueId] = {
+          ...leagueSel,
+          counterparties: nextCounterparties,
+        };
+      }
+      return next;
+    });
+  };
+
+  const handleDefaultReceiveFaabChange = (amount: number) => {
+    setDefaultReceiveFaab(amount);
+    setSelectionsByLeagueId(current => {
+      const next = { ...current };
+      for (const [leagueId, leagueSel] of Object.entries(next)) {
+        const nextCounterparties = { ...leagueSel.counterparties };
+        for (const [cpId, cpSel] of Object.entries(nextCounterparties)) {
+          nextCounterparties[Number(cpId)] = {
+            ...cpSel,
+            receiveFaab: amount,
+          };
+        }
+        next[leagueId] = {
+          ...leagueSel,
+          counterparties: nextCounterparties,
+        };
+      }
+      return next;
+    });
+  };
 
   const { preference, setPreference } = useValuePreference();
   const [valueBasis, setValueBasis] = useState<ValueBasis | string>(
@@ -349,12 +393,16 @@ export const BulkOffersTab = ({
           league.league_id,
           createLeagueSelection(
             league,
+            defaultSendFaab,
+            defaultReceiveFaab,
           ),
         ]),
       ),
     );
   }, [
     availability.data,
+    defaultReceiveFaab,
+    defaultSendFaab,
   ]);
 
   useEffect(() => {
@@ -374,6 +422,8 @@ export const BulkOffersTab = ({
     setReceivePicks(
       dedupePicks(seed.receivePicks),
     );
+    setDefaultSendFaab(0);
+    setDefaultReceiveFaab(0);
     setSelectionsByLeagueId({});
     setIsReviewOpen(false);
     reset();
@@ -451,6 +501,8 @@ export const BulkOffersTab = ({
                   og_roster_id: pick.og_roster_id,
                 }),
               ),
+              send_faab: counterSelection.sendFaab ?? defaultSendFaab ?? 0,
+              receive_faab: counterSelection.receiveFaab ?? defaultReceiveFaab ?? 0,
               expires_at: null,
             } satisfies BulkTradeOfferRequest,
           ];
@@ -459,6 +511,8 @@ export const BulkOffersTab = ({
     });
   }, [
     availability.data,
+    defaultReceiveFaab,
+    defaultSendFaab,
     receivePicks.length,
     receivePlayers,
     selectionsByLeagueId,
@@ -547,6 +601,8 @@ export const BulkOffersTab = ({
     setSendPicks([]);
     setReceivePlayers([]);
     setReceivePicks([]);
+    setDefaultSendFaab(0);
+    setDefaultReceiveFaab(0);
     setSelectionsByLeagueId({});
     setIsReviewOpen(false);
     reset();
@@ -664,6 +720,8 @@ export const BulkOffersTab = ({
             || sendPicks.length > 0
             || receivePlayers.length > 0
             || receivePicks.length > 0
+            || defaultSendFaab > 0
+            || defaultReceiveFaab > 0
               ? (
                 <button
                   className="button-secondary"
@@ -760,6 +818,43 @@ export const BulkOffersTab = ({
           valueBasis={valueBasis}
         />
       ) : null}
+
+      <div className="bulk-trade-faab-section">
+        <div className="bulk-trade-faab-header">
+          <strong>FAAB Budget</strong>
+          <span>Include FAAB in all bulk trade offers (can also be customized per team below)</span>
+        </div>
+
+        <div className="bulk-trade-faab-inputs">
+          <label className="bulk-trade-faab-field">
+            <span>You send FAAB ($)</span>
+            <input
+              type="number"
+              min={0}
+              value={defaultSendFaab || ''}
+              placeholder="0"
+              onChange={event => {
+                const val = Math.max(0, parseInt(event.target.value, 10) || 0);
+                handleDefaultSendFaabChange(val);
+              }}
+            />
+          </label>
+
+          <label className="bulk-trade-faab-field">
+            <span>You receive FAAB ($)</span>
+            <input
+              type="number"
+              min={0}
+              value={defaultReceiveFaab || ''}
+              placeholder="0"
+              onChange={event => {
+                const val = Math.max(0, parseInt(event.target.value, 10) || 0);
+                handleDefaultReceiveFaabChange(val);
+              }}
+            />
+          </label>
+        </div>
+      </div>
 
 
       {

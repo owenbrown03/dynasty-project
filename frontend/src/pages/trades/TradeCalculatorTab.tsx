@@ -9,6 +9,8 @@ import { useValuePreference } from '@/context/useValuePreference';
 import {
   fetchTradeCalculatorPickValue,
 } from '@/hooks/sleeper/useBulkTrades';
+import { useSleeperConnection } from '@/hooks/sleeper/useConnection';
+import { useSleeperAuth } from '@/hooks/sleeper/useAuth';
 import type {
   BulkTradePlayerSearchResult,
   BulkTradePickRequest,
@@ -217,6 +219,8 @@ export function TradeCalculatorTab({
   seed,
   onSendToBulkOffers,
 }: TradeCalculatorTabProps) {
+  const { canWrite } = useSleeperConnection();
+  const { openModal } = useSleeperAuth();
   const { preference, setPreference } = useValuePreference();
   const [valueBasis, setValueBasis] = useState<CalculatorBasis>(
     preference === 'fantasycalc' ? 'fantasycalc' : 'ktc',
@@ -642,6 +646,26 @@ export function TradeCalculatorTab({
             Send to Bulk Offers
           </button>
         </div>
+
+        {!canWrite && (
+          <div className="trade-calculator-login-banner">
+            <div>
+              <span className="page-eyebrow">Trade Execution</span>
+              <strong>Connect Sleeper Account for Trade Execution</strong>
+              <p>
+                Log in to your Sleeper account with trade permissions to propose and accept trades directly.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="button-primary"
+              onClick={openModal}
+            >
+              Log In for Write Access
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );
