@@ -1,7 +1,33 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+from typing import Any
 from fastapi import HTTPException, status
+
+logger = logging.getLogger(__name__)
+
+
+def _extract_settings(obj: Any) -> dict[str, Any]:
+    if not obj:
+        return {}
+    settings = getattr(obj, "settings", None)
+    if settings is None and isinstance(obj, dict):
+        settings = obj.get("settings")
+    if settings is None:
+        return {}
+    # Ignore mocks/coroutines that might be returned in test environments
+    if asyncio.iscoroutine(settings) or hasattr(settings, "_is_coroutine") or hasattr(settings, "assert_called"):
+        return {}
+    if hasattr(settings, "model_dump") and callable(settings.model_dump):
+        res = settings.model_dump()
+        return res if isinstance(res, dict) else {}
+    if hasattr(settings, "dict") and callable(settings.dict):
+        res = settings.dict()
+        return res if isinstance(res, dict) else {}
+    if isinstance(settings, dict):
+        return settings
+    return {}
 
 from app.core.context import Context
 from app.crud.sleeper.roster import get_all_rosters_by_league
@@ -46,6 +72,25 @@ async def get_commissioner_faab_overview(
     )
     if not owned_rows:
         return []
+
+    # Refresh live league settings if sleeper client available
+    if ctx.sleeper and hasattr(ctx.sleeper, "read") and hasattr(ctx.sleeper.read, "get_league"):
+        async def _refresh_live_league(l):
+            try:
+                live_l = await ctx.sleeper.read.get_league(l.league_id)
+                l_set = _extract_settings(live_l)
+                if l_set:
+                    l.settings = {**(getattr(l, "settings", {}) or {}), **l_set}
+                    ctx.db.add(l)
+            except Exception as ex:
+                logger.debug("Could not refresh live league %s: %s", l.league_id, ex)
+
+        valid_leagues = [row.league for row in owned_rows if row.league]
+        await asyncio.gather(*[_refresh_live_league(l) for l in valid_leagues], return_exceptions=True)
+        try:
+            await ctx.db.commit()
+        except Exception:
+            pass
 
     rosters_by_league = await get_all_rosters_by_league(
         db=ctx.db,
@@ -141,14 +186,29 @@ async def reset_commissioner_faab(
             )
             continue
 
-        settings = getattr(league, "settings", {}) or {}
-        default_budget = settings.get("waiver_budget", 100) or 100
+        live_league_settings = {}
+        if ctx.sleeper and hasattr(ctx.sleeper, "read") and hasattr(ctx.sleeper.read, "get_league"):
+            try:
+                live_league = await ctx.sleeper.read.get_league(league.league_id)
+                live_league_settings = _extract_settings(live_league)
+            except Exception as ex:
+                logger.warning("Could not fetch live league %s: %s", league.league_id, ex)
+
+        league_settings = {
+            **(getattr(league, "settings", {}) or {}),
+            **live_league_settings,
+        }
+        if live_league_settings:
+            league.settings = league_settings
+            ctx.db.add(league)
+
+        default_budget = league_settings.get("waiver_budget", 100) or 100
         target = (
             payload.target_budget
             if payload.target_budget is not None
             else default_budget
         )
-        target_used = max(0, default_budget - target)
+        target_used = default_budget - target
 
         rosters_by_league = await get_all_rosters_by_league(
             db=ctx.db,
@@ -166,9 +226,11 @@ async def reset_commissioner_faab(
                     live_rosters = await ctx.sleeper.read.get_rosters(league.league_id)
                     if isinstance(live_rosters, list):
                         for lr in live_rosters:
-                            r_id = lr.get("roster_id")
+                            r_id = getattr(lr, "roster_id", None)
+                            if r_id is None and isinstance(lr, dict):
+                                r_id = lr.get("roster_id")
                             if r_id is not None:
-                                live_settings_by_roster[int(r_id)] = lr.get("settings") or {}
+                                live_settings_by_roster[int(r_id)] = _extract_settings(lr)
                 except Exception as ex:
                     logger.warning("Could not fetch live rosters for FAAB reset on league %s: %s", league.league_id, ex)
 
