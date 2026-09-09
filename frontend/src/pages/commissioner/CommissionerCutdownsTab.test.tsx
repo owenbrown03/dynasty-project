@@ -1,6 +1,10 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CommissionerCutdownsTab } from './CommissionerCutdownsTab';
+
+afterEach(() => {
+  cleanup();
+});
 
 vi.mock('@/hooks/sleeper/useUsers', () => ({
   useCommissionerCutdowns: () => ({
@@ -14,12 +18,13 @@ vi.mock('@/hooks/sleeper/useUsers', () => ({
             roster_id: 1,
             owner_id: 'owner-1',
             owner_name: 'Test Manager',
-            current_roster_size: 27,
+            roster_size: 27,
+            max_roster_size: 25,
             over_limit_count: 2,
-            players_to_cut: [
+            proposed_drops: [
               {
                 player_id: 'p-1',
-                full_name: 'Player One',
+                name: 'Player One',
                 position: 'RB',
                 team: 'KC',
                 ktc_value: 100,
@@ -52,5 +57,26 @@ describe('CommissionerCutdownsTab', () => {
 
     const executeBtn = screen.getByRole('button', { name: /Execute Action/i });
     expect(controlsRow).toContainElement(executeBtn);
+  });
+
+  it('switches to Review & Drop and opens preview modal for force drop action', () => {
+    render(<CommissionerCutdownsTab />);
+
+    const actionSelect = screen.getByRole('combobox');
+    fireEvent.change(actionSelect, { target: { value: 'force_drop' } });
+
+    const reviewBtn = screen.getByRole('button', { name: /Review & Drop/i });
+    expect(reviewBtn).toBeInTheDocument();
+
+    // Select the violation checkbox
+    const checkbox = screen.getByRole('checkbox');
+    fireEvent.click(checkbox);
+
+    // Click Review & Drop
+    fireEvent.click(reviewBtn);
+
+    // Modal opens
+    expect(screen.getByText('Review Forced Drops')).toBeInTheDocument();
+    expect(screen.getByText('Player One')).toBeInTheDocument();
   });
 });

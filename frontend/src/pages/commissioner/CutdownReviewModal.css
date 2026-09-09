@@ -1,0 +1,297 @@
+.cutdown-modal-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--color-backdrop, rgba(0, 0, 0, 0.75));
+  backdrop-filter: blur(2px);
+}
+
+.cutdown-review-modal {
+  display: flex;
+  width: min(680px, 100%);
+  max-height: min(780px, 90vh);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.cutdown-review-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  padding: 18px 20px;
+}
+
+.cutdown-review-kicker {
+  color: var(--color-error, #ef4444);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cutdown-review-title {
+  margin: 4px 0 2px;
+  font-size: 20px;
+  color: var(--color-text-strong);
+}
+
+.cutdown-review-subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.cutdown-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.cutdown-modal-close:hover:not(:disabled) {
+  color: var(--color-text-strong);
+  border-color: var(--color-border-strong);
+}
+
+.cutdown-preview-list,
+.cutdown-results-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 18px 20px;
+}
+
+.cutdown-preview-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  overflow: hidden;
+}
+
+.cutdown-preview-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.cutdown-preview-card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cutdown-preview-owner {
+  font-size: 14px;
+  color: var(--color-text-strong);
+}
+
+.cutdown-preview-league {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.cutdown-preview-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--color-error, #ef4444);
+}
+
+.cutdown-drops-list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  gap: 6px;
+}
+
+.cutdown-player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.cutdown-player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cutdown-player-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cutdown-player-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.cutdown-player-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.cutdown-position-tag {
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.cutdown-player-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.cutdown-ktc-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cutdown-ktc-value {
+  font-size: 13px;
+  color: var(--color-text-strong);
+}
+
+.cutdown-no-drops-msg {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+.cutdown-results-container {
+  gap: 10px;
+}
+
+.cutdown-result-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.cutdown-result-row.success {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--color-success, #22c55e);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.cutdown-result-row.error {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--color-error, #ef4444);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.cutdown-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cutdown-result-text strong {
+  color: var(--color-text-strong);
+}
+
+.cutdown-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 20px 10px;
+  padding: 10px 12px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--color-error, #ef4444);
+  border-radius: var(--radius-sm);
+  color: var(--color-error, #ef4444);
+  font-size: 12px;
+}
+
+.cutdown-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.cutdown-confirm-btn {
+  background: var(--color-error, #dc2626) !important;
+  color: white !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cutdown-confirm-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* Inline chips on the card row */
+.cutdown-violation-drops-preview {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cutdown-drops-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.cutdown-drops-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cutdown-drop-pill {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-text-strong);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+}
