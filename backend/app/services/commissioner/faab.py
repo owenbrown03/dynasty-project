@@ -160,7 +160,7 @@ async def reset_commissioner_faab(
         error = None
 
         try:
-            live_used_by_roster: dict[int, int] = {}
+            live_settings_by_roster: dict[int, dict] = {}
             if ctx.sleeper and hasattr(ctx.sleeper, "read") and hasattr(ctx.sleeper.read, "get_rosters"):
                 try:
                     live_rosters = await ctx.sleeper.read.get_rosters(league.league_id)
@@ -168,29 +168,34 @@ async def reset_commissioner_faab(
                         for lr in live_rosters:
                             r_id = lr.get("roster_id")
                             if r_id is not None:
-                                r_set = lr.get("settings") or {}
-                                live_used_by_roster[int(r_id)] = r_set.get("waiver_budget_used", 0) or 0
+                                live_settings_by_roster[int(r_id)] = lr.get("settings") or {}
                 except Exception as ex:
                     logger.warning("Could not fetch live rosters for FAAB reset on league %s: %s", league.league_id, ex)
 
             for roster in rosters:
-                r_settings = getattr(roster, "settings", {}) or {}
-                used = live_used_by_roster.get(
-                    roster.roster_id,
-                    r_settings.get("waiver_budget_used", 0) or 0,
-                )
+                db_settings = getattr(roster, "settings", {}) or {}
+                live_settings = live_settings_by_roster.get(roster.roster_id, {})
+
+                # Combine existing settings from live Sleeper roster and local DB
+                # Preserve waiver_position (priority tiebreaker), wins, losses, fpts, etc.
+                existing_settings = {**db_settings, **live_settings}
+                if existing_settings.get("waiver_position") is None and db_settings.get("waiver_position") is not None:
+                    existing_settings["waiver_position"] = db_settings["waiver_position"]
+
+                used = existing_settings.get("waiver_budget_used", 0) or 0
                 if default_budget - used != target:
                     if ctx.sleeper and ctx.sleeper.can_write:
                         await ctx.sleeper.write.reset_roster_faab(
                             league_id=league.league_id,
                             roster_id=roster.roster_id,
                             target_budget=target_used,
+                            existing_settings=existing_settings,
                         )
                     rosters_reset += 1
 
                     # Update local DB settings
                     roster.settings = {
-                        **r_settings,
+                        **existing_settings,
                         "waiver_budget_used": target_used,
                     }
                     ctx.db.add(roster)

@@ -142,15 +142,26 @@ class SleeperWrite:
         league_id: str,
         roster_id: int,
         target_budget: int,
+        existing_settings: dict | None = None,
     ) -> dict:
         self._require_auth()
+        settings_map = dict(existing_settings or {})
+        settings_map["waiver_budget_used"] = target_budget
+
+        k_settings: list[str] = []
+        v_settings: list[int] = []
+        for k, v in settings_map.items():
+            if isinstance(v, (int, float)):
+                k_settings.append(str(k))
+                v_settings.append(int(v))
+
         return await self.league_mutation(
             "roster_update_settings",
             league_id,
             {
                 "roster_id": roster_id,
-                "k_settings": ["waiver_budget_used"],
-                "v_settings": [target_budget],
+                "k_settings": k_settings,
+                "v_settings": v_settings,
             },
         )
 
