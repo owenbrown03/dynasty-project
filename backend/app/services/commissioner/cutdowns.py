@@ -395,9 +395,80 @@ async def execute_cutdown_action(
                 )
                 continue
 
+            # Fetch fresh live rosters from Sleeper so we always drop players
+            # that are ACTUALLY currently on the roster in Sleeper!
+            live_roster_by_id = {}
+            if hasattr(ctx.sleeper, "read") and hasattr(ctx.sleeper.read, "get_rosters"):
+                try:
+                    live_rosters_data = await ctx.sleeper.read.get_rosters(league_id)
+                    if isinstance(live_rosters_data, list):
+                        live_roster_by_id = {
+                            getattr(r, "roster_id", None) or (r.get("roster_id") if isinstance(r, dict) else None): r
+                            for r in live_rosters_data
+                            if hasattr(r, "roster_id") or (isinstance(r, dict) and "roster_id" in r)
+                        }
+                except Exception as exc:
+                    logger.warning("Could not fetch live rosters from Sleeper for league %s: %s", league_id, exc)
+
+            parkable = not league.is_best_ball
+            max_roster_size = league.roster_size
+
             for violation in active_violations:
-                proposed_drops = violation.proposed_drops
-                if not proposed_drops:
+                live_roster = live_roster_by_id.get(violation.roster_id)
+                db_roster = next((r for r in rosters if r.roster_id == violation.roster_id), None)
+
+                # If live roster is available from Sleeper, verify actual live ownership and count
+                if live_roster:
+                    live_players_raw = getattr(live_roster, "players", None) or (live_roster.get("players") if isinstance(live_roster, dict) else None) or []
+                    live_reserve_raw = getattr(live_roster, "reserve", None) or (live_roster.get("reserve") if isinstance(live_roster, dict) else None) or []
+                    live_taxi_raw = getattr(live_roster, "taxi", None) or (live_roster.get("taxi") if isinstance(live_roster, dict) else None) or []
+
+                    live_players = list(live_players_raw)
+                    live_reserve = list(live_reserve_raw)
+                    live_taxi = list(live_taxi_raw)
+
+                    # Keep local DB roster updated with current reality
+                    if db_roster:
+                        db_roster.players = live_players
+                        db_roster.reserve = live_reserve
+                        db_roster.taxi = live_taxi
+                        ctx.db.add(db_roster)
+
+                    parked_ids = set()
+                    if parkable:
+                        parked_ids = set(live_reserve + live_taxi)
+                    live_candidates = [pid for pid in live_players if pid not in parked_ids]
+                    live_over_by = len(live_candidates) - max_roster_size
+
+                    if live_over_by <= 0:
+                        results.append(
+                            CommissionerCutdownActionResult(
+                                league_id=league_id,
+                                roster_id=violation.roster_id,
+                                action=action,
+                                success=True,
+                                details=f"Roster {violation.roster_id} is already compliant on Sleeper ({len(live_candidates)}/{max_roster_size} active players). No cuts needed.",
+                            )
+                        )
+                        continue
+
+                    # Query KTC values for live candidates to drop the lowest KTC players among live candidates
+                    ktc_rows = (
+                        await ctx.db.execute(
+                            select(KTCValue).where(KTCValue.player_id.in_(live_candidates))
+                        )
+                    ).scalars().all()
+                    ktc_by_id = {row.player_id: row.value for row in ktc_rows}
+
+                    def get_ktc_val(pid):
+                        val = ktc_by_id.get(pid)
+                        return val if val is not None else 0.0
+
+                    player_ids_to_drop = sorted(live_candidates, key=get_ktc_val)[:live_over_by]
+                else:
+                    player_ids_to_drop = [drop.player_id for drop in violation.proposed_drops]
+
+                if not player_ids_to_drop:
                     results.append(
                         CommissionerCutdownActionResult(
                             league_id=league_id,
@@ -417,17 +488,22 @@ async def execute_cutdown_action(
                             "type": "commissioner",
                             "k_adds": [],
                             "v_adds": [],
-                            "k_drops": [drop.player_id for drop in proposed_drops],
-                            "v_drops": [violation.roster_id for _ in proposed_drops],
+                            "k_drops": player_ids_to_drop,
+                            "v_drops": [violation.roster_id for _ in player_ids_to_drop],
                         },
                     )
+                    if db_roster and db_roster.players:
+                        drop_set = set(player_ids_to_drop)
+                        db_roster.players = [p for p in db_roster.players if p not in drop_set]
+                        ctx.db.add(db_roster)
+
                     results.append(
                         CommissionerCutdownActionResult(
                             league_id=league_id,
                             roster_id=violation.roster_id,
                             action=action,
                             success=True,
-                            details=f"Dropped {len(proposed_drops)} player(s) for roster {violation.roster_id}",
+                            details=f"Dropped {len(player_ids_to_drop)} player(s) for roster {violation.roster_id}",
                         )
                     )
                 except Exception as exc:
@@ -456,5 +532,6 @@ async def execute_cutdown_action(
                 )
             )
 
+    await ctx.db.commit()
     return CommissionerCutdownActionResponse(results=results)
 

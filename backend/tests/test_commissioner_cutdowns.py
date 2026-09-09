@@ -404,3 +404,80 @@ async def test_get_commissioner_cutdown_violations_over_limit_uses_ktc_values():
         drop = violation.proposed_drops[0]
         assert drop.player_id == "player_1"
         assert drop.ktc_value == 5.0
+
+
+@pytest.mark.anyio
+async def test_execute_cutdown_action_force_drop_live_roster_compliant():
+    from app.models.db.sleeper.api import League, Roster, Player
+    from app.models.db.ktc.models import KTCValue
+    from app.services.leagues.selection import OwnedLeagueRow
+
+    ctx = MagicMock()
+    ctx.site_user = MagicMock(id="user_123")
+    ctx.connection = MagicMock(sleeper_user_id="sleeper_123")
+    ctx.db = AsyncMock()
+
+    mock_sleeper_write = AsyncMock()
+    mock_sleeper_read = AsyncMock()
+    # Live roster has only 1 player -> already compliant with roster_positions=["WR"] (1 slot)
+    mock_sleeper_read.get_rosters.return_value = [
+        {"roster_id": 1, "players": ["player_1"], "reserve": [], "taxi": []}
+    ]
+    mock_sleeper = MagicMock(can_write=True, write=mock_sleeper_write, read=mock_sleeper_read)
+    ctx.sleeper = mock_sleeper
+
+    league = League(
+        league_id="league_1",
+        name="Dynasty League 1",
+        season="2026",
+        type="dynasty",
+        total_rosters=12,
+        roster_positions=["WR"],
+        settings={"type": 2, "best_ball": 0},
+    )
+    # DB roster had 2 players (stale)
+    roster = Roster(
+        roster_id=1,
+        owner_id="owner_1",
+        league_id="league_1",
+        players=["player_1", "player_old"],
+        starters=[],
+    )
+    row = OwnedLeagueRow(league=league, roster=roster)
+    owner = MagicMock(display_name="Owner One", avatar="avatar_url")
+    player_1 = Player(player_id="player_1", full_name="Player One", position="WR", team="TEN")
+    ktc_1 = KTCValue(player_id="player_1", value=50)
+
+    def mock_result(rows):
+        mock = MagicMock()
+        mock.scalars.return_value.all.return_value = rows
+        return mock
+
+    ctx.db.execute = AsyncMock(
+        side_effect=[
+            mock_result([player_1]),
+            mock_result([ktc_1]),
+        ],
+    )
+
+    with patch("app.services.commissioner.cutdowns.get_visible_owned_league_rows_by_sleeper_user_id", new_callable=AsyncMock) as mock_leagues, \
+         patch("app.services.commissioner.cutdowns.get_all_rosters_by_league", new_callable=AsyncMock) as mock_rosters, \
+         patch("app.services.commissioner.cutdowns.get_users", new_callable=AsyncMock) as mock_users:
+
+        mock_leagues.return_value = [row]
+        mock_rosters.return_value = {"league_1": [roster]}
+        mock_users.return_value = {"owner_1": owner}
+
+        req = CommissionerCutdownActionRequest(
+            league_ids=["league_1"],
+            action_type="force_drop",
+        )
+
+        result = await execute_cutdown_action(req, ctx)
+        assert len(result.results) == 1
+        assert result.results[0].success is True
+        assert "already compliant" in result.results[0].details
+        # Did not attempt mutation because already compliant
+        mock_sleeper_write.league_mutation.assert_not_called()
+        # DB roster updated to match live
+        assert roster.players == ["player_1"]

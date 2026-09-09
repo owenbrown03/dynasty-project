@@ -24,7 +24,7 @@ const ACTION_PLACEHOLDERS: Record<string, string> = {
 };
 
 export function CommissionerCutdownsTab() {
-  const { data: leagues, loading, error } = useCommissionerCutdowns(true);
+  const { data: leagues, loading, fetching, error, refetch } = useCommissionerCutdowns(true);
   const actionMutation = useExecuteCommissionerCutdownAction();
 
   const [selectedRosters, setSelectedRosters] = useState<Record<string, number[]>>({});
@@ -81,15 +81,23 @@ export function CommissionerCutdownsTab() {
     }
 
     try {
-      await actionMutation.mutateAsync({
+      const res = await actionMutation.mutateAsync({
         league_ids: leagueIds,
         action_type: actionType,
         custom_message: customMessage || null,
         selected_roster_ids: selectedRosters,
       });
-      notify.success('Action executed successfully.');
+
+      const failures = res.results.filter((r) => !r.success);
+      if (failures.length > 0) {
+        const errors = failures.map((f) => f.error || `Roster ${f.roster_id || ''} failed`).join('; ');
+        notify.error(`Action finished with error(s): ${errors}`);
+      } else {
+        notify.success('Action executed successfully.');
+      }
       setSelectedRosters({});
       setCustomMessage('');
+      await refetch();
     } catch {
       notify.error('Failed to execute action.');
     }
@@ -98,6 +106,16 @@ export function CommissionerCutdownsTab() {
   return (
     <div className="commissioner-cutdowns-tab">
       <div className="cutdowns-controls">
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={() => refetch()}
+          disabled={loading || fetching}
+          style={{ marginRight: 'auto' }}
+        >
+          {fetching ? 'Refreshing...' : 'Refresh Status'}
+        </button>
+
         <div className="cutdowns-actions">
           <label>
             <span>Action</span>
