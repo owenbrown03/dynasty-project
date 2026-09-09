@@ -74,7 +74,7 @@ async def _compute_league_violations(
             )
         ).scalars().all()
         ktc_by_player_id = {
-            row.player_id: row.value
+            row.player_id: (row.sf_value if row.sf_value is not None else row.value)
             for row in ktc_rows
         }
         items_by_player_id = {
@@ -458,7 +458,7 @@ async def execute_cutdown_action(
                             select(KTCValue).where(KTCValue.player_id.in_(live_candidates))
                         )
                     ).scalars().all()
-                    ktc_by_id = {row.player_id: row.value for row in ktc_rows}
+                    ktc_by_id = {row.player_id: (row.sf_value if row.sf_value is not None else row.value) for row in ktc_rows}
 
                     def get_ktc_val(pid):
                         val = ktc_by_id.get(pid)
