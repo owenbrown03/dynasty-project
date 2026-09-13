@@ -18,6 +18,9 @@ from app.schemas.commissioner import (
     CommissionerFaabLeagueInfo,
     CommissionerFaabResetRequest,
     CommissionerFaabResetResponse,
+    CommissionerWaiverLeagueInfo,
+    CommissionerWaiverUpdateRequest,
+    CommissionerWaiverUpdateResponse,
 )
 from app.schemas.finance import (
     FinanceDefaultsUpdate,
@@ -49,6 +52,10 @@ from app.services.commissioner.cutdowns import (
 from app.services.commissioner.faab import (
     get_commissioner_faab_overview,
     reset_commissioner_faab,
+)
+from app.services.commissioner.waivers import (
+    get_commissioner_waivers_overview,
+    update_commissioner_waivers,
 )
 from app.services.commissioner.polls import broadcast_commissioner_poll
 from app.services.finance import (
@@ -354,3 +361,23 @@ async def execute_commissioner_cutdowns_action_endpoint(
     ctx: ContextDep,
 ):
     return await execute_cutdown_action(body, ctx)
+
+@router.get(
+    "/commissioner/waivers",
+    response_model=list[CommissionerWaiverLeagueInfo],
+)
+async def get_commissioner_waivers_endpoint(
+    ctx: ContextDep,
+):
+    return await get_commissioner_waivers_overview(ctx)
+
+@router.post(
+    "/commissioner/waivers/update",
+    response_model=CommissionerWaiverUpdateResponse,
+)
+async def update_commissioner_waivers_endpoint(
+    body: CommissionerWaiverUpdateRequest,
+    ctx: ContextDep,
+):
+    return await update_commissioner_waivers(ctx, body)
+

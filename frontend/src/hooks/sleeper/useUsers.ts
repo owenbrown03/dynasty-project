@@ -6,6 +6,9 @@ import type {
   CommissionerFaabLeagueInfo,
   CommissionerFaabResetRequest,
   CommissionerFaabResetResponse,
+  CommissionerWaiverLeagueInfo,
+  CommissionerWaiverUpdateRequest,
+  CommissionerWaiverUpdateResponse,
 } from '@/api/v1/endpoints/sleeper/user.endpoints';
 import type {
   CommissionerLeagueDuesUpdate,
@@ -396,6 +399,35 @@ export const useResetCommissionerFaab = () => {
     },
   });
 };
+
+export function useCommissionerWaiversOverview() {
+  return useQuery<CommissionerWaiverLeagueInfo[], Error>({
+    queryKey: ['commissioner-waivers-overview'],
+    queryFn: async () => {
+      const res = await api.users.getCommissionerWaiversOverview();
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export const useUpdateCommissionerWaivers = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    CommissionerWaiverUpdateResponse,
+    Error,
+    CommissionerWaiverUpdateRequest
+  >({
+    mutationFn: async (payload: CommissionerWaiverUpdateRequest) => {
+      const res = await api.users.updateCommissionerWaivers(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commissioner-waivers-overview'] });
+    },
+  });
+};
+
 
 export function useCommissionerCutdowns(enabled: boolean) {
   const query = useQuery<CommissionerCutdownLeague[]>({

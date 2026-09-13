@@ -144,8 +144,10 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     `${prefix}/reminders/test-send`,
     body,
   ),
-getCommissionerFaabOverview: () => client.get<CommissionerFaabLeagueInfo[]>(`${prefix}/commissioner/faab`),
+  getCommissionerFaabOverview: () => client.get<CommissionerFaabLeagueInfo[]>(`${prefix}/commissioner/faab`),
   resetCommissionerFaab: (payload: CommissionerFaabResetRequest) => client.post<CommissionerFaabResetResponse>(`${prefix}/commissioner/faab/reset`, payload),
+  getCommissionerWaiversOverview: () => client.get<CommissionerWaiverLeagueInfo[]>(`${prefix}/commissioner/waivers`),
+  updateCommissionerWaivers: (payload: CommissionerWaiverUpdateRequest) => client.post<CommissionerWaiverUpdateResponse>(`${prefix}/commissioner/waivers/update`, payload),
   broadcastCommissionerPoll: (
     body: CommissionerPollBroadcastRequest,
   ) => client.post<CommissionerPollBroadcastResponse>(
@@ -190,3 +192,43 @@ export interface CommissionerFaabResetResponse {
   successful_leagues: number;
   results: CommissionerFaabResetResult[];
 }
+
+export interface CommissionerWaiverDaySchedule {
+  day: string;
+  setting: number; // 0=FA, 1=Waivers, 2=Locked, 3=Waivers->FA
+}
+
+export interface CommissionerWaiverLeagueInfo {
+  league_id: string;
+  league_name: string;
+  avatar: string | null;
+  total_rosters: number;
+  daily_waivers: number;
+  daily_waivers_hour: number;
+  daily_waivers_days: number;
+  daily_waivers_days_b4: string;
+  waiver_type: number;
+  schedule: CommissionerWaiverDaySchedule[];
+}
+
+export interface CommissionerWaiverUpdateRequest {
+  league_ids: string[];
+  daily_waivers: number;
+  daily_waivers_days?: number;
+  sunday_to_saturday_settings?: number[];
+  daily_waivers_hour?: number | null;
+}
+
+export interface CommissionerWaiverUpdateResult {
+  league_id: string;
+  league_name: string;
+  success: boolean;
+  error: string | null;
+}
+
+export interface CommissionerWaiverUpdateResponse {
+  total_leagues: number;
+  successful_leagues: number;
+  results: CommissionerWaiverUpdateResult[];
+}
+

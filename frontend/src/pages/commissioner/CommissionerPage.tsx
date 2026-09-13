@@ -34,6 +34,7 @@ import { CommissionerOrphanCard } from './CommissionerOrphanCard';
 import { CommissionerFaabTab } from './CommissionerFaabTab';
 import { CommissionerCutdownsTab } from './CommissionerCutdownsTab';
 import { CommissionerPollsTab } from './CommissionerPollsTab';
+import { CommissionerWaiversTab } from './CommissionerWaiversTab';
 
 import './CommissionerPage.css';
 
@@ -42,6 +43,7 @@ type CommissionerTab =
   | 'orphans'
   | 'workspace'
   | 'faab'
+  | 'waivers'
   | 'polls'
   | 'cutdowns';
 
@@ -489,6 +491,8 @@ export const CommissionerPage = () => {
       ? 'workspace'
       : searchParams.get('tab') === 'faab'
       ? 'faab'
+      : searchParams.get('tab') === 'waivers'
+      ? 'waivers'
       : searchParams.get('tab') === 'polls'
       ? 'polls'
       : searchParams.get('tab') === 'cutdowns'
@@ -761,6 +765,19 @@ export const CommissionerPage = () => {
                 </button>
                 <button
                   className={
+                    activeTab === 'waivers'
+                      ? 'commissioner-tab-button active'
+                      : 'commissioner-tab-button'
+                  }
+                  type="button"
+                  onClick={() => {
+                    setTab('waivers');
+                  }}
+                >
+                  Custom Waivers
+                </button>
+                <button
+                  className={
                     activeTab === 'polls'
                       ? 'commissioner-tab-button active'
                       : 'commissioner-tab-button'
@@ -926,6 +943,22 @@ export const CommissionerPage = () => {
         activeTab === 'faab' && canManageWorkspace
           ? (
             <CommissionerFaabTab />
+          )
+          : null
+      }
+      {
+        activeTab === 'waivers' && !canManageWorkspace
+          ? (
+            <div className="commissioner-empty-state">
+              Link your Sleeper account to configure custom daily waivers.
+            </div>
+          )
+          : null
+      }
+      {
+        activeTab === 'waivers' && canManageWorkspace
+          ? (
+            <CommissionerWaiversTab />
           )
           : null
       }

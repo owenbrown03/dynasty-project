@@ -206,3 +206,43 @@ class CommissionerPollBroadcastResponse(Base):
     total_leagues: int
     successful_leagues: int
     results: list[CommissionerPollBroadcastResult]
+
+
+class CommissionerWaiverDaySchedule(Base):
+    day: str
+    setting: int  # 0=FA, 1=Waivers, 2=Locked, 3=Waivers->FA
+
+
+class CommissionerWaiverLeagueInfo(Base):
+    league_id: str
+    league_name: str
+    avatar: str | None = None
+    total_rosters: int = 0
+    daily_waivers: int = 0
+    daily_waivers_hour: int = 0
+    daily_waivers_days: int = 5461
+    daily_waivers_days_b4: str = "1111111"
+    waiver_type: int = 2
+    schedule: list[CommissionerWaiverDaySchedule] = Field(default_factory=list)
+
+
+class CommissionerWaiverUpdateRequest(Base):
+    league_ids: list[str]
+    daily_waivers: int = 1
+    daily_waivers_days: int | None = None
+    sunday_to_saturday_settings: list[int] | None = None  # 7 ints (0..3) [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+    daily_waivers_hour: int | None = None  # 0..23, or None to preserve each league's existing hour
+
+
+class CommissionerWaiverUpdateResult(Base):
+    league_id: str
+    league_name: str
+    success: bool
+    error: str | None = None
+
+
+class CommissionerWaiverUpdateResponse(Base):
+    total_leagues: int
+    successful_leagues: int
+    results: list[CommissionerWaiverUpdateResult]
+
