@@ -1,10 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { Info, X } from 'lucide-react';
 import {
   useCommissionerWaiversOverview,
   useUpdateCommissionerWaivers,
+  useCommissionerWaiversPreset,
+  useSaveCommissionerWaiversPreset,
+  useResetCommissionerWaiversPreset,
 } from '@/hooks/sleeper/useUsers';
 import { notify } from '@/utils/notify';
 import { Skeleton } from '@/components/feedback/Skeleton';
+
+// Standard In-Season default: [Sun=3 (Waivers->FA), Mon=0 (FA), Tue=1 (Waivers), Wed=1 (Waivers), Thu=3 (Waivers->FA), Fri=3 (Waivers->FA), Sat=3 (Waivers->FA)]
+const DEFAULT_STANDARD_PRESET = [3, 0, 1, 1, 3, 3, 3];
 
 // 0=FA, 1=Waivers, 2=Locked, 3=Waivers->FA
 const WAIVER_OPTIONS = [
@@ -75,6 +82,9 @@ export const CommissionerWaiversTab = () => {
     refetch,
   } = useCommissionerWaiversOverview();
   const updateMutation = useUpdateCommissionerWaivers();
+  const { data: presetData } = useCommissionerWaiversPreset();
+  const savePresetMutation = useSaveCommissionerWaiversPreset();
+  const resetPresetMutation = useResetCommissionerWaiversPreset();
 
   const [search, setSearch] = useState('');
   const [selectedLeagues, setSelectedLeagues] = useState<Set<string>>(new Set());
@@ -82,10 +92,24 @@ export const CommissionerWaiversTab = () => {
   // Configuration state
   const [dailyWaiversEnabled, setDailyWaiversEnabled] = useState(true);
   const [processingHour, setProcessingHour] = useState<number | 'keep'>('keep');
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   // Sunday to Saturday schedule (indices 0..6: Sun, Mon, Tue, Wed, Thu, Fri, Sat)
-  // Default: All Waivers (1)
-  const [schedule, setSchedule] = useState<number[]>([1, 1, 1, 1, 1, 1, 1]);
+  const [schedule, setSchedule] = useState<number[]>(DEFAULT_STANDARD_PRESET);
+  const [hasUserEditedSchedule, setHasUserEditedSchedule] = useState(false);
+
+  // Sync custom preset from account once loaded if user hasn't started manually editing
+  useEffect(() => {
+    if (presetData?.sunday_to_saturday_settings && !hasUserEditedSchedule) {
+      setSchedule(presetData.sunday_to_saturday_settings);
+      if (presetData.daily_waivers !== undefined) {
+        setDailyWaiversEnabled(Boolean(presetData.daily_waivers));
+      }
+      if (presetData.daily_waivers_hour !== null && presetData.daily_waivers_hour !== undefined) {
+        setProcessingHour(presetData.daily_waivers_hour);
+      }
+    }
+  }, [presetData, hasUserEditedSchedule]);
 
   const filteredLeagues = useMemo(() => {
     return leagues.filter((league) => {
@@ -113,6 +137,7 @@ export const CommissionerWaiversTab = () => {
   };
 
   const updateDaySetting = (dayIndex: number, value: number) => {
+    setHasUserEditedSchedule(true);
     setSchedule((prev) => {
       const next = [...prev];
       next[dayIndex] = value;
@@ -122,8 +147,47 @@ export const CommissionerWaiversTab = () => {
 
   // Presets
   const applyPreset = (presetSchedule: number[]) => {
+    setHasUserEditedSchedule(true);
     setSchedule(presetSchedule);
   };
+
+  const applyStandardPreset = () => {
+    setHasUserEditedSchedule(true);
+    const targetSchedule = presetData?.sunday_to_saturday_settings || DEFAULT_STANDARD_PRESET;
+    setSchedule(targetSchedule);
+    if (presetData?.daily_waivers !== undefined) {
+      setDailyWaiversEnabled(Boolean(presetData.daily_waivers));
+    }
+    if (presetData?.daily_waivers_hour !== null && presetData?.daily_waivers_hour !== undefined) {
+      setProcessingHour(presetData.daily_waivers_hour);
+    }
+  };
+
+  const handleSaveStandardPreset = async () => {
+    try {
+      await savePresetMutation.mutateAsync({
+        sunday_to_saturday_settings: schedule,
+        daily_waivers_hour: processingHour === 'keep' ? null : processingHour,
+        daily_waivers: dailyWaiversEnabled ? 1 : 0,
+      });
+      notify.success('Standard In-Season preset saved to your account!');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save preset';
+      notify.error(msg);
+    }
+  };
+
+  const handleResetStandardPreset = async () => {
+    try {
+      await resetPresetMutation.mutateAsync();
+      setSchedule(DEFAULT_STANDARD_PRESET);
+      notify.success('Standard In-Season preset reset to default.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to reset preset';
+      notify.error(msg);
+    }
+  };
+
 
   const handleUpdate = async () => {
     if (selectedLeagues.size === 0) return;
@@ -186,9 +250,9 @@ export const CommissionerWaiversTab = () => {
       <section className="commissioner-waivers-config-card">
         <div className="config-header">
           <div>
-            <h3 className="config-title">Custom Waivers Schedule</h3>
+            <h3 className="config-title">Allow Custom Daily Waivers</h3>
             <p className="config-subtitle">
-              Configure daily waiver behavior across Sunday through Saturday.
+              Configure Sleeper&apos;s custom daily waiver schedule across Sunday through Saturday.
             </p>
           </div>
           <div className="config-actions">
@@ -208,7 +272,18 @@ export const CommissionerWaiversTab = () => {
         {/* Global toggles: Enabled + Processing Hour */}
         <div className="config-row-controls">
           <div className="control-group">
-            <span className="control-label">Daily Waivers</span>
+            <div className="control-label-row">
+              <span className="control-label">Allow Custom Daily Waivers</span>
+              <button
+                type="button"
+                className="info-circle-btn"
+                onClick={() => setShowInfoModal(true)}
+                title="What is Allow Custom Daily Waivers?"
+                aria-label="Allow Custom Daily Waivers Information"
+              >
+                <Info size={13} />
+              </button>
+            </div>
             <div className="toggle-pill-group">
               <button
                 type="button"
@@ -276,10 +351,14 @@ export const CommissionerWaiversTab = () => {
               <button
                 type="button"
                 className="button-secondary btn-sm"
-                onClick={() => applyPreset([0, 2, 2, 1, 0, 0, 0])}
-                title="Wed Waivers, Mon/Tue Locked, Thu/Fri/Sat/Sun FA"
+                onClick={applyStandardPreset}
+                title={
+                  presetData?.is_custom
+                    ? 'Customized standard schedule mapped to your account'
+                    : 'System default standard in-season schedule'
+                }
               >
-                Standard In-Season
+                Standard In-Season {presetData?.is_custom ? '★' : ''}
               </button>
               <button
                 type="button"
@@ -290,6 +369,40 @@ export const CommissionerWaiversTab = () => {
                 Lock All
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Standard In-Season Customization Bar */}
+        <div className="standard-preset-bar">
+          <div className="standard-preset-status">
+            <span className="standard-preset-label">Account Standard In-Season Preset:</span>
+            {presetData?.is_custom ? (
+              <span className="preset-custom-badge">★ Customized</span>
+            ) : (
+              <span className="preset-default-badge">System Default</span>
+            )}
+          </div>
+          <div className="standard-preset-buttons">
+            <button
+              type="button"
+              className="button-secondary btn-sm"
+              onClick={handleSaveStandardPreset}
+              disabled={savePresetMutation.isPending}
+              title="Save the current schedule below as your account's Standard In-Season preset"
+            >
+              {savePresetMutation.isPending ? 'Saving...' : 'Save Current Schedule as Standard'}
+            </button>
+            {presetData?.is_custom && (
+              <button
+                type="button"
+                className="button-secondary btn-sm"
+                onClick={handleResetStandardPreset}
+                disabled={resetPresetMutation.isPending}
+                title="Reset your custom Standard In-Season preset back to system default"
+              >
+                {resetPresetMutation.isPending ? 'Resetting...' : 'Reset to Default'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -408,10 +521,98 @@ export const CommissionerWaiversTab = () => {
 
         {filteredLeagues.length === 0 && (
           <div className="commissioner-empty-state">
-            No commissioner leagues found matching "{search}".
+            No commissioner leagues found matching &quot;{search}&quot;.
           </div>
         )}
       </div>
+
+      {/* Allow Custom Daily Waivers Info Modal */}
+      {showInfoModal && (
+        <div
+          className="daily-waivers-modal-backdrop"
+          onClick={() => setShowInfoModal(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="daily-waivers-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="daily-waivers-modal-header">
+              <div className="daily-waivers-modal-title-group">
+                <Info size={18} />
+                <h4>Allow Custom Daily Waivers</h4>
+              </div>
+              <button
+                type="button"
+                className="daily-waivers-modal-close"
+                onClick={() => setShowInfoModal(false)}
+                aria-label="Close dialog"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="daily-waivers-modal-body">
+              <div className="sleeper-quote-card">
+                &ldquo;Specify custom times for waivers to clear. A player will clear only after passing all waiver settings checks, such as the &lsquo;After Games Waivers Clear&rsquo; setting.&rdquo;
+              </div>
+
+              <div className="info-content-section">
+                <h5>How It Works</h5>
+                <p>
+                  Enabling <strong>Allow Custom Daily Waivers</strong> lets you define a specific transaction rule for every day of the week (Sunday through Saturday). Waiver requests will clear daily at your designated processing time.
+                </p>
+              </div>
+
+              <div className="info-content-section">
+                <h5>Daily Option Settings</h5>
+                <ul className="info-waiver-types-list">
+                  <li className="info-waiver-type-item">
+                    <span className="type-badge badge-waivers">Waivers</span>
+                    <div className="info-waiver-type-desc">
+                      <strong>Waivers:</strong> Players remain on waivers all day and can only be acquired by submitting a waiver claim. Claims process at the daily processing time.
+                    </div>
+                  </li>
+                  <li className="info-waiver-type-item">
+                    <span className="type-badge badge-fa">Free Agent</span>
+                    <div className="info-waiver-type-desc">
+                      <strong>Free Agent (FA):</strong> Players can be picked up immediately on a first-come, first-served basis without waiting for waivers.
+                    </div>
+                  </li>
+                  <li className="info-waiver-type-item">
+                    <span className="type-badge badge-waiver-fa">Waivers → FA</span>
+                    <div className="info-waiver-type-desc">
+                      <strong>Waivers → Free Agent:</strong> Pending waiver claims process at the designated daily time, and any player not claimed immediately becomes an instant Free Agent for the rest of the day.
+                    </div>
+                  </li>
+                  <li className="info-waiver-type-item">
+                    <span className="type-badge badge-locked">Locked</span>
+                    <div className="info-waiver-type-desc">
+                      <strong>Locked:</strong> Player transactions (adds, drops, claims) are completely blocked for that day.
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="info-note-box">
+                <strong>Game Lock Rule:</strong> A player will only clear after passing all other waiver checks (such as the standard <em>After Games Waivers Clear</em> setting). Players whose games have started remain locked until their normal clearance day, regardless of whether a day is set to Free Agent.
+              </div>
+            </div>
+
+            <div className="daily-waivers-modal-footer">
+              <button
+                type="button"
+                className="button-primary"
+                onClick={() => setShowInfoModal(false)}
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

@@ -1243,3 +1243,240 @@
   border: 1px solid rgba(248, 113, 113, 0.3);
 }
 
+/* Standard Preset Customization Controls */
+.standard-preset-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--color-surface-raised);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.standard-preset-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.standard-preset-label {
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.preset-custom-badge {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+}
+
+.preset-default-badge {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.standard-preset-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Allow Custom Daily Waivers Info Button & Modal */
+.control-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-circle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.info-circle-btn:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-accent, #1f6feb);
+  border-color: var(--color-accent, #1f6feb);
+}
+
+.daily-waivers-modal-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
+}
+
+.daily-waivers-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(580px, 100%);
+  max-height: min(720px, 90vh);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.daily-waivers-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.daily-waivers-modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-accent, #1f6feb);
+}
+
+.daily-waivers-modal-title-group h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.daily-waivers-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.daily-waivers-modal-close:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+}
+
+.daily-waivers-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.sleeper-quote-card {
+  margin: 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--color-accent, #1f6feb);
+  background: rgba(31, 111, 235, 0.08);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-text-strong);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.info-content-section h5 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-content-section p {
+  margin: 0;
+}
+
+.info-waiver-types-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-waiver-type-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.info-waiver-type-item .type-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.info-waiver-type-desc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.info-waiver-type-desc strong {
+  color: var(--color-text-strong);
+}
+
+.info-note-box {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: var(--color-text-strong);
+  font-size: 12px;
+}
+
+.daily-waivers-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+
+

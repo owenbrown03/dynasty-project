@@ -671,3 +671,28 @@ async def reconcile_session_accent_color(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+async def reconcile_session_commissioner_standard_waivers(
+    *,
+    user: SiteUser,
+    session: UserSession | None,
+    db: AsyncSession,
+) -> SiteUser:
+    if not session:
+        return user
+
+    session_waivers = (session.settings or {}).get("commissioner_standard_waivers")
+    if session_waivers is None:
+        return user
+
+    if "commissioner_standard_waivers" not in (user.settings or {}):
+        settings = dict(user.settings or {})
+        settings["commissioner_standard_waivers"] = session_waivers
+        user.settings = settings
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    return user
+

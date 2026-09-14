@@ -7,6 +7,8 @@ afterEach(() => {
 });
 
 const mockMutateAsync = vi.fn();
+const mockSavePreset = vi.fn();
+const mockResetPreset = vi.fn();
 
 vi.mock('@/hooks/sleeper/useUsers', () => ({
   useCommissionerWaiversOverview: () => ({
@@ -61,17 +63,53 @@ vi.mock('@/hooks/sleeper/useUsers', () => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
   }),
+  useCommissionerWaiversPreset: () => ({
+    data: {
+      sunday_to_saturday_settings: [3, 0, 1, 1, 3, 3, 3],
+      daily_waivers_hour: 0,
+      daily_waivers: 1,
+      is_custom: true,
+    },
+    isLoading: false,
+  }),
+  useSaveCommissionerWaiversPreset: () => ({
+    mutateAsync: mockSavePreset,
+    isPending: false,
+  }),
+  useResetCommissionerWaiversPreset: () => ({
+    mutateAsync: mockResetPreset,
+    isPending: false,
+  }),
 }));
 
 describe('CommissionerWaiversTab', () => {
   it('renders schedule controls and league cards', () => {
     render(<CommissionerWaiversTab />);
 
-    expect(screen.getByText('Custom Waivers Schedule')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Allow Custom Daily Waivers' })).toBeInTheDocument();
     expect(screen.getByText('League Alpha')).toBeInTheDocument();
     expect(screen.getByText('League Beta')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Select All/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Select None/i })).toBeInTheDocument();
+  });
+
+  it('opens and closes the Allow Custom Daily Waivers info modal', () => {
+    render(<CommissionerWaiversTab />);
+
+    const infoBtn = screen.getByRole('button', { name: /Allow Custom Daily Waivers Information/i });
+    fireEvent.click(infoBtn);
+
+    // Verify modal title and Sleeper definition are rendered
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Specify custom times for waivers to clear/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/After Games Waivers Clear/i)).toBeInTheDocument();
+
+    // Close via Got It button
+    const closeBtn = screen.getByRole('button', { name: /Got It/i });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('selects and deselects leagues using Select All and Select None', () => {
@@ -97,4 +135,27 @@ describe('CommissionerWaiversTab', () => {
     expect(screen.queryByText('League Alpha')).not.toBeInTheDocument();
     expect(screen.getByText('League Beta')).toBeInTheDocument();
   });
+
+  it('handles saving and resetting custom standard in-season preset', async () => {
+    render(<CommissionerWaiversTab />);
+
+    // Custom badge should be shown because is_custom is true
+    expect(screen.getByText('★ Customized')).toBeInTheDocument();
+
+    // Click Save Current Schedule as Standard
+    const saveBtn = screen.getByRole('button', { name: /Save Current Schedule as Standard/i });
+    fireEvent.click(saveBtn);
+    expect(mockSavePreset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sunday_to_saturday_settings: [3, 0, 1, 1, 3, 3, 3],
+      })
+    );
+
+    // Click Reset to Default
+    const resetBtn = screen.getByRole('button', { name: /Reset to Default/i });
+    fireEvent.click(resetBtn);
+    expect(mockResetPreset).toHaveBeenCalled();
+  });
 });
+
+

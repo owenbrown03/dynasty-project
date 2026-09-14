@@ -148,6 +148,9 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
   resetCommissionerFaab: (payload: CommissionerFaabResetRequest) => client.post<CommissionerFaabResetResponse>(`${prefix}/commissioner/faab/reset`, payload),
   getCommissionerWaiversOverview: () => client.get<CommissionerWaiverLeagueInfo[]>(`${prefix}/commissioner/waivers`),
   updateCommissionerWaivers: (payload: CommissionerWaiverUpdateRequest) => client.post<CommissionerWaiverUpdateResponse>(`${prefix}/commissioner/waivers/update`, payload),
+  getCommissionerWaiversPreset: () => client.get<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset`),
+  saveCommissionerWaiversPreset: (payload: CommissionerStandardWaiverPresetUpdate) => client.post<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset`, payload),
+  resetCommissionerWaiversPreset: () => client.post<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset/reset`),
   broadcastCommissionerPoll: (
     body: CommissionerPollBroadcastRequest,
   ) => client.post<CommissionerPollBroadcastResponse>(
@@ -231,4 +234,18 @@ export interface CommissionerWaiverUpdateResponse {
   successful_leagues: number;
   results: CommissionerWaiverUpdateResult[];
 }
+
+export interface CommissionerStandardWaiverPreset {
+  sunday_to_saturday_settings: number[];
+  daily_waivers_hour: number | null;
+  daily_waivers: number;
+  is_custom: boolean;
+}
+
+export interface CommissionerStandardWaiverPresetUpdate {
+  sunday_to_saturday_settings: number[];
+  daily_waivers_hour?: number | null;
+  daily_waivers?: number;
+}
+
 

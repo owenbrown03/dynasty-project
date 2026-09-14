@@ -2,14 +2,21 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 import pytest
 
-from app.schemas.commissioner import CommissionerWaiverUpdateRequest
+from app.schemas.commissioner import (
+    CommissionerWaiverUpdateRequest,
+    CommissionerStandardWaiverPresetUpdate,
+)
 from app.services.commissioner.waivers import (
     to_base4_str,
     decode_waiver_schedule,
     sun_sat_to_days_int,
     get_commissioner_waivers_overview,
     update_commissioner_waivers,
+    get_commissioner_standard_waiver_preset,
+    save_commissioner_standard_waiver_preset,
+    reset_commissioner_standard_waiver_preset,
 )
+from app.crud.auth.user import reconcile_session_commissioner_standard_waivers
 
 
 def test_waiver_schedule_encoding_decoding():
@@ -140,3 +147,82 @@ async def test_update_commissioner_waivers_calls_sleeper_write(monkeypatch):
     assert called_args.kwargs["settings_map"]["daily_waivers"] == 1
     assert called_args.kwargs["settings_map"]["daily_waivers_days"] == 10736
     assert called_args.kwargs["settings_map"]["daily_waivers_hour"] == 9
+
+
+@pytest.mark.anyio
+async def test_standard_waiver_preset_flow():
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+
+    site_user = SimpleNamespace(id="u1", settings={})
+    session = SimpleNamespace(id=1, settings={})
+
+    ctx = SimpleNamespace(
+        db=mock_db,
+        site_user=site_user,
+        session=session,
+    )
+
+    # 1. Initially default preset is returned
+    preset = await get_commissioner_standard_waiver_preset(ctx)
+    assert preset.is_custom is False
+    assert preset.sunday_to_saturday_settings == [3, 0, 1, 1, 3, 3, 3]
+
+    # 2. Save custom preset
+    custom_update = CommissionerStandardWaiverPresetUpdate(
+        sunday_to_saturday_settings=[0, 0, 1, 1, 3, 0, 0],
+        daily_waivers_hour=8,
+        daily_waivers=1,
+    )
+    saved = await save_commissioner_standard_waiver_preset(ctx, custom_update)
+    assert saved.is_custom is True
+    assert saved.sunday_to_saturday_settings == [0, 0, 1, 1, 3, 0, 0]
+    assert saved.daily_waivers_hour == 8
+
+    # Verify site_user and session settings were updated
+    assert site_user.settings["commissioner_standard_waivers"]["sunday_to_saturday_settings"] == [0, 0, 1, 1, 3, 0, 0]
+    assert session.settings["commissioner_standard_waivers"]["sunday_to_saturday_settings"] == [0, 0, 1, 1, 3, 0, 0]
+
+    # 3. Get should now return the custom preset
+    loaded = await get_commissioner_standard_waiver_preset(ctx)
+    assert loaded.is_custom is True
+    assert loaded.sunday_to_saturday_settings == [0, 0, 1, 1, 3, 0, 0]
+    assert loaded.daily_waivers_hour == 8
+
+    # 4. Reset returns to default and removes custom
+    reset_preset = await reset_commissioner_standard_waiver_preset(ctx)
+    assert reset_preset.is_custom is False
+    assert reset_preset.sunday_to_saturday_settings == [3, 0, 1, 1, 3, 3, 3]
+    assert "commissioner_standard_waivers" not in site_user.settings
+    assert "commissioner_standard_waivers" not in session.settings
+
+
+@pytest.mark.anyio
+async def test_reconcile_session_commissioner_standard_waivers():
+    mock_db = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+
+    user = SimpleNamespace(id="u1", settings={})
+    session = SimpleNamespace(
+        id=1,
+        settings={
+            "commissioner_standard_waivers": {
+                "sunday_to_saturday_settings": [1, 1, 1, 1, 1, 1, 1],
+                "daily_waivers_hour": 12,
+                "daily_waivers": 1,
+            }
+        },
+    )
+
+    reconciled = await reconcile_session_commissioner_standard_waivers(
+        user=user,
+        session=session,
+        db=mock_db,
+    )
+    assert "commissioner_standard_waivers" in reconciled.settings
+    assert reconciled.settings["commissioner_standard_waivers"]["daily_waivers_hour"] == 12
+

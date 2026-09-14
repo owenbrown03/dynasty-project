@@ -8,6 +8,8 @@ from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
 from app.schemas.commissioner import (
+    CommissionerStandardWaiverPreset,
+    CommissionerStandardWaiverPresetUpdate,
     CommissionerWaiverDaySchedule,
     CommissionerWaiverLeagueInfo,
     CommissionerWaiverUpdateRequest,
@@ -255,3 +257,100 @@ async def update_commissioner_waivers(
         successful_leagues=successful_leagues,
         results=results,
     )
+
+
+DEFAULT_STANDARD_WAIVER_DAYS = [3, 0, 1, 1, 3, 3, 3]  # Sun, Mon, Tue, Wed, Thu, Fri, Sat
+DEFAULT_STANDARD_WAIVER_HOUR = 0
+DEFAULT_STANDARD_DAILY_WAIVERS = 1
+
+
+def _get_preset_from_dict(raw: dict | None) -> CommissionerStandardWaiverPreset:
+    if not raw or not isinstance(raw, dict):
+        return CommissionerStandardWaiverPreset(
+            sunday_to_saturday_settings=DEFAULT_STANDARD_WAIVER_DAYS,
+            daily_waivers_hour=DEFAULT_STANDARD_WAIVER_HOUR,
+            daily_waivers=DEFAULT_STANDARD_DAILY_WAIVERS,
+            is_custom=False,
+        )
+    days = raw.get("sunday_to_saturday_settings")
+    if not isinstance(days, list) or len(days) != 7:
+        days = DEFAULT_STANDARD_WAIVER_DAYS
+    return CommissionerStandardWaiverPreset(
+        sunday_to_saturday_settings=days,
+        daily_waivers_hour=raw.get("daily_waivers_hour", DEFAULT_STANDARD_WAIVER_HOUR),
+        daily_waivers=raw.get("daily_waivers", DEFAULT_STANDARD_DAILY_WAIVERS),
+        is_custom=True,
+    )
+
+
+async def get_commissioner_standard_waiver_preset(
+    ctx: Context,
+) -> CommissionerStandardWaiverPreset:
+    if ctx.site_user and ctx.site_user.settings:
+        custom = ctx.site_user.settings.get("commissioner_standard_waivers")
+        if custom:
+            return _get_preset_from_dict(custom)
+
+    if ctx.session and ctx.session.settings:
+        custom = ctx.session.settings.get("commissioner_standard_waivers")
+        if custom:
+            return _get_preset_from_dict(custom)
+
+    return _get_preset_from_dict(None)
+
+
+async def save_commissioner_standard_waiver_preset(
+    ctx: Context,
+    body: CommissionerStandardWaiverPresetUpdate,
+) -> CommissionerStandardWaiverPreset:
+    preset_data = body.model_dump()
+
+    if ctx.site_user:
+        settings = dict(ctx.site_user.settings or {})
+        settings["commissioner_standard_waivers"] = preset_data
+        ctx.site_user.settings = settings
+        ctx.db.add(ctx.site_user)
+
+    if ctx.session:
+        settings = dict(ctx.session.settings or {})
+        settings["commissioner_standard_waivers"] = preset_data
+        ctx.session.settings = settings
+        ctx.db.add(ctx.session)
+
+    await ctx.db.commit()
+    if ctx.site_user:
+        await ctx.db.refresh(ctx.site_user)
+    if ctx.session:
+        await ctx.db.refresh(ctx.session)
+
+    return CommissionerStandardWaiverPreset(
+        sunday_to_saturday_settings=body.sunday_to_saturday_settings,
+        daily_waivers_hour=body.daily_waivers_hour if body.daily_waivers_hour is not None else DEFAULT_STANDARD_WAIVER_HOUR,
+        daily_waivers=body.daily_waivers,
+        is_custom=True,
+    )
+
+
+async def reset_commissioner_standard_waiver_preset(
+    ctx: Context,
+) -> CommissionerStandardWaiverPreset:
+    if ctx.site_user and ctx.site_user.settings and "commissioner_standard_waivers" in ctx.site_user.settings:
+        settings = dict(ctx.site_user.settings)
+        settings.pop("commissioner_standard_waivers", None)
+        ctx.site_user.settings = settings
+        ctx.db.add(ctx.site_user)
+
+    if ctx.session and ctx.session.settings and "commissioner_standard_waivers" in ctx.session.settings:
+        settings = dict(ctx.session.settings)
+        settings.pop("commissioner_standard_waivers", None)
+        ctx.session.settings = settings
+        ctx.db.add(ctx.session)
+
+    await ctx.db.commit()
+    if ctx.site_user:
+        await ctx.db.refresh(ctx.site_user)
+    if ctx.session:
+        await ctx.db.refresh(ctx.session)
+
+    return _get_preset_from_dict(None)
+

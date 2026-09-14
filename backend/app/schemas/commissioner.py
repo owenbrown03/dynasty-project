@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Dict, List, Optional
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.schemas.base import Base
 from app.schemas.draft import DraftPickAsset
@@ -245,4 +245,30 @@ class CommissionerWaiverUpdateResponse(Base):
     total_leagues: int
     successful_leagues: int
     results: list[CommissionerWaiverUpdateResult]
+
+
+class CommissionerStandardWaiverPreset(Base):
+    sunday_to_saturday_settings: list[int] = Field(
+        default=[3, 0, 1, 1, 3, 3, 3],
+        description="7 ints (0..3) [Sun, Mon, Tue, Wed, Thu, Fri, Sat]",
+    )
+    daily_waivers_hour: int | None = 0
+    daily_waivers: int = 1
+    is_custom: bool = False
+
+
+class CommissionerStandardWaiverPresetUpdate(Base):
+    sunday_to_saturday_settings: list[int] = Field(
+        description="7 ints (0..3) [Sun, Mon, Tue, Wed, Thu, Fri, Sat]",
+    )
+    daily_waivers_hour: int | None = None
+    daily_waivers: int = 1
+
+    @field_validator("sunday_to_saturday_settings")
+    @classmethod
+    def validate_days(cls, v: list[int]) -> list[int]:
+        if len(v) != 7 or any(d < 0 or d > 3 for d in v):
+            raise ValueError("sunday_to_saturday_settings must have exactly 7 integers between 0 and 3")
+        return v
+
 

@@ -9,6 +9,8 @@ import type {
   CommissionerWaiverLeagueInfo,
   CommissionerWaiverUpdateRequest,
   CommissionerWaiverUpdateResponse,
+  CommissionerStandardWaiverPreset,
+  CommissionerStandardWaiverPresetUpdate,
 } from '@/api/v1/endpoints/sleeper/user.endpoints';
 import type {
   CommissionerLeagueDuesUpdate,
@@ -427,6 +429,48 @@ export const useUpdateCommissionerWaivers = () => {
     },
   });
 };
+
+export function useCommissionerWaiversPreset() {
+  return useQuery<CommissionerStandardWaiverPreset, Error>({
+    queryKey: ['commissioner-waivers-preset'],
+    queryFn: async () => {
+      const res = await api.users.getCommissionerWaiversPreset();
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export const useSaveCommissionerWaiversPreset = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    CommissionerStandardWaiverPreset,
+    Error,
+    CommissionerStandardWaiverPresetUpdate
+  >({
+    mutationFn: async (payload: CommissionerStandardWaiverPresetUpdate) => {
+      const res = await api.users.saveCommissionerWaiversPreset(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commissioner-waivers-preset'] });
+    },
+  });
+};
+
+export const useResetCommissionerWaiversPreset = () => {
+  const queryClient = useQueryClient();
+  return useMutation<CommissionerStandardWaiverPreset, Error>({
+    mutationFn: async () => {
+      const res = await api.users.resetCommissionerWaiversPreset();
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commissioner-waivers-preset'] });
+    },
+  });
+};
+
 
 
 export function useCommissionerCutdowns(enabled: boolean) {
