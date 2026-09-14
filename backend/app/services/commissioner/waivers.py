@@ -4,6 +4,7 @@ from typing import Any
 from fastapi import HTTPException, status
 
 from app.core.context import Context
+from app.crud.sleeper.personal import get_league_sort_orders
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
@@ -105,9 +106,10 @@ async def get_commissioner_waivers_overview(
 ) -> list[CommissionerWaiverLeagueInfo]:
     _require_commissioner_workspace_context(ctx)
 
+    sleeper_user_id = ctx.connection.sleeper_user_id or ""
     owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
         db=ctx.db,
-        sleeper_user_id=ctx.connection.sleeper_user_id or "",
+        sleeper_user_id=sleeper_user_id,
         site_user_id=ctx.site_user.id,
         include_hidden=False,
     )
@@ -119,6 +121,11 @@ async def get_commissioner_waivers_overview(
         row for row in owned_rows
         if row.league and getattr(row.roster, "is_owner", False) is True
     ]
+
+    sort_order = await get_league_sort_orders(
+        db=ctx.db,
+        user_id=sleeper_user_id,
+    )
 
     overview: list[CommissionerWaiverLeagueInfo] = []
     for row in commish_rows:
@@ -150,8 +157,13 @@ async def get_commissioner_waivers_overview(
             )
         )
 
-    # Sort alphabetically by league name
-    overview.sort(key=lambda item: item.league_name.lower())
+    # Sort in standard site format (Sleeper order, then league name)
+    overview.sort(
+        key=lambda item: (
+            sort_order.get(item.league_id, 9999),
+            item.league_name.lower() if item.league_name else "",
+        )
+    )
     return overview
 
 

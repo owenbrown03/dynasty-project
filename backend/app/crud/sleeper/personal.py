@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.models.db.sleeper.api import LeagueSortOrder
+from app.models.db.sleeper.api import League, LeagueSortOrder
 from app.models.db.sleeper.personal import (
     CommissionerLeagueDues,
     CommissionerLeagueNote,
@@ -914,12 +914,39 @@ async def get_league_sort_orders(
     db: AsyncSession,
     user_id: str,
 ) -> dict[str, int]:
-    result = await db.execute(
-        select(LeagueSortOrder).where(
-            LeagueSortOrder.user_id == user_id,
+    if not user_id or not hasattr(db, "execute"):
+        return {}
+
+    try:
+        result = await db.execute(
+            select(LeagueSortOrder).where(
+                LeagueSortOrder.user_id == user_id,
+            )
         )
-    )
-    return {
-        row.league_id: row.display_order
-        for row in result.scalars().all()
-    }
+        scalars_fn = getattr(result, "scalars", None)
+        if scalars_fn is None or not callable(scalars_fn):
+            return {}
+        rows = scalars_fn().all() if callable(getattr(scalars_fn(), "all", None)) else []
+        orders = {
+            row.league_id: row.display_order
+            for row in rows
+            if hasattr(row, "league_id") and hasattr(row, "display_order")
+        }
+    except Exception:
+        orders = {}
+
+    # Inherit sort orders for renewed leagues where previous_league_id is known
+    if orders:
+        try:
+            leagues_res = await db.execute(
+                select(League.league_id, League.previous_league_id).where(
+                    League.previous_league_id.in_(list(orders.keys()))
+                )
+            )
+            for next_lid, prev_lid in leagues_res.all():
+                if next_lid not in orders and prev_lid in orders:
+                    orders[next_lid] = orders[prev_lid]
+        except Exception:
+            pass
+
+    return orders

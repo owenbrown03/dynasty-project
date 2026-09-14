@@ -64,6 +64,51 @@ async def test_get_commissioner_settings_overview(monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_get_commissioner_settings_overview_preserves_sleeper_order(monkeypatch):
+    mock_db = AsyncMock()
+    ctx = SimpleNamespace(
+        db=mock_db,
+        redis=None,
+        session=SimpleNamespace(),
+        site_user=SimpleNamespace(id="site_user_id"),
+        connection=SimpleNamespace(sleeper_user_id="sleeper_123"),
+    )
+
+    league_z = SimpleNamespace(
+        league_id="lz",
+        name="Zebra League",
+        avatar=None,
+        total_rosters=12,
+        settings={"best_ball": 1},
+    )
+    league_a = SimpleNamespace(
+        league_id="la",
+        name="Alpha League",
+        avatar=None,
+        total_rosters=12,
+        settings={"best_ball": 0},
+    )
+    row_z = SimpleNamespace(league=league_z, roster=SimpleNamespace(is_owner=True))
+    row_a = SimpleNamespace(league=league_a, roster=SimpleNamespace(is_owner=True))
+
+    monkeypatch.setattr(
+        "app.services.commissioner.general_settings.get_visible_owned_league_rows_by_sleeper_user_id",
+        AsyncMock(return_value=[row_z, row_a]),
+    )
+    monkeypatch.setattr(
+        "app.services.commissioner.general_settings.get_league_sort_orders",
+        AsyncMock(return_value={"lz": 0, "la": 1}),
+    )
+
+    overview = await get_commissioner_settings_overview(ctx)
+    assert len(overview) == 2
+    # Zebra League must stay first because Sleeper display_order is 0 < 1
+    assert overview[0].league_id == "lz"
+    assert overview[1].league_id == "la"
+
+
+
+@pytest.mark.anyio
 async def test_update_commissioner_settings_calls_sleeper_write(monkeypatch):
     mock_db = AsyncMock()
     mock_db.add = MagicMock()

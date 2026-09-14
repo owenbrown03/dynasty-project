@@ -14,6 +14,7 @@ from app.crud.sleeper.personal import (
     get_finance_entries_by_key,
     get_finance_league_defaults_by_family_id,
     get_finance_user_defaults,
+    get_league_sort_orders,
     upsert_finance_entry,
     upsert_commissioner_dues,
     upsert_commissioner_note,
@@ -77,11 +78,17 @@ async def get_commissioner_workspace(
         ctx,
     )
 
+    sleeper_user_id = ctx.connection.sleeper_user_id or ""
     owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
         db=ctx.db,
-        sleeper_user_id=ctx.connection.sleeper_user_id or "",
+        sleeper_user_id=sleeper_user_id,
         site_user_id=ctx.site_user.id,
         include_hidden=False,
+    )
+
+    sort_order = await get_league_sort_orders(
+        db=ctx.db,
+        user_id=sleeper_user_id,
     )
 
     leagues_by_id = {
@@ -348,6 +355,13 @@ async def get_commissioner_workspace(
                 dues=dues_entries,
             )
         )
+
+    leagues.sort(
+        key=lambda item: (
+            sort_order.get(item.league_id, 9999),
+            item.league_name.lower() if item.league_name else "",
+        ),
+    )
 
     return CommissionerWorkspaceResponse(
         leagues=leagues,

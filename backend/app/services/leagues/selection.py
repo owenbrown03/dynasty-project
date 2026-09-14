@@ -131,9 +131,13 @@ def select_latest_owned_league_rows(
     if sort_order:
         return sorted(
             filtered_rows,
-            key=lambda row: sort_order.get(
+            key=lambda row: (
+                sort_order.get(
+                    row.league.league_id,
+                    9999,
+                ),
+                row.league.name.lower() if row.league.name else "",
                 row.league.league_id,
-                9999,
             ),
         )
 
@@ -141,7 +145,7 @@ def select_latest_owned_league_rows(
         filtered_rows,
         key=lambda row: (
             -_season_value(row.league.season),
-            row.league.name.lower(),
+            row.league.name.lower() if row.league.name else "",
             row.league.league_id,
         ),
     )
@@ -190,7 +194,10 @@ async def get_visible_owned_league_rows_by_username(
         clean_username,
     )
     hidden_league_ids = set()
-    sort_order = None
+    sort_order = await get_league_sort_orders(
+        db=db,
+        user_id=clean_username,
+    )
 
     if site_user_id is not None:
         hidden_league_ids = await get_hidden_league_ids(
