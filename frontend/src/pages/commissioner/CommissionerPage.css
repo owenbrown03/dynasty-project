@@ -1297,6 +1297,36 @@
 }
 
 /* Allow Custom Daily Waivers Info Button & Modal */
+.config-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-waivers-disabled-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-strong);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.daily-waivers-disabled-banner .btn-link {
+  background: transparent;
+  border: none;
+  color: var(--color-accent, #1f6feb);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
 .control-label-row {
   display: flex;
   align-items: center;

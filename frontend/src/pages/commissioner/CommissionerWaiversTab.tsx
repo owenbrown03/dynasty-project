@@ -250,9 +250,20 @@ export const CommissionerWaiversTab = () => {
       <section className="commissioner-waivers-config-card">
         <div className="config-header">
           <div>
-            <h3 className="config-title">Allow Custom Daily Waivers</h3>
+            <div className="config-title-row">
+              <h3 className="config-title">Allow Custom Daily Waivers</h3>
+              <button
+                type="button"
+                className="info-circle-btn"
+                onClick={() => setShowInfoModal(true)}
+                title="What is Allow Custom Daily Waivers?"
+                aria-label="Allow Custom Daily Waivers Information"
+              >
+                <Info size={14} />
+              </button>
+            </div>
             <p className="config-subtitle">
-              Configure Sleeper&apos;s custom daily waiver schedule across Sunday through Saturday.
+              Configure daily waiver behavior across Sunday through Saturday. Custom daily waivers will be enabled for all selected leagues.
             </p>
           </div>
           <div className="config-actions">
@@ -264,44 +275,15 @@ export const CommissionerWaiversTab = () => {
             >
               {updateMutation.isPending
                 ? 'Applying Settings...'
+                : !dailyWaiversEnabled
+                ? `Disable on ${selectedLeagues.size} Selected League${selectedLeagues.size === 1 ? '' : 's'}`
                 : `Apply to ${selectedLeagues.size} Selected League${selectedLeagues.size === 1 ? '' : 's'}`}
             </button>
           </div>
         </div>
 
-        {/* Global toggles: Enabled + Processing Hour */}
+        {/* Global Controls: Processing Hour + Presets */}
         <div className="config-row-controls">
-          <div className="control-group">
-            <div className="control-label-row">
-              <span className="control-label">Allow Custom Daily Waivers</span>
-              <button
-                type="button"
-                className="info-circle-btn"
-                onClick={() => setShowInfoModal(true)}
-                title="What is Allow Custom Daily Waivers?"
-                aria-label="Allow Custom Daily Waivers Information"
-              >
-                <Info size={13} />
-              </button>
-            </div>
-            <div className="toggle-pill-group">
-              <button
-                type="button"
-                className={`toggle-pill ${dailyWaiversEnabled ? 'active' : ''}`}
-                onClick={() => setDailyWaiversEnabled(true)}
-              >
-                Enabled
-              </button>
-              <button
-                type="button"
-                className={`toggle-pill ${!dailyWaiversEnabled ? 'active' : ''}`}
-                onClick={() => setDailyWaiversEnabled(false)}
-              >
-                Disabled
-              </button>
-            </div>
-          </div>
-
           <div className="control-group">
             <span className="control-label">Daily Waivers Processing Time</span>
             <select
@@ -324,6 +306,18 @@ export const CommissionerWaiversTab = () => {
           <div className="control-group presets-group">
             <span className="control-label">Quick Presets</span>
             <div className="preset-buttons">
+              <button
+                type="button"
+                className="button-secondary btn-sm"
+                onClick={applyStandardPreset}
+                title={
+                  presetData?.is_custom
+                    ? 'Customized standard schedule mapped to your account'
+                    : 'System default standard in-season schedule'
+                }
+              >
+                Standard In-Season {presetData?.is_custom ? '★' : ''}
+              </button>
               <button
                 type="button"
                 className="button-secondary btn-sm"
@@ -351,26 +345,39 @@ export const CommissionerWaiversTab = () => {
               <button
                 type="button"
                 className="button-secondary btn-sm"
-                onClick={applyStandardPreset}
-                title={
-                  presetData?.is_custom
-                    ? 'Customized standard schedule mapped to your account'
-                    : 'System default standard in-season schedule'
-                }
-              >
-                Standard In-Season {presetData?.is_custom ? '★' : ''}
-              </button>
-              <button
-                type="button"
-                className="button-secondary btn-sm"
                 onClick={() => applyPreset([2, 2, 2, 2, 2, 2, 2])}
                 title="All days locked"
               >
                 Lock All
               </button>
+              <button
+                type="button"
+                className={`button-secondary btn-sm ${!dailyWaiversEnabled ? 'active' : ''}`}
+                onClick={() => setDailyWaiversEnabled(false)}
+                title="Disable custom daily waivers and revert selected leagues to standard Sleeper weekly waiver rules"
+              >
+                Turn Off Daily Waivers
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Warning banner when user chooses to turn off daily waivers */}
+        {!dailyWaiversEnabled && (
+          <div className="daily-waivers-disabled-banner">
+            <span>
+              ⚠️ Custom daily waivers will be <strong>disabled</strong> on selected leagues (reverting to standard weekly Sleeper waiver rules).
+            </span>
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => setDailyWaiversEnabled(true)}
+            >
+              Re-enable Custom Waivers
+            </button>
+          </div>
+        )}
+
 
         {/* Standard In-Season Customization Bar */}
         <div className="standard-preset-bar">
