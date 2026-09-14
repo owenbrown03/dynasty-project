@@ -270,21 +270,25 @@ async def update_commissioner_waivers(
 
 
 DEFAULT_STANDARD_WAIVER_DAYS = [3, 0, 1, 1, 3, 3, 3]  # Sun, Mon, Tue, Wed, Thu, Fri, Sat
+DEFAULT_OFFSEASON_WAIVER_DAYS = [2, 2, 2, 1, 2, 2, 2]  # Wed Waivers, other days Locked
 DEFAULT_STANDARD_WAIVER_HOUR = None
 DEFAULT_STANDARD_DAILY_WAIVERS = 1
 
 
-def _get_preset_from_dict(raw: dict | None) -> CommissionerStandardWaiverPreset:
+def _get_preset_from_dict(
+    raw: dict | None,
+    default_days: list[int] = DEFAULT_STANDARD_WAIVER_DAYS,
+) -> CommissionerStandardWaiverPreset:
     if not raw or not isinstance(raw, dict):
         return CommissionerStandardWaiverPreset(
-            sunday_to_saturday_settings=DEFAULT_STANDARD_WAIVER_DAYS,
+            sunday_to_saturday_settings=default_days,
             daily_waivers_hour=DEFAULT_STANDARD_WAIVER_HOUR,
             daily_waivers=DEFAULT_STANDARD_DAILY_WAIVERS,
             is_custom=False,
         )
     days = raw.get("sunday_to_saturday_settings")
     if not isinstance(days, list) or len(days) != 7:
-        days = DEFAULT_STANDARD_WAIVER_DAYS
+        days = default_days
     return CommissionerStandardWaiverPreset(
         sunday_to_saturday_settings=days,
         daily_waivers_hour=raw.get("daily_waivers_hour", DEFAULT_STANDARD_WAIVER_HOUR),
@@ -295,35 +299,41 @@ def _get_preset_from_dict(raw: dict | None) -> CommissionerStandardWaiverPreset:
 
 async def get_commissioner_standard_waiver_preset(
     ctx: Context,
+    preset_type: str = "inseason",
 ) -> CommissionerStandardWaiverPreset:
+    key = "commissioner_offseason_waivers" if preset_type == "offseason" else "commissioner_standard_waivers"
+    default_days = DEFAULT_OFFSEASON_WAIVER_DAYS if preset_type == "offseason" else DEFAULT_STANDARD_WAIVER_DAYS
+
     if ctx.site_user and ctx.site_user.settings:
-        custom = ctx.site_user.settings.get("commissioner_standard_waivers")
+        custom = ctx.site_user.settings.get(key)
         if custom:
-            return _get_preset_from_dict(custom)
+            return _get_preset_from_dict(custom, default_days=default_days)
 
     if ctx.session and ctx.session.settings:
-        custom = ctx.session.settings.get("commissioner_standard_waivers")
+        custom = ctx.session.settings.get(key)
         if custom:
-            return _get_preset_from_dict(custom)
+            return _get_preset_from_dict(custom, default_days=default_days)
 
-    return _get_preset_from_dict(None)
+    return _get_preset_from_dict(None, default_days=default_days)
 
 
 async def save_commissioner_standard_waiver_preset(
     ctx: Context,
     body: CommissionerStandardWaiverPresetUpdate,
+    preset_type: str = "inseason",
 ) -> CommissionerStandardWaiverPreset:
+    key = "commissioner_offseason_waivers" if preset_type == "offseason" else "commissioner_standard_waivers"
     preset_data = body.model_dump()
 
     if ctx.site_user:
         settings = dict(ctx.site_user.settings or {})
-        settings["commissioner_standard_waivers"] = preset_data
+        settings[key] = preset_data
         ctx.site_user.settings = settings
         ctx.db.add(ctx.site_user)
 
     if ctx.session:
         settings = dict(ctx.session.settings or {})
-        settings["commissioner_standard_waivers"] = preset_data
+        settings[key] = preset_data
         ctx.session.settings = settings
         ctx.db.add(ctx.session)
 
@@ -343,16 +353,20 @@ async def save_commissioner_standard_waiver_preset(
 
 async def reset_commissioner_standard_waiver_preset(
     ctx: Context,
+    preset_type: str = "inseason",
 ) -> CommissionerStandardWaiverPreset:
-    if ctx.site_user and ctx.site_user.settings and "commissioner_standard_waivers" in ctx.site_user.settings:
+    key = "commissioner_offseason_waivers" if preset_type == "offseason" else "commissioner_standard_waivers"
+    default_days = DEFAULT_OFFSEASON_WAIVER_DAYS if preset_type == "offseason" else DEFAULT_STANDARD_WAIVER_DAYS
+
+    if ctx.site_user and ctx.site_user.settings and key in ctx.site_user.settings:
         settings = dict(ctx.site_user.settings)
-        settings.pop("commissioner_standard_waivers", None)
+        settings.pop(key, None)
         ctx.site_user.settings = settings
         ctx.db.add(ctx.site_user)
 
-    if ctx.session and ctx.session.settings and "commissioner_standard_waivers" in ctx.session.settings:
+    if ctx.session and ctx.session.settings and key in ctx.session.settings:
         settings = dict(ctx.session.settings)
-        settings.pop("commissioner_standard_waivers", None)
+        settings.pop(key, None)
         ctx.session.settings = settings
         ctx.db.add(ctx.session)
 
@@ -362,5 +376,6 @@ async def reset_commissioner_standard_waiver_preset(
     if ctx.session:
         await ctx.db.refresh(ctx.session)
 
-    return _get_preset_from_dict(None)
+    return _get_preset_from_dict(None, default_days=default_days)
+
 

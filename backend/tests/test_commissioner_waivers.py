@@ -208,6 +208,32 @@ async def test_standard_waiver_preset_flow():
     assert "commissioner_standard_waivers" not in site_user.settings
     assert "commissioner_standard_waivers" not in session.settings
 
+    # 5. Test off-season preset
+    offseason_default = await get_commissioner_standard_waiver_preset(ctx, preset_type="offseason")
+    assert offseason_default.is_custom is False
+    assert offseason_default.sunday_to_saturday_settings == [2, 2, 2, 1, 2, 2, 2]
+
+    offseason_update = CommissionerStandardWaiverPresetUpdate(
+        sunday_to_saturday_settings=[2, 2, 2, 2, 2, 2, 2],
+        daily_waivers_hour=0,
+        daily_waivers=1,
+    )
+    saved_offseason = await save_commissioner_standard_waiver_preset(
+        ctx, offseason_update, preset_type="offseason"
+    )
+    assert saved_offseason.is_custom is True
+    assert saved_offseason.sunday_to_saturday_settings == [2, 2, 2, 2, 2, 2, 2]
+    assert site_user.settings["commissioner_offseason_waivers"]["sunday_to_saturday_settings"] == [2, 2, 2, 2, 2, 2, 2]
+
+    loaded_offseason = await get_commissioner_standard_waiver_preset(ctx, preset_type="offseason")
+    assert loaded_offseason.is_custom is True
+    assert loaded_offseason.sunday_to_saturday_settings == [2, 2, 2, 2, 2, 2, 2]
+
+    reset_offseason = await reset_commissioner_standard_waiver_preset(ctx, preset_type="offseason")
+    assert reset_offseason.is_custom is False
+    assert reset_offseason.sunday_to_saturday_settings == [2, 2, 2, 1, 2, 2, 2]
+    assert "commissioner_offseason_waivers" not in site_user.settings
+
 
 @pytest.mark.anyio
 async def test_reconcile_session_commissioner_standard_waivers():
@@ -224,7 +250,12 @@ async def test_reconcile_session_commissioner_standard_waivers():
                 "sunday_to_saturday_settings": [1, 1, 1, 1, 1, 1, 1],
                 "daily_waivers_hour": 12,
                 "daily_waivers": 1,
-            }
+            },
+            "commissioner_offseason_waivers": {
+                "sunday_to_saturday_settings": [2, 2, 2, 1, 2, 2, 2],
+                "daily_waivers_hour": 0,
+                "daily_waivers": 1,
+            },
         },
     )
 
@@ -235,4 +266,6 @@ async def test_reconcile_session_commissioner_standard_waivers():
     )
     assert "commissioner_standard_waivers" in reconciled.settings
     assert reconciled.settings["commissioner_standard_waivers"]["daily_waivers_hour"] == 12
+    assert "commissioner_offseason_waivers" in reconciled.settings
+    assert reconciled.settings["commissioner_offseason_waivers"]["daily_waivers_hour"] == 0
 

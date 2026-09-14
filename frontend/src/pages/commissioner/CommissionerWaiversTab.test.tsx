@@ -84,8 +84,10 @@ vi.mock('@/hooks/sleeper/useUsers', () => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
   }),
-  useCommissionerWaiversPreset: () => ({
-    data: mockPresetData,
+  useCommissionerWaiversPreset: (presetType = 'inseason') => ({
+    data: presetType === 'offseason'
+      ? { ...mockPresetData, sunday_to_saturday_settings: [2, 2, 2, 1, 2, 2, 2] }
+      : mockPresetData,
     isLoading: false,
   }),
   useSaveCommissionerWaiversPreset: () => ({
@@ -108,6 +110,8 @@ describe('CommissionerWaiversTab', () => {
     expect(screen.getByText(/After Games: None/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Select All/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Select None/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Standard In-Season/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Standard Off-Season/i })).toBeInTheDocument();
 
     // Check After Games Waivers Clear dropdown options include None
     const noneOption = screen.getByRole('option', { name: 'None' });
@@ -158,25 +162,39 @@ describe('CommissionerWaiversTab', () => {
     expect(screen.getByText('League Beta')).toBeInTheDocument();
   });
 
-  it('handles saving and resetting custom standard in-season preset', async () => {
+  it('handles saving and resetting custom in-season and off-season presets', async () => {
     render(<CommissionerWaiversTab />);
 
-    // Custom badge should be shown because is_custom is true
-    expect(screen.getByText('Customized')).toBeInTheDocument();
+    // Custom badges should be shown because is_custom is true
+    expect(screen.getAllByText('Customized').length).toBeGreaterThanOrEqual(1);
 
-    // Click Save Current Schedule as Standard
-    const saveBtn = screen.getByRole('button', { name: /Save Current Schedule as Standard/i });
-    fireEvent.click(saveBtn);
+    // Click Save as In-Season
+    const saveInSeasonBtn = screen.getByRole('button', { name: /Save as In-Season/i });
+    fireEvent.click(saveInSeasonBtn);
     expect(mockSavePreset).toHaveBeenCalledWith(
       expect.objectContaining({
         sunday_to_saturday_settings: [3, 0, 1, 1, 3, 3, 3],
+        presetType: 'inseason',
       })
     );
 
-    // Click Reset to Default
-    const resetBtn = screen.getByRole('button', { name: /Reset to Default/i });
-    fireEvent.click(resetBtn);
-    expect(mockResetPreset).toHaveBeenCalled();
+    // Click Save as Off-Season
+    const saveOffSeasonBtn = screen.getByRole('button', { name: /Save as Off-Season/i });
+    fireEvent.click(saveOffSeasonBtn);
+    expect(mockSavePreset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        presetType: 'offseason',
+      })
+    );
+
+    // Click Reset to Default on In-Season
+    const resetBtns = screen.getAllByRole('button', { name: /Reset to Default/i });
+    fireEvent.click(resetBtns[0]);
+    expect(mockResetPreset).toHaveBeenCalledWith('inseason');
+
+    // Click Reset to Default on Off-Season
+    fireEvent.click(resetBtns[1]);
+    expect(mockResetPreset).toHaveBeenCalledWith('offseason');
   });
 });
 

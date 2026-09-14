@@ -400,8 +400,9 @@ async def update_commissioner_waivers_endpoint(
 )
 async def get_commissioner_waivers_preset_endpoint(
     ctx: ContextDep,
+    preset_type: str = Query("inseason", description="Preset type: 'inseason' or 'offseason'"),
 ):
-    return await get_commissioner_standard_waiver_preset(ctx)
+    return await get_commissioner_standard_waiver_preset(ctx, preset_type=preset_type)
 
 
 @router.post(
@@ -411,8 +412,9 @@ async def get_commissioner_waivers_preset_endpoint(
 async def save_commissioner_waivers_preset_endpoint(
     body: CommissionerStandardWaiverPresetUpdate,
     ctx: ContextDep,
+    preset_type: str = Query("inseason", description="Preset type: 'inseason' or 'offseason'"),
 ):
-    return await save_commissioner_standard_waiver_preset(ctx, body)
+    return await save_commissioner_standard_waiver_preset(ctx, body, preset_type=preset_type)
 
 
 @router.post(
@@ -421,8 +423,9 @@ async def save_commissioner_waivers_preset_endpoint(
 )
 async def reset_commissioner_waivers_preset_endpoint(
     ctx: ContextDep,
+    preset_type: str = Query("inseason", description="Preset type: 'inseason' or 'offseason'"),
 ):
-    return await reset_commissioner_standard_waiver_preset(ctx)
+    return await reset_commissioner_standard_waiver_preset(ctx, preset_type=preset_type)
 
 
 @router.get(

@@ -683,12 +683,22 @@ async def reconcile_session_commissioner_standard_waivers(
         return user
 
     session_waivers = (session.settings or {}).get("commissioner_standard_waivers")
-    if session_waivers is None:
+    session_offseason = (session.settings or {}).get("commissioner_offseason_waivers")
+    if session_waivers is None and session_offseason is None:
         return user
 
-    if "commissioner_standard_waivers" not in (user.settings or {}):
-        settings = dict(user.settings or {})
+    settings = dict(user.settings or {})
+    changed = False
+
+    if session_waivers is not None and "commissioner_standard_waivers" not in settings:
         settings["commissioner_standard_waivers"] = session_waivers
+        changed = True
+
+    if session_offseason is not None and "commissioner_offseason_waivers" not in settings:
+        settings["commissioner_offseason_waivers"] = session_offseason
+        changed = True
+
+    if changed:
         user.settings = settings
         db.add(user)
         await db.commit()

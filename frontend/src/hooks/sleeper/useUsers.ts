@@ -433,15 +433,19 @@ export const useUpdateCommissionerWaivers = () => {
   });
 };
 
-export function useCommissionerWaiversPreset() {
+export function useCommissionerWaiversPreset(presetType: 'inseason' | 'offseason' = 'inseason') {
   return useQuery<CommissionerStandardWaiverPreset, Error>({
-    queryKey: ['commissioner-waivers-preset'],
+    queryKey: ['commissioner-waivers-preset', presetType],
     queryFn: async () => {
-      const res = await api.users.getCommissionerWaiversPreset();
+      const res = await api.users.getCommissionerWaiversPreset(presetType);
       return res.data;
     },
     staleTime: 1000 * 60 * 5,
   });
+}
+
+export interface SaveCommissionerWaiversPresetArgs extends CommissionerStandardWaiverPresetUpdate {
+  presetType?: 'inseason' | 'offseason';
 }
 
 export const useSaveCommissionerWaiversPreset = () => {
@@ -449,27 +453,33 @@ export const useSaveCommissionerWaiversPreset = () => {
   return useMutation<
     CommissionerStandardWaiverPreset,
     Error,
-    CommissionerStandardWaiverPresetUpdate
+    SaveCommissionerWaiversPresetArgs
   >({
-    mutationFn: async (payload: CommissionerStandardWaiverPresetUpdate) => {
-      const res = await api.users.saveCommissionerWaiversPreset(payload);
+    mutationFn: async (args: SaveCommissionerWaiversPresetArgs) => {
+      const { presetType = 'inseason', ...payload } = args;
+      const res = await api.users.saveCommissionerWaiversPreset(payload, presetType);
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['commissioner-waivers-preset'] });
+    onSuccess: (_data, args) => {
+      queryClient.invalidateQueries({
+        queryKey: ['commissioner-waivers-preset', args.presetType || 'inseason'],
+      });
     },
   });
 };
 
 export const useResetCommissionerWaiversPreset = () => {
   const queryClient = useQueryClient();
-  return useMutation<CommissionerStandardWaiverPreset, Error>({
-    mutationFn: async () => {
-      const res = await api.users.resetCommissionerWaiversPreset();
+  return useMutation<CommissionerStandardWaiverPreset, Error, 'inseason' | 'offseason' | void>({
+    mutationFn: async (presetType = 'inseason') => {
+      const targetType = presetType || 'inseason';
+      const res = await api.users.resetCommissionerWaiversPreset(targetType);
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['commissioner-waivers-preset'] });
+    onSuccess: (_data, presetType) => {
+      queryClient.invalidateQueries({
+        queryKey: ['commissioner-waivers-preset', presetType || 'inseason'],
+      });
     },
   });
 };

@@ -13,6 +13,9 @@ import { Skeleton } from '@/components/feedback/Skeleton';
 // Standard In-Season default: [Sun=3 (Waivers->FA), Mon=0 (FA), Tue=1 (Waivers), Wed=1 (Waivers), Thu=3 (Waivers->FA), Fri=3 (Waivers->FA), Sat=3 (Waivers->FA)]
 const DEFAULT_STANDARD_PRESET = [3, 0, 1, 1, 3, 3, 3];
 
+// Standard Off-Season default: [Sun=2 (Locked), Mon=2 (Locked), Tue=2 (Locked), Wed=1 (Waivers), Thu=2 (Locked), Fri=2 (Locked), Sat=2 (Locked)]
+const DEFAULT_OFFSEASON_PRESET = [2, 2, 2, 1, 2, 2, 2];
+
 // 0=FA, 1=Waivers, 2=Locked, 3=Waivers->FA
 const WAIVER_OPTIONS = [
   { value: 1, label: 'Waivers', shortLabel: 'Waivers', colorClass: 'badge-waivers' },
@@ -102,7 +105,8 @@ export const CommissionerWaiversTab = () => {
     refetch,
   } = useCommissionerWaiversOverview();
   const updateMutation = useUpdateCommissionerWaivers();
-  const { data: presetData } = useCommissionerWaiversPreset();
+  const { data: inSeasonPreset } = useCommissionerWaiversPreset('inseason');
+  const { data: offSeasonPreset } = useCommissionerWaiversPreset('offseason');
   const savePresetMutation = useSaveCommissionerWaiversPreset();
   const resetPresetMutation = useResetCommissionerWaiversPreset();
 
@@ -120,24 +124,24 @@ export const CommissionerWaiversTab = () => {
   const [schedule, setSchedule] = useState<number[]>(DEFAULT_STANDARD_PRESET);
   const [hasUserEditedSchedule, setHasUserEditedSchedule] = useState(false);
 
-  // Sync custom preset from account once loaded if user hasn't started manually editing
+  // Sync custom in-season preset from account once loaded if user hasn't started manually editing
   useEffect(() => {
-    if (presetData?.sunday_to_saturday_settings && !hasUserEditedSchedule) {
+    if (inSeasonPreset?.sunday_to_saturday_settings && !hasUserEditedSchedule) {
       setSchedule((prev) => {
-        const next = presetData.sunday_to_saturday_settings;
+        const next = inSeasonPreset.sunday_to_saturday_settings;
         if (prev.length === next.length && prev.every((v, i) => v === next[i])) {
           return prev;
         }
         return next;
       });
-      if (presetData.daily_waivers !== undefined) {
+      if (inSeasonPreset.daily_waivers !== undefined) {
         setDailyWaiversEnabled((prev) => {
-          const next = Boolean(presetData.daily_waivers);
+          const next = Boolean(inSeasonPreset.daily_waivers);
           return prev === next ? prev : next;
         });
       }
     }
-  }, [presetData, hasUserEditedSchedule]);
+  }, [inSeasonPreset, hasUserEditedSchedule]);
 
   const filteredLeagues = useMemo(() => {
     return leagues.filter((league) => {
@@ -179,21 +183,31 @@ export const CommissionerWaiversTab = () => {
     setSchedule(presetSchedule);
   };
 
-  const applyStandardPreset = () => {
+  const applyStandardInSeasonPreset = () => {
     setHasUserEditedSchedule(true);
-    const targetSchedule = presetData?.sunday_to_saturday_settings || DEFAULT_STANDARD_PRESET;
+    const targetSchedule = inSeasonPreset?.sunday_to_saturday_settings || DEFAULT_STANDARD_PRESET;
     setSchedule(targetSchedule);
-    if (presetData?.daily_waivers !== undefined) {
-      setDailyWaiversEnabled(Boolean(presetData.daily_waivers));
+    if (inSeasonPreset?.daily_waivers !== undefined) {
+      setDailyWaiversEnabled(Boolean(inSeasonPreset.daily_waivers));
     }
   };
 
-  const handleSaveStandardPreset = async () => {
+  const applyStandardOffSeasonPreset = () => {
+    setHasUserEditedSchedule(true);
+    const targetSchedule = offSeasonPreset?.sunday_to_saturday_settings || DEFAULT_OFFSEASON_PRESET;
+    setSchedule(targetSchedule);
+    if (offSeasonPreset?.daily_waivers !== undefined) {
+      setDailyWaiversEnabled(Boolean(offSeasonPreset.daily_waivers));
+    }
+  };
+
+  const handleSaveInSeasonPreset = async () => {
     try {
       await savePresetMutation.mutateAsync({
         sunday_to_saturday_settings: schedule,
         daily_waivers_hour: processingHour === 'keep' ? null : processingHour,
         daily_waivers: dailyWaiversEnabled ? 1 : 0,
+        presetType: 'inseason',
       });
       notify.success('Standard In-Season preset saved to your account!');
     } catch (err: unknown) {
@@ -202,11 +216,37 @@ export const CommissionerWaiversTab = () => {
     }
   };
 
-  const handleResetStandardPreset = async () => {
+  const handleResetInSeasonPreset = async () => {
     try {
-      await resetPresetMutation.mutateAsync();
+      await resetPresetMutation.mutateAsync('inseason');
       setSchedule(DEFAULT_STANDARD_PRESET);
       notify.success('Standard In-Season preset reset to default.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to reset preset';
+      notify.error(msg);
+    }
+  };
+
+  const handleSaveOffSeasonPreset = async () => {
+    try {
+      await savePresetMutation.mutateAsync({
+        sunday_to_saturday_settings: schedule,
+        daily_waivers_hour: processingHour === 'keep' ? null : processingHour,
+        daily_waivers: dailyWaiversEnabled ? 1 : 0,
+        presetType: 'offseason',
+      });
+      notify.success('Standard Off-Season preset saved to your account!');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save preset';
+      notify.error(msg);
+    }
+  };
+
+  const handleResetOffSeasonPreset = async () => {
+    try {
+      await resetPresetMutation.mutateAsync('offseason');
+      setSchedule(DEFAULT_OFFSEASON_PRESET);
+      notify.success('Standard Off-Season preset reset to default.');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to reset preset';
       notify.error(msg);
@@ -374,14 +414,26 @@ export const CommissionerWaiversTab = () => {
               <button
                 type="button"
                 className="button-secondary btn-sm"
-                onClick={applyStandardPreset}
+                onClick={applyStandardInSeasonPreset}
                 title={
-                  presetData?.is_custom
-                    ? 'Customized standard schedule mapped to your account'
+                  inSeasonPreset?.is_custom
+                    ? 'Customized standard in-season schedule mapped to your account'
                     : 'System default standard in-season schedule'
                 }
               >
-                Standard In-Season {presetData?.is_custom ? '(Custom)' : ''}
+                Standard In-Season {inSeasonPreset?.is_custom ? '(Custom)' : ''}
+              </button>
+              <button
+                type="button"
+                className="button-secondary btn-sm"
+                onClick={applyStandardOffSeasonPreset}
+                title={
+                  offSeasonPreset?.is_custom
+                    ? 'Customized standard off-season schedule mapped to your account'
+                    : 'System default standard off-season schedule (Wed Waivers, other days locked)'
+                }
+              >
+                Standard Off-Season {offSeasonPreset?.is_custom ? '(Custom)' : ''}
               </button>
               <button
                 type="button"
@@ -449,8 +501,8 @@ export const CommissionerWaiversTab = () => {
         {/* Standard In-Season Customization Bar */}
         <div className="standard-preset-bar">
           <div className="standard-preset-status">
-            <span className="standard-preset-label">Account Standard In-Season Preset:</span>
-            {presetData?.is_custom ? (
+            <span className="standard-preset-label">Account Standard In-Season:</span>
+            {inSeasonPreset?.is_custom ? (
               <span className="preset-custom-badge">Customized</span>
             ) : (
               <span className="preset-default-badge">System Default</span>
@@ -460,19 +512,53 @@ export const CommissionerWaiversTab = () => {
             <button
               type="button"
               className="button-secondary btn-sm"
-              onClick={handleSaveStandardPreset}
+              onClick={handleSaveInSeasonPreset}
               disabled={savePresetMutation.isPending}
               title="Save the current schedule below as your account's Standard In-Season preset"
             >
-              {savePresetMutation.isPending ? 'Saving...' : 'Save Current Schedule as Standard'}
+              {savePresetMutation.isPending ? 'Saving...' : 'Save as In-Season'}
             </button>
-            {presetData?.is_custom && (
+            {inSeasonPreset?.is_custom && (
               <button
                 type="button"
                 className="button-secondary btn-sm"
-                onClick={handleResetStandardPreset}
+                onClick={handleResetInSeasonPreset}
                 disabled={resetPresetMutation.isPending}
                 title="Reset your custom Standard In-Season preset back to system default"
+              >
+                {resetPresetMutation.isPending ? 'Resetting...' : 'Reset to Default'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Standard Off-Season Customization Bar */}
+        <div className="standard-preset-bar">
+          <div className="standard-preset-status">
+            <span className="standard-preset-label">Account Standard Off-Season:</span>
+            {offSeasonPreset?.is_custom ? (
+              <span className="preset-custom-badge">Customized</span>
+            ) : (
+              <span className="preset-default-badge">System Default</span>
+            )}
+          </div>
+          <div className="standard-preset-buttons">
+            <button
+              type="button"
+              className="button-secondary btn-sm"
+              onClick={handleSaveOffSeasonPreset}
+              disabled={savePresetMutation.isPending}
+              title="Save the current schedule below as your account's Standard Off-Season preset"
+            >
+              {savePresetMutation.isPending ? 'Saving...' : 'Save as Off-Season'}
+            </button>
+            {offSeasonPreset?.is_custom && (
+              <button
+                type="button"
+                className="button-secondary btn-sm"
+                onClick={handleResetOffSeasonPreset}
+                disabled={resetPresetMutation.isPending}
+                title="Reset your custom Standard Off-Season preset back to system default"
               >
                 {resetPresetMutation.isPending ? 'Resetting...' : 'Reset to Default'}
               </button>

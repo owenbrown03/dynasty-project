@@ -148,9 +148,21 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
   resetCommissionerFaab: (payload: CommissionerFaabResetRequest) => client.post<CommissionerFaabResetResponse>(`${prefix}/commissioner/faab/reset`, payload),
   getCommissionerWaiversOverview: () => client.get<CommissionerWaiverLeagueInfo[]>(`${prefix}/commissioner/waivers`),
   updateCommissionerWaivers: (payload: CommissionerWaiverUpdateRequest) => client.post<CommissionerWaiverUpdateResponse>(`${prefix}/commissioner/waivers/update`, payload),
-  getCommissionerWaiversPreset: () => client.get<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset`),
-  saveCommissionerWaiversPreset: (payload: CommissionerStandardWaiverPresetUpdate) => client.post<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset`, payload),
-  resetCommissionerWaiversPreset: () => client.post<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset/reset`),
+  getCommissionerWaiversPreset: (presetType: 'inseason' | 'offseason' = 'inseason') =>
+    client.get<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset`, {
+      params: { preset_type: presetType },
+    }),
+  saveCommissionerWaiversPreset: (
+    payload: CommissionerStandardWaiverPresetUpdate,
+    presetType: 'inseason' | 'offseason' = 'inseason',
+  ) =>
+    client.post<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset`, payload, {
+      params: { preset_type: presetType },
+    }),
+  resetCommissionerWaiversPreset: (presetType: 'inseason' | 'offseason' = 'inseason') =>
+    client.post<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset/reset`, null, {
+      params: { preset_type: presetType },
+    }),
   getCommissionerSettingsOverview: () => client.get<CommissionerLeagueSettingsInfo[]>(`${prefix}/commissioner/settings`),
   updateCommissionerSettings: (payload: CommissionerSettingsUpdateRequest) => client.post<CommissionerSettingsUpdateResponse>(`${prefix}/commissioner/settings/update`, payload),
   broadcastCommissionerPoll: (
