@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Info, X } from 'lucide-react';
+import { AlertTriangle, Info, X } from 'lucide-react';
 import {
   useCommissionerWaiversOverview,
   useUpdateCommissionerWaivers,
@@ -66,6 +66,7 @@ const WAIVER_CLEAR_DAYS_OPTIONS = [
 ];
 
 const WAIVER_AFTER_GAMES_OPTIONS = [
+  { value: 0, label: 'None' },
   { value: 1, label: 'Tuesday' },
   { value: 2, label: 'Wednesday (Standard)' },
   { value: 3, label: 'Thursday' },
@@ -77,6 +78,7 @@ function formatHour(hour: number): string {
 }
 
 function formatAfterGamesDay(val: number): string {
+  if (val === 0) return 'None';
   const match = WAIVER_AFTER_GAMES_OPTIONS.find((o) => o.value === val);
   return match ? match.label.split(' ')[0] : 'Wed';
 }
@@ -121,9 +123,18 @@ export const CommissionerWaiversTab = () => {
   // Sync custom preset from account once loaded if user hasn't started manually editing
   useEffect(() => {
     if (presetData?.sunday_to_saturday_settings && !hasUserEditedSchedule) {
-      setSchedule(presetData.sunday_to_saturday_settings);
+      setSchedule((prev) => {
+        const next = presetData.sunday_to_saturday_settings;
+        if (prev.length === next.length && prev.every((v, i) => v === next[i])) {
+          return prev;
+        }
+        return next;
+      });
       if (presetData.daily_waivers !== undefined) {
-        setDailyWaiversEnabled(Boolean(presetData.daily_waivers));
+        setDailyWaiversEnabled((prev) => {
+          const next = Boolean(presetData.daily_waivers);
+          return prev === next ? prev : next;
+        });
       }
     }
   }, [presetData, hasUserEditedSchedule]);
@@ -370,7 +381,7 @@ export const CommissionerWaiversTab = () => {
                     : 'System default standard in-season schedule'
                 }
               >
-                Standard In-Season {presetData?.is_custom ? '★' : ''}
+                Standard In-Season {presetData?.is_custom ? '(Custom)' : ''}
               </button>
               <button
                 type="button"
@@ -419,9 +430,12 @@ export const CommissionerWaiversTab = () => {
         {/* Warning banner when user chooses to turn off daily waivers */}
         {!dailyWaiversEnabled && (
           <div className="daily-waivers-disabled-banner">
-            <span>
-              ⚠️ Custom daily waivers will be <strong>disabled</strong> on selected leagues (reverting to standard weekly Sleeper waiver rules).
-            </span>
+            <div className="daily-waivers-disabled-message">
+              <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+              <span>
+                Custom daily waivers will be <strong>disabled</strong> on selected leagues (reverting to standard weekly Sleeper waiver rules).
+              </span>
+            </div>
             <button
               type="button"
               className="btn-link"
@@ -432,24 +446,12 @@ export const CommissionerWaiversTab = () => {
           </div>
         )}
 
-        {/* Contextual warning when Sun or Mon has FA or Waivers -> FA */}
-        {(schedule[0] === 0 || schedule[0] === 3 || schedule[1] === 0 || schedule[1] === 3) && (
-          <div className="game-lock-warning-card">
-            <span className="game-lock-warning-icon">ℹ️</span>
-            <div className="game-lock-warning-text">
-              <strong>Game Lock Rule:</strong> With Sunday or Monday set to{' '}
-              {schedule[0] === 3 || schedule[1] === 3 ? 'Waivers → FA' : 'Free Agent'}, players whose games have
-              already started (e.g. Thursday night or Sunday kickoffs) <strong>stay on waivers after games until {waiverDayOfWeek === 'keep' ? 'Wednesday' : formatAfterGamesDay(waiverDayOfWeek)}</strong> (per Sleeper&apos;s <em>After Games Waivers Clear</em> rule).
-            </div>
-          </div>
-        )}
-
         {/* Standard In-Season Customization Bar */}
         <div className="standard-preset-bar">
           <div className="standard-preset-status">
             <span className="standard-preset-label">Account Standard In-Season Preset:</span>
             {presetData?.is_custom ? (
-              <span className="preset-custom-badge">★ Customized</span>
+              <span className="preset-custom-badge">Customized</span>
             ) : (
               <span className="preset-default-badge">System Default</span>
             )}
@@ -674,14 +676,18 @@ export const CommissionerWaiversTab = () => {
               </div>
 
               <div className="info-note-box">
+                <div className="info-note-box-title">
+                  <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                  <span>Game Lock &amp; Clearance Checks</span>
+                </div>
                 <p>
-                  <strong>Game Lock Rule:</strong> A player will only clear after passing all other waiver checks (such as the standard <em>After Games Waivers Clear</em> setting).
+                  <strong>Game Lock Rule:</strong> A player will only clear after passing all other waiver checks (such as the standard <em>After Games Waivers Clear</em> setting). Players whose games have started remain locked until their normal clearance day, regardless of whether a day is set to Free Agent.
                 </p>
                 <p style={{ marginTop: '8px' }}>
-                  <strong>Thursday Game Example:</strong> If a player plays in a Thursday night game, and Sunday or Monday are set to <em>Waivers → FA</em> or <em>Free Agent</em>, that player will <strong>not</strong> become a Free Agent on Sunday. Because they have already played, they stay on waivers until Wednesday morning (or your league&apos;s <em>After Games Waivers Clear</em> day).
+                  <strong>Thursday Game Example:</strong> If a player plays in a Thursday night game, and Sunday or Monday are set to <em>Waivers → FA</em> or <em>Free Agent</em>, that player will <strong>not</strong> become a Free Agent on Sunday. Because they have already played, they stay on waivers until Wednesday morning (or your league&apos;s configured <em>After Games Waivers Clear</em> day).
                 </p>
                 <p style={{ marginTop: '8px' }}>
-                  <strong>Drop Hold Rule:</strong> Similarly, players who are dropped will stay on waivers for the number of days specified by your league&apos;s <em>Time players are on waivers after drop</em> setting (typically 2 days, or 0–3 days).
+                  <strong>Drop Hold Rule:</strong> Similarly, players who are dropped will stay on waivers for the number of days specified by your league&apos;s <em>Time on Waivers After Drop</em> setting (typically 2 days, or 0–3 days).
                 </p>
               </div>
             </div>

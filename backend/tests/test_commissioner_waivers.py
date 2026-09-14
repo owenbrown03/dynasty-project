@@ -63,7 +63,13 @@ async def test_get_commissioner_waivers_overview(monkeypatch):
         name="Commish League",
         avatar=None,
         total_rosters=12,
-        settings={"daily_waivers": 1, "daily_waivers_days": 5461, "daily_waivers_hour": 0},
+        settings={
+            "daily_waivers": 1,
+            "daily_waivers_days": 5461,
+            "daily_waivers_hour": 0,
+            "waiver_day_of_week": 0,
+            "waiver_clear_days": 0,
+        },
     )
     commish_row = SimpleNamespace(
         league=league,
@@ -91,6 +97,8 @@ async def test_get_commissioner_waivers_overview(monkeypatch):
     assert overview[0].league_name == "Commish League"
     assert overview[0].daily_waivers == 1
     assert overview[0].daily_waivers_days == 5461
+    assert overview[0].waiver_day_of_week == 0
+    assert overview[0].waiver_clear_days == 0
 
 
 @pytest.mark.anyio
@@ -133,6 +141,7 @@ async def test_update_commissioner_waivers_calls_sleeper_write(monkeypatch):
         daily_waivers=1,
         sunday_to_saturday_settings=[0, 2, 2, 1, 3, 3, 0],
         daily_waivers_hour=9,
+        waiver_day_of_week=0,
     )
 
     res = await update_commissioner_waivers(ctx, req)
@@ -147,6 +156,7 @@ async def test_update_commissioner_waivers_calls_sleeper_write(monkeypatch):
     assert called_args.kwargs["settings_map"]["daily_waivers"] == 1
     assert called_args.kwargs["settings_map"]["daily_waivers_days"] == 10736
     assert called_args.kwargs["settings_map"]["daily_waivers_hour"] == 9
+    assert called_args.kwargs["settings_map"]["waiver_day_of_week"] == 0
 
 
 @pytest.mark.anyio

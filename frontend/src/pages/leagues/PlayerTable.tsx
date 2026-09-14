@@ -561,7 +561,8 @@ export function PlayerTable({
                 Are you sure you want to drop <strong>{playerToCut.name}</strong> ({playerToCut.position} - {playerToCut.team ?? 'FA'}) from your roster?
               </p>
               <div className="player-cut-warning">
-                ⚠️ This will submit an immediate drop transaction to Sleeper and release this player to waivers.
+                <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+                <span>This will submit an immediate drop transaction to Sleeper and release this player to waivers.</span>
               </div>
             </div>
 

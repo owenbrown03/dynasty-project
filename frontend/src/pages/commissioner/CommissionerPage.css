@@ -1316,6 +1316,12 @@
   margin-bottom: 8px;
 }
 
+.daily-waivers-disabled-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .daily-waivers-disabled-banner .btn-link {
   background: transparent;
   border: none;
@@ -1325,32 +1331,6 @@
   text-decoration: underline;
   cursor: pointer;
   padding: 0;
-}
-
-.game-lock-warning-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 14px;
-  background: rgba(234, 179, 8, 0.1);
-  border: 1px solid rgba(234, 179, 8, 0.35);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-text-strong);
-  margin-top: 4px;
-  margin-bottom: 8px;
-}
-
-.game-lock-warning-icon {
-  font-size: 15px;
-  line-height: 1;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.game-lock-warning-text strong {
-  color: #f59e0b;
 }
 
 .control-label-row {
@@ -1524,6 +1504,16 @@
   border: 1px solid rgba(234, 179, 8, 0.3);
   color: var(--color-text-strong);
   font-size: 12px;
+}
+
+.info-note-box-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-warning, #f59e0b);
 }
 
 .daily-waivers-modal-footer {

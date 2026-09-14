@@ -217,6 +217,7 @@ Do not move durable application state out of Postgres into Redis.
   - `BootstrapContext`
   - `AuthContext`
   - `SleeperAuthContext`
+- Do not use emojis anywhere in the frontend UI, components, notifications, or code. Use SVG icons (such as Lucide icons) or clean text styling instead.
 
 ### Dependency rules
 
@@ -599,6 +600,7 @@ Examples:
 - Don’t introduce sync code paths into async request handling unless unavoidable.
 - Don’t add dependencies without approval.
 - Don’t create duplicate services when an existing service can be extended.
+- Don’t use emojis anywhere in the UI, code, components, or user-facing text.
 
 ## Notes on documentation state
 

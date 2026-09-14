@@ -6,58 +6,75 @@ afterEach(() => {
   cleanup();
 });
 
-const mockMutateAsync = vi.fn();
-const mockSavePreset = vi.fn();
-const mockResetPreset = vi.fn();
+const mockMutateAsync = vi.fn().mockResolvedValue({ successful_leagues: 2, results: [] });
+const mockSavePreset = vi.fn().mockResolvedValue({});
+const mockResetPreset = vi.fn().mockResolvedValue({});
+
+vi.mock('@/utils/notify', () => ({
+  notify: {
+    success: vi.fn(),
+    error: vi.fn(),
+    dismiss: vi.fn(),
+  },
+}));
+
+const mockOverviewData = [
+  {
+    league_id: 'l1',
+    league_name: 'League Alpha',
+    avatar: null,
+    total_rosters: 12,
+    daily_waivers: 1,
+    daily_waivers_hour: 0,
+    daily_waivers_days: 5461,
+    daily_waivers_days_b4: '1111111',
+    waiver_type: 2,
+    waiver_clear_days: 2,
+    waiver_day_of_week: 2,
+    schedule: [
+      { day: 'Sunday', setting: 1 },
+      { day: 'Monday', setting: 1 },
+      { day: 'Tuesday', setting: 1 },
+      { day: 'Wednesday', setting: 1 },
+      { day: 'Thursday', setting: 1 },
+      { day: 'Friday', setting: 1 },
+      { day: 'Saturday', setting: 1 },
+    ],
+  },
+  {
+    league_id: 'l2',
+    league_name: 'League Beta',
+    avatar: null,
+    total_rosters: 10,
+    daily_waivers: 0,
+    daily_waivers_hour: 9,
+    daily_waivers_days: 10736,
+    daily_waivers_days_b4: '2213300',
+    waiver_type: 2,
+    waiver_clear_days: 1,
+    waiver_day_of_week: 0,
+    schedule: [
+      { day: 'Sunday', setting: 0 },
+      { day: 'Monday', setting: 2 },
+      { day: 'Tuesday', setting: 2 },
+      { day: 'Wednesday', setting: 1 },
+      { day: 'Thursday', setting: 3 },
+      { day: 'Friday', setting: 3 },
+      { day: 'Saturday', setting: 0 },
+    ],
+  },
+];
+
+const mockPresetData = {
+  sunday_to_saturday_settings: [3, 0, 1, 1, 3, 3, 3],
+  daily_waivers_hour: null,
+  daily_waivers: 1,
+  is_custom: true,
+};
 
 vi.mock('@/hooks/sleeper/useUsers', () => ({
   useCommissionerWaiversOverview: () => ({
-    data: [
-      {
-        league_id: 'l1',
-        league_name: 'League Alpha',
-        avatar: null,
-        total_rosters: 12,
-        daily_waivers: 1,
-        daily_waivers_hour: 0,
-        daily_waivers_days: 5461,
-        daily_waivers_days_b4: '1111111',
-        waiver_type: 2,
-        waiver_clear_days: 2,
-        waiver_day_of_week: 2,
-        schedule: [
-          { day: 'Sunday', setting: 1 },
-          { day: 'Monday', setting: 1 },
-          { day: 'Tuesday', setting: 1 },
-          { day: 'Wednesday', setting: 1 },
-          { day: 'Thursday', setting: 1 },
-          { day: 'Friday', setting: 1 },
-          { day: 'Saturday', setting: 1 },
-        ],
-      },
-      {
-        league_id: 'l2',
-        league_name: 'League Beta',
-        avatar: null,
-        total_rosters: 10,
-        daily_waivers: 0,
-        daily_waivers_hour: 9,
-        daily_waivers_days: 10736,
-        daily_waivers_days_b4: '2213300',
-        waiver_type: 2,
-        waiver_clear_days: 1,
-        waiver_day_of_week: 1,
-        schedule: [
-          { day: 'Sunday', setting: 0 },
-          { day: 'Monday', setting: 2 },
-          { day: 'Tuesday', setting: 2 },
-          { day: 'Wednesday', setting: 1 },
-          { day: 'Thursday', setting: 3 },
-          { day: 'Friday', setting: 3 },
-          { day: 'Saturday', setting: 0 },
-        ],
-      },
-    ],
+    data: mockOverviewData,
     isLoading: false,
     isFetching: false,
     error: null,
@@ -68,12 +85,7 @@ vi.mock('@/hooks/sleeper/useUsers', () => ({
     isPending: false,
   }),
   useCommissionerWaiversPreset: () => ({
-    data: {
-      sunday_to_saturday_settings: [3, 0, 1, 1, 3, 3, 3],
-      daily_waivers_hour: 0,
-      daily_waivers: 1,
-      is_custom: true,
-    },
+    data: mockPresetData,
     isLoading: false,
   }),
   useSaveCommissionerWaiversPreset: () => ({
@@ -93,8 +105,14 @@ describe('CommissionerWaiversTab', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Allow Custom Daily Waivers' })).toBeInTheDocument();
     expect(screen.getByText('League Alpha')).toBeInTheDocument();
     expect(screen.getByText('League Beta')).toBeInTheDocument();
+    expect(screen.getByText(/After Games: None/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Select All/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Select None/i })).toBeInTheDocument();
+
+    // Check After Games Waivers Clear dropdown options include None
+    const noneOption = screen.getByRole('option', { name: 'None' });
+    expect(noneOption).toBeInTheDocument();
+    expect((noneOption as HTMLOptionElement).value).toBe('0');
   });
 
   it('opens and closes the Allow Custom Daily Waivers info modal', () => {
@@ -103,12 +121,12 @@ describe('CommissionerWaiversTab', () => {
     const infoBtn = screen.getByRole('button', { name: /Allow Custom Daily Waivers Information/i });
     fireEvent.click(infoBtn);
 
-    // Verify modal title and Sleeper definition are rendered
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
     expect(
       screen.getByText(/Specify custom times for waivers to clear/i)
     ).toBeInTheDocument();
-    expect(screen.getByText(/After Games Waivers Clear/i)).toBeInTheDocument();
+    expect(dialog).toHaveTextContent(/After Games Waivers Clear/i);
 
     // Close via Got It button
     const closeBtn = screen.getByRole('button', { name: /Got It/i });
@@ -144,7 +162,7 @@ describe('CommissionerWaiversTab', () => {
     render(<CommissionerWaiversTab />);
 
     // Custom badge should be shown because is_custom is true
-    expect(screen.getByText('★ Customized')).toBeInTheDocument();
+    expect(screen.getByText('Customized')).toBeInTheDocument();
 
     // Click Save Current Schedule as Standard
     const saveBtn = screen.getByRole('button', { name: /Save Current Schedule as Standard/i });
