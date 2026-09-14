@@ -23,6 +23,8 @@ vi.mock('@/hooks/sleeper/useUsers', () => ({
         daily_waivers_days: 5461,
         daily_waivers_days_b4: '1111111',
         waiver_type: 2,
+        waiver_clear_days: 2,
+        waiver_day_of_week: 2,
         schedule: [
           { day: 'Sunday', setting: 1 },
           { day: 'Monday', setting: 1 },
@@ -43,6 +45,8 @@ vi.mock('@/hooks/sleeper/useUsers', () => ({
         daily_waivers_days: 10736,
         daily_waivers_days_b4: '2213300',
         waiver_type: 2,
+        waiver_clear_days: 1,
+        waiver_day_of_week: 1,
         schedule: [
           { day: 'Sunday', setting: 0 },
           { day: 'Monday', setting: 2 },

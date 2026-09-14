@@ -1327,6 +1327,32 @@
   padding: 0;
 }
 
+.game-lock-warning-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-strong);
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.game-lock-warning-icon {
+  font-size: 15px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.game-lock-warning-text strong {
+  color: #f59e0b;
+}
+
 .control-label-row {
   display: flex;
   align-items: center;

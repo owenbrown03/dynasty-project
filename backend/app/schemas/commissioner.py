@@ -223,6 +223,8 @@ class CommissionerWaiverLeagueInfo(Base):
     daily_waivers_days: int = 5461
     daily_waivers_days_b4: str = "1111111"
     waiver_type: int = 2
+    waiver_clear_days: int = 2
+    waiver_day_of_week: int = 2
     schedule: list[CommissionerWaiverDaySchedule] = Field(default_factory=list)
 
 
@@ -232,6 +234,9 @@ class CommissionerWaiverUpdateRequest(Base):
     daily_waivers_days: int | None = None
     sunday_to_saturday_settings: list[int] | None = None  # 7 ints (0..3) [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
     daily_waivers_hour: int | None = None  # 0..23, or None to preserve each league's existing hour
+    waiver_clear_days: int | None = None  # 0..3, or None to preserve each league's setting
+    waiver_day_of_week: int | None = None  # 1=Tue, 2=Wed, etc., or None to preserve each league's setting
+
 
 
 class CommissionerWaiverUpdateResult(Base):

@@ -58,9 +58,27 @@ const HOURS_OF_DAY = [
   { value: 23, label: '11:00 PM' },
 ];
 
+const WAIVER_CLEAR_DAYS_OPTIONS = [
+  { value: 0, label: '0 Days (No hold)' },
+  { value: 1, label: '1 Day' },
+  { value: 2, label: '2 Days (Standard)' },
+  { value: 3, label: '3 Days' },
+];
+
+const WAIVER_AFTER_GAMES_OPTIONS = [
+  { value: 1, label: 'Tuesday' },
+  { value: 2, label: 'Wednesday (Standard)' },
+  { value: 3, label: 'Thursday' },
+];
+
 function formatHour(hour: number): string {
   const match = HOURS_OF_DAY.find((h) => h.value === hour);
   return match ? match.label : `${hour}:00`;
+}
+
+function formatAfterGamesDay(val: number): string {
+  const match = WAIVER_AFTER_GAMES_OPTIONS.find((o) => o.value === val);
+  return match ? match.label.split(' ')[0] : 'Wed';
 }
 
 function getOptionLabel(setting: number): string {
@@ -92,6 +110,8 @@ export const CommissionerWaiversTab = () => {
   // Configuration state
   const [dailyWaiversEnabled, setDailyWaiversEnabled] = useState(true);
   const [processingHour, setProcessingHour] = useState<number | 'keep'>('keep');
+  const [waiverDayOfWeek, setWaiverDayOfWeek] = useState<number | 'keep'>('keep');
+  const [waiverClearDays, setWaiverClearDays] = useState<number | 'keep'>('keep');
   const [showInfoModal, setShowInfoModal] = useState(false);
 
   // Sunday to Saturday schedule (indices 0..6: Sun, Mon, Tue, Wed, Thu, Fri, Sat)
@@ -210,6 +230,8 @@ export const CommissionerWaiversTab = () => {
         daily_waivers: dailyWaiversEnabled ? 1 : 0,
         sunday_to_saturday_settings: schedule,
         daily_waivers_hour: processingHour === 'keep' ? null : processingHour,
+        waiver_clear_days: waiverClearDays === 'keep' ? null : waiverClearDays,
+        waiver_day_of_week: waiverDayOfWeek === 'keep' ? null : waiverDayOfWeek,
       });
 
       const failures = (res.results || []).filter((r) => !r.success);
@@ -282,10 +304,10 @@ export const CommissionerWaiversTab = () => {
           </div>
         </div>
 
-        {/* Global Controls: Processing Hour + Presets */}
+        {/* Global Controls: Processing Hour + Drop Hold + Clear Day + Presets */}
         <div className="config-row-controls">
           <div className="control-group">
-            <span className="control-label">Daily Waivers Processing Time</span>
+            <span className="control-label">Daily Processing Time</span>
             <select
               value={processingHour}
               onChange={(e) => {
@@ -298,6 +320,44 @@ export const CommissionerWaiversTab = () => {
               {HOURS_OF_DAY.map((h) => (
                 <option key={h.value} value={h.value}>
                   {h.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="control-group">
+            <span className="control-label">After Games Waivers Clear</span>
+            <select
+              value={waiverDayOfWeek}
+              onChange={(e) => {
+                const val = e.target.value;
+                setWaiverDayOfWeek(val === 'keep' ? 'keep' : Number(val));
+              }}
+              className="hour-select"
+            >
+              <option value="keep">Keep Current League Setting</option>
+              {WAIVER_AFTER_GAMES_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="control-group">
+            <span className="control-label">Time on Waivers After Drop</span>
+            <select
+              value={waiverClearDays}
+              onChange={(e) => {
+                const val = e.target.value;
+                setWaiverClearDays(val === 'keep' ? 'keep' : Number(val));
+              }}
+              className="hour-select"
+            >
+              <option value="keep">Keep Current League Setting</option>
+              {WAIVER_CLEAR_DAYS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
                 </option>
               ))}
             </select>
@@ -378,6 +438,17 @@ export const CommissionerWaiversTab = () => {
           </div>
         )}
 
+        {/* Contextual warning when Sun or Mon has FA or Waivers -> FA */}
+        {(schedule[0] === 0 || schedule[0] === 3 || schedule[1] === 0 || schedule[1] === 3) && (
+          <div className="game-lock-warning-card">
+            <span className="game-lock-warning-icon">ℹ️</span>
+            <div className="game-lock-warning-text">
+              <strong>Game Lock Rule:</strong> With Sunday or Monday set to{' '}
+              {schedule[0] === 3 || schedule[1] === 3 ? 'Waivers → FA' : 'Free Agent'}, players whose games have
+              already started (e.g. Thursday night or Sunday kickoffs) <strong>stay on waivers after games until {waiverDayOfWeek === 'keep' ? 'Wednesday' : formatAfterGamesDay(waiverDayOfWeek)}</strong> (per Sleeper&apos;s <em>After Games Waivers Clear</em> rule).
+            </div>
+          </div>
+        )}
 
         {/* Standard In-Season Customization Bar */}
         <div className="standard-preset-bar">
@@ -505,6 +576,12 @@ export const CommissionerWaiversTab = () => {
                   <span className="hour-pill">
                     {formatHour(league.daily_waivers_hour)}
                   </span>
+                  <span className="hour-pill" title="After Games Waivers Clear">
+                    After Games: {formatAfterGamesDay(league.waiver_day_of_week)}
+                  </span>
+                  <span className="hour-pill" title="Time on Waivers After Drop">
+                    Drop Hold: {league.waiver_clear_days}d
+                  </span>
                   <span className="roster-pill">
                     {league.total_rosters} Teams
                   </span>
@@ -603,7 +680,15 @@ export const CommissionerWaiversTab = () => {
               </div>
 
               <div className="info-note-box">
-                <strong>Game Lock Rule:</strong> A player will only clear after passing all other waiver checks (such as the standard <em>After Games Waivers Clear</em> setting). Players whose games have started remain locked until their normal clearance day, regardless of whether a day is set to Free Agent.
+                <p>
+                  <strong>Game Lock Rule:</strong> A player will only clear after passing all other waiver checks (such as the standard <em>After Games Waivers Clear</em> setting).
+                </p>
+                <p style={{ marginTop: '8px' }}>
+                  <strong>Thursday Game Example:</strong> If a player plays in a Thursday night game, and Sunday or Monday are set to <em>Waivers → FA</em> or <em>Free Agent</em>, that player will <strong>not</strong> become a Free Agent on Sunday. Because they have already played, they stay on waivers until Wednesday morning (or your league&apos;s <em>After Games Waivers Clear</em> day).
+                </p>
+                <p style={{ marginTop: '8px' }}>
+                  <strong>Drop Hold Rule:</strong> Similarly, players who are dropped will stay on waivers for the number of days specified by your league&apos;s <em>Time players are on waivers after drop</em> setting (typically 2 days, or 0–3 days).
+                </p>
               </div>
             </div>
 

@@ -128,6 +128,8 @@ async def get_commissioner_waivers_overview(
         daily_waivers_hour = int(settings.get("daily_waivers_hour", 0) or 0)
         daily_waivers_days = int(settings.get("daily_waivers_days", 5461) or 5461)
         waiver_type = int(settings.get("waiver_type", 2) or 2)
+        waiver_clear_days = int(settings.get("waiver_clear_days", 2) or 2)
+        waiver_day_of_week = int(settings.get("waiver_day_of_week", 2) or 2)
 
         overview.append(
             CommissionerWaiverLeagueInfo(
@@ -140,6 +142,8 @@ async def get_commissioner_waivers_overview(
                 daily_waivers_days=daily_waivers_days,
                 daily_waivers_days_b4=to_base4_str(daily_waivers_days),
                 waiver_type=waiver_type,
+                waiver_clear_days=waiver_clear_days,
+                waiver_day_of_week=waiver_day_of_week,
                 schedule=decode_waiver_schedule(daily_waivers_days),
             )
         )
@@ -217,6 +221,10 @@ async def update_commissioner_waivers(
         merged_settings["daily_waivers_days"] = int(target_days)
         if payload.daily_waivers_hour is not None:
             merged_settings["daily_waivers_hour"] = int(payload.daily_waivers_hour)
+        if payload.waiver_clear_days is not None:
+            merged_settings["waiver_clear_days"] = int(payload.waiver_clear_days)
+        if payload.waiver_day_of_week is not None:
+            merged_settings["waiver_day_of_week"] = int(payload.waiver_day_of_week)
 
         try:
             update_res = await ctx.sleeper.write.update_league_settings(

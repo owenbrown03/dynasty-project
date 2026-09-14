@@ -211,6 +211,8 @@ export interface CommissionerWaiverLeagueInfo {
   daily_waivers_days: number;
   daily_waivers_days_b4: string;
   waiver_type: number;
+  waiver_clear_days: number;
+  waiver_day_of_week: number;
   schedule: CommissionerWaiverDaySchedule[];
 }
 
@@ -220,6 +222,8 @@ export interface CommissionerWaiverUpdateRequest {
   daily_waivers_days?: number;
   sunday_to_saturday_settings?: number[];
   daily_waivers_hour?: number | null;
+  waiver_clear_days?: number | null;
+  waiver_day_of_week?: number | null;
 }
 
 export interface CommissionerWaiverUpdateResult {
