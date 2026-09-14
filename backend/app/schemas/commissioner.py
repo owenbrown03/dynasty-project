@@ -257,7 +257,7 @@ class CommissionerStandardWaiverPreset(Base):
         default=[3, 0, 1, 1, 3, 3, 3],
         description="7 ints (0..3) [Sun, Mon, Tue, Wed, Thu, Fri, Sat]",
     )
-    daily_waivers_hour: int | None = 0
+    daily_waivers_hour: int | None = None
     daily_waivers: int = 1
     is_custom: bool = False
 

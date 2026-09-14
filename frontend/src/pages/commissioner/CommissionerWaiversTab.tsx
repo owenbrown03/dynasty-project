@@ -125,9 +125,6 @@ export const CommissionerWaiversTab = () => {
       if (presetData.daily_waivers !== undefined) {
         setDailyWaiversEnabled(Boolean(presetData.daily_waivers));
       }
-      if (presetData.daily_waivers_hour !== null && presetData.daily_waivers_hour !== undefined) {
-        setProcessingHour(presetData.daily_waivers_hour);
-      }
     }
   }, [presetData, hasUserEditedSchedule]);
 
@@ -177,9 +174,6 @@ export const CommissionerWaiversTab = () => {
     setSchedule(targetSchedule);
     if (presetData?.daily_waivers !== undefined) {
       setDailyWaiversEnabled(Boolean(presetData.daily_waivers));
-    }
-    if (presetData?.daily_waivers_hour !== null && presetData?.daily_waivers_hour !== undefined) {
-      setProcessingHour(presetData.daily_waivers_hour);
     }
   };
 
@@ -316,7 +310,7 @@ export const CommissionerWaiversTab = () => {
               }}
               className="hour-select"
             >
-              <option value="keep">Keep Current League Setting</option>
+              <option value="keep">Keep Current League Setting (Default)</option>
               {HOURS_OF_DAY.map((h) => (
                 <option key={h.value} value={h.value}>
                   {h.label}
@@ -335,7 +329,7 @@ export const CommissionerWaiversTab = () => {
               }}
               className="hour-select"
             >
-              <option value="keep">Keep Current League Setting</option>
+              <option value="keep">Keep Current League Setting (Default)</option>
               {WAIVER_AFTER_GAMES_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -354,7 +348,7 @@ export const CommissionerWaiversTab = () => {
               }}
               className="hour-select"
             >
-              <option value="keep">Keep Current League Setting</option>
+              <option value="keep">Keep Current League Setting (Default)</option>
               {WAIVER_CLEAR_DAYS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}

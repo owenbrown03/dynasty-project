@@ -268,7 +268,7 @@ async def update_commissioner_waivers(
 
 
 DEFAULT_STANDARD_WAIVER_DAYS = [3, 0, 1, 1, 3, 3, 3]  # Sun, Mon, Tue, Wed, Thu, Fri, Sat
-DEFAULT_STANDARD_WAIVER_HOUR = 0
+DEFAULT_STANDARD_WAIVER_HOUR = None
 DEFAULT_STANDARD_DAILY_WAIVERS = 1
 
 
