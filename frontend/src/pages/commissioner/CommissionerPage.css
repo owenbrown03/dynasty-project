@@ -44,6 +44,9 @@
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .commissioner-tab-button {
@@ -52,6 +55,8 @@
   background: transparent;
   color: var(--color-text-muted);
   font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .commissioner-tab-button:hover {
@@ -623,7 +628,7 @@
 
 .cutdown-violation-label {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   cursor: pointer;
   width: 100%;
@@ -632,7 +637,7 @@
 .cutdown-violation-label input[type='checkbox'] {
   width: 16px;
   height: 16px;
-  margin: 0;
+  margin: 3px 0 0 0;
   accent-color: var(--color-accent, #1f6feb);
   cursor: pointer;
   flex-shrink: 0;
@@ -641,6 +646,35 @@
 .cutdown-violation-label .commissioner-due-copy {
   flex: 1;
   min-width: 0;
+}
+
+.cutdown-violation-drops-preview {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cutdown-drops-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.cutdown-drops-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cutdown-drop-pill {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-text-strong);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+  word-break: break-word;
 }
 
 /* Commissioner Polls Tab */
@@ -1163,6 +1197,7 @@
 .league-meta-badges {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   font-size: 11px;
 }
@@ -1194,6 +1229,35 @@
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   color: var(--color-text-muted);
+}
+
+.preset-match-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.preset-match-pill.preset-inseason {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+.preset-match-pill.preset-offseason {
+  background: rgba(234, 179, 8, 0.14);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  color: #eab308;
+}
+
+.preset-match-pill.preset-other {
+  background: rgba(168, 85, 247, 0.14);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #c084fc;
 }
 
 .league-schedule-preview {
@@ -1735,6 +1799,217 @@
   color: var(--color-text-muted);
 }
 
+/* Mobile Responsive Styling for Commissioner Features */
+@media (max-width: 720px) {
+  /* Roster Cutdowns Controls */
+  .cutdowns-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
 
+  .cutdowns-controls-row > .button-secondary {
+    width: 100%;
+    justify-content: center;
+  }
 
+  .cutdowns-action-description {
+    align-self: flex-start;
+  }
 
+  .cutdowns-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .cutdowns-actions label {
+    width: 100%;
+  }
+
+  .cutdowns-actions select,
+  .cutdowns-actions input {
+    width: 100%;
+  }
+
+  .cutdowns-actions .button-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* FAAB Reset Controls */
+  .commissioner-faab-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .commissioner-faab-controls label,
+  .commissioner-faab-controls input[type='text'],
+  .commissioner-faab-controls button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Config Headers & Action Buttons */
+  .config-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .config-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .config-actions button {
+    flex: 1 1 auto;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Global Waiver & Settings Controls */
+  .config-row-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .config-row-controls .control-group {
+    width: 100%;
+  }
+
+  .config-row-controls select,
+  .hour-select {
+    width: 100%;
+  }
+
+  .presets-group {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Standard Preset Customization Bar */
+  .standard-preset-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .standard-preset-status {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .standard-preset-buttons {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .standard-preset-buttons .button-secondary {
+    flex: 1 1 auto;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Leagues Toolbar */
+  .commissioner-waivers-leagues-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .commissioner-waivers-leagues-toolbar .search-box {
+    width: 100%;
+  }
+
+  .commissioner-waivers-leagues-toolbar .search-box input {
+    width: 100%;
+  }
+
+  .commissioner-waivers-leagues-toolbar .selection-buttons {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .commissioner-waivers-leagues-toolbar .selection-buttons button {
+    flex: 1 1 auto;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* League Card Header & Badges */
+  .league-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .league-checkbox-label {
+    width: 100%;
+  }
+
+  .league-name {
+    word-break: break-word;
+  }
+
+  .league-meta-badges {
+    width: 100%;
+  }
+
+  /* General Settings Tab */
+  .settings-groups-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .settings-group-card {
+    padding: 12px 14px;
+  }
+
+  .type-filter-pills {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .settings-pending-summary-bar {
+    padding: 10px 12px;
+  }
+
+  /* Daily Waivers Info Modal */
+  .daily-waivers-modal-backdrop {
+    padding: 10px;
+  }
+
+  .daily-waivers-modal {
+    max-height: 95vh;
+  }
+
+  .daily-waivers-modal-header {
+    padding: 12px 16px;
+  }
+
+  .daily-waivers-modal-body {
+    padding: 14px 16px;
+  }
+
+  .daily-waivers-modal-footer {
+    padding: 12px 16px;
+  }
+
+  .daily-waivers-modal-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+}

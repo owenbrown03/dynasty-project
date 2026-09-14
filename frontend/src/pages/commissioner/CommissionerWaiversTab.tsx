@@ -9,12 +9,50 @@ import {
 } from '@/hooks/sleeper/useUsers';
 import { notify } from '@/utils/notify';
 import { Skeleton } from '@/components/feedback/Skeleton';
+import type { CommissionerWaiverLeagueInfo } from '@/api/v1/endpoints/sleeper/user.endpoints';
 
 // Standard In-Season default: [Sun=3 (Waivers->FA), Mon=0 (FA), Tue=1 (Waivers), Wed=1 (Waivers), Thu=3 (Waivers->FA), Fri=3 (Waivers->FA), Sat=3 (Waivers->FA)]
 const DEFAULT_STANDARD_PRESET = [3, 0, 1, 1, 3, 3, 3];
 
 // Standard Off-Season default: [Sun=2 (Locked), Mon=2 (Locked), Tue=2 (Locked), Wed=1 (Waivers), Thu=2 (Locked), Fri=2 (Locked), Sat=2 (Locked)]
 const DEFAULT_OFFSEASON_PRESET = [2, 2, 2, 1, 2, 2, 2];
+
+interface PresetMatch {
+  label: string;
+  variant: 'inseason' | 'offseason' | 'other';
+}
+
+function getLeaguePresetMatch(
+  league: CommissionerWaiverLeagueInfo,
+  inSeasonDays: number[],
+  offSeasonDays: number[],
+): PresetMatch | null {
+  if (!league.daily_waivers) return null;
+  const days = league.schedule.map((s) => s.setting);
+  if (days.length !== 7) return null;
+
+  const matches = (target: number[]) => days.every((v, i) => v === target[i]);
+
+  if (matches(inSeasonDays)) {
+    return { label: 'Standard In-Season', variant: 'inseason' };
+  }
+  if (matches(offSeasonDays)) {
+    return { label: 'Standard Off-Season', variant: 'offseason' };
+  }
+  if (matches([1, 1, 1, 1, 1, 1, 1])) {
+    return { label: 'All Waivers', variant: 'other' };
+  }
+  if (matches([0, 0, 0, 0, 0, 0, 0])) {
+    return { label: 'All FA', variant: 'other' };
+  }
+  if (matches([3, 3, 3, 3, 3, 3, 3])) {
+    return { label: 'All Waivers → FA', variant: 'other' };
+  }
+  if (matches([2, 2, 2, 2, 2, 2, 2])) {
+    return { label: 'Lock All', variant: 'other' };
+  }
+  return null;
+}
 
 // 0=FA, 1=Waivers, 2=Locked, 3=Waivers->FA
 const WAIVER_OPTIONS = [
@@ -652,6 +690,22 @@ export const CommissionerWaiversTab = () => {
                 </label>
 
                 <div className="league-meta-badges">
+                  {(() => {
+                    const match = getLeaguePresetMatch(
+                      league,
+                      inSeasonPreset?.sunday_to_saturday_settings || DEFAULT_STANDARD_PRESET,
+                      offSeasonPreset?.sunday_to_saturday_settings || DEFAULT_OFFSEASON_PRESET,
+                    );
+                    if (!match) return null;
+                    return (
+                      <span
+                        className={`preset-match-pill preset-${match.variant}`}
+                        title={`League schedule matches ${match.label} preset`}
+                      >
+                        {match.label}
+                      </span>
+                    );
+                  })()}
                   <span className={`status-pill ${league.daily_waivers ? 'active' : 'inactive'}`}>
                     {league.daily_waivers ? 'Daily Waivers ON' : 'Daily Waivers OFF'}
                   </span>

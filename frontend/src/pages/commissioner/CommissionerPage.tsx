@@ -769,7 +769,7 @@ export const CommissionerPage = () => {
                 </button>
                 <button
                   className={
-                    activeTab === 'waivers'
+                    activeTab === 'faab'
                       ? 'commissioner-tab-button active'
                       : 'commissioner-tab-button'
                   }

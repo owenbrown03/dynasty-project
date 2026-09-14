@@ -117,6 +117,9 @@ describe('CommissionerWaiversTab', () => {
     const noneOption = screen.getByRole('option', { name: 'None' });
     expect(noneOption).toBeInTheDocument();
     expect((noneOption as HTMLOptionElement).value).toBe('0');
+
+    // Check preset match badge on League Alpha
+    expect(screen.getByTitle('League schedule matches All Waivers preset')).toBeInTheDocument();
   });
 
   it('opens and closes the Allow Custom Daily Waivers info modal', () => {
