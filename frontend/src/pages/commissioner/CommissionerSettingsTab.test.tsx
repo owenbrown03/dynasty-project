@@ -101,9 +101,6 @@ describe('CommissionerSettingsTab', () => {
     expect(screen.getByText('Best Ball League Alpha')).toBeInTheDocument();
     expect(screen.getByText('Lineup League Beta')).toBeInTheDocument();
 
-    // Check Best Ball & Bench Lock notice
-    expect(screen.getByText(/Best Ball & Bench Lock Shortcut/i)).toBeInTheDocument();
-
     // Check badges
     expect(screen.getByText('Best Ball')).toBeInTheDocument();
     expect(screen.getByText('Lineup')).toBeInTheDocument();

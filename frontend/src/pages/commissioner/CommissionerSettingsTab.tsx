@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   Check,
-  Info,
   Lock,
   Shield,
   Trophy,
@@ -392,17 +391,6 @@ export const CommissionerSettingsTab = () => {
                 : `Apply to ${selectedLeagues.size} Selected League${selectedLeagues.size === 1 ? '' : 's'}`}
             </button>
           </div>
-        </div>
-
-        {/* Best Ball Bench Lock Callout */}
-        <div className="best-ball-notice-box">
-          <div className="best-ball-notice-title">
-            <Info size={15} style={{ flexShrink: 0 }} />
-            <span>Best Ball &amp; Bench Lock Shortcut</span>
-          </div>
-          <p>
-            In Sleeper Best Ball leagues, Sleeper&apos;s UI hides the <em>&ldquo;Prevent bench players from being dropped after game starts&rdquo;</em> option. This page writes directly to Sleeper&apos;s API, enabling you to turn on Bench Lock for your Best Ball leagues without having to temporarily switch them to Lineup mode.
-          </p>
         </div>
 
         {/* Controls Sections */}
