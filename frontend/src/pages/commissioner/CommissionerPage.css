@@ -1100,13 +1100,15 @@
 }
 
 /* League Cards List */
-.commissioner-waivers-league-list {
+.commissioner-waivers-league-list,
+.commissioner-settings-league-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.commissioner-waivers-league-card {
+.commissioner-waivers-league-card,
+.commissioner-settings-league-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -1118,11 +1120,13 @@
   transition: all 0.15s ease;
 }
 
-.commissioner-waivers-league-card:hover {
+.commissioner-waivers-league-card:hover,
+.commissioner-settings-league-card:hover {
   border-color: var(--color-accent, #1f6feb);
 }
 
-.commissioner-waivers-league-card.selected {
+.commissioner-waivers-league-card.selected,
+.commissioner-settings-league-card.selected {
   border-color: var(--color-accent, #1f6feb);
   background: rgba(31, 111, 235, 0.05);
 }
@@ -1713,6 +1717,16 @@
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.25);
   color: #f87171;
+}
+
+.league-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .badge-secondary-meta {

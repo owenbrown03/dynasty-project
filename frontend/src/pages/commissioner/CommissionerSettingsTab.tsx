@@ -3,10 +3,8 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   Check,
-  Filter,
   Info,
   Lock,
-  Search,
   Shield,
   Trophy,
 } from 'lucide-react';
@@ -23,7 +21,13 @@ import type {
 type LeagueTypeFilter = 'all' | 'best_ball' | 'lineup';
 
 export const CommissionerSettingsTab = () => {
-  const { data: leagues = [], isLoading, error } = useCommissionerSettingsOverview();
+  const {
+    data: leagues = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useCommissionerSettingsOverview();
   const updateMutation = useUpdateCommissionerSettings();
 
   const [search, setSearch] = useState('');
@@ -728,95 +732,99 @@ export const CommissionerSettingsTab = () => {
         )}
       </section>
 
-      {/* Leagues List Section */}
-      <section className="commissioner-waivers-leagues-section">
-        <div className="leagues-toolbar">
-          <div className="toolbar-search-group">
-            <div className="search-input-wrapper">
-              <Search size={15} className="search-icon" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search commissioner leagues..."
-                className="search-input"
-              />
-            </div>
-
-            {/* Type Filter Pills */}
-            <div className="type-filter-pills">
-              <button
-                type="button"
-                className={`type-pill ${typeFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setTypeFilter('all')}
-              >
-                All ({leagues.length})
-              </button>
-              <button
-                type="button"
-                className={`type-pill ${typeFilter === 'best_ball' ? 'active' : ''}`}
-                onClick={() => setTypeFilter('best_ball')}
-              >
-                Best Ball ({bestBallCount})
-              </button>
-              <button
-                type="button"
-                className={`type-pill ${typeFilter === 'lineup' ? 'active' : ''}`}
-                onClick={() => setTypeFilter('lineup')}
-              >
-                Lineup ({lineupCount})
-              </button>
-            </div>
-          </div>
-
-          <div className="toolbar-selection-group">
-            <span className="selected-count-badge">
-              {selectedLeagues.size} of {filteredLeagues.length} Selected
-            </span>
-            <button type="button" className="button-secondary btn-sm" onClick={handleSelectAll}>
-              Select All
-            </button>
-            <button
-              type="button"
-              className="button-secondary btn-sm"
-              onClick={handleSelectNone}
-              disabled={selectedLeagues.size === 0}
-            >
-              Select None
-            </button>
-          </div>
+      {/* Leagues Toolbar */}
+      <div className="commissioner-waivers-leagues-toolbar">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Search commissioner leagues..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
-        {filteredLeagues.length === 0 ? (
-          <div className="leagues-empty-state">
-            <Filter size={24} />
-            <p>No commissioner leagues match your search or filter.</p>
-          </div>
-        ) : (
-          <div className="leagues-card-grid">
-            {filteredLeagues.map((league) => {
-              const isSelected = selectedLeagues.has(league.league_id);
-              return (
-                <div
-                  key={league.league_id}
-                  className={`waiver-league-card ${isSelected ? 'selected' : ''}`}
-                  onClick={() => toggleLeague(league.league_id)}
-                >
-                  <div className="league-card-header-row">
-                    <div className="league-card-title-group">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleLeague(league.league_id)}
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label={`Select ${league.league_name}`}
-                      />
-                      <span className="league-name">{league.league_name}</span>
-                    </div>
-                    <span className="league-roster-count">{league.total_rosters} Teams</span>
-                  </div>
+        {/* Type Filter Pills */}
+        <div className="type-filter-pills">
+          <button
+            type="button"
+            className={`type-pill ${typeFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setTypeFilter('all')}
+          >
+            All ({leagues.length})
+          </button>
+          <button
+            type="button"
+            className={`type-pill ${typeFilter === 'best_ball' ? 'active' : ''}`}
+            onClick={() => setTypeFilter('best_ball')}
+          >
+            Best Ball ({bestBallCount})
+          </button>
+          <button
+            type="button"
+            className={`type-pill ${typeFilter === 'lineup' ? 'active' : ''}`}
+            onClick={() => setTypeFilter('lineup')}
+          >
+            Lineup ({lineupCount})
+          </button>
+        </div>
 
-                  <div className="league-card-meta-row">
+        <div className="selection-buttons">
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={handleSelectAll}
+          >
+            Select All ({filteredLeagues.length})
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={handleSelectNone}
+            disabled={selectedLeagues.size === 0}
+          >
+            Select None
+          </button>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            {isFetching ? 'Refreshing...' : 'Refresh Status'}
+          </button>
+        </div>
+      </div>
+
+      {/* League Selection List */}
+      {filteredLeagues.length === 0 ? (
+        <div className="commissioner-empty-state">
+          <p>No commissioner leagues match your search or filter.</p>
+        </div>
+      ) : (
+        <div className="commissioner-waivers-league-list commissioner-settings-league-list">
+          {filteredLeagues.map((league) => {
+            const isSelected = selectedLeagues.has(league.league_id);
+            return (
+              <article
+                key={league.league_id}
+                className={`commissioner-waivers-league-card commissioner-settings-league-card ${isSelected ? 'selected' : ''}`}
+                onClick={() => toggleLeague(league.league_id)}
+              >
+                <div className="league-card-header">
+                  <label
+                    className="league-checkbox-label"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleLeague(league.league_id)}
+                      aria-label={`Select ${league.league_name}`}
+                    />
+                    <strong className="league-name">{league.league_name}</strong>
+                  </label>
+
+                  <div className="league-meta-badges">
                     {league.best_ball === 1 ? (
                       <span className="league-status-badge badge-best-ball">Best Ball</span>
                     ) : (
@@ -850,13 +858,15 @@ export const CommissionerSettingsTab = () => {
                     {league.league_average_match === 1 && (
                       <span className="league-status-badge badge-secondary-meta">Median Match</span>
                     )}
+
+                    <span className="roster-pill">{league.total_rosters} Teams</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
