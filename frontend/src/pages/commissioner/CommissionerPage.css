@@ -1524,5 +1524,203 @@
   background: var(--color-surface-raised);
 }
 
+/* ==========================================================================
+   Commissioner General Settings Tab
+   ========================================================================== */
+
+.commissioner-settings-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.commissioner-settings-config-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.best-ball-notice-box {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(31, 111, 235, 0.08);
+  border: 1px solid rgba(31, 111, 235, 0.25);
+  color: var(--color-text-strong);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.best-ball-notice-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-accent, #1f6feb);
+}
+
+.best-ball-notice-box p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.best-ball-notice-box em {
+  color: var(--color-text-strong);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.settings-groups-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.settings-group-card {
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-group-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-group-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.settings-pending-summary-bar {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-pending-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.settings-pending-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.settings-pending-pill {
+  font-size: 11px;
+  background: var(--color-surface);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 4px;
+  padding: 2px 8px;
+  color: var(--color-text-strong);
+}
+
+.type-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.type-pill {
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.type-pill:hover {
+  color: var(--color-text-strong);
+  border-color: var(--color-text-muted);
+}
+
+.type-pill.active {
+  background: var(--color-accent, #1f6feb);
+  color: #fff;
+  border-color: var(--color-accent, #1f6feb);
+}
+
+.badge-best-ball {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #c084fc;
+}
+
+.badge-lineup {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+}
+
+.badge-bench-locked {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.badge-bench-unlocked {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.badge-trades-enabled {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  color: #4ade80;
+}
+
+.badge-trades-disabled {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.badge-secondary-meta {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+
 
 

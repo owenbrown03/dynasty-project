@@ -35,6 +35,7 @@ import { CommissionerFaabTab } from './CommissionerFaabTab';
 import { CommissionerCutdownsTab } from './CommissionerCutdownsTab';
 import { CommissionerPollsTab } from './CommissionerPollsTab';
 import { CommissionerWaiversTab } from './CommissionerWaiversTab';
+import { CommissionerSettingsTab } from './CommissionerSettingsTab';
 
 import './CommissionerPage.css';
 
@@ -42,8 +43,9 @@ import './CommissionerPage.css';
 type CommissionerTab =
   | 'orphans'
   | 'workspace'
-  | 'faab'
+  | 'settings'
   | 'waivers'
+  | 'faab'
   | 'polls'
   | 'cutdowns';
 
@@ -752,7 +754,20 @@ export const CommissionerPage = () => {
               <>
                 <button
                   className={
-                    activeTab === 'faab'
+                    activeTab === 'settings'
+                      ? 'commissioner-tab-button active'
+                      : 'commissioner-tab-button'
+                  }
+                  type="button"
+                  onClick={() => {
+                    setTab('settings');
+                  }}
+                >
+                  General Settings
+                </button>
+                <button
+                  className={
+                    activeTab === 'waivers'
                       ? 'commissioner-tab-button active'
                       : 'commissioner-tab-button'
                   }
@@ -926,6 +941,23 @@ export const CommissionerPage = () => {
                 ))
               }
             </section>
+          )
+          : null
+      }
+
+      {
+        activeTab === 'settings' && !canManageWorkspace
+          ? (
+            <div className="commissioner-empty-state">
+              Link your Sleeper account to configure bulk league settings.
+            </div>
+          )
+          : null
+      }
+      {
+        activeTab === 'settings' && canManageWorkspace
+          ? (
+            <CommissionerSettingsTab />
           )
           : null
       }

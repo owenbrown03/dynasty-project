@@ -23,6 +23,9 @@ from app.schemas.commissioner import (
     CommissionerWaiverUpdateResponse,
     CommissionerStandardWaiverPreset,
     CommissionerStandardWaiverPresetUpdate,
+    CommissionerLeagueSettingsInfo,
+    CommissionerSettingsUpdateRequest,
+    CommissionerSettingsUpdateResponse,
 )
 from app.schemas.finance import (
     FinanceDefaultsUpdate,
@@ -61,6 +64,10 @@ from app.services.commissioner.waivers import (
     get_commissioner_standard_waiver_preset,
     save_commissioner_standard_waiver_preset,
     reset_commissioner_standard_waiver_preset,
+)
+from app.services.commissioner.general_settings import (
+    get_commissioner_settings_overview,
+    update_commissioner_settings,
 )
 from app.services.commissioner.polls import broadcast_commissioner_poll
 from app.services.finance import (
@@ -416,5 +423,27 @@ async def reset_commissioner_waivers_preset_endpoint(
     ctx: ContextDep,
 ):
     return await reset_commissioner_standard_waiver_preset(ctx)
+
+
+@router.get(
+    "/commissioner/settings",
+    response_model=list[CommissionerLeagueSettingsInfo],
+)
+async def get_commissioner_settings_endpoint(
+    ctx: ContextDep,
+):
+    return await get_commissioner_settings_overview(ctx)
+
+
+@router.post(
+    "/commissioner/settings/update",
+    response_model=CommissionerSettingsUpdateResponse,
+)
+async def update_commissioner_settings_endpoint(
+    body: CommissionerSettingsUpdateRequest,
+    ctx: ContextDep,
+):
+    return await update_commissioner_settings(ctx, body)
+
 
 

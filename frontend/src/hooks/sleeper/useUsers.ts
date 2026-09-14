@@ -11,6 +11,9 @@ import type {
   CommissionerWaiverUpdateResponse,
   CommissionerStandardWaiverPreset,
   CommissionerStandardWaiverPresetUpdate,
+  CommissionerLeagueSettingsInfo,
+  CommissionerSettingsUpdateRequest,
+  CommissionerSettingsUpdateResponse,
 } from '@/api/v1/endpoints/sleeper/user.endpoints';
 import type {
   CommissionerLeagueDuesUpdate,
@@ -470,6 +473,36 @@ export const useResetCommissionerWaiversPreset = () => {
     },
   });
 };
+
+export const useCommissionerSettingsOverview = () => {
+  return useQuery<CommissionerLeagueSettingsInfo[], Error>({
+    queryKey: ['commissioner-settings-overview'],
+    queryFn: async () => {
+      const res = await api.users.getCommissionerSettingsOverview();
+      return res.data;
+    },
+    staleTime: 60 * 1000,
+  });
+};
+
+export const useUpdateCommissionerSettings = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    CommissionerSettingsUpdateResponse,
+    Error,
+    CommissionerSettingsUpdateRequest
+  >({
+    mutationFn: async (payload: CommissionerSettingsUpdateRequest) => {
+      const res = await api.users.updateCommissionerSettings(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commissioner-settings-overview'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.commissionerWorkspace });
+    },
+  });
+};
+
 
 
 
