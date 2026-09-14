@@ -6,35 +6,39 @@ afterEach(() => {
   cleanup();
 });
 
+let mockLoading = false;
+
 vi.mock('@/hooks/sleeper/useUsers', () => ({
   useCommissionerCutdowns: () => ({
-    data: [
-      {
-        league_id: '123',
-        league_name: 'Test League',
-        max_roster_size: 25,
-        violations: [
+    data: mockLoading
+      ? null
+      : [
           {
-            roster_id: 1,
-            owner_id: 'owner-1',
-            owner_name: 'Test Manager',
-            roster_size: 27,
+            league_id: '123',
+            league_name: 'Test League',
             max_roster_size: 25,
-            over_limit_count: 2,
-            proposed_drops: [
+            violations: [
               {
-                player_id: 'p-1',
-                name: 'Player One',
-                position: 'RB',
-                team: 'KC',
-                ktc_value: 100,
+                roster_id: 1,
+                owner_id: 'owner-1',
+                owner_name: 'Test Manager',
+                roster_size: 27,
+                max_roster_size: 25,
+                over_limit_count: 2,
+                proposed_drops: [
+                  {
+                    player_id: 'p-1',
+                    name: 'Player One',
+                    position: 'RB',
+                    team: 'KC',
+                    ktc_value: 100,
+                  },
+                ],
               },
             ],
           },
         ],
-      },
-    ],
-    loading: false,
+    loading: mockLoading,
     fetching: false,
     error: null,
     refetch: vi.fn(),
@@ -78,5 +82,18 @@ describe('CommissionerCutdownsTab', () => {
     // Modal opens
     expect(screen.getByText('Review Forced Drops')).toBeInTheDocument();
     expect(screen.getByText('Player One')).toBeInTheDocument();
+  });
+
+  it('preloads controls and renders detailed skeletons while loading', () => {
+    mockLoading = true;
+    const { container } = render(<CommissionerCutdownsTab />);
+
+    // Controls are preloaded and visible
+    expect(container.querySelector('.cutdowns-controls')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Loading.../i })).toBeInTheDocument();
+
+    // Skeletons are rendered in the grid
+    expect(container.querySelectorAll('.commissioner-card').length).toBe(2);
+    mockLoading = false;
   });
 });

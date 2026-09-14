@@ -44,6 +44,9 @@
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .commissioner-tab-button {
@@ -52,6 +55,8 @@
   background: transparent;
   color: var(--color-text-muted);
   font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .commissioner-tab-button:hover {
@@ -623,7 +628,7 @@
 
 .cutdown-violation-label {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   cursor: pointer;
   width: 100%;
@@ -632,7 +637,7 @@
 .cutdown-violation-label input[type='checkbox'] {
   width: 16px;
   height: 16px;
-  margin: 0;
+  margin: 3px 0 0 0;
   accent-color: var(--color-accent, #1f6feb);
   cursor: pointer;
   flex-shrink: 0;
@@ -641,6 +646,35 @@
 .cutdown-violation-label .commissioner-due-copy {
   flex: 1;
   min-width: 0;
+}
+
+.cutdown-violation-drops-preview {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cutdown-drops-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.cutdown-drops-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cutdown-drop-pill {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-text-strong);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+  word-break: break-word;
 }
 
 /* Commissioner Polls Tab */
@@ -863,4 +897,1119 @@
   color: var(--color-text);
   font-size: 13px;
   margin-bottom: 6px;
+}
+
+/* ==========================================================================
+   Commissioner Custom Waivers Tab
+   ========================================================================== */
+.commissioner-waivers-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.commissioner-waivers-config-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.config-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text-strong);
+}
+
+.config-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.config-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.config-row-controls {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 12px 14px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.toggle-pill-group {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.toggle-pill {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggle-pill:first-child {
+  border-right: 1px solid var(--color-border);
+}
+
+.toggle-pill.active {
+  background: var(--color-accent, #1f6feb);
+  color: #fff;
+}
+
+.hour-select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font-size: 13px;
+}
+
+.presets-group {
+  flex: 1;
+  min-width: 280px;
+}
+
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+  height: auto;
+}
+
+/* 7-Day Grid: Sunday to Saturday */
+.schedule-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 1024px) {
+  .schedule-days-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .schedule-days-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.schedule-day-card {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+
+.day-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.day-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.day-opt-btn {
+  padding: 5px 4px;
+  border-radius: var(--radius-xs, 4px);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text-muted);
+  transition: all 0.15s ease;
+}
+
+.day-opt-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+}
+
+/* Distinct color classes for the 4 settings */
+.day-opt-btn.badge-waivers.selected {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #38bdf8;
+}
+
+.day-opt-btn.badge-fa.selected {
+  background: rgba(52, 211, 153, 0.18);
+  border-color: rgba(52, 211, 153, 0.6);
+  color: #34d399;
+}
+
+.day-opt-btn.badge-waiver-fa.selected {
+  background: rgba(168, 85, 247, 0.18);
+  border-color: rgba(168, 85, 247, 0.6);
+  color: #c084fc;
+}
+
+.day-opt-btn.badge-locked.selected {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.6);
+  color: #f87171;
+}
+
+/* Leagues Toolbar */
+.commissioner-waivers-leagues-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.commissioner-waivers-leagues-toolbar .search-box input {
+  height: 36px;
+  width: 260px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+  font-size: 13px;
+}
+
+.commissioner-waivers-leagues-toolbar .selection-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* League Cards List */
+.commissioner-waivers-league-list,
+.commissioner-settings-league-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.commissioner-waivers-league-card,
+.commissioner-settings-league-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.commissioner-waivers-league-card:hover,
+.commissioner-settings-league-card:hover {
+  border-color: var(--color-accent, #1f6feb);
+}
+
+.commissioner-waivers-league-card.selected,
+.commissioner-settings-league-card.selected {
+  border-color: var(--color-accent, #1f6feb);
+  background: rgba(31, 111, 235, 0.05);
+}
+
+.league-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.league-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.league-checkbox-label input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-accent, #1f6feb);
+  cursor: pointer;
+}
+
+.league-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.league-meta-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.status-pill {
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-pill.active {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.status-pill.inactive {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.hour-pill,
+.roster-pill {
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.preset-match-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.preset-match-pill.preset-inseason {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+.preset-match-pill.preset-offseason {
+  background: rgba(234, 179, 8, 0.14);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  color: #eab308;
+}
+
+.preset-match-pill.preset-other {
+  background: rgba(168, 85, 247, 0.14);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #c084fc;
+}
+
+.league-schedule-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.preview-day-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.preview-day-label {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.preview-day-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.preview-day-badge.badge-waivers {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.preview-day-badge.badge-fa {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.preview-day-badge.badge-waiver-fa {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.preview-day-badge.badge-locked {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+/* Standard Preset Customization Controls */
+.standard-preset-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--color-surface-raised);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.standard-preset-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.standard-preset-label {
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.preset-custom-badge {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+}
+
+.preset-default-badge {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.standard-preset-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Allow Custom Daily Waivers Info Button & Modal */
+.config-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-waivers-disabled-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-strong);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.daily-waivers-disabled-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-waivers-disabled-banner .btn-link {
+  background: transparent;
+  border: none;
+  color: var(--color-accent, #1f6feb);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.control-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-circle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.info-circle-btn:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-accent, #1f6feb);
+  border-color: var(--color-accent, #1f6feb);
+}
+
+.daily-waivers-modal-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
+}
+
+.daily-waivers-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(580px, 100%);
+  max-height: min(720px, 90vh);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.daily-waivers-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.daily-waivers-modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-accent, #1f6feb);
+}
+
+.daily-waivers-modal-title-group h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.daily-waivers-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.daily-waivers-modal-close:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+}
+
+.daily-waivers-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.sleeper-quote-card {
+  margin: 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--color-accent, #1f6feb);
+  background: rgba(31, 111, 235, 0.08);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-text-strong);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.info-content-section h5 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-content-section p {
+  margin: 0;
+}
+
+.info-waiver-types-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-waiver-type-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.info-waiver-type-item .type-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.info-waiver-type-desc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.info-waiver-type-desc strong {
+  color: var(--color-text-strong);
+}
+
+.info-note-box {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: var(--color-text-strong);
+  font-size: 12px;
+}
+
+.info-note-box-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-warning, #f59e0b);
+}
+
+.daily-waivers-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+/* ==========================================================================
+   Commissioner General Settings Tab
+   ========================================================================== */
+
+.commissioner-settings-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.commissioner-settings-config-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.best-ball-notice-box {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(31, 111, 235, 0.08);
+  border: 1px solid rgba(31, 111, 235, 0.25);
+  color: var(--color-text-strong);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.best-ball-notice-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-accent, #1f6feb);
+}
+
+.best-ball-notice-box p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.best-ball-notice-box em {
+  color: var(--color-text-strong);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.settings-groups-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.settings-group-card {
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-group-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-group-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.settings-pending-summary-bar {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-pending-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.settings-pending-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.settings-pending-pill {
+  font-size: 11px;
+  background: var(--color-surface);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 4px;
+  padding: 2px 8px;
+  color: var(--color-text-strong);
+}
+
+.type-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.type-pill {
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.type-pill:hover {
+  color: var(--color-text-strong);
+  border-color: var(--color-text-muted);
+}
+
+.type-pill.active {
+  background: var(--color-accent, #1f6feb);
+  color: #fff;
+  border-color: var(--color-accent, #1f6feb);
+}
+
+.badge-best-ball {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #c084fc;
+}
+
+.badge-lineup {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+}
+
+.badge-bench-locked {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.badge-bench-unlocked {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.badge-trades-enabled {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  color: #4ade80;
+}
+
+.badge-trades-disabled {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.league-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-secondary-meta {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* Mobile Responsive Styling for Commissioner Features */
+@media (max-width: 720px) {
+  /* Roster Cutdowns Controls */
+  .cutdowns-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .cutdowns-controls-row > .button-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cutdowns-action-description {
+    align-self: flex-start;
+  }
+
+  .cutdowns-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .cutdowns-actions label {
+    width: 100%;
+  }
+
+  .cutdowns-actions select,
+  .cutdowns-actions input {
+    width: 100%;
+  }
+
+  .cutdowns-actions .button-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* FAAB Reset Controls */
+  .commissioner-faab-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .commissioner-faab-controls label,
+  .commissioner-faab-controls input[type='text'],
+  .commissioner-faab-controls button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Config Headers & Action Buttons */
+  .config-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .config-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .config-actions button {
+    flex: 1 1 auto;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Global Waiver & Settings Controls */
+  .config-row-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .config-row-controls .control-group {
+    width: 100%;
+  }
+
+  .config-row-controls select,
+  .hour-select {
+    width: 100%;
+  }
+
+  .presets-group {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Standard Preset Customization Bar */
+  .standard-preset-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .standard-preset-status {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .standard-preset-buttons {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .standard-preset-buttons .button-secondary {
+    flex: 1 1 auto;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Leagues Toolbar */
+  .commissioner-waivers-leagues-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .commissioner-waivers-leagues-toolbar .search-box {
+    width: 100%;
+  }
+
+  .commissioner-waivers-leagues-toolbar .search-box input {
+    width: 100%;
+  }
+
+  .commissioner-waivers-leagues-toolbar .selection-buttons {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .commissioner-waivers-leagues-toolbar .selection-buttons button {
+    flex: 1 1 auto;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* League Card Header & Badges */
+  .league-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .league-checkbox-label {
+    width: 100%;
+  }
+
+  .league-name {
+    word-break: break-word;
+  }
+
+  .league-meta-badges {
+    width: 100%;
+  }
+
+  /* General Settings Tab */
+  .settings-groups-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .settings-group-card {
+    padding: 12px 14px;
+  }
+
+  .type-filter-pills {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .settings-pending-summary-bar {
+    padding: 10px 12px;
+  }
+
+  /* Daily Waivers Info Modal */
+  .daily-waivers-modal-backdrop {
+    padding: 10px;
+  }
+
+  .daily-waivers-modal {
+    max-height: 95vh;
+  }
+
+  .daily-waivers-modal-header {
+    padding: 12px 16px;
+  }
+
+  .daily-waivers-modal-body {
+    padding: 14px 16px;
+  }
+
+  .daily-waivers-modal-footer {
+    padding: 12px 16px;
+  }
+
+  .daily-waivers-modal-footer button {
+    width: 100%;
+    justify-content: center;
+  }
 }

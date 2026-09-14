@@ -165,6 +165,40 @@ class SleeperWrite:
             },
         )
 
+    async def update_league_settings(
+        self,
+        league_id: str,
+        settings_map: dict,
+    ) -> dict:
+        self._require_auth()
+        if not league_id:
+            raise SleeperValidationError("league_id is required")
+
+        import json
+
+        k_settings: list[str] = []
+        v_settings: list[int] = []
+        for k, v in settings_map.items():
+            if isinstance(v, (int, float)):
+                k_settings.append(str(k))
+                v_settings.append(int(v))
+
+        query = f"""
+        mutation {{
+            league_update_settings(
+                league_id: "{league_id}",
+                k_settings: {json.dumps(k_settings)},
+                v_settings: {json.dumps(v_settings)}
+            ) {{
+                league_id
+                name
+                settings
+            }}
+        }}
+        """
+        data = await self.transport.post(query=query, variables={})
+        return data.get("league_update_settings") or {}
+
     def _require_auth(self):
         if not self.auth.is_authenticated():
             raise SleeperAuthError(

@@ -18,6 +18,14 @@ from app.schemas.commissioner import (
     CommissionerFaabLeagueInfo,
     CommissionerFaabResetRequest,
     CommissionerFaabResetResponse,
+    CommissionerWaiverLeagueInfo,
+    CommissionerWaiverUpdateRequest,
+    CommissionerWaiverUpdateResponse,
+    CommissionerStandardWaiverPreset,
+    CommissionerStandardWaiverPresetUpdate,
+    CommissionerLeagueSettingsInfo,
+    CommissionerSettingsUpdateRequest,
+    CommissionerSettingsUpdateResponse,
 )
 from app.schemas.finance import (
     FinanceDefaultsUpdate,
@@ -49,6 +57,17 @@ from app.services.commissioner.cutdowns import (
 from app.services.commissioner.faab import (
     get_commissioner_faab_overview,
     reset_commissioner_faab,
+)
+from app.services.commissioner.waivers import (
+    get_commissioner_waivers_overview,
+    update_commissioner_waivers,
+    get_commissioner_standard_waiver_preset,
+    save_commissioner_standard_waiver_preset,
+    reset_commissioner_standard_waiver_preset,
+)
+from app.services.commissioner.general_settings import (
+    get_commissioner_settings_overview,
+    update_commissioner_settings,
 )
 from app.services.commissioner.polls import broadcast_commissioner_poll
 from app.services.finance import (
@@ -354,3 +373,80 @@ async def execute_commissioner_cutdowns_action_endpoint(
     ctx: ContextDep,
 ):
     return await execute_cutdown_action(body, ctx)
+
+@router.get(
+    "/commissioner/waivers",
+    response_model=list[CommissionerWaiverLeagueInfo],
+)
+async def get_commissioner_waivers_endpoint(
+    ctx: ContextDep,
+):
+    return await get_commissioner_waivers_overview(ctx)
+
+@router.post(
+    "/commissioner/waivers/update",
+    response_model=CommissionerWaiverUpdateResponse,
+)
+async def update_commissioner_waivers_endpoint(
+    body: CommissionerWaiverUpdateRequest,
+    ctx: ContextDep,
+):
+    return await update_commissioner_waivers(ctx, body)
+
+
+@router.get(
+    "/commissioner/waivers/preset",
+    response_model=CommissionerStandardWaiverPreset,
+)
+async def get_commissioner_waivers_preset_endpoint(
+    ctx: ContextDep,
+    preset_type: str = Query("inseason", description="Preset type: 'inseason' or 'offseason'"),
+):
+    return await get_commissioner_standard_waiver_preset(ctx, preset_type=preset_type)
+
+
+@router.post(
+    "/commissioner/waivers/preset",
+    response_model=CommissionerStandardWaiverPreset,
+)
+async def save_commissioner_waivers_preset_endpoint(
+    body: CommissionerStandardWaiverPresetUpdate,
+    ctx: ContextDep,
+    preset_type: str = Query("inseason", description="Preset type: 'inseason' or 'offseason'"),
+):
+    return await save_commissioner_standard_waiver_preset(ctx, body, preset_type=preset_type)
+
+
+@router.post(
+    "/commissioner/waivers/preset/reset",
+    response_model=CommissionerStandardWaiverPreset,
+)
+async def reset_commissioner_waivers_preset_endpoint(
+    ctx: ContextDep,
+    preset_type: str = Query("inseason", description="Preset type: 'inseason' or 'offseason'"),
+):
+    return await reset_commissioner_standard_waiver_preset(ctx, preset_type=preset_type)
+
+
+@router.get(
+    "/commissioner/settings",
+    response_model=list[CommissionerLeagueSettingsInfo],
+)
+async def get_commissioner_settings_endpoint(
+    ctx: ContextDep,
+):
+    return await get_commissioner_settings_overview(ctx)
+
+
+@router.post(
+    "/commissioner/settings/update",
+    response_model=CommissionerSettingsUpdateResponse,
+)
+async def update_commissioner_settings_endpoint(
+    body: CommissionerSettingsUpdateRequest,
+    ctx: ContextDep,
+):
+    return await update_commissioner_settings(ctx, body)
+
+
+

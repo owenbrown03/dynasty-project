@@ -30,6 +30,7 @@ def _extract_settings(obj: Any) -> dict[str, Any]:
     return {}
 
 from app.core.context import Context
+from app.crud.sleeper.personal import get_league_sort_orders
 from app.crud.sleeper.roster import get_all_rosters_by_league
 from app.crud.sleeper.user import get_users
 from app.services.leagues.selection import (
@@ -64,14 +65,20 @@ async def get_commissioner_faab_overview(
 ) -> list[CommissionerFaabLeagueInfo]:
     _require_commissioner_faab_context(ctx)
 
+    sleeper_user_id = ctx.connection.sleeper_user_id or ""
     owned_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
         db=ctx.db,
-        sleeper_user_id=ctx.connection.sleeper_user_id,
+        sleeper_user_id=sleeper_user_id,
         site_user_id=ctx.site_user.id,
         include_hidden=False,
     )
     if not owned_rows:
         return []
+
+    sort_order = await get_league_sort_orders(
+        db=ctx.db,
+        user_id=sleeper_user_id,
+    )
 
     # Refresh live league settings if sleeper client available
     if ctx.sleeper and hasattr(ctx.sleeper, "read") and hasattr(ctx.sleeper.read, "get_league"):
@@ -150,6 +157,13 @@ async def get_commissioner_faab_overview(
                 rosters=rosters_info,
             )
         )
+
+    overview.sort(
+        key=lambda item: (
+            sort_order.get(item.league_id, 9999),
+            item.league_name.lower() if item.league_name else "",
+        )
+    )
 
     return overview
 

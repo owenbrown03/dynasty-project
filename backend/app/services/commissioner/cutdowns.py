@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 import logging
 from sqlmodel import select
 from app.core.context import Context
+from app.crud.sleeper.personal import get_league_sort_orders
 from app.services.leagues.selection import get_visible_owned_league_rows_by_sleeper_user_id
 from app.crud.sleeper.roster import get_all_rosters_by_league
 from app.crud.sleeper.user import get_users
@@ -155,9 +156,10 @@ async def _compute_league_violations(
 async def get_commissioner_cutdown_violations(ctx: Context) -> list[CommissionerCutdownLeague]:
     _require_commissioner_workspace_context(ctx)
 
+    sleeper_user_id = ctx.connection.sleeper_user_id or ""
     rows = await get_visible_owned_league_rows_by_sleeper_user_id(
         db=ctx.db,
-        sleeper_user_id=ctx.connection.sleeper_user_id or "",
+        sleeper_user_id=sleeper_user_id,
         site_user_id=ctx.site_user.id,
         include_hidden=False,
     )
@@ -183,6 +185,9 @@ async def get_commissioner_cutdown_violations(ctx: Context) -> list[Commissioner
                 max_roster_size=league.roster_size,
                 violations=violations,
             ))
+
+    order_map = {row.league.league_id: idx for idx, row in enumerate(rows)}
+    leagues.sort(key=lambda item: order_map.get(item.league_id, 9999))
 
     return leagues
 

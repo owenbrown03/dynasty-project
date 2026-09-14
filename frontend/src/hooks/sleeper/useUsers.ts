@@ -6,6 +6,14 @@ import type {
   CommissionerFaabLeagueInfo,
   CommissionerFaabResetRequest,
   CommissionerFaabResetResponse,
+  CommissionerWaiverLeagueInfo,
+  CommissionerWaiverUpdateRequest,
+  CommissionerWaiverUpdateResponse,
+  CommissionerStandardWaiverPreset,
+  CommissionerStandardWaiverPresetUpdate,
+  CommissionerLeagueSettingsInfo,
+  CommissionerSettingsUpdateRequest,
+  CommissionerSettingsUpdateResponse,
 } from '@/api/v1/endpoints/sleeper/user.endpoints';
 import type {
   CommissionerLeagueDuesUpdate,
@@ -396,6 +404,117 @@ export const useResetCommissionerFaab = () => {
     },
   });
 };
+
+export function useCommissionerWaiversOverview() {
+  return useQuery<CommissionerWaiverLeagueInfo[], Error>({
+    queryKey: ['commissioner-waivers-overview'],
+    queryFn: async () => {
+      const res = await api.users.getCommissionerWaiversOverview();
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export const useUpdateCommissionerWaivers = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    CommissionerWaiverUpdateResponse,
+    Error,
+    CommissionerWaiverUpdateRequest
+  >({
+    mutationFn: async (payload: CommissionerWaiverUpdateRequest) => {
+      const res = await api.users.updateCommissionerWaivers(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commissioner-waivers-overview'] });
+    },
+  });
+};
+
+export function useCommissionerWaiversPreset(presetType: 'inseason' | 'offseason' = 'inseason') {
+  return useQuery<CommissionerStandardWaiverPreset, Error>({
+    queryKey: ['commissioner-waivers-preset', presetType],
+    queryFn: async () => {
+      const res = await api.users.getCommissionerWaiversPreset(presetType);
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export interface SaveCommissionerWaiversPresetArgs extends CommissionerStandardWaiverPresetUpdate {
+  presetType?: 'inseason' | 'offseason';
+}
+
+export const useSaveCommissionerWaiversPreset = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    CommissionerStandardWaiverPreset,
+    Error,
+    SaveCommissionerWaiversPresetArgs
+  >({
+    mutationFn: async (args: SaveCommissionerWaiversPresetArgs) => {
+      const { presetType = 'inseason', ...payload } = args;
+      const res = await api.users.saveCommissionerWaiversPreset(payload, presetType);
+      return res.data;
+    },
+    onSuccess: (_data, args) => {
+      queryClient.invalidateQueries({
+        queryKey: ['commissioner-waivers-preset', args.presetType || 'inseason'],
+      });
+    },
+  });
+};
+
+export const useResetCommissionerWaiversPreset = () => {
+  const queryClient = useQueryClient();
+  return useMutation<CommissionerStandardWaiverPreset, Error, 'inseason' | 'offseason' | void>({
+    mutationFn: async (presetType = 'inseason') => {
+      const targetType = presetType || 'inseason';
+      const res = await api.users.resetCommissionerWaiversPreset(targetType);
+      return res.data;
+    },
+    onSuccess: (_data, presetType) => {
+      queryClient.invalidateQueries({
+        queryKey: ['commissioner-waivers-preset', presetType || 'inseason'],
+      });
+    },
+  });
+};
+
+export const useCommissionerSettingsOverview = () => {
+  return useQuery<CommissionerLeagueSettingsInfo[], Error>({
+    queryKey: ['commissioner-settings-overview'],
+    queryFn: async () => {
+      const res = await api.users.getCommissionerSettingsOverview();
+      return res.data;
+    },
+    staleTime: 60 * 1000,
+  });
+};
+
+export const useUpdateCommissionerSettings = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    CommissionerSettingsUpdateResponse,
+    Error,
+    CommissionerSettingsUpdateRequest
+  >({
+    mutationFn: async (payload: CommissionerSettingsUpdateRequest) => {
+      const res = await api.users.updateCommissionerSettings(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commissioner-settings-overview'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.commissionerWorkspace });
+    },
+  });
+};
+
+
+
 
 export function useCommissionerCutdowns(enabled: boolean) {
   const query = useQuery<CommissionerCutdownLeague[]>({

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Dict, List, Optional
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.schemas.base import Base
 from app.schemas.draft import DraftPickAsset
@@ -206,3 +206,164 @@ class CommissionerPollBroadcastResponse(Base):
     total_leagues: int
     successful_leagues: int
     results: list[CommissionerPollBroadcastResult]
+
+
+class CommissionerWaiverDaySchedule(Base):
+    day: str
+    setting: int  # 0=FA, 1=Waivers, 2=Locked, 3=Waivers->FA
+
+
+class CommissionerWaiverLeagueInfo(Base):
+    league_id: str
+    league_name: str
+    avatar: str | None = None
+    total_rosters: int = 0
+    daily_waivers: int = 0
+    daily_waivers_hour: int = 0
+    daily_waivers_days: int = 5461
+    daily_waivers_days_b4: str = "1111111"
+    waiver_type: int = 2
+    waiver_clear_days: int = 2
+    waiver_day_of_week: int = 2
+    schedule: list[CommissionerWaiverDaySchedule] = Field(default_factory=list)
+
+
+class CommissionerWaiverUpdateRequest(Base):
+    league_ids: list[str]
+    daily_waivers: int = 1
+    daily_waivers_days: int | None = None
+    sunday_to_saturday_settings: list[int] | None = None  # 7 ints (0..3) [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+    daily_waivers_hour: int | None = None  # 0..23, or None to preserve each league's existing hour
+    waiver_clear_days: int | None = None  # 0..3, or None to preserve each league's setting
+    waiver_day_of_week: int | None = None  # 1=Tue, 2=Wed, etc., or None to preserve each league's setting
+
+
+
+class CommissionerWaiverUpdateResult(Base):
+    league_id: str
+    league_name: str
+    success: bool
+    error: str | None = None
+
+
+class CommissionerWaiverUpdateResponse(Base):
+    total_leagues: int
+    successful_leagues: int
+    results: list[CommissionerWaiverUpdateResult]
+
+
+class CommissionerStandardWaiverPreset(Base):
+    sunday_to_saturday_settings: list[int] = Field(
+        default=[3, 0, 1, 1, 3, 3, 3],
+        description="7 ints (0..3) [Sun, Mon, Tue, Wed, Thu, Fri, Sat]",
+    )
+    daily_waivers_hour: int | None = None
+    daily_waivers: int = 1
+    is_custom: bool = False
+
+
+class CommissionerStandardWaiverPresetUpdate(Base):
+    sunday_to_saturday_settings: list[int] = Field(
+        description="7 ints (0..3) [Sun, Mon, Tue, Wed, Thu, Fri, Sat]",
+    )
+    daily_waivers_hour: int | None = None
+    daily_waivers: int = 1
+
+    @field_validator("sunday_to_saturday_settings")
+    @classmethod
+    def validate_days(cls, v: list[int]) -> list[int]:
+        if len(v) != 7 or any(d < 0 or d > 3 for d in v):
+            raise ValueError("sunday_to_saturday_settings must have exactly 7 integers between 0 and 3")
+        return v
+
+
+class CommissionerLeagueSettingsInfo(Base):
+    league_id: str
+    league_name: str
+    avatar: str | None = None
+    total_rosters: int = 0
+    best_ball: int = 0
+
+    # Roster & Drop Rules
+    bench_lock: int = 0  # 0=Allow bench drop after kickoff, 1=Prevent bench drop
+    disable_adds: int = 0  # 0=Adds allowed, 1=Adds locked
+    offseason_adds: int = 0  # 0=Locked in offseason, 1=Allowed in offseason
+
+    # Trading
+    disable_trades: int = 0  # 0=Trades allowed, 1=Trades disabled
+    trade_deadline: int = 11  # Week number 9..14, or 99 for No deadline
+    pick_trading: int = 1  # 0=Disabled, 1=Enabled
+    trade_review_days: int = 0  # 0=None, 1..3 days
+    veto_auto_poll: int = 0  # 0=Off, 1=On
+    veto_show_votes: int = 0  # 0=Hidden, 1=Visible
+    veto_votes_needed: int = 0
+
+    # Matchups & Playoffs
+    playoff_teams: int = 6
+    playoff_week_start: int = 15
+    league_average_match: int = 0  # 0=Off, 1=On (median match)
+
+    # Waivers
+    waiver_bid_min: int = 0  # 0=$0 min, 1=$1 min
+
+    # Taxi
+    taxi_deadline: int = 0  # 0=None, 1..18
+    taxi_allow_vets: int = 0  # 0=Rookies only, 1=Rookies & Vets
+    taxi_years: int = 0  # 0=Any, 1..4 years
+
+    # IR / Reserve
+    reserve_allow_out: int = 1
+    reserve_allow_doubtful: int = 0
+    reserve_allow_sus: int = 0
+    reserve_allow_cov: int = 0
+    reserve_allow_na: int = 0
+    reserve_allow_dnr: int = 0
+
+
+class CommissionerSettingsUpdateRequest(Base):
+    league_ids: list[str]
+
+    # Optional fields: None = Keep Current League Setting
+    bench_lock: int | None = None
+    disable_adds: int | None = None
+    offseason_adds: int | None = None
+
+    disable_trades: int | None = None
+    trade_deadline: int | None = None
+    pick_trading: int | None = None
+    trade_review_days: int | None = None
+    veto_auto_poll: int | None = None
+    veto_show_votes: int | None = None
+    veto_votes_needed: int | None = None
+
+    playoff_teams: int | None = None
+    playoff_week_start: int | None = None
+    league_average_match: int | None = None
+
+    waiver_bid_min: int | None = None
+
+    taxi_deadline: int | None = None
+    taxi_allow_vets: int | None = None
+    taxi_years: int | None = None
+
+    reserve_allow_out: int | None = None
+    reserve_allow_doubtful: int | None = None
+    reserve_allow_sus: int | None = None
+    reserve_allow_cov: int | None = None
+    reserve_allow_na: int | None = None
+    reserve_allow_dnr: int | None = None
+
+
+class CommissionerSettingsUpdateResult(Base):
+    league_id: str
+    league_name: str
+    success: bool
+    error: str | None = None
+
+
+class CommissionerSettingsUpdateResponse(Base):
+    total_leagues: int
+    successful_leagues: int
+    results: list[CommissionerSettingsUpdateResult]
+
+

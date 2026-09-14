@@ -144,8 +144,27 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
     `${prefix}/reminders/test-send`,
     body,
   ),
-getCommissionerFaabOverview: () => client.get<CommissionerFaabLeagueInfo[]>(`${prefix}/commissioner/faab`),
+  getCommissionerFaabOverview: () => client.get<CommissionerFaabLeagueInfo[]>(`${prefix}/commissioner/faab`),
   resetCommissionerFaab: (payload: CommissionerFaabResetRequest) => client.post<CommissionerFaabResetResponse>(`${prefix}/commissioner/faab/reset`, payload),
+  getCommissionerWaiversOverview: () => client.get<CommissionerWaiverLeagueInfo[]>(`${prefix}/commissioner/waivers`),
+  updateCommissionerWaivers: (payload: CommissionerWaiverUpdateRequest) => client.post<CommissionerWaiverUpdateResponse>(`${prefix}/commissioner/waivers/update`, payload),
+  getCommissionerWaiversPreset: (presetType: 'inseason' | 'offseason' = 'inseason') =>
+    client.get<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset`, {
+      params: { preset_type: presetType },
+    }),
+  saveCommissionerWaiversPreset: (
+    payload: CommissionerStandardWaiverPresetUpdate,
+    presetType: 'inseason' | 'offseason' = 'inseason',
+  ) =>
+    client.post<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset`, payload, {
+      params: { preset_type: presetType },
+    }),
+  resetCommissionerWaiversPreset: (presetType: 'inseason' | 'offseason' = 'inseason') =>
+    client.post<CommissionerStandardWaiverPreset>(`${prefix}/commissioner/waivers/preset/reset`, null, {
+      params: { preset_type: presetType },
+    }),
+  getCommissionerSettingsOverview: () => client.get<CommissionerLeagueSettingsInfo[]>(`${prefix}/commissioner/settings`),
+  updateCommissionerSettings: (payload: CommissionerSettingsUpdateRequest) => client.post<CommissionerSettingsUpdateResponse>(`${prefix}/commissioner/settings/update`, payload),
   broadcastCommissionerPoll: (
     body: CommissionerPollBroadcastRequest,
   ) => client.post<CommissionerPollBroadcastResponse>(
@@ -190,3 +209,133 @@ export interface CommissionerFaabResetResponse {
   successful_leagues: number;
   results: CommissionerFaabResetResult[];
 }
+
+export interface CommissionerWaiverDaySchedule {
+  day: string;
+  setting: number; // 0=FA, 1=Waivers, 2=Locked, 3=Waivers->FA
+}
+
+export interface CommissionerWaiverLeagueInfo {
+  league_id: string;
+  league_name: string;
+  avatar: string | null;
+  total_rosters: number;
+  daily_waivers: number;
+  daily_waivers_hour: number;
+  daily_waivers_days: number;
+  daily_waivers_days_b4: string;
+  waiver_type: number;
+  waiver_clear_days: number;
+  waiver_day_of_week: number;
+  schedule: CommissionerWaiverDaySchedule[];
+}
+
+export interface CommissionerWaiverUpdateRequest {
+  league_ids: string[];
+  daily_waivers: number;
+  daily_waivers_days?: number;
+  sunday_to_saturday_settings?: number[];
+  daily_waivers_hour?: number | null;
+  waiver_clear_days?: number | null;
+  waiver_day_of_week?: number | null;
+}
+
+export interface CommissionerWaiverUpdateResult {
+  league_id: string;
+  league_name: string;
+  success: boolean;
+  error: string | null;
+}
+
+export interface CommissionerWaiverUpdateResponse {
+  total_leagues: number;
+  successful_leagues: number;
+  results: CommissionerWaiverUpdateResult[];
+}
+
+export interface CommissionerStandardWaiverPreset {
+  sunday_to_saturday_settings: number[];
+  daily_waivers_hour: number | null;
+  daily_waivers: number;
+  is_custom: boolean;
+}
+
+export interface CommissionerStandardWaiverPresetUpdate {
+  sunday_to_saturday_settings: number[];
+  daily_waivers_hour?: number | null;
+  daily_waivers?: number;
+}
+
+export interface CommissionerLeagueSettingsInfo {
+  league_id: string;
+  league_name: string;
+  avatar: string | null;
+  total_rosters: number;
+  best_ball: number;
+  bench_lock: number;
+  disable_adds: number;
+  offseason_adds: number;
+  disable_trades: number;
+  trade_deadline: number;
+  pick_trading: number;
+  trade_review_days: number;
+  veto_auto_poll: number;
+  veto_show_votes: number;
+  veto_votes_needed: number;
+  playoff_teams: number;
+  playoff_week_start: number;
+  league_average_match: number;
+  waiver_bid_min: number;
+  taxi_deadline: number;
+  taxi_allow_vets: number;
+  taxi_years: number;
+  reserve_allow_out: number;
+  reserve_allow_doubtful: number;
+  reserve_allow_sus: number;
+  reserve_allow_cov: number;
+  reserve_allow_na: number;
+  reserve_allow_dnr: number;
+}
+
+export interface CommissionerSettingsUpdateRequest {
+  league_ids: string[];
+  bench_lock?: number | null;
+  disable_adds?: number | null;
+  offseason_adds?: number | null;
+  disable_trades?: number | null;
+  trade_deadline?: number | null;
+  pick_trading?: number | null;
+  trade_review_days?: number | null;
+  veto_auto_poll?: number | null;
+  veto_show_votes?: number | null;
+  veto_votes_needed?: number | null;
+  playoff_teams?: number | null;
+  playoff_week_start?: number | null;
+  league_average_match?: number | null;
+  waiver_bid_min?: number | null;
+  taxi_deadline?: number | null;
+  taxi_allow_vets?: number | null;
+  taxi_years?: number | null;
+  reserve_allow_out?: number | null;
+  reserve_allow_doubtful?: number | null;
+  reserve_allow_sus?: number | null;
+  reserve_allow_cov?: number | null;
+  reserve_allow_na?: number | null;
+  reserve_allow_dnr?: number | null;
+}
+
+export interface CommissionerSettingsUpdateResult {
+  league_id: string;
+  league_name: string;
+  success: boolean;
+  error: string | null;
+}
+
+export interface CommissionerSettingsUpdateResponse {
+  total_leagues: number;
+  successful_leagues: number;
+  results: CommissionerSettingsUpdateResult[];
+}
+
+
+

@@ -46,6 +46,7 @@ from app.crud.auth.user import (
     is_email_verified,
     insert_user,
     reconcile_session_accent_color,
+    reconcile_session_commissioner_standard_waivers,
     reconcile_session_theme_preference,
     reconcile_session_draft_pick_projection_settings,
     reconcile_session_finance_projection_settings,
@@ -157,6 +158,11 @@ async def login(
         db=ctx.db,
     )
     await reconcile_session_accent_color(
+        user=db_user,
+        session=session,
+        db=ctx.db,
+    )
+    await reconcile_session_commissioner_standard_waivers(
         user=db_user,
         session=session,
         db=ctx.db,

@@ -61,30 +61,6 @@ export function CommissionerCutdownsTab() {
     return list;
   }, [leagues, selectedRosters]);
 
-  if (loading) {
-    return (
-      <div className="commissioner-card-grid">
-        <Skeleton height={200} />
-      </div>
-    );
-  }
-
-  if (error || !leagues) {
-    return (
-      <div className="commissioner-empty-state">
-        Unable to load cutdowns data.
-      </div>
-    );
-  }
-
-  if (leagues.length === 0) {
-    return (
-      <div className="commissioner-empty-state">
-        No roster cutdown violations detected across your leagues.
-      </div>
-    );
-  }
-
   const handleToggleRoster = (leagueId: string, rosterId: number) => {
     setSelectedRosters((prev) => {
       const current = prev[leagueId] || [];
@@ -188,7 +164,7 @@ export function CommissionerCutdownsTab() {
             onClick={() => refetch()}
             disabled={loading || fetching}
           >
-            {fetching ? 'Refreshing...' : 'Refresh Status'}
+            {loading ? 'Loading...' : (fetching ? 'Refreshing...' : 'Refresh Status')}
           </button>
 
           <div className="cutdowns-actions">
@@ -197,6 +173,7 @@ export function CommissionerCutdownsTab() {
               <select
                 value={actionType}
                 onChange={(e) => setActionType(e.target.value)}
+                disabled={loading}
               >
                 <option value="chat_all">@all League Chat Announcement</option>
                 <option value="chat_tag">Tag Violators in League Chat</option>
@@ -212,13 +189,14 @@ export function CommissionerCutdownsTab() {
                   value={customMessage}
                   onChange={(e) => setCustomMessage(e.target.value)}
                   placeholder={ACTION_PLACEHOLDERS[actionType] || 'Message to include...'}
+                  disabled={loading}
                 />
               </label>
             )}
             <button
               className="button-primary"
               onClick={handleActionClick}
-              disabled={actionMutation.isPending}
+              disabled={loading || actionMutation.isPending}
             >
               {actionType === 'force_drop'
                 ? 'Review & Drop'
@@ -233,55 +211,100 @@ export function CommissionerCutdownsTab() {
         )}
       </div>
 
-      <div className="commissioner-card-grid">
-        {leagues.map((league: CommissionerCutdownLeague) => (
-          <div key={league.league_id} className="commissioner-card">
-            <header className="commissioner-card-header">
-              <div>
-                <p className="commissioner-card-kicker">League</p>
-                <h2 className="commissioner-card-title">{league.league_name}</h2>
-                <p className="commissioner-card-subtitle">
-                  {league.violations.length} violations
-                </p>
-              </div>
-            </header>
-            <div className="commissioner-list">
-              {league.violations.map((violation: CommissionerCutdownViolation) => {
-                const isSelected = (selectedRosters[league.league_id] || []).includes(violation.roster_id);
-                return (
-                  <div key={violation.roster_id} className="commissioner-due-row">
-                    <label className="cutdown-violation-label">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleRoster(league.league_id, violation.roster_id)}
-                      />
-                      <div className="commissioner-due-copy">
-                        <strong>{violation.owner_name || `Roster ${violation.roster_id}`}</strong>
-                        <span>
-                          {violation.roster_size} / {violation.max_roster_size} spots ({violation.over_limit_count} over)
-                        </span>
-                        {violation.proposed_drops && violation.proposed_drops.length > 0 && (
-                          <div className="cutdown-violation-drops-preview">
-                            <span className="cutdown-drops-title">Proposed Drops (lowest KTC):</span>
-                            <div className="cutdown-drops-pills">
-                              {violation.proposed_drops.map(p => (
-                                <span key={p.player_id} className="cutdown-drop-pill">
-                                  {p.name} ({p.position || '—'}{p.team ? ` · ${p.team}` : ''}){p.ktc_value != null ? ` · ${p.ktc_value.toLocaleString()} KTC` : ''}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </label>
+      {loading ? (
+        <div className="commissioner-card-grid">
+          {Array.from({ length: 2 }).map((_, cardIdx) => (
+            <div key={cardIdx} className="commissioner-card">
+              <header className="commissioner-card-header">
+                <div>
+                  <Skeleton width={48} height={12} />
+                  <div style={{ marginTop: 6, marginBottom: 4 }}>
+                    <Skeleton width={180} height={20} />
                   </div>
-                );
-              })}
+                  <Skeleton width={80} height={14} />
+                </div>
+              </header>
+              <div className="commissioner-list">
+                {Array.from({ length: 3 }).map((_, rowIdx) => (
+                  <div key={rowIdx} className="commissioner-due-row">
+                    <div className="cutdown-violation-label" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', width: '100%' }}>
+                      <Skeleton width={18} height={18} radius={4} />
+                      <div className="commissioner-due-copy" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <Skeleton width={120} height={16} />
+                          <Skeleton width={70} height={18} radius={9999} />
+                        </div>
+                        <Skeleton width={160} height={14} />
+                        <div style={{ marginTop: 4 }}>
+                          <Skeleton width="80%" height={24} radius={4} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : error || !leagues ? (
+        <div className="commissioner-empty-state">
+          Unable to load cutdowns data.
+        </div>
+      ) : leagues.length === 0 ? (
+        <div className="commissioner-empty-state">
+          No roster cutdown violations detected across your leagues.
+        </div>
+      ) : (
+        <div className="commissioner-card-grid">
+          {leagues.map((league: CommissionerCutdownLeague) => (
+            <div key={league.league_id} className="commissioner-card">
+              <header className="commissioner-card-header">
+                <div>
+                  <p className="commissioner-card-kicker">League</p>
+                  <h2 className="commissioner-card-title">{league.league_name}</h2>
+                  <p className="commissioner-card-subtitle">
+                    {league.violations.length} violations
+                  </p>
+                </div>
+              </header>
+              <div className="commissioner-list">
+                {league.violations.map((violation: CommissionerCutdownViolation) => {
+                  const isSelected = (selectedRosters[league.league_id] || []).includes(violation.roster_id);
+                  return (
+                    <div key={violation.roster_id} className="commissioner-due-row">
+                      <label className="cutdown-violation-label">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleRoster(league.league_id, violation.roster_id)}
+                        />
+                        <div className="commissioner-due-copy">
+                          <strong>{violation.owner_name || `Roster ${violation.roster_id}`}</strong>
+                          <span>
+                            {violation.roster_size} / {violation.max_roster_size} spots ({violation.over_limit_count} over)
+                          </span>
+                          {violation.proposed_drops && violation.proposed_drops.length > 0 && (
+                            <div className="cutdown-violation-drops-preview">
+                              <span className="cutdown-drops-title">Proposed Drops (lowest KTC):</span>
+                              <div className="cutdown-drops-pills">
+                                {violation.proposed_drops.map(p => (
+                                  <span key={p.player_id} className="cutdown-drop-pill">
+                                    {p.name} ({p.position || '—'}{p.team ? ` · ${p.team}` : ''}){p.ktc_value != null ? ` · ${p.ktc_value.toLocaleString()} KTC` : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isReviewOpen && (
         <CutdownReviewModal
