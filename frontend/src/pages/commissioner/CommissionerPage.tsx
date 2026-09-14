@@ -491,6 +491,8 @@ export const CommissionerPage = () => {
   const activeTab = (
     searchParams.get('tab') === 'workspace'
       ? 'workspace'
+      : searchParams.get('tab') === 'settings'
+      ? 'settings'
       : searchParams.get('tab') === 'faab'
       ? 'faab'
       : searchParams.get('tab') === 'waivers'
