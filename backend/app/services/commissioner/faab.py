@@ -75,6 +75,14 @@ async def get_commissioner_faab_overview(
     if not owned_rows:
         return []
 
+    # Filter to leagues where the current user is commissioner (roster.is_owner is True)
+    commish_rows = [
+        row for row in owned_rows
+        if row.league and getattr(row.roster, "is_owner", False) is True
+    ]
+    if not commish_rows:
+        return []
+
     sort_order = await get_league_sort_orders(
         db=ctx.db,
         user_id=sleeper_user_id,
@@ -92,7 +100,7 @@ async def get_commissioner_faab_overview(
             except Exception as ex:
                 logger.debug("Could not refresh live league %s: %s", l.league_id, ex)
 
-        valid_leagues = [row.league for row in owned_rows if row.league]
+        valid_leagues = [row.league for row in commish_rows if row.league]
         await asyncio.gather(*[_refresh_live_league(l) for l in valid_leagues], return_exceptions=True)
         try:
             await ctx.db.commit()
@@ -101,7 +109,7 @@ async def get_commissioner_faab_overview(
 
     rosters_by_league = await get_all_rosters_by_league(
         db=ctx.db,
-        league_ids=[row.league.league_id for row in owned_rows],
+        league_ids=[row.league.league_id for row in commish_rows],
     )
     owner_ids = {
         roster.owner_id
@@ -113,7 +121,7 @@ async def get_commissioner_faab_overview(
 
     overview: list[CommissionerFaabLeagueInfo] = []
 
-    for row in owned_rows:
+    for row in commish_rows:
         league = row.league
         if not league:
             continue
@@ -180,7 +188,11 @@ async def reset_commissioner_faab(
         site_user_id=ctx.site_user.id,
         include_hidden=False,
     )
-    owned_by_id = {row.league.league_id: row.league for row in owned_rows if row.league}
+    owned_by_id = {
+        row.league.league_id: row.league
+        for row in owned_rows
+        if row.league and getattr(row.roster, "is_owner", False) is True
+    }
 
     results: list[CommissionerFaabResetResult] = []
     total_leagues = len(payload.league_ids)
