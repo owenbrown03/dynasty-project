@@ -65,7 +65,10 @@ async def test_reset_commissioner_faab_calls_sleeper_write(monkeypatch):
         avatar=None,
         settings={"waiver_budget": 100},
     )
-    owned_row = SimpleNamespace(league=league)
+    owned_row = SimpleNamespace(
+        league=league,
+        roster=SimpleNamespace(is_owner=True),
+    )
 
     monkeypatch.setattr(
         "app.services.commissioner.faab.get_visible_owned_league_rows_by_sleeper_user_id",
@@ -147,7 +150,10 @@ async def test_reset_commissioner_faab_with_live_rosters(monkeypatch):
         avatar=None,
         settings={"waiver_budget": 100},
     )
-    owned_row = SimpleNamespace(league=league)
+    owned_row = SimpleNamespace(
+        league=league,
+        roster=SimpleNamespace(is_owner=True),
+    )
 
     monkeypatch.setattr(
         "app.services.commissioner.faab.get_visible_owned_league_rows_by_sleeper_user_id",
@@ -274,7 +280,10 @@ async def test_reset_commissioner_faab_custom_amount_with_live_league_budget(mon
         avatar=None,
         settings={"waiver_budget": 100},  # Stale DB had 100
     )
-    owned_row = SimpleNamespace(league=league)
+    owned_row = SimpleNamespace(
+        league=league,
+        roster=SimpleNamespace(is_owner=True),
+    )
 
     monkeypatch.setattr(
         "app.services.commissioner.faab.get_visible_owned_league_rows_by_sleeper_user_id",
@@ -304,3 +313,99 @@ async def test_reset_commissioner_faab_custom_amount_with_live_league_budget(mon
         target_budget=44,
         existing_settings={"waiver_budget_used": 0, "waiver_position": 12},
     )
+
+
+@pytest.mark.anyio
+async def test_get_commissioner_faab_overview_filters_out_non_commish_leagues(monkeypatch):
+    mock_db = AsyncMock()
+    ctx = SimpleNamespace(
+        db=mock_db,
+        redis=None,
+        session=SimpleNamespace(),
+        site_user=SimpleNamespace(id="site_user_id"),
+        connection=SimpleNamespace(sleeper_user_id="sleeper_123"),
+        sleeper=None,
+        underdog=None,
+    )
+
+    commish_league = SimpleNamespace(
+        league_id="commish_l",
+        name="Commish League",
+        avatar=None,
+        settings={"waiver_budget": 100},
+    )
+    commish_row = SimpleNamespace(
+        league=commish_league,
+        roster=SimpleNamespace(is_owner=True),
+    )
+
+    non_commish_league = SimpleNamespace(
+        league_id="non_commish_l",
+        name="Guest Bong League",
+        avatar=None,
+        settings={"waiver_budget": 100},
+    )
+    non_commish_row = SimpleNamespace(
+        league=non_commish_league,
+        roster=SimpleNamespace(is_owner=False),
+    )
+
+    monkeypatch.setattr(
+        "app.services.commissioner.faab.get_visible_owned_league_rows_by_sleeper_user_id",
+        AsyncMock(return_value=[commish_row, non_commish_row]),
+    )
+    monkeypatch.setattr(
+        "app.services.commissioner.faab.get_all_rosters_by_league",
+        AsyncMock(return_value={"commish_l": []}),
+    )
+    monkeypatch.setattr(
+        "app.services.commissioner.faab.get_users",
+        AsyncMock(return_value={}),
+    )
+
+    overview = await get_commissioner_faab_overview(ctx)
+    assert len(overview) == 1
+    assert overview[0].league_id == "commish_l"
+    assert overview[0].league_name == "Commish League"
+
+
+@pytest.mark.anyio
+async def test_reset_commissioner_faab_rejects_non_commish_league(monkeypatch):
+    mock_db = AsyncMock()
+    ctx = SimpleNamespace(
+        db=mock_db,
+        redis=None,
+        session=SimpleNamespace(),
+        site_user=SimpleNamespace(id="site_user_id"),
+        connection=SimpleNamespace(sleeper_user_id="sleeper_123"),
+        sleeper=SimpleNamespace(can_write=True, write=AsyncMock()),
+        underdog=None,
+    )
+
+    non_commish_league = SimpleNamespace(
+        league_id="guest_bong_league",
+        name="Guest Bong League",
+        avatar=None,
+        settings={"waiver_budget": 100},
+    )
+    non_commish_row = SimpleNamespace(
+        league=non_commish_league,
+        roster=SimpleNamespace(is_owner=False),
+    )
+
+    monkeypatch.setattr(
+        "app.services.commissioner.faab.get_visible_owned_league_rows_by_sleeper_user_id",
+        AsyncMock(return_value=[non_commish_row]),
+    )
+
+    req = CommissionerFaabResetRequest(
+        league_ids=["guest_bong_league"],
+        target_budget=100,
+    )
+    res = await reset_commissioner_faab(ctx, req)
+
+    assert res.total_leagues == 1
+    assert res.successful_leagues == 0
+    assert len(res.results) == 1
+    assert res.results[0].success is False
+    assert res.results[0].error == "Not an owned commissioner league"
