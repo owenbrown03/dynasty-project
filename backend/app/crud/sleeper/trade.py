@@ -19,11 +19,12 @@ from app.crud.sleeper.player import get_player_map, get_player_map_for_ids
 from app.crud.sleeper.user import get_userid_by_username
 from app.integrations.sleeper.schemas import display
 from app.models.db.sleeper import api as model
+from app.models.db.sleeper.connection import SleeperConnection
 from app.services.leagues.settings import build_settings_badges
 
 logger = logging.getLogger(__name__)
 
-TRADE_SIGNALS_CACHE_VERSION = "v1"
+TRADE_SIGNALS_CACHE_VERSION = "v2"
 TRADE_SIGNALS_CACHE_TTL_SECONDS = 10 * 60
 TRADE_SIGNALS_ADAPTER = TypeAdapter(
     list[display.Transaction],
@@ -35,6 +36,7 @@ async def build_trade_signals_cache_key(
     *,
     username: str,
     user_id: str,
+    site_user_id: UUID | None = None,
 ) -> str:
     result = await db.execute(
         select(
@@ -50,6 +52,7 @@ async def build_trade_signals_cache_key(
         {
             "username": username,
             "user_id": user_id,
+            "site_user_id": str(site_user_id) if site_user_id else None,
             "transaction_count": transaction_count or 0,
             "max_time_ms": max_time_ms or 0,
         },
@@ -178,10 +181,21 @@ async def get_trade_signals(
 
     try:
         main_user_id = await get_userid_by_username(db, sleeper, username)
+
+        # Resolve site_user_id from SleeperConnection if not provided
+        if site_user_id is None:
+            conn_stmt = select(SleeperConnection.site_user_id).where(
+                SleeperConnection.sleeper_user_id == main_user_id,
+                SleeperConnection.site_user_id.is_not(None),
+            )
+            conn_res = await db.execute(conn_stmt)
+            site_user_id = conn_res.scalars().first()
+
         cache_key = await build_trade_signals_cache_key(
             db,
             username=username,
             user_id=main_user_id,
+            site_user_id=site_user_id,
         )
         if redis is not None and not cheap:
             cached_payload = await redis.get(cache_key)
@@ -194,16 +208,22 @@ async def get_trade_signals(
                     cached_payload,
                 )
 
-        logger.info(f"Initiating trade signal calculation matrix for user: {username}")
-        lm_ids = await get_leaguemate_ids(db, main_user_id)
-        logger.info(f"Context loaded: Identified {len(lm_ids)} unique leaguemates.")
+        # Resolve active visible owned leagues:
+        # - Excludes hidden leagues
+        # - Excludes superseded previous seasons of ongoing league families (keeps latest active season only)
+        # - Excludes archived leagues older than minimum visible season
+        from app.services.leagues.selection import get_visible_owned_league_rows_by_sleeper_user_id
+        visible_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
+            db=db,
+            sleeper_user_id=main_user_id,
+            site_user_id=site_user_id,
+            include_hidden=False,
+        )
+        my_visible_league_ids = [row.league.league_id for row in visible_rows]
 
-        hidden_league_ids: set[str] = set()
-        if site_user_id is not None:
-            hidden_league_ids = await get_hidden_league_ids(
-                db=db,
-                site_user_id=site_user_id,
-            )
+        logger.info(f"Initiating trade signal calculation matrix for user: {username}")
+        lm_ids = await get_leaguemate_ids(db, main_user_id, league_ids=my_visible_league_ids)
+        logger.info(f"Context loaded: Identified {len(lm_ids)} unique leaguemates across {len(my_visible_league_ids)} visible leagues.")
 
         if cheap:
             lm_trades_data = await read_trades(db, [main_user_id])
@@ -242,17 +262,11 @@ async def get_trade_signals(
         for l_id, o_id, r_id in roster_rows:
             roster_owner_map[l_id][r_id] = o_id
 
-        my_leagues = select(model.Roster.league_id).where(model.Roster.owner_id == main_user_id).scalar_subquery()
-
         intersect_stmt = (
             select(model.Roster.league_id, model.Roster.owner_id, func.unnest(model.Roster.players))
-            .where(model.Roster.league_id.in_(my_leagues))
+            .where(model.Roster.league_id.in_(my_visible_league_ids))
             .where(or_(model.Roster.owner_id.in_(lm_ids), model.Roster.owner_id == main_user_id))
         )
-        if hidden_league_ids:
-            intersect_stmt = intersect_stmt.where(
-                model.Roster.league_id.notin_(hidden_league_ids)
-            )
         int_res = await db.execute(intersect_stmt)
         intersect_query = int_res.all()
         

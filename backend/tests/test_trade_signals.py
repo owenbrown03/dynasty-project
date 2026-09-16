@@ -151,11 +151,25 @@ def test_trade_signals_excludes_current_league_from_buy_signals(monkeypatch):
         ),
     )
 
+    monkeypatch.setattr(
+        "app.services.leagues.selection.get_visible_owned_league_rows_by_sleeper_user_id",
+        AsyncMock(
+            return_value=[
+                SimpleNamespace(league=SimpleNamespace(league_id="league_trade")),
+                SimpleNamespace(league=SimpleNamespace(league_id="league_other")),
+            ]
+        ),
+    )
+
     class MockResult:
         def __init__(self, data):
             self.data = data
+        def scalars(self):
+            return self
         def all(self):
             return self.data
+        def first(self):
+            return self.data[0] if self.data else None
 
     class MockDB:
         async def execute(self, stmt):
@@ -197,3 +211,39 @@ def test_trade_signals_excludes_current_league_from_buy_signals(monkeypatch):
     assert "League Trade (Sold Here)" not in drops[0].signal
     assert "League Other (Still Rostered)" in drops[0].signal
     assert drops[0].signal == "Buy opportunity (League Other (Still Rostered))"
+
+
+def test_get_leaguemate_ids_filters_by_league_ids():
+    from app.crud.sleeper.leaguemate import get_leaguemate_ids
+
+    executed_stmts = []
+
+    class MockResult:
+        def __init__(self, data):
+            self.data = data
+        def scalars(self):
+            return self
+        def all(self):
+            return self.data
+
+    class MockDB:
+        async def execute(self, stmt):
+            executed_stmts.append(stmt)
+            return MockResult(["user_active_1", "user_active_2"])
+
+    db = MockDB()
+    # When league_ids is passed, it should query only those league_ids
+    result = asyncio.run(
+        get_leaguemate_ids(
+            db=db,
+            main_user_id="user_main",
+            league_ids=["league_2026_1", "league_2026_2"],
+        )
+    )
+
+    assert len(result) == 2
+    assert len(executed_stmts) == 1
+    # Verify the where clause includes the passed league_ids
+    stmt_str = str(executed_stmts[0]).lower()
+    assert "league_id in" in stmt_str or "league_id =" in stmt_str
+
