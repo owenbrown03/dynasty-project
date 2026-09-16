@@ -1154,6 +1154,59 @@ async def _save_transactions(
             )
         )
 
+    # Synchronize roster player arrays for completed transactions
+    complete_txs = []
+    for tx in persisted_transactions:
+        status = getattr(tx, "status", None) if not isinstance(tx, dict) else tx.get("status")
+        if status == "complete":
+            time_ms = getattr(tx, "status_updated", None) or getattr(tx, "created", None) or 0
+            if isinstance(tx, dict):
+                time_ms = tx.get("status_updated") or tx.get("created") or 0
+            complete_txs.append((time_ms, tx))
+
+    if complete_txs:
+        complete_txs.sort(key=lambda item: item[0])
+        affected_roster_ids = set()
+        for _, tx in complete_txs:
+            adds = getattr(tx, "adds", None) if not isinstance(tx, dict) else tx.get("adds")
+            drops = getattr(tx, "drops", None) if not isinstance(tx, dict) else tx.get("drops")
+            for _, r_id in (adds or {}).items():
+                if r_id is not None:
+                    affected_roster_ids.add(int(r_id))
+            for _, r_id in (drops or {}).items():
+                if r_id is not None:
+                    affected_roster_ids.add(int(r_id))
+
+        if affected_roster_ids:
+            r_stmt = select(model.Roster).where(
+                model.Roster.league_id == league_id,
+                model.Roster.roster_id.in_(affected_roster_ids),
+            )
+            r_result = await db.execute(r_stmt)
+            rosters_by_id = {r.roster_id: r for r in r_result.scalars().all()}
+
+            for _, tx in complete_txs:
+                drops = getattr(tx, "drops", None) if not isinstance(tx, dict) else tx.get("drops")
+                adds = getattr(tx, "adds", None) if not isinstance(tx, dict) else tx.get("adds")
+                for p_id, r_id in (drops or {}).items():
+                    if r_id is not None and int(r_id) in rosters_by_id:
+                        r = rosters_by_id[int(r_id)]
+                        curr = list(r.players or [])
+                        p_str = str(p_id)
+                        if p_str in curr:
+                            curr.remove(p_str)
+                            r.players = curr
+                            db.add(r)
+                for p_id, r_id in (adds or {}).items():
+                    if r_id is not None and int(r_id) in rosters_by_id:
+                        r = rosters_by_id[int(r_id)]
+                        curr = list(r.players or [])
+                        p_str = str(p_id)
+                        if p_str not in curr:
+                            curr.append(p_str)
+                            r.players = curr
+                            db.add(r)
+
 
 async def _save_draft_selections(
     db: AsyncSession,

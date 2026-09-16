@@ -1,0 +1,199 @@
+import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+import pytest
+
+from app.crud.sleeper.league import _save_transactions
+from app.models.db.sleeper import api as model
+
+
+def test_save_transactions_updates_roster_players_on_complete():
+    # Setup mock rosters
+    roster_1 = model.Roster(
+        id=1,
+        league_id="league_100",
+        roster_id=1,
+        owner_id="user_a",
+        players=["player_drop", "player_keep"],
+        roster_metadata={},
+        settings={},
+    )
+    roster_2 = model.Roster(
+        id=2,
+        league_id="league_100",
+        roster_id=2,
+        owner_id="user_b",
+        players=["player_existing"],
+        roster_metadata={},
+        settings={},
+    )
+
+    executed_stmts = []
+    added_objects = []
+
+    class MockResult:
+        def __init__(self, data):
+            self.data = data
+        def scalars(self):
+            return self
+        def all(self):
+            return self.data
+
+    class MockDB:
+        async def execute(self, stmt):
+            executed_stmts.append(stmt)
+            # Check if this is the select on Roster
+            if hasattr(stmt, "is_select") and "roster" in str(stmt).lower():
+                return MockResult([roster_1, roster_2])
+            # For select on Transaction
+            return MockResult([])
+
+        def add(self, obj):
+            added_objects.append(obj)
+
+    db = MockDB()
+
+    # Create completed trade transaction
+    # Roster 1 drops "player_drop" and adds "player_add"
+    # Roster 2 adds "player_drop" and drops "player_existing"
+    trade_tx = SimpleNamespace(
+        transaction_id="tx_1",
+        type="trade",
+        status="complete",
+        status_updated=1600000000000,
+        adds={"player_add": 1, "player_drop": 2},
+        drops={"player_drop": 1, "player_existing": 2},
+        waiver_budget=[],
+        draft_picks=[],
+    )
+
+    asyncio.run(_save_transactions(db, [trade_tx], "league_100"))
+
+    # Roster 1 should now have ["player_keep", "player_add"]
+    assert "player_drop" not in roster_1.players
+    assert "player_keep" in roster_1.players
+    assert "player_add" in roster_1.players
+
+    # Roster 2 should now have ["player_drop"]
+    assert "player_existing" not in roster_2.players
+    assert "player_drop" in roster_2.players
+
+
+def test_trade_signals_excludes_current_league_from_buy_signals(monkeypatch):
+    from app.crud.sleeper.trade import get_trade_signals
+
+    # Main user: "user_main"
+    # Leaguemate: "user_lm"
+    # Shared leagues: "league_trade" (where trade happens) and "league_other" (another shared league)
+    monkeypatch.setattr(
+        "app.crud.sleeper.trade.get_userid_by_username",
+        AsyncMock(return_value="user_main"),
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.trade.build_trade_signals_cache_key",
+        AsyncMock(return_value="test_cache_key"),
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.trade.get_leaguemate_ids",
+        AsyncMock(return_value=["user_lm"]),
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.trade.read_trades",
+        AsyncMock(
+            return_value={
+                "tx_trade_1": {
+                    "trade": SimpleNamespace(
+                        transaction_id="tx_trade_1",
+                        league_id="league_trade",
+                        time_ms=1700000000000,
+                    ),
+                    "movements": [
+                        SimpleNamespace(
+                            roster_id=1,
+                            player_id="player_star",
+                            action="DROP",
+                        )
+                    ],
+                    "picks": [],
+                    "waivers": [],
+                }
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.trade.get_user_meta_map",
+        AsyncMock(
+            return_value={
+                "user_lm": {"name": "Bob LM", "avatar": None, "is_placeholder": False},
+                "user_main": {"name": "Me", "avatar": None, "is_placeholder": False},
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.trade.get_trade_league_meta_map",
+        AsyncMock(
+            return_value={
+                "league_trade": {"name": "League Trade (Sold Here)"},
+                "league_other": {"name": "League Other (Still Rostered)"},
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.trade.get_player_map",
+        AsyncMock(
+            return_value={
+                "player_star": {
+                    "first_name": "Star",
+                    "last_name": "Player",
+                    "position": "RB",
+                }
+            }
+        ),
+    )
+
+    class MockResult:
+        def __init__(self, data):
+            self.data = data
+        def all(self):
+            return self.data
+
+    class MockDB:
+        async def execute(self, stmt):
+            stmt_str = str(stmt).lower()
+            # 1. roster_owner_map
+            if "owner_id" in stmt_str and "roster_id" in stmt_str and "unnest" not in stmt_str:
+                return MockResult([("league_trade", "user_lm", 1)])
+            # 2. intersect_stmt (player_to_leagues):
+            # Suppose user_lm rosters player_star in BOTH league_trade and league_other
+            if "unnest" in stmt_str:
+                return MockResult([
+                    ("league_trade", "user_lm", "player_star"),
+                    ("league_other", "user_lm", "player_star"),
+                ])
+            # 3. draft_orders
+            if "draft_order" in stmt_str:
+                return MockResult([])
+            return MockResult([])
+
+    db = MockDB()
+    sleeper = SimpleNamespace()
+
+    signals = asyncio.run(
+        get_trade_signals(
+            db=db,
+            sleeper=sleeper,
+            username="me",
+            site_user_id=None,
+            redis=None,
+            cheap=False,
+        )
+    )
+
+    assert len(signals) == 1
+    tx = signals[0]
+    drops = tx.users[0].drops
+    assert len(drops) == 1
+    # Crucial assertion: Buy opportunity should ONLY list "League Other", NOT "League Trade"!
+    assert "League Trade (Sold Here)" not in drops[0].signal
+    assert "League Other (Still Rostered)" in drops[0].signal
+    assert drops[0].signal == "Buy opportunity (League Other (Still Rostered))"
