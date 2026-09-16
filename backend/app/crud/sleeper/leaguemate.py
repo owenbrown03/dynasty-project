@@ -15,23 +15,37 @@ logger = logging.getLogger(__name__)
 async def get_leaguemate_ids(
     db: AsyncSession,
     main_user_id: str,
-):
-
-    my_leagues = (
-        select(model.Roster.league_id)
-        .where(model.Roster.owner_id == main_user_id)
-        .scalar_subquery()
-    )
-
-    stmt = (
-        select(model.Roster.owner_id)
-        .where(
-            model.Roster.league_id.in_(my_leagues),
-            model.Roster.owner_id != main_user_id,
-            model.Roster.owner_id.is_not(None),
+    league_ids: list[str] | set[str] | None = None,
+) -> list[str]:
+    if league_ids is not None:
+        league_id_list = list(league_ids)
+        if not league_id_list:
+            return []
+        stmt = (
+            select(model.Roster.owner_id)
+            .where(
+                model.Roster.league_id.in_(league_id_list),
+                model.Roster.owner_id != main_user_id,
+                model.Roster.owner_id.is_not(None),
+            )
+            .distinct()
         )
-        .distinct()
-    )
+    else:
+        my_leagues = (
+            select(model.Roster.league_id)
+            .where(model.Roster.owner_id == main_user_id)
+            .scalar_subquery()
+        )
+
+        stmt = (
+            select(model.Roster.owner_id)
+            .where(
+                model.Roster.league_id.in_(my_leagues),
+                model.Roster.owner_id != main_user_id,
+                model.Roster.owner_id.is_not(None),
+            )
+            .distinct()
+        )
 
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -48,7 +62,15 @@ async def sync_leaguemates(
     curr_week = state.effective_week if hasattr(state, "effective_week") else max(int(state.week), 1)
 
     main_user_id = await get_userid_by_username(db, sleeper, username)
-    lm_ids = await get_leaguemate_ids(db, main_user_id)
+
+    from app.services.leagues.selection import get_visible_owned_league_rows_by_sleeper_user_id
+    visible_rows = await get_visible_owned_league_rows_by_sleeper_user_id(
+        db=db,
+        sleeper_user_id=main_user_id,
+        include_hidden=False,
+    )
+    visible_league_ids = [r.league.league_id for r in visible_rows]
+    lm_ids = await get_leaguemate_ids(db, main_user_id, league_ids=visible_league_ids)
 
     total = len(lm_ids)
     if total == 0:
