@@ -594,3 +594,93 @@ def test_sync_single_league(monkeypatch):
     assert db.commit_calls == 1
     assert len(deleted_prefixes) == 2
 
+
+def test_bulk_upsert_preserves_index_elements_order():
+    from app.crud.base import _bulk_upsert
+    from app.models.db.sleeper.api import Roster
+
+    executed_stmts = []
+
+    class MockDB:
+        async def execute(self, stmt):
+            executed_stmts.append(stmt)
+
+    db = MockDB()
+    mappings = [
+        {
+            "league_id": "league_1",
+            "roster_id": 1,
+            "owner_id": "user_1",
+            "players": ["p1", "p2"],
+        }
+    ]
+    index_cols = ["league_id", "roster_id"]
+
+    asyncio.run(_bulk_upsert(db, Roster, mappings, index_cols))
+
+    assert len(executed_stmts) == 1
+    stmt = executed_stmts[0]
+    # Check that on_conflict_do_update preserves the exact index_elements order
+    assert list(stmt._post_values_clause.inferred_target_elements) == ["league_id", "roster_id"]
+
+
+def test_sync_leagues_upserts_sort_order_even_when_no_new_data(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    sort_orders_called = []
+
+    async def fake_upsert_league_sort_orders(*, db, user_id, league_ids_in_order):
+        sort_orders_called.append((user_id, league_ids_in_order))
+
+    monkeypatch.setattr(
+        "app.crud.sleeper.league.upsert_league_sort_orders",
+        fake_upsert_league_sort_orders,
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.league.get_existing_leagues",
+        AsyncMock(return_value={"l1", "l2"}),
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.league.get_sync_states",
+        AsyncMock(return_value={}),
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.league.get_incomplete_league_ids",
+        AsyncMock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        "app.crud.sleeper.league.fetch_league_bundle",
+        AsyncMock(return_value=None),  # No new data fetched
+    )
+
+    class MockDB:
+        def begin_nested(self):
+            return FakeNestedTransaction(self)
+        nested_entries = 0
+        nested_commits = 0
+        nested_rollbacks = 0
+        async def commit(self):
+            pass
+
+    db = MockDB()
+    raw_leagues = [
+        SimpleNamespace(league_id="l2", name="League 2"),
+        SimpleNamespace(league_id="l1", name="League 1"),
+    ]
+
+    result = asyncio.run(
+        league_crud.sync_leagues(
+            db=db,
+            raw_leagues=raw_leagues,
+            curr_week=2,
+            sleeper=SimpleNamespace(),
+            user_id="user_123",
+            force=False,
+        )
+    )
+
+    assert result["status"] == "skipped"
+    assert len(sort_orders_called) == 1
+    assert sort_orders_called[0] == ("user_123", ["l2", "l1"])
+
+

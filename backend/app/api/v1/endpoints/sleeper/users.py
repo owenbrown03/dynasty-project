@@ -93,7 +93,14 @@ router = APIRouter()
 @router.post("/{username}/sync")
 async def sync_user_data_endpoint(
     username: str,
+    ctx: ContextDep,
 ):
+    if ctx.redis is not None:
+        from app.services.dashboard.service import build_dashboard_cache_prefix
+        from app.services.leagues.details import build_league_details_cache_prefix
+        await ctx.redis.delete_prefix(build_dashboard_cache_prefix())
+        await ctx.redis.delete_prefix(build_league_details_cache_prefix())
+
     await sync_user_data_task.kiq(username)
     await sync_leaguemates_task.kiq(username, force=True)
     return {"status": "sync_initiated"}

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -163,7 +164,7 @@ async def get_visible_owned_league_rows_by_username(
     # 1. Resolve sleeper_user_id from SleeperConnection (by linked username or user ID)
     conn_result = await db.execute(
         select(SleeperConnection.sleeper_user_id).where(
-            (SleeperConnection.sleeper_username == clean_username)
+            (func.lower(SleeperConnection.sleeper_username) == clean_username.lower())
             | (SleeperConnection.sleeper_user_id == clean_username)
         )
     )
@@ -173,7 +174,7 @@ async def get_visible_owned_league_rows_by_username(
     if not sleeper_user_id:
         user_result = await db.execute(
             select(User.user_id).where(
-                (User.display_name == clean_username)
+                (func.lower(User.display_name) == clean_username.lower())
                 | (User.user_id == clean_username)
             )
         )

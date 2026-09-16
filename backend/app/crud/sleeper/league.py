@@ -434,19 +434,19 @@ async def sync_leagues(
         if sync_session is not None:
             sync_session.expunge_all()
 
-    if fetched_bundle_count == 0:
-        return {
-            "status": "skipped",
-            "synced_count": 0,
-            "reason": "no_new_data",
-        }
-
     if user_id and sleeper_order:
         await upsert_league_sort_orders(
             db=db,
             user_id=user_id,
             league_ids_in_order=sleeper_order,
         )
+
+    if fetched_bundle_count == 0:
+        return {
+            "status": "skipped",
+            "synced_count": 0,
+            "reason": "no_new_data",
+        }
 
     return {
         "status": "completed",

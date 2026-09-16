@@ -113,6 +113,7 @@ async def prewarm_war_cache_for_user(username: str) -> None:
                 shared=shared_by_season[get_league_season(data["league"])],
             )
             for data in leagues.values()
+            if get_league_season(data["league"]) in shared_by_season
         ]
         await asyncio.gather(*tasks, return_exceptions=True)
 

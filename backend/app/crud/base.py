@@ -66,25 +66,26 @@ async def _bulk_upsert(
     if not clean:
         return
 
-    conflict = (
-        {index_elements}
-        if not isinstance(index_elements, list)
-        else set(index_elements)
+    conflict_cols = (
+        [index_elements]
+        if isinstance(index_elements, str)
+        else list(index_elements)
     )
+    conflict_set = set(conflict_cols)
 
     stmt = insert(model).values(clean)
 
     update = {
         k: stmt.excluded[k]
         for k in clean[0].keys()
-        if k not in conflict
+        if k not in conflict_set
     }
 
     if not update:
         return
 
     stmt = stmt.on_conflict_do_update(
-        index_elements=list(conflict),
+        index_elements=conflict_cols,
         set_=update
     )
 

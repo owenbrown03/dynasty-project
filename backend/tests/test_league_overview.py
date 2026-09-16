@@ -162,3 +162,40 @@ def test_select_latest_owned_league_rows_excludes_hidden_leagues():
     assert [row.league.league_id for row in result] == [
         "visible-league",
     ]
+
+
+def test_get_visible_owned_league_rows_case_insensitive_username(monkeypatch):
+    from app.services.leagues.selection import get_visible_owned_league_rows_by_username
+    from unittest.mock import AsyncMock, MagicMock
+
+    class MockResult:
+        def __init__(self, value):
+            self.value = value
+        def scalars(self):
+            return self
+        def first(self):
+            return self.value
+        def scalar_one_or_none(self):
+            return self.value
+
+    db = MagicMock()
+    # First query resolves SleeperConnection.sleeper_user_id
+    db.execute = AsyncMock(return_value=MockResult("user_456"))
+
+    monkeypatch.setattr(
+        "app.services.leagues.selection.get_visible_owned_league_rows_by_sleeper_user_id",
+        AsyncMock(return_value=[OwnedLeagueRow(league=SimpleNamespace(league_id="l1"), roster=object())]),
+    )
+
+    result = asyncio.run(
+        get_visible_owned_league_rows_by_username(
+            db=db,
+            username="BrownTown333",
+        )
+    )
+
+    assert len(result) == 1
+    assert result[0].league.league_id == "l1"
+    # Verify execute was called with case-insensitive where clause
+    assert db.execute.called
+
