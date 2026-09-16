@@ -24,7 +24,7 @@ from app.services.leagues.settings import build_settings_badges
 
 logger = logging.getLogger(__name__)
 
-TRADE_SIGNALS_CACHE_VERSION = "v2"
+TRADE_SIGNALS_CACHE_VERSION = "v3"
 TRADE_SIGNALS_CACHE_TTL_SECONDS = 10 * 60
 TRADE_SIGNALS_ADAPTER = TypeAdapter(
     list[display.Transaction],
@@ -110,11 +110,16 @@ async def get_trade_league_meta_map(
         for league in leagues
     }
 
-async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
+async def read_trades(
+    db: AsyncSession,
+    lms: list,
+    exclude_league_ids: set[str] | list[str] | None = None,
+    include_completed: bool = False,
+) -> Dict[str, dict]:
     """
     Fetches raw database rows and groups them safely by transaction_id.
-    Leverages the new lazy-loaded models and composite database indexes 
-    for sub-second data extraction.
+    Leverages lazy-loaded models and composite database indexes for sub-second data extraction.
+    Only queries active/current leagues by default to avoid stale past-season trades.
     """
     trade_ids_stmt = (
         select(model.Transaction.transaction_id)
@@ -126,10 +131,15 @@ async def read_trades(db: AsyncSession, lms: list) -> Dict[str, dict]:
                 model.Roster.league_id == model.Transaction.league_id
             )
         )
+        .join(model.League, model.League.league_id == model.Transaction.league_id)
         .where(model.Roster.owner_id.in_(lms))
         .where(model.Transaction.type == "trade")
-        .distinct()
     )
+    if not include_completed:
+        trade_ids_stmt = trade_ids_stmt.where(model.League.status != "complete")
+    if exclude_league_ids:
+        trade_ids_stmt = trade_ids_stmt.where(model.Transaction.league_id.notin_(exclude_league_ids))
+    trade_ids_stmt = trade_ids_stmt.distinct()
     result = await db.execute(trade_ids_stmt)
     trade_ids = list(result.scalars().all())
 
@@ -225,12 +235,27 @@ async def get_trade_signals(
         lm_ids = await get_leaguemate_ids(db, main_user_id, league_ids=my_visible_league_ids)
         logger.info(f"Context loaded: Identified {len(lm_ids)} unique leaguemates across {len(my_visible_league_ids)} visible leagues.")
 
+        hidden_league_ids: set[str] = set()
+        if site_user_id is not None:
+            hidden_league_ids = await get_hidden_league_ids(
+                db=db,
+                site_user_id=site_user_id,
+            )
+
         if cheap:
-            lm_trades_data = await read_trades(db, [main_user_id])
+            lm_trades_data = await read_trades(
+                db,
+                [main_user_id],
+                exclude_league_ids=hidden_league_ids,
+            )
             lm_trades_keys = list(lm_trades_data.keys())[:20]
             lm_trades_data = {k: lm_trades_data[k] for k in lm_trades_keys}
         else:
-            lm_trades_data = await read_trades(db, lm_ids)
+            lm_trades_data = await read_trades(
+                db,
+                lm_ids,
+                exclude_league_ids=hidden_league_ids,
+            )
 
         if not lm_trades_data:
             logger.info("Matrix generation skipped: No relevant trade records found.")

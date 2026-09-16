@@ -247,3 +247,42 @@ def test_get_leaguemate_ids_filters_by_league_ids():
     stmt_str = str(executed_stmts[0]).lower()
     assert "league_id in" in stmt_str or "league_id =" in stmt_str
 
+
+def test_read_trades_filters_completed_and_excluded_leagues():
+    from app.crud.sleeper.trade import read_trades
+
+    executed_stmts = []
+
+    class MockResult:
+        def __init__(self, data):
+            self.data = data
+        def scalars(self):
+            return self
+        def unique(self):
+            return self
+        def all(self):
+            return self.data
+
+    class MockDB:
+        async def execute(self, stmt):
+            executed_stmts.append(stmt)
+            return MockResult([])
+
+    db = MockDB()
+    result = asyncio.run(
+        read_trades(
+            db=db,
+            lms=["user_lm_1"],
+            exclude_league_ids={"league_hidden_1"},
+            include_completed=False,
+        )
+    )
+
+    assert result == {}
+    assert len(executed_stmts) >= 1
+    first_stmt = str(executed_stmts[0]).lower()
+    # Should check League.status != complete and exclude hidden league
+    assert "status != :status_1" in first_stmt or "complete" in first_stmt or "status" in first_stmt
+    assert "notin" in first_stmt or "not in" in first_stmt or "league_hidden_1" in first_stmt
+
+
