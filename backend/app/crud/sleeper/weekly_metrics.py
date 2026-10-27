@@ -180,7 +180,7 @@ async def sync_league_weekly_matchups(
         existing_keys = {
             (m.league_id, m.week)
             for m in existing
-            if m.starter_war is not None and m.starter_war > 0
+            if m.points is not None
         }
 
     # Identify which (league, week) pairs are missing

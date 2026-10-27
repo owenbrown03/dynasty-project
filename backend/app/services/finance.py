@@ -1708,22 +1708,40 @@ async def get_finance_timeline(
 
     league_ids = [league.league_id for _, league in owned_rows]
 
-    current_week = 0
-    if ctx.sleeper is not None and hasattr(ctx.sleeper, "read"):
-        try:
-            state = await ctx.sleeper.read.get_nfl_state()
-            current_week = int(getattr(state, "week", 0) or 0)
-        except Exception:
-            current_week = 0
+    is_completed_season = bool(owned_rows) and all(
+        league.status == "complete" for _, league in owned_rows
+    )
 
-    if current_week < 1:
-        current_week = 1
+    def _get_league_final_week(l: Any) -> int:
+        s = l.settings or {}
+        leg = s.get("last_scored_leg") or s.get("leg")
+        if leg and int(leg) > 0:
+            return int(leg)
+        playoff_start = s.get("playoff_week_start")
+        if playoff_start and int(playoff_start) > 0:
+            return int(playoff_start) + 2
+        return 17
+
+    if is_completed_season:
+        max_week = max([_get_league_final_week(l) for _, l in owned_rows] or [17])
+    else:
+        current_week = 0
+        if ctx.sleeper is not None and hasattr(ctx.sleeper, "read"):
+            try:
+                state = await ctx.sleeper.read.get_nfl_state()
+                current_week = int(getattr(state, "week", 0) or 0)
+            except Exception:
+                current_week = 0
+
+        if current_week < 1:
+            current_week = 1
+        max_week = max(current_week, 1)
 
     cache_key = _build_finance_timeline_cache_key(
         ctx=ctx,
         league_ids=league_ids,
         season=season,
-        current_week=current_week,
+        current_week=max_week,
     )
     if ctx.redis is not None:
         try:
@@ -1768,22 +1786,25 @@ async def get_finance_timeline(
         authenticated=ctx.site_user is not None,
     )
 
-    # Sync missing weekly metrics for active in-season leagues
+    # Sync missing weekly metrics for leagues
     leagues_by_id = {league.league_id: league for _, league in owned_rows}
     roster_by_league_id = {league.league_id: roster for roster, league in owned_rows}
 
-    active_leagues = [
+    leagues_to_sync = [
         league
         for _, league in owned_rows
         if league.status in ("in_season", "post_season")
     ]
-    if active_leagues and ctx.sleeper is not None:
+    if not leagues_to_sync and is_completed_season:
+        leagues_to_sync = [league for _, league in owned_rows]
+
+    if leagues_to_sync and ctx.sleeper is not None:
         try:
             await sync_league_weekly_matchups(
                 db=ctx.db,
                 sleeper=ctx.sleeper,
-                leagues=active_leagues,
-                current_week=current_week,
+                leagues=leagues_to_sync,
+                current_week=max_week,
                 redis=ctx.redis,
             )
         except Exception as exc:
@@ -1792,22 +1813,18 @@ async def get_finance_timeline(
     all_metrics = await get_league_weekly_metrics(
         db=ctx.db,
         league_ids=league_ids,
-        max_week=current_week,
+        max_week=max_week,
     )
 
     metrics_by_league: dict[str, list[Any]] = {}
     for m in all_metrics:
         metrics_by_league.setdefault(m.league_id, []).append(m)
 
-    is_completed_season = bool(owned_rows) and all(
-        league.status == "complete" for _, league in owned_rows
-    )
     total_actual_w = round(
         sum(float(e.winnings_amount or 0) for e in entries),
         2,
     )
 
-    max_week = max(current_week, 1)
     weeks = list(range(1, max_week + 1))
     points = []
 
