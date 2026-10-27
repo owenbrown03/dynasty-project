@@ -58,6 +58,55 @@ function formatAxisLabel(label: string): string {
   return label;
 }
 
+function getNiceTicks(
+  minVal: number,
+  maxVal: number,
+  anchorZero = true,
+): { niceMin: number; niceMax: number; ticks: number[] } {
+  const low = anchorZero ? Math.min(minVal, 0) : minVal;
+  let high = maxVal;
+  if (high <= low) {
+    high = low + 10;
+  }
+
+  const rawRange = high - low;
+  const targetCount = 3;
+  const roughStep = rawRange / targetCount;
+  const power = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const fraction = roughStep / power;
+
+  let niceFraction: number;
+  if (fraction <= 1.2) {
+    niceFraction = 1;
+  } else if (fraction <= 2.5) {
+    niceFraction = 2;
+  } else if (fraction <= 3.5) {
+    niceFraction = 2.5;
+  } else if (fraction <= 7.5) {
+    niceFraction = 5;
+  } else {
+    niceFraction = 10;
+  }
+
+  let step = niceFraction * power;
+  if (step < 1) {
+    step = 1;
+  }
+  if (step === 2.5) {
+    step = 5;
+  }
+
+  const niceMin = Math.floor(low / step) * step;
+  const niceMax = Math.ceil(high / step) * step;
+
+  const ticks: number[] = [];
+  for (let val = niceMin; val <= niceMax + step * 0.001; val += step) {
+    ticks.push(Math.round(val * 100) / 100);
+  }
+
+  return { niceMin, niceMax, ticks };
+}
+
 function FinanceInteractiveLineChart({
   points,
   showActual,
@@ -107,16 +156,11 @@ function FinanceInteractiveLineChart({
     ...(showBuyIn ? points.map((p) => p.buyIn ?? 0) : []),
   ];
 
-  let minValue = anchorZero ? Math.min(...allValues, 0) : Math.min(...allValues);
-  let maxValue = Math.max(...allValues, 1);
+  const rawMin = Math.min(...allValues);
+  const rawMax = Math.max(...allValues);
 
-  if (!anchorZero && maxValue > minValue) {
-    const pad = (maxValue - minValue) * 0.15;
-    minValue = Math.max(0, minValue - pad);
-    maxValue = maxValue + pad;
-  }
-
-  const range = maxValue - minValue || 1;
+  const { niceMin, niceMax, ticks: yTicks } = getNiceTicks(rawMin, rawMax, anchorZero);
+  const range = niceMax - niceMin || 1;
 
   const toX = (index: number) => {
     if (points.length <= 1) {
@@ -126,15 +170,8 @@ function FinanceInteractiveLineChart({
   };
 
   const toY = (val: number) => {
-    return PADDING_TOP + plotHeight - ((val - minValue) / range) * plotHeight;
+    return PADDING_TOP + plotHeight - ((val - niceMin) / range) * plotHeight;
   };
-
-  const yTicks = [
-    minValue,
-    minValue + range / 3,
-    minValue + (2 * range) / 3,
-    maxValue,
-  ];
 
   const projectedLinePoints = points
     .map((p, i) => `${toX(i)},${toY(p.projected)}`)
