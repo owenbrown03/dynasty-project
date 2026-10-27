@@ -30,6 +30,34 @@ interface FinanceLinePointData {
   buyIn?: number | null;
 }
 
+function getVisibleTickIndices(total: number): Set<number> {
+  const visible = new Set<number>();
+  if (total <= 7) {
+    for (let i = 0; i < total; i++) visible.add(i);
+    return visible;
+  }
+  const step = total > 13 ? 4 : 2;
+  visible.add(0);
+  for (let i = step; i < total - 1; i += step) {
+    visible.add(i);
+  }
+  const lastIndex = total - 1;
+  const currentTicks = Array.from(visible).sort((a, b) => a - b);
+  const prevTick = currentTicks[currentTicks.length - 1];
+  if (lastIndex - prevTick < 2) {
+    visible.delete(prevTick);
+  }
+  visible.add(lastIndex);
+  return visible;
+}
+
+function formatAxisLabel(label: string): string {
+  if (/^Week\s+(\d+)$/i.test(label)) {
+    return label.replace(/^Week\s+/i, 'W');
+  }
+  return label;
+}
+
 function FinanceInteractiveLineChart({
   points,
   showActual,
@@ -38,6 +66,8 @@ function FinanceInteractiveLineChart({
   showBuyIn = false,
   buyInLabel = 'Buy-in',
   anchorZero = true,
+  showStaticActualDots = true,
+  showStaticBuyInDots = true,
 }: {
   points: FinanceLinePointData[];
   showActual: boolean;
@@ -46,12 +76,16 @@ function FinanceInteractiveLineChart({
   showBuyIn?: boolean;
   buyInLabel?: string;
   anchorZero?: boolean;
+  showStaticActualDots?: boolean;
+  showStaticBuyInDots?: boolean;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   if (!points.length) {
     return null;
   }
+
+  const visibleTicks = getVisibleTickIndices(points.length);
 
   const CHART_WIDTH = 380;
   const CHART_HEIGHT = 160;
@@ -160,24 +194,30 @@ function FinanceInteractiveLineChart({
         })}
 
         {/* X-axis labels */}
-        {points.map((point, i) => (
-          <text
-            key={point.key}
-            x={toX(i)}
-            y={CHART_HEIGHT - 8}
-            textAnchor="middle"
-            fill={
-              hoveredIndex === i
-                ? 'var(--color-text-primary, #ffffff)'
-                : 'var(--color-text-muted, #94a3b8)'
-            }
-            fontSize="11px"
-            fontWeight={hoveredIndex === i ? '600' : '400'}
-            fontFamily="inherit"
-          >
-            {point.label}
-          </text>
-        ))}
+        {points.map((point, i) => {
+          if (!visibleTicks.has(i)) {
+            return null;
+          }
+          const displayLabel = formatAxisLabel(point.label);
+          return (
+            <text
+              key={point.key}
+              x={toX(i)}
+              y={CHART_HEIGHT - 8}
+              textAnchor="middle"
+              fill={
+                hoveredIndex === i
+                  ? 'var(--color-text-primary, #ffffff)'
+                  : 'var(--color-text-muted, #94a3b8)'
+              }
+              fontSize="11px"
+              fontWeight={hoveredIndex === i ? '600' : '400'}
+              fontFamily="inherit"
+            >
+              {displayLabel}
+            </text>
+          );
+        })}
 
         {/* Buy-in Line */}
         {showBuyIn && buyInLinePoints ? (
@@ -191,15 +231,17 @@ function FinanceInteractiveLineChart({
               strokeLinejoin="round"
               points={buyInLinePoints}
             />
-            {points.map((point, i) => (
-              <circle
-                key={`buyin-dot-${point.key}`}
-                cx={toX(i)}
-                cy={toY(point.buyIn ?? 0)}
-                r="3"
-                fill="var(--finance-buy-in-color, #60a5fa)"
-              />
-            ))}
+            {showStaticBuyInDots
+              ? points.map((point, i) => (
+                  <circle
+                    key={`buyin-dot-${point.key}`}
+                    cx={toX(i)}
+                    cy={toY(point.buyIn ?? 0)}
+                    r="3"
+                    fill="var(--finance-buy-in-color, #60a5fa)"
+                  />
+                ))
+              : null}
           </>
         ) : null}
 
@@ -216,15 +258,17 @@ function FinanceInteractiveLineChart({
                 points={actualLinePoints}
               />
             ) : null}
-            {pointsWithActual.map((point) => (
-              <circle
-                key={`act-dot-${point.key}`}
-                cx={point.x}
-                cy={point.y}
-                r="3"
-                fill="var(--finance-actual-color, #14b8a6)"
-              />
-            ))}
+            {showStaticActualDots
+              ? pointsWithActual.map((point) => (
+                  <circle
+                    key={`act-dot-${point.key}`}
+                    cx={point.x}
+                    cy={point.y}
+                    r="3"
+                    fill="var(--finance-actual-color, #14b8a6)"
+                  />
+                ))
+              : null}
           </>
         ) : null}
 
@@ -582,6 +626,8 @@ export function FinanceProjectionTimeline({
         showBuyIn={showBuyIn}
         buyInLabel="Buy-in"
         anchorZero={showActualPayout || showBuyIn}
+        showStaticActualDots={false}
+        showStaticBuyInDots={false}
       />
 
       <div className="finance-timeline-note">
