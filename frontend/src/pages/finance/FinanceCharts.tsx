@@ -10,19 +10,26 @@ import {
   getDraftKey,
   isFinanceSeasonComplete,
   type FinanceChartEntry,
+  type FinanceTimelinePoint,
 } from './finance.utils';
 
 function buildLinePoints(
   values: number[],
   width: number,
   height: number,
+  anchorZero: boolean = true,
 ) {
   if (!values.length) {
     return '';
   }
 
-  const minValue = Math.min(...values, 0);
-  const maxValue = Math.max(...values, 1);
+  let minValue = anchorZero ? Math.min(...values, 0) : Math.min(...values);
+  let maxValue = Math.max(...values, 1);
+  if (!anchorZero && maxValue > minValue) {
+    const pad = (maxValue - minValue) * 0.15;
+    minValue = Math.max(0, minValue - pad);
+    maxValue = maxValue + pad;
+  }
   const range = maxValue - minValue || 1;
 
   return values.map((value, index) => {
@@ -107,20 +114,29 @@ export function FinanceTrendChart({
 export function FinanceProjectionTimeline({
   entries,
   season,
+  timeline,
 }: {
   entries: FinanceLeagueSeasonEntry[];
   season: string;
+  timeline?: FinanceTimelinePoint[];
 }) {
-  const points = buildCurrentFinanceTimeline(entries);
-  const actualPoints = buildLinePoints(
-    points.map((point) => point.actualAmount ?? 0),
-    320,
-    140,
-  );
+  const points = timeline && timeline.length ? timeline : buildCurrentFinanceTimeline(entries);
+  const isComplete = entries.length > 0 && entries.every(isFinanceSeasonComplete);
+  const showActualPayout = isComplete && points.some((point) => (point.actualAmount ?? 0) > 0);
+
+  const actualPoints = showActualPayout
+    ? buildLinePoints(
+        points.map((point) => point.actualAmount ?? 0),
+        320,
+        140,
+        true,
+      )
+    : '';
   const projectedPoints = buildLinePoints(
     points.map((point) => point.projectedAmount),
     320,
     140,
+    showActualPayout,
   );
   const latest = points[points.length - 1];
 
@@ -134,10 +150,12 @@ export function FinanceProjectionTimeline({
       </div>
 
       <div className="finance-chart-legend">
-        <span className="finance-legend-item">
-          <i className="finance-legend-line finance-legend-line-actual" />
-          Actual payout
-        </span>
+        {showActualPayout ? (
+          <span className="finance-legend-item">
+            <i className="finance-legend-line finance-legend-line-actual" />
+            Actual payout
+          </span>
+        ) : null}
         <span className="finance-legend-item">
           <i className="finance-legend-line finance-legend-line-projected" />
           Expected payout
@@ -146,12 +164,14 @@ export function FinanceProjectionTimeline({
 
       <div className="finance-line-chart">
         <svg viewBox="0 0 320 140" aria-hidden="true">
-          <polyline
-            fill="none"
-            stroke="var(--finance-actual-color)"
-            strokeWidth="3"
-            points={actualPoints}
-          />
+          {showActualPayout ? (
+            <polyline
+              fill="none"
+              stroke="var(--finance-actual-color)"
+              strokeWidth="3"
+              points={actualPoints}
+            />
+          ) : null}
           <polyline
             fill="none"
             stroke="var(--finance-projected-color)"
@@ -181,9 +201,8 @@ export function FinanceProjectionTimeline({
           }
         </strong>
         <span>
-          Current expected payout snapshot. Weekly snapshots are not
-          persisted yet, so this will grow once the sync stores weekly
-          finance history.
+          Weekly payout trajectory computed from current standings and
+          projected finish probabilities.
         </span>
       </div>
     </article>

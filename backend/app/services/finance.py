@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from statistics import mean
+
+logger = logging.getLogger(__name__)
 
 from fastapi import HTTPException, Response, status
 from sqlalchemy import select
@@ -45,6 +48,7 @@ from app.schemas.finance import (
     FinanceSeasonReset,
     FinanceSummaryResponse,
     FinanceDefaultsUpdate,
+    FinanceTimelineResponse,
 )
 from app.models.db.sleeper.api import League, Roster
 from app.models.db.auth import SiteUser
@@ -71,11 +75,17 @@ from app.services.war.shared import (
     build_league_war_fingerprint,
     build_shared_redraft_war_by_league_id,
 )
+from app.crud.sleeper.weekly_metrics import (
+    get_league_weekly_metrics,
+    sync_league_weekly_matchups,
+)
 
 FINANCE_PROJECTED_SEED_CACHE_TTL_SECONDS = (
     6 * 60 * 60
 )
 FINANCE_PROJECTED_SEED_CACHE_VERSION = "v1"
+FINANCE_TIMELINE_CACHE_TTL_SECONDS = 300
+FINANCE_TIMELINE_CACHE_VERSION = "v1"
 
 
 def _require_finance_context(
@@ -208,6 +218,37 @@ def _build_finance_projected_seed_cache_key(
     return (
         "finance-projected-seeds:"
         f"{FINANCE_PROJECTED_SEED_CACHE_VERSION}:"
+        f"{digest.hexdigest()}"
+    )
+
+
+def _build_finance_timeline_cache_key(
+    *,
+    ctx: Context,
+    league_ids: list[str],
+    season: str | None,
+    current_week: int,
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(
+        json.dumps(
+            {
+                "site_user_id": (
+                    str(ctx.site_user.id)
+                    if ctx.site_user is not None
+                    else None
+                ),
+                "season": season,
+                "current_week": current_week,
+                "league_ids": sorted(league_ids),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+    return (
+        "finance-timeline:"
+        f"{FINANCE_TIMELINE_CACHE_VERSION}:"
         f"{digest.hexdigest()}"
     )
 
@@ -1574,6 +1615,259 @@ async def save_finance_defaults(
     return await get_finance_summary(
         ctx,
     )
+
+
+async def get_finance_timeline(
+    ctx: Context,
+    season: str | None = None,
+) -> FinanceTimelineResponse:
+    _require_finance_context(ctx)
+
+    raw_owned_rows = await get_owned_roster_rows(
+        db=ctx.db,
+        connection=ctx.connection,
+    )
+    hidden_league_ids = await get_hidden_league_ids(
+        db=ctx.db,
+        site_user_id=ctx.site_user.id,
+    )
+    owned_rows = [
+        (roster, league)
+        for roster, league in raw_owned_rows
+        if league.league_id not in hidden_league_ids
+    ]
+
+    if season is not None:
+        owned_rows = [
+            (roster, league)
+            for roster, league in owned_rows
+            if league.season == season
+        ]
+
+    if not owned_rows:
+        return FinanceTimelineResponse(points=[])
+
+    league_ids = [league.league_id for _, league in owned_rows]
+
+    current_week = 0
+    if ctx.sleeper is not None and hasattr(ctx.sleeper, "read"):
+        try:
+            state = await ctx.sleeper.read.get_nfl_state()
+            current_week = int(getattr(state, "week", 0) or 0)
+        except Exception:
+            current_week = 0
+
+    if current_week < 1:
+        current_week = 1
+
+    cache_key = _build_finance_timeline_cache_key(
+        ctx=ctx,
+        league_ids=league_ids,
+        season=season,
+        current_week=current_week,
+    )
+    if ctx.redis is not None:
+        try:
+            cached = await ctx.redis.get(cache_key)
+            if cached:
+                payload = json.loads(cached)
+                points = payload.get("points") or []
+                return FinanceTimelineResponse(
+                    points=[
+                        {
+                            "week": int(p.get("week")),
+                            "label": p.get("label") or f"Week {p.get('week')}",
+                            "actual_amount": float(p.get("actual_amount") or 0),
+                            "projected_amount": float(p.get("projected_amount") or 0),
+                        }
+                        for p in points
+                    ],
+                )
+        except Exception:
+            pass
+
+    summary = await get_finance_summary(ctx)
+    entries = summary.seasons
+    if season is not None:
+        entries = [e for e in entries if e.season == season]
+    entries = [e for e in entries if not getattr(e, "is_excluded", False)]
+
+    # Resolve projection settings
+    finance_projection_settings = (
+        ctx.site_user.settings.get("finance_projection_settings")
+        if ctx.site_user and ctx.site_user.settings
+        else None
+    )
+    draft_pick_projection_settings = (
+        ctx.site_user.settings.get("draft_pick_projection_settings")
+        if ctx.site_user and ctx.site_user.settings
+        else None
+    )
+    effective_projection_settings = resolve_finance_projection_settings(
+        finance_settings=finance_projection_settings,
+        draft_pick_projection_settings=draft_pick_projection_settings,
+        authenticated=ctx.site_user is not None,
+    )
+
+    # Sync missing weekly metrics for active in-season leagues
+    leagues_by_id = {league.league_id: league for _, league in owned_rows}
+    roster_by_league_id = {league.league_id: roster for roster, league in owned_rows}
+
+    active_leagues = [
+        league
+        for _, league in owned_rows
+        if league.status in ("in_season", "post_season")
+    ]
+    if active_leagues and ctx.sleeper is not None:
+        try:
+            await sync_league_weekly_matchups(
+                db=ctx.db,
+                sleeper=ctx.sleeper,
+                leagues=active_leagues,
+                current_week=current_week,
+            )
+        except Exception as exc:
+            logger.warning("Failed to sync weekly matchups for finance timeline: %s", exc)
+
+    all_metrics = await get_league_weekly_metrics(
+        db=ctx.db,
+        league_ids=league_ids,
+        max_week=current_week,
+    )
+
+    metrics_by_league: dict[str, list[Any]] = {}
+    for m in all_metrics:
+        metrics_by_league.setdefault(m.league_id, []).append(m)
+
+    max_week = max(current_week, 1)
+    weeks = list(range(1, max_week + 1))
+    points = []
+
+    for w in weeks:
+        active_method = resolve_draft_pick_projection_method(
+            current_week=w,
+            settings=effective_projection_settings,
+        )
+
+        total_projected_w = 0.0
+
+        for entry in entries:
+            league_id = entry.league_id
+            league_obj = leagues_by_id.get(league_id)
+            user_roster = roster_by_league_id.get(league_id)
+            user_roster_id = user_roster.roster_id if user_roster else None
+            league_metrics = metrics_by_league.get(league_id, [])
+
+            if not league_metrics or user_roster_id is None:
+                total_projected_w += float(entry.projected_winnings_amount or 0)
+                continue
+
+            roster_stats: dict[int, dict[str, float]] = {}
+            for m in league_metrics:
+                if m.week > w:
+                    continue
+                r_stats = roster_stats.setdefault(
+                    m.roster_id,
+                    {
+                        "cum_points": 0.0,
+                        "cum_max_points": 0.0,
+                        "cum_wins": 0.0,
+                        "starter_war": 0.0,
+                        "roster_war": 0.0,
+                        "sleeper_proj": 0.0,
+                        "ktc_val": 0.0,
+                        "fc_val": 0.0,
+                    },
+                )
+                r_stats["cum_points"] += m.points
+                r_stats["cum_max_points"] += m.max_points
+                r_stats["cum_wins"] += m.wins
+                if m.week == w:
+                    r_stats["starter_war"] = m.starter_war or 0.0
+                    r_stats["roster_war"] = m.roster_war or 0.0
+                    r_stats["sleeper_proj"] = m.sleeper_projection or 0.0
+                    r_stats["ktc_val"] = m.ktc_redraft or 0.0
+                    r_stats["fc_val"] = m.fantasycalc_redraft or 0.0
+
+            if user_roster_id not in roster_stats:
+                total_projected_w += float(entry.projected_winnings_amount or 0)
+                continue
+
+            def _rank_key(item: tuple[int, dict[str, float]]):
+                r_id, stats = item
+                if active_method == "points_for":
+                    return (stats["cum_points"], stats["cum_max_points"], -r_id)
+                if active_method == "max_pf":
+                    return (stats["cum_max_points"], stats["cum_points"], -r_id)
+                if active_method == "redraft_starter_war":
+                    return (stats["starter_war"], stats["cum_points"], -r_id)
+                if active_method == "redraft_roster_war":
+                    return (stats["roster_war"], stats["cum_points"], -r_id)
+                if active_method == "sleeper_projection":
+                    return (stats["sleeper_proj"], stats["cum_points"], -r_id)
+                if active_method == "ktc_redraft":
+                    return (stats["ktc_val"], stats["cum_points"], -r_id)
+                if active_method == "fantasycalc_redraft":
+                    return (stats["fc_val"], stats["cum_points"], -r_id)
+                return (stats["cum_wins"], stats["cum_points"], -r_id)
+
+            sorted_rosters = sorted(roster_stats.items(), key=_rank_key, reverse=True)
+            roster_rank = next(
+                (idx + 1 for idx, (r_id, _) in enumerate(sorted_rosters) if r_id == user_roster_id),
+                None,
+            )
+
+            if roster_rank is None:
+                total_projected_w += float(entry.projected_winnings_amount or 0)
+                continue
+
+            payout_dict = {
+                str(p.place): p.amount
+                for p in (entry.payout_structure or [])
+            }
+            playoff_teams = league_obj.playoff_teams if league_obj else 6
+            expected = calculate_expected_winnings_from_seed(
+                payout_structure=payout_dict,
+                projected_seed=roster_rank,
+                total_rosters=entry.total_rosters,
+                playoff_teams=playoff_teams,
+            )
+            if expected is not None:
+                total_projected_w += expected
+            else:
+                total_projected_w += float(entry.projected_winnings_amount or 0)
+
+        points.append(
+            {
+                "week": w,
+                "label": f"Week {w}",
+                "actual_amount": 0.0,
+                "projected_amount": round(total_projected_w, 2),
+            }
+        )
+
+    result = FinanceTimelineResponse(
+        points=[
+            {
+                "week": p["week"],
+                "label": p["label"],
+                "actual_amount": p["actual_amount"],
+                "projected_amount": p["projected_amount"],
+            }
+            for p in points
+        ]
+    )
+    if ctx.redis is not None:
+        try:
+            await ctx.redis.set(
+                cache_key,
+                json.dumps({"points": points}),
+                ex=FINANCE_TIMELINE_CACHE_TTL_SECONDS,
+            )
+        except Exception:
+            pass
+    return result
+
 
 
 async def save_finance_league_defaults(

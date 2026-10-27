@@ -553,3 +553,16 @@ export function useBroadcastCommissionerPoll() {
     mutationFn: (body) => api.users.broadcastCommissionerPoll(body).then((res) => res.data as CommissionerPollBroadcastResponse),
   });
 }
+
+export function useFinanceTimeline(
+  enabled: boolean,
+  season?: string,
+) {
+  return useQuery({
+    queryKey: [...queryKeys.users.financeSummary, 'timeline', season ?? 'all'],
+    queryFn: ({ signal }: { signal?: AbortSignal }) =>
+      api.users.getFinanceTimeline(season, signal).then((res) => res.data),
+    enabled,
+    staleTime: 60_000,
+  });
+}

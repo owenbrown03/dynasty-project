@@ -15,6 +15,7 @@ DRAFT_PICK_PROJECTION_CACHE_VERSION = "v2"
 
 DRAFT_PICK_PROJECTION_METHODS = {
     "standings_proxy",
+    "points_for",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
@@ -43,6 +44,7 @@ MAX_DRAFT_PICK_PROJECTION_WEEK = 18
 
 DraftPickProjectionMethod = Literal[
     "standings_proxy",
+    "points_for",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
@@ -53,6 +55,7 @@ DraftPickProjectionMethod = Literal[
 DraftPickProjectionPhaseMethod = Literal[
     "none",
     "reverse_standings",
+    "points_for",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
@@ -232,6 +235,8 @@ def should_project_future_pick_slots(
 def _format_method_label(
     method: DraftPickProjectionMethod,
 ) -> str:
+    if method == "points_for":
+        return "points for"
     if method == "max_pf":
         return "reverse max PF"
     if method == "redraft_starter_war":
@@ -402,6 +407,24 @@ def _sort_rosters_by_standings_proxy(
     )
 
 
+def _sort_rosters_by_points_for(
+    *,
+    rosters: list[Roster],
+    projected_points_by_roster_id: dict[int, float],
+) -> list[Roster]:
+    return sorted(
+        rosters,
+        key=lambda roster: (
+            roster.fpts,
+            projected_points_by_roster_id.get(
+                roster.roster_id,
+                0.0,
+            ),
+            roster.roster_id,
+        ),
+    )
+
+
 def _sort_rosters_by_max_pf(
     *,
     rosters: list[Roster],
@@ -545,6 +568,16 @@ def build_projected_pick_slots_by_roster_id(
     fallback_from_method: DraftPickProjectionMethod | None = None
 
     if (
+        requested_method == "points_for"
+    ):
+        ordered_rosters = _sort_rosters_by_points_for(
+            rosters=rosters,
+            projected_points_by_roster_id=(
+                projected_points_by_roster_id
+            ),
+        )
+        method_used = "points_for"
+    elif (
         requested_method == "max_pf"
         and _can_use_max_pf(rosters)
     ):

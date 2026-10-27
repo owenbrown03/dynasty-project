@@ -149,6 +149,7 @@ export interface WarValueSettings {
 
 export type DraftPickProjectionMethod =
   | 'standings_proxy'
+  | 'points_for'
   | 'max_pf'
   | 'redraft_starter_war'
   | 'redraft_roster_war'

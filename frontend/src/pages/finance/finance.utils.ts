@@ -333,21 +333,31 @@ export function buildSeasonChartEntries(
 }
 
 export function buildCurrentFinanceTimeline(
-  entries: FinanceLeagueSeasonEntry[],
+  entries: FinanceLeagueSeasonEntry[] | FinanceTimelinePoint[],
 ): FinanceTimelinePoint[] {
   if (!entries.length) {
     return [];
+  }
+
+  // If already timeline points
+  if ('week' in entries[0] && 'label' in entries[0] && ('actualAmount' in entries[0] || 'projectedAmount' in entries[0])) {
+    return (entries as FinanceTimelinePoint[]).map((point) => ({
+      week: point.week,
+      label: point.label,
+      actualAmount: point.actualAmount ?? null,
+      projectedAmount: point.projectedAmount,
+    }));
   }
 
   return [
     {
       week: 1,
       label: 'Week 1',
-      actualAmount: entries.reduce(
+      actualAmount: (entries as FinanceLeagueSeasonEntry[]).reduce(
         (sum, entry) => sum + effectiveFinanceWinnings(entry),
         0,
       ),
-      projectedAmount: entries.reduce(
+      projectedAmount: (entries as FinanceLeagueSeasonEntry[]).reduce(
         (sum, entry) => sum + entry.projected_winnings_amount,
         0,
       ),

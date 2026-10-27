@@ -29,6 +29,37 @@ async def sync_user_data_task(username: str):
             username,
         )
 
+        try:
+            nfl_state = await sleeper.read.get_nfl_state()
+            current_week = int(getattr(nfl_state, "week", 0) or 0)
+            if current_week >= 1:
+                from app.crud.sleeper.weekly_metrics import sync_league_weekly_matchups
+                from app.models.db.sleeper import api as sleeper_model
+                from sqlmodel import select
+
+                user_leagues_res = await db.execute(
+                    select(sleeper_model.League).join(
+                        sleeper_model.Roster,
+                        sleeper_model.League.league_id == sleeper_model.Roster.league_id,
+                    ).join(
+                        sleeper_model.User,
+                        sleeper_model.Roster.owner_id == sleeper_model.User.user_id,
+                    ).where(
+                        sleeper_model.User.username == username,
+                        sleeper_model.League.status.in_(["in_season", "post_season"]),
+                    )
+                )
+                active_leagues = list(user_leagues_res.scalars().all())
+                if active_leagues:
+                    await sync_league_weekly_matchups(
+                        db=db,
+                        sleeper=sleeper,
+                        leagues=active_leagues,
+                        current_week=current_week,
+                    )
+        except Exception:
+            pass
+
         await db.commit()
 
     try:

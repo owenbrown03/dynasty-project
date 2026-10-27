@@ -10,6 +10,7 @@ import {
   useSaveFinanceDefaults,
   useSaveFinanceLeagueDefaults,
   useSaveFinanceSeason,
+  useFinanceTimeline,
 } from '@/hooks/sleeper/useUsers';
 import type {
   FinanceLeagueSeasonEntry,
@@ -131,6 +132,10 @@ export function FinancePage() {
   const [activeTab, setActiveTab] = useState<FinanceTab>('charts');
   const [selectedTrackerSeason, setSelectedTrackerSeason] = useState('current');
   const [chartSeason, setChartSeason] = useState('all');
+  const financeTimeline = useFinanceTimeline(
+    Boolean(connection.linked && finance.data),
+    chartSeason === 'all' ? undefined : chartSeason,
+  );
   const [seasonDrafts, setSeasonDrafts] = useState<
     Record<string, FinanceSeasonDraft>
   >({});
@@ -830,10 +835,16 @@ export function FinancePage() {
                               />
                             )
                             : (
-                              <FinanceProjectionTimeline
-                                entries={chartEntries}
-                                season={chartSeason}
-                              />
+                            <FinanceProjectionTimeline
+                              entries={chartEntries}
+                              season={chartSeason}
+                              timeline={financeTimeline.data?.points?.map((point: any) => ({
+                                week: point.week,
+                                label: point.label,
+                                actualAmount: point.actual_amount,
+                                projectedAmount: point.projected_amount,
+                              }))}
+                            />
                             )
                         }
                         {

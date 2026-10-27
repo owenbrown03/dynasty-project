@@ -17,6 +17,7 @@ from .sleeper.api import(
     Player,
     PlayerProjection,
     PlayerSeasonStats,
+    LeagueWeeklyRosterMetric,
 )
 from .sleeper.connection import(
     SleeperConnection,

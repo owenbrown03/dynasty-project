@@ -722,3 +722,37 @@ class PlayerSeasonStats(SQLModel, table=True):
             for key, value in self.model_dump().items()
             if key not in excluded
         }
+
+
+class LeagueWeeklyRosterMetric(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint(
+            "league_id",
+            "week",
+            "roster_id",
+            name="uq_league_weekly_roster_metric",
+        ),
+        Index("idx_lwm_league_week", "league_id", "week"),
+        Index("idx_lwm_league_roster", "league_id", "roster_id"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    league_id: str = Field(foreign_key="league.league_id", index=True)
+    season: str = Field(index=True)
+    week: int = Field(index=True)
+    roster_id: int = Field(index=True)
+
+    points: float = Field(default=0.0)
+    max_points: float = Field(default=0.0)
+    wins: int = Field(default=0)
+    losses: int = Field(default=0)
+    ties: int = Field(default=0)
+
+    starter_war: Optional[float] = Field(default=None, nullable=True)
+    roster_war: Optional[float] = Field(default=None, nullable=True)
+    sleeper_projection: Optional[float] = Field(default=None, nullable=True)
+    ktc_redraft: Optional[float] = Field(default=None, nullable=True)
+    fantasycalc_redraft: Optional[float] = Field(default=None, nullable=True)
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

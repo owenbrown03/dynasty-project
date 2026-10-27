@@ -138,6 +138,27 @@ class Matchup(Base):
     l: Optional[int] = None
     p: Optional[int] = None
 
+
+class WeeklyMatchup(Base):
+    roster_id: int
+    matchup_id: Optional[int] = None
+    points: float = 0.0
+    custom_points: Optional[float] = None
+    players: List[str] = Field(default_factory=list)
+    starters: List[str] = Field(default_factory=list)
+    starters_points: List[float] = Field(default_factory=list)
+    players_points: Dict[str, float] = Field(default_factory=dict)
+
+    @field_validator("players", "starters", "starters_points", mode="before")
+    @classmethod
+    def normalize_lists(cls, value):
+        return value or []
+
+    @field_validator("players_points", mode="before")
+    @classmethod
+    def normalize_dict(cls, value):
+        return value or {}
+
 class WaiverBudget(Base):
     sender: int
     receiver: int
