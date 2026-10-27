@@ -1114,15 +1114,17 @@ async def get_finance_summary(
             else []
         )
 
-        expected_winnings_amount = (
-            calculate_expected_winnings_from_seed(
-                payout_structure=resolved["payout_structure"],
-                projected_seed=projected_finish_place,
-                total_rosters=league.total_rosters,
-                playoff_teams=league.playoff_teams,
-            )
-            if league.status in {"in_season", "post_season"}
-            else None
+        projected_seed = (
+            rank
+            if league.status == "complete"
+            else projected_finish_place
+        )
+
+        expected_winnings_amount = calculate_expected_winnings_from_seed(
+            payout_structure=resolved["payout_structure"],
+            projected_seed=projected_seed,
+            total_rosters=league.total_rosters,
+            playoff_teams=league.playoff_teams,
         )
 
         if expected_winnings_amount is not None:
@@ -1480,15 +1482,17 @@ async def build_dashboard_finance_metrics_by_league_id(
             else []
         )
 
-        expected_winnings_amount = (
-            calculate_expected_winnings_from_seed(
-                payout_structure=resolved["payout_structure"],
-                projected_seed=projected_finish_place,
-                total_rosters=league.total_rosters,
-                playoff_teams=league.playoff_teams,
-            )
-            if league.status in {"in_season", "post_season"}
-            else None
+        projected_seed = (
+            rank
+            if league.status == "complete"
+            else projected_finish_place
+        )
+
+        expected_winnings_amount = calculate_expected_winnings_from_seed(
+            payout_structure=resolved["payout_structure"],
+            projected_seed=projected_seed,
+            total_rosters=league.total_rosters,
+            playoff_teams=league.playoff_teams,
         )
 
         if expected_winnings_amount is not None:
@@ -1795,6 +1799,14 @@ async def get_finance_timeline(
     for m in all_metrics:
         metrics_by_league.setdefault(m.league_id, []).append(m)
 
+    is_completed_season = bool(owned_rows) and all(
+        league.status == "complete" for _, league in owned_rows
+    )
+    total_actual_w = round(
+        sum(float(e.winnings_amount or 0) for e in entries),
+        2,
+    )
+
     max_week = max(current_week, 1)
     weeks = list(range(1, max_week + 1))
     points = []
@@ -1897,7 +1909,7 @@ async def get_finance_timeline(
             {
                 "week": w,
                 "label": f"Week {w}",
-                "actual_amount": 0.0,
+                "actual_amount": total_actual_w if is_completed_season else 0.0,
                 "projected_amount": round(total_projected_w, 2),
             }
         )
