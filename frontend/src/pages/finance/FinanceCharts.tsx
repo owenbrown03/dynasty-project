@@ -640,7 +640,7 @@ export function FinanceProjectionTimeline({
         </strong>
         <span>
           Weekly payout trajectory computed from current standings and
-          projected finish probabilities.
+          projected finish probabilities
         </span>
       </div>
     </article>

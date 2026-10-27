@@ -22,8 +22,6 @@ import {
   buildSeasonDrafts,
   buildSettingsDraft,
   draftRowsEqual,
-  effectiveFinanceNet,
-  effectiveFinanceWinnings,
   formatCurrency,
   getDraftKey,
   isFinanceSeasonComplete,
@@ -174,6 +172,27 @@ export function FinancePage() {
     [finance.data],
   );
 
+  const availableChartSeasons = useMemo(
+    () => Array.from(
+      new Set(
+        finance.data?.seasons
+          .filter((entry) => !entry.is_excluded)
+          .map((entry) => entry.season) ?? [],
+      ),
+    ).sort((left, right) => Number(right) - Number(left)),
+    [finance.data],
+  );
+
+  useEffect(() => {
+    if (
+      chartSeason !== 'all'
+      && availableChartSeasons.length > 0
+      && !availableChartSeasons.includes(chartSeason)
+    ) {
+      setChartSeason('all');
+    }
+  }, [availableChartSeasons, chartSeason]);
+
   const trackerEntries = useMemo(
     () => (
       finance.data?.seasons.filter((entry) => {
@@ -294,23 +313,26 @@ export function FinancePage() {
   }, [displayedTrackerEntries]);
 
   const overviewSummary = useMemo(() => {
+    const totalBuyIns = chartEntries.reduce(
+      (sum, entry) => sum + entry.buy_in_amount,
+      0,
+    );
+    const totalWinnings = chartEntries.reduce(
+      (sum, entry) =>
+        sum + (isFinanceSeasonComplete(entry) ? entry.winnings_amount : 0),
+      0,
+    );
+    const totalNet = totalWinnings - totalBuyIns;
+    const projectedCurrentWinnings = chartEntries.reduce(
+      (sum, entry) => sum + entry.projected_winnings_amount,
+      0,
+    );
+
     return {
-      totalBuyIns: chartEntries.reduce(
-        (sum, entry) => sum + entry.buy_in_amount,
-        0,
-      ),
-      totalWinnings: chartEntries.reduce(
-        (sum, entry) => sum + effectiveFinanceWinnings(entry),
-        0,
-      ),
-      totalNet: chartEntries.reduce(
-        (sum, entry) => sum + effectiveFinanceNet(entry),
-        0,
-      ),
-      projectedCurrentWinnings: chartEntries.reduce(
-        (sum, entry) => sum + entry.projected_winnings_amount,
-        0,
-      ),
+      totalBuyIns,
+      totalWinnings,
+      totalNet,
+      projectedCurrentWinnings,
     };
   }, [chartEntries]);
 
@@ -505,7 +527,7 @@ export function FinancePage() {
                           >
                             <option value="all">All years</option>
                             {
-                              availableSeasons.map((season) => (
+                              availableChartSeasons.map((season) => (
                                 <option key={season} value={season}>
                                   {season}
                                 </option>
@@ -800,7 +822,7 @@ export function FinancePage() {
                           <strong>{formatCurrency(overviewSummary.totalWinnings)}</strong>
                           {
                             overviewHasProjectedEntries
-                              ? <small>Includes expected payouts for active seasons.</small>
+                              ? <small>Completed seasons only</small>
                               : null
                           }
                         </article>
@@ -810,7 +832,7 @@ export function FinancePage() {
                           <strong>{formatCurrency(overviewSummary.totalNet)}</strong>
                           {
                             overviewHasProjectedEntries
-                              ? <small>Projected until seasons are complete.</small>
+                              ? <small>Completed seasons only</small>
                               : null
                           }
                         </article>
@@ -820,7 +842,7 @@ export function FinancePage() {
                           <strong>{formatCurrency(overviewSummary.projectedCurrentWinnings)}</strong>
                           {
                             overviewHasProjectedEntries
-                              ? <small>Projected from seed probability.</small>
+                              ? <small>Projected from seed probability</small>
                               : null
                           }
                         </article>
