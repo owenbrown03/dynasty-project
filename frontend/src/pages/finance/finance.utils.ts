@@ -22,6 +22,7 @@ export type FinanceChartEntry = {
   key: string;
   label: string;
   subLabel: string;
+  buyInAmount?: number;
   winningsAmount: number;
   projectedWinningsAmount: number;
   netAmount: number;
@@ -287,6 +288,7 @@ export function buildSeasonChartEntries(
   const bySeason = new Map<
     string,
     {
+      buyInAmount: number;
       winningsAmount: number;
       projectedWinningsAmount: number;
       netAmount: number;
@@ -297,6 +299,7 @@ export function buildSeasonChartEntries(
 
   for (const entry of entries) {
     const current = bySeason.get(entry.season) ?? {
+      buyInAmount: 0,
       winningsAmount: 0,
       projectedWinningsAmount: 0,
       netAmount: 0,
@@ -304,6 +307,7 @@ export function buildSeasonChartEntries(
       projectedCount: 0,
     };
 
+    current.buyInAmount += entry.buy_in_amount;
     current.winningsAmount += effectiveFinanceWinnings(entry);
     current.projectedWinningsAmount += entry.projected_winnings_amount;
     current.netAmount += effectiveFinanceNet(entry);
@@ -322,6 +326,7 @@ export function buildSeasonChartEntries(
       subLabel: `${totals.leagueCount} ${
         totals.leagueCount === 1 ? 'league' : 'leagues'
       }${totals.projectedCount > 0 ? ' · projected' : ''}`,
+      buyInAmount: totals.buyInAmount,
       winningsAmount: totals.winningsAmount,
       projectedWinningsAmount: totals.projectedWinningsAmount,
       netAmount: totals.netAmount,

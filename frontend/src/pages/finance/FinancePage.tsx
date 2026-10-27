@@ -838,7 +838,8 @@ export function FinancePage() {
                             <FinanceProjectionTimeline
                               entries={chartEntries}
                               season={chartSeason}
-                              timeline={financeTimeline.data?.points?.map((point: any) => ({
+                              isLoading={financeTimeline.isLoading || (financeTimeline.isFetching && !financeTimeline.data)}
+                              timeline={financeTimeline.data?.points?.map((point) => ({
                                 week: point.week,
                                 label: point.label,
                                 actualAmount: point.actual_amount,
