@@ -322,7 +322,14 @@ export function FinancePage() {
         sum + (isFinanceSeasonComplete(entry) ? entry.winnings_amount : 0),
       0,
     );
-    const totalNet = totalWinnings - totalBuyIns;
+    const totalNet = chartEntries.reduce(
+      (sum, entry) =>
+        sum +
+        (isFinanceSeasonComplete(entry)
+          ? entry.winnings_amount - entry.buy_in_amount
+          : 0),
+      0,
+    );
     const projectedCurrentWinnings = chartEntries.reduce(
       (sum, entry) => sum + entry.projected_winnings_amount,
       0,
