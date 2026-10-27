@@ -24,6 +24,7 @@ export type FinanceChartEntry = {
   subLabel: string;
   buyInAmount?: number;
   winningsAmount: number;
+  actualWinningsAmount?: number | null;
   projectedWinningsAmount: number;
   netAmount: number;
   isProjected: boolean;
@@ -290,10 +291,12 @@ export function buildSeasonChartEntries(
     {
       buyInAmount: number;
       winningsAmount: number;
+      actualWinningsAmount: number;
       projectedWinningsAmount: number;
       netAmount: number;
       leagueCount: number;
       projectedCount: number;
+      completedCount: number;
     }
   >();
 
@@ -301,14 +304,20 @@ export function buildSeasonChartEntries(
     const current = bySeason.get(entry.season) ?? {
       buyInAmount: 0,
       winningsAmount: 0,
+      actualWinningsAmount: 0,
       projectedWinningsAmount: 0,
       netAmount: 0,
       leagueCount: 0,
       projectedCount: 0,
+      completedCount: 0,
     };
 
     current.buyInAmount += entry.buy_in_amount;
     current.winningsAmount += effectiveFinanceWinnings(entry);
+    if (isFinanceSeasonComplete(entry)) {
+      current.actualWinningsAmount += entry.winnings_amount;
+      current.completedCount += 1;
+    }
     current.projectedWinningsAmount += entry.projected_winnings_amount;
     current.netAmount += effectiveFinanceNet(entry);
     current.leagueCount += 1;
@@ -328,6 +337,7 @@ export function buildSeasonChartEntries(
       }${totals.projectedCount > 0 ? ' · projected' : ''}`,
       buyInAmount: totals.buyInAmount,
       winningsAmount: totals.winningsAmount,
+      actualWinningsAmount: totals.completedCount > 0 ? totals.actualWinningsAmount : null,
       projectedWinningsAmount: totals.projectedWinningsAmount,
       netAmount: totals.netAmount,
       isProjected: totals.projectedCount > 0,

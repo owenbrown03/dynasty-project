@@ -65,7 +65,11 @@ function FinanceInteractiveLineChart({
 
   const allValues = [
     ...points.map((p) => p.projected),
-    ...(showActual ? points.map((p) => p.actual ?? 0) : []),
+    ...(showActual
+      ? points
+          .filter((p) => p.actual !== null && p.actual !== undefined)
+          .map((p) => p.actual as number)
+      : []),
     ...(showBuyIn ? points.map((p) => p.buyIn ?? 0) : []),
   ];
 
@@ -102,8 +106,16 @@ function FinanceInteractiveLineChart({
     .map((p, i) => `${toX(i)},${toY(p.projected)}`)
     .join(' ');
 
-  const actualLinePoints = showActual
-    ? points.map((p, i) => `${toX(i)},${toY(p.actual ?? 0)}`).join(' ')
+  const pointsWithActual = points
+    .map((p, i) => ({
+      ...p,
+      x: toX(i),
+      y: p.actual !== null && p.actual !== undefined ? toY(p.actual) : 0,
+    }))
+    .filter((p) => p.actual !== null && p.actual !== undefined);
+
+  const actualLinePoints = showActual && pointsWithActual.length > 0
+    ? pointsWithActual.map((p) => `${p.x},${p.y}`).join(' ')
     : '';
 
   const buyInLinePoints = showBuyIn
@@ -194,19 +206,21 @@ function FinanceInteractiveLineChart({
         {/* Actual Line */}
         {showActual && actualLinePoints ? (
           <>
-            <polyline
-              fill="none"
-              stroke="var(--finance-actual-color, #14b8a6)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              points={actualLinePoints}
-            />
-            {points.map((point, i) => (
+            {pointsWithActual.length > 1 ? (
+              <polyline
+                fill="none"
+                stroke="var(--finance-actual-color, #14b8a6)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={actualLinePoints}
+              />
+            ) : null}
+            {pointsWithActual.map((point) => (
               <circle
                 key={`act-dot-${point.key}`}
-                cx={toX(i)}
-                cy={toY(point.actual ?? 0)}
+                cx={point.x}
+                cy={point.y}
                 r="3"
                 fill="var(--finance-actual-color, #14b8a6)"
               />
@@ -260,10 +274,10 @@ function FinanceInteractiveLineChart({
               strokeWidth="2"
               pointerEvents="none"
             />
-            {showActual ? (
+            {showActual && hoveredPoint.actual !== null && hoveredPoint.actual !== undefined ? (
               <circle
                 cx={hoveredX}
-                cy={toY(hoveredPoint.actual ?? 0)}
+                cy={toY(hoveredPoint.actual)}
                 r="5.5"
                 fill="var(--finance-actual-color, #14b8a6)"
                 stroke="var(--color-surface, #0f172a)"
@@ -293,10 +307,10 @@ function FinanceInteractiveLineChart({
             value: hoveredPoint.projected,
             color: 'var(--finance-projected-color, #a855f7)',
           });
-          if (showActual) {
+          if (showActual && hoveredPoint.actual !== null && hoveredPoint.actual !== undefined) {
             lines.push({
               label: actualLabel,
-              value: hoveredPoint.actual ?? 0,
+              value: hoveredPoint.actual,
               color: 'var(--finance-actual-color, #14b8a6)',
             });
           }
@@ -410,10 +424,13 @@ export function FinanceTrendChart({
   }
 
   const showBuyIn = entries.some((entry) => (entry.buyInAmount ?? 0) > 0);
+  const showActual = entries.some(
+    (entry) => entry.actualWinningsAmount !== null && entry.actualWinningsAmount !== undefined,
+  );
   const points = entries.map((entry) => ({
     key: entry.key,
     label: entry.label,
-    actual: entry.winningsAmount,
+    actual: entry.actualWinningsAmount ?? null,
     projected: entry.projectedWinningsAmount,
     buyIn: entry.buyInAmount,
   }));
@@ -428,10 +445,12 @@ export function FinanceTrendChart({
       </div>
 
       <div className="finance-chart-legend">
-        <span className="finance-legend-item">
-          <i className="finance-legend-line finance-legend-line-actual" />
-          Finish payout
-        </span>
+        {showActual ? (
+          <span className="finance-legend-item">
+            <i className="finance-legend-line finance-legend-line-actual" />
+            Finish payout
+          </span>
+        ) : null}
         <span className="finance-legend-item">
           <i className="finance-legend-line finance-legend-line-projected" />
           Projected payout
@@ -446,7 +465,7 @@ export function FinanceTrendChart({
 
       <FinanceInteractiveLineChart
         points={points}
-        showActual={true}
+        showActual={showActual}
         actualLabel="Finish"
         projectedLabel="Projected"
         showBuyIn={showBuyIn}
