@@ -576,7 +576,7 @@ export function FinanceProjectionTimeline({
   }
 
   const isComplete = entries.length > 0 && entries.every(isFinanceSeasonComplete);
-  const showActualPayout = isComplete && timelinePoints.some((point) => (point.actualAmount ?? 0) > 0);
+  const showActualPayout = isComplete && timelinePoints.some((point) => point.actualAmount !== null && point.actualAmount !== undefined);
   const totalBuyIn = entries.reduce((sum, e) => sum + (e.buy_in_amount || 0), 0);
   const showBuyIn = totalBuyIn > 0;
 
