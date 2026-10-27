@@ -1716,14 +1716,14 @@ async def get_finance_timeline(
         s = l.settings or {}
         leg = s.get("last_scored_leg") or s.get("leg")
         if leg and int(leg) > 0:
-            return int(leg)
+            return min(int(leg), 17)
         playoff_start = s.get("playoff_week_start")
         if playoff_start and int(playoff_start) > 0:
-            return int(playoff_start) + 2
+            return min(int(playoff_start) + 2, 17)
         return 17
 
     if is_completed_season:
-        max_week = max([_get_league_final_week(l) for _, l in owned_rows] or [17])
+        max_week = min(max([_get_league_final_week(l) for _, l in owned_rows] or [17]), 17)
     else:
         current_week = 0
         if ctx.sleeper is not None and hasattr(ctx.sleeper, "read"):
@@ -1735,7 +1735,7 @@ async def get_finance_timeline(
 
         if current_week < 1:
             current_week = 1
-        max_week = max(current_week, 1)
+        max_week = min(max(current_week, 1), 17)
 
     cache_key = _build_finance_timeline_cache_key(
         ctx=ctx,
@@ -1824,11 +1824,26 @@ async def get_finance_timeline(
         sum(float(e.winnings_amount or 0) for e in entries),
         2,
     )
+    total_summary_projected_w = round(
+        sum(float(e.projected_winnings_amount or 0) for e in entries),
+        2,
+    )
 
     weeks = list(range(1, max_week + 1))
     points = []
 
     for w in weeks:
+        if w == max_week:
+            points.append(
+                {
+                    "week": w,
+                    "label": f"Week {w}",
+                    "actual_amount": total_actual_w if is_completed_season else 0.0,
+                    "projected_amount": total_summary_projected_w,
+                }
+            )
+            continue
+
         active_method = resolve_draft_pick_projection_method(
             current_week=w,
             settings=effective_projection_settings,
@@ -1889,7 +1904,7 @@ async def get_finance_timeline(
                 if active_method == "redraft_roster_war":
                     return (stats["roster_war"], stats["cum_points"], -r_id)
                 if active_method == "sleeper_projection":
-                    return (stats["sleeper_proj"], stats["cum_points"], -r_id)
+                    return (stats["cum_wins"], stats["cum_points"], -r_id)
                 if active_method == "ktc_redraft":
                     return (stats["ktc_val"], stats["cum_points"], -r_id)
                 if active_method == "fantasycalc_redraft":
