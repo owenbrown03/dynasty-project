@@ -774,6 +774,47 @@ async def build_redraft_value_by_roster_id(
     if not player_ids:
         return {}
 
+    league_ids = {roster.league_id for roster in rosters if roster.league_id}
+    if len(league_ids) == 1:
+        league_id = next(iter(league_ids))
+        try:
+            from app.crud.sleeper.weekly_metrics import get_league_weekly_metrics
+
+            metrics = await get_league_weekly_metrics(db, [league_id])
+            if metrics:
+                latest_week = max(m.week for m in metrics)
+                latest_metrics = [m for m in metrics if m.week == latest_week]
+                metric_by_roster = {m.roster_id: m for m in latest_metrics}
+
+                if all(r.roster_id in metric_by_roster for r in rosters):
+                    result: dict[int, float] = {}
+                    has_values = False
+                    for r in rosters:
+                        m = metric_by_roster[r.roster_id]
+                        if basis in {"fantasycalc", "fantasycalc_redraft"}:
+                            val = m.fantasycalc_redraft
+                        elif basis == "sleeper_projection":
+                            val = m.sleeper_projection
+                        elif basis == "redraft_roster_war":
+                            val = m.roster_war
+                        elif basis == "redraft_starter_war":
+                            val = m.starter_war
+                        elif basis in {"ktc", "ktc_redraft"}:
+                            val = m.ktc_redraft
+                        else:
+                            val = None
+
+                        if val is not None and val > 0:
+                            has_values = True
+                            result[r.roster_id] = round(val, 2)
+                        elif val is not None:
+                            result[r.roster_id] = round(val, 2)
+
+                    if has_values and len(result) == len(rosters):
+                        return result
+        except Exception:
+            pass
+
     values = await get_player_values(
         db,
         player_ids=list(player_ids),

@@ -326,16 +326,22 @@ async def build_finance_projected_seed_by_league_roster(
         tuple[str, int],
         int,
     ] = {}
-    redraft_war_by_league_id = (
-        await build_shared_redraft_war_by_league_id(
-            db=ctx.db,
-            redis=ctx.redis,
-            leagues=list(
-                leagues_by_id.values()
-            ),
-            war_service=war_service,
-        )
+
+    all_metrics = await get_league_weekly_metrics(
+        ctx.db,
+        list(leagues_by_id.keys()),
     )
+    latest_metrics_by_league: dict[str, dict[int, Any]] = {}
+    if all_metrics:
+        max_week_by_league: dict[str, int] = {}
+        for m in all_metrics:
+            if m.league_id not in max_week_by_league or m.week > max_week_by_league[m.league_id]:
+                max_week_by_league[m.league_id] = m.week
+        for m in all_metrics:
+            if m.week == max_week_by_league.get(m.league_id):
+                latest_metrics_by_league.setdefault(m.league_id, {})[m.roster_id] = m
+
+    redraft_war_by_league_id: dict[str, list[PlayerWAR]] | None = None
 
     for league_id, league in leagues_by_id.items():
         rosters = rosters_by_league_id.get(
@@ -351,88 +357,153 @@ async def build_finance_projected_seed_by_league_roster(
             else 0
         )
 
-        redraft_war_players = redraft_war_by_league_id[
-            league_id
-        ]
-        war_lookup = {
-            player.player_id: player
-            for player in redraft_war_players
-        }
-        player_ids = [
-            player_id
-            for roster in rosters
-            for player_id in (roster.players or [])
-        ]
-        player_values = await get_player_values(
-            ctx.db,
-            player_ids,
-            redraft_war_players,
+        league_metrics = latest_metrics_by_league.get(league_id, {})
+        has_all_rosters_metrics = bool(rosters) and all(
+            r.roster_id in league_metrics for r in rosters
         )
-        player_value_by_id = {
-            player.player_id: player
-            for player in player_values
-        }
 
-        projected_points_by_roster_id: dict[int, float] = {}
-        redraft_starter_war_by_roster_id: dict[int, float] = {}
-        redraft_roster_war_by_roster_id: dict[int, float] = {}
-
-        for roster in rosters:
-            roster_players: list[LeaguePlayer] = []
-
-            for player_id in roster.players or []:
-                player_value = player_value_by_id.get(
-                    player_id,
-                )
-                if player_value is None:
-                    continue
-
-                roster_players.append(
-                    LeaguePlayer(
-                        player_id=player_value.player_id,
-                        name=player_value.name,
-                        position=player_value.position,
-                        team=player_value.team,
-                        projected_points=(
-                            round(
-                                war_lookup[player_id].projection,
-                                2,
-                            )
-                            if player_id in war_lookup
-                            else None
-                        ),
-                        redraft_starter_war=(
-                            player_value.redraft_starter_war
-                        ),
-                        redraft_roster_war=(
-                            player_value.redraft_roster_war
-                        ),
+        if has_all_rosters_metrics:
+            projected_points_by_roster_id = {
+                r.roster_id: (league_metrics[r.roster_id].sleeper_projection or 0.0)
+                for r in rosters
+            }
+            redraft_starter_war_by_roster_id = {
+                r.roster_id: (league_metrics[r.roster_id].starter_war or 0.0)
+                for r in rosters
+            }
+            redraft_roster_war_by_roster_id = {
+                r.roster_id: (league_metrics[r.roster_id].roster_war or 0.0)
+                for r in rosters
+            }
+            basis = (
+                redraft_projection_basis_for_method(
+                    resolve_draft_pick_projection_method(
+                        current_week=current_week,
+                        settings=effective_projection_settings,
                     )
                 )
+                or "sleeper_projection"
+            )
+            redraft_value_by_roster_id: dict[int, float] = {}
+            for r in rosters:
+                m = league_metrics[r.roster_id]
+                if basis in {"fantasycalc", "fantasycalc_redraft"}:
+                    val = m.fantasycalc_redraft or 0.0
+                elif basis in {"ktc", "ktc_redraft"}:
+                    val = m.ktc_redraft or 0.0
+                elif basis == "redraft_starter_war":
+                    val = m.starter_war or 0.0
+                elif basis == "redraft_roster_war":
+                    val = m.roster_war or 0.0
+                else:
+                    val = m.sleeper_projection or 0.0
+                redraft_value_by_roster_id[r.roster_id] = val
+        else:
+            if redraft_war_by_league_id is None:
+                redraft_war_by_league_id = (
+                    await build_shared_redraft_war_by_league_id(
+                        db=ctx.db,
+                        redis=ctx.redis,
+                        leagues=list(leagues_by_id.values()),
+                        war_service=war_service,
+                    )
+                )
+            redraft_war_players = redraft_war_by_league_id.get(league_id, [])
+            war_lookup = {
+                player.player_id: player
+                for player in redraft_war_players
+            }
+            player_ids = [
+                player_id
+                for roster in rosters
+                for player_id in (roster.players or [])
+            ]
+            player_values = await get_player_values(
+                ctx.db,
+                player_ids,
+                redraft_war_players,
+            )
+            player_value_by_id = {
+                player.player_id: player
+                for player in player_values
+            }
 
-            projected_points_by_roster_id[
-                roster.roster_id
-            ] = calculate_projected_starter_points(
-                roster_positions=league.roster_positions or [],
-                players=roster_players,
-            )
-            redraft_starter_war_by_roster_id[
-                roster.roster_id
-            ] = round(
-                sum(
-                    player.redraft_starter_war or 0.0
-                    for player in roster_players
+            projected_points_by_roster_id: dict[int, float] = {}
+            redraft_starter_war_by_roster_id: dict[int, float] = {}
+            redraft_roster_war_by_roster_id: dict[int, float] = {}
+
+            for roster in rosters:
+                roster_players: list[LeaguePlayer] = []
+
+                for player_id in roster.players or []:
+                    player_value = player_value_by_id.get(
+                        player_id,
+                    )
+                    if player_value is None:
+                        continue
+
+                    roster_players.append(
+                        LeaguePlayer(
+                            player_id=player_value.player_id,
+                            name=player_value.name,
+                            position=player_value.position,
+                            team=player_value.team,
+                            projected_points=(
+                                round(
+                                    war_lookup[player_id].projection,
+                                    2,
+                                )
+                                if player_id in war_lookup
+                                else None
+                            ),
+                            redraft_starter_war=(
+                                player_value.redraft_starter_war
+                            ),
+                            redraft_roster_war=(
+                                player_value.redraft_roster_war
+                            ),
+                        )
+                    )
+
+                projected_points_by_roster_id[
+                    roster.roster_id
+                ] = calculate_projected_starter_points(
+                    roster_positions=league.roster_positions or [],
+                    players=roster_players,
+                )
+                redraft_starter_war_by_roster_id[
+                    roster.roster_id
+                ] = round(
+                    sum(
+                        player.redraft_starter_war or 0.0
+                        for player in roster_players
+                    ),
+                    2,
+                )
+                redraft_roster_war_by_roster_id[
+                    roster.roster_id
+                ] = round(
+                    sum(
+                        player.redraft_roster_war or 0.0
+                        for player in roster_players
+                    ),
+                    2,
+                )
+
+            redraft_value_by_roster_id = await build_redraft_value_by_roster_id(
+                ctx.db,
+                rosters,
+                basis=(
+                    redraft_projection_basis_for_method(
+                        resolve_draft_pick_projection_method(
+                            current_week=current_week,
+                            settings=(
+                                effective_projection_settings
+                            ),
+                        ),
+                    )
+                    or "sleeper_projection"
                 ),
-                2,
-            )
-            redraft_roster_war_by_roster_id[
-                roster.roster_id
-            ] = round(
-                sum(
-                    player.redraft_roster_war or 0.0
-                    for player in roster_players
-                ),
-                2,
             )
 
         projection = await build_cached_projected_pick_slots_by_roster_id(
@@ -449,23 +520,7 @@ async def build_finance_projected_seed_by_league_roster(
             redraft_roster_war_by_roster_id=(
                 redraft_roster_war_by_roster_id
             ),
-            redraft_value_by_roster_id=(
-                await build_redraft_value_by_roster_id(
-                    ctx.db,
-                    rosters,
-                    basis=(
-                        redraft_projection_basis_for_method(
-                            resolve_draft_pick_projection_method(
-                                current_week=current_week,
-                                settings=(
-                                    effective_projection_settings
-                                ),
-                            ),
-                        )
-                        or "sleeper_projection"
-                    ),
-                )
-            ),
+            redraft_value_by_roster_id=redraft_value_by_roster_id,
             settings=effective_projection_settings,
         )
 
@@ -1725,6 +1780,7 @@ async def get_finance_timeline(
                 sleeper=ctx.sleeper,
                 leagues=active_leagues,
                 current_week=current_week,
+                redis=ctx.redis,
             )
         except Exception as exc:
             logger.warning("Failed to sync weekly matchups for finance timeline: %s", exc)

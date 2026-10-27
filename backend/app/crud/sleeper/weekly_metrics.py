@@ -16,7 +16,11 @@ from app.models.db.sleeper.api import (
     Player,
     Roster,
 )
-from app.services.leagues.details import is_slot_eligible
+from app.services.leagues.details import (
+    calculate_projected_starter_points,
+    is_slot_eligible,
+)
+from app.services.leagues.models import LeaguePlayer
 
 logger = logging.getLogger(__name__)
 
@@ -88,15 +92,22 @@ def calculate_optimal_lineup_points(
 
 async def get_league_weekly_metrics(
     db: AsyncSession,
-    league_ids: list[str],
+    league_ids: Iterable[str],
+    season: str | None = None,
+    week: int | None = None,
     max_week: int | None = None,
 ) -> list[LeagueWeeklyRosterMetric]:
+    league_ids = list(league_ids)
     if not league_ids:
         return []
 
     stmt = select(LeagueWeeklyRosterMetric).where(
         col(LeagueWeeklyRosterMetric.league_id).in_(league_ids)
     )
+    if season is not None:
+        stmt = stmt.where(LeagueWeeklyRosterMetric.season == season)
+    if week is not None:
+        stmt = stmt.where(LeagueWeeklyRosterMetric.week == week)
     if max_week is not None:
         stmt = stmt.where(LeagueWeeklyRosterMetric.week <= max_week)
 
@@ -151,6 +162,9 @@ async def sync_league_weekly_matchups(
     sleeper: Any,
     leagues: list[League],
     current_week: int,
+    redis: Any | None = None,
+    war_by_league_id: dict[str, Any] | None = None,
+    force_refresh: bool = False,
 ) -> int:
     if not leagues or current_week < 1 or sleeper is None:
         return 0
@@ -161,10 +175,13 @@ async def sync_league_weekly_matchups(
         league_ids=league_ids,
         max_week=current_week,
     )
-    existing_keys = {
-        (m.league_id, m.week)
-        for m in existing
-    }
+    existing_keys = set()
+    if not force_refresh:
+        existing_keys = {
+            (m.league_id, m.week)
+            for m in existing
+            if m.starter_war is not None and m.starter_war > 0
+        }
 
     # Identify which (league, week) pairs are missing
     fetch_tasks = []
@@ -175,6 +192,23 @@ async def sync_league_weekly_matchups(
 
     if not fetch_tasks:
         return 0
+
+    # Calculate shared redraft WAR across leagues if not provided
+    if war_by_league_id is None:
+        try:
+            from app.analytics.war.redraft.service import WARService
+            from app.services.war.shared import build_shared_redraft_war_by_league_id
+
+            war_service = WARService()
+            war_by_league_id = await build_shared_redraft_war_by_league_id(
+                db=db,
+                redis=redis,
+                leagues=leagues,
+                war_service=war_service,
+            )
+        except Exception as exc:
+            logger.warning("Could not calculate shared WAR for weekly metrics: %s", exc)
+            war_by_league_id = {}
 
     async def _fetch_matchup(league: League, week: int):
         try:
@@ -222,7 +256,7 @@ async def sync_league_weekly_matchups(
             if pos is not None
         }
 
-    # Fetch enriched market & WAR values
+    # Fetch enriched market values
     player_values = await get_player_values(
         db,
         player_ids=list(all_player_ids),
@@ -236,6 +270,9 @@ async def sync_league_weekly_matchups(
     for league, week, raw_matchups in results:
         if not raw_matchups:
             continue
+
+        league_war = (war_by_league_id or {}).get(league.league_id, [])
+        war_by_pid = {p.player_id: p for p in league_war}
 
         # Group matchups to compute head-to-head outcomes
         matchups_by_id: dict[int, list[Any]] = {}
@@ -288,21 +325,40 @@ async def sync_league_weekly_matchups(
                 actual_starter_points=actual_points,
             )
 
-            # Roster valuations
-            starter_war = 0.0
-            roster_war = 0.0
-            sleeper_proj = 0.0
+            # Roster valuations & WAR
             ktc_val = 0.0
             fc_val = 0.0
+            roster_league_players: list[LeaguePlayer] = []
 
             for pid in players:
                 pv = val_by_id.get(pid)
                 if pv is not None:
-                    starter_war += pv.redraft_starter_war or 0.0
-                    roster_war += pv.redraft_roster_war or 0.0
-                    sleeper_proj += pv.projected_points or 0.0
                     ktc_val += pv.ktc_value or 0.0
                     fc_val += pv.fc_value or 0.0
+                war_p = war_by_pid.get(pid)
+                roster_league_players.append(
+                    LeaguePlayer(
+                        player_id=pid,
+                        name=war_p.name if war_p else "",
+                        position=player_positions.get(pid, ""),
+                        projected_points=war_p.projection if war_p else 0.0,
+                        redraft_starter_war=war_p.starter_war if war_p else 0.0,
+                        redraft_roster_war=war_p.roster_war if war_p else 0.0,
+                    )
+                )
+
+            starter_war = round(
+                sum(p.redraft_starter_war or 0.0 for p in roster_league_players),
+                2,
+            )
+            roster_war = round(
+                sum(p.redraft_roster_war or 0.0 for p in roster_league_players),
+                2,
+            )
+            sleeper_proj = calculate_projected_starter_points(
+                roster_positions=league.roster_positions or [],
+                players=roster_league_players,
+            )
 
             rows_to_insert.append(
                 {
@@ -315,8 +371,8 @@ async def sync_league_weekly_matchups(
                     "wins": wins,
                     "losses": losses,
                     "ties": ties,
-                    "starter_war": round(starter_war, 2),
-                    "roster_war": round(roster_war, 2),
+                    "starter_war": starter_war,
+                    "roster_war": roster_war,
                     "sleeper_projection": round(sleeper_proj, 2),
                     "ktc_redraft": round(ktc_val, 2),
                     "fantasycalc_redraft": round(fc_val, 2),

@@ -56,6 +56,7 @@ async def sync_user_data_task(username: str):
                         sleeper=sleeper,
                         leagues=active_leagues,
                         current_week=current_week,
+                        redis=redis,
                     )
         except Exception:
             pass
