@@ -48,6 +48,8 @@ class TradeDraftPickAsset(Base):
     current_owner_roster_id: int
 
     original_owner_name: str | None = None
+    slot: int | None = None
+    projected_slot: int | None = None
     label: str
 
 

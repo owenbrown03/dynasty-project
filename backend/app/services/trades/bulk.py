@@ -40,8 +40,28 @@ from app.services.waivers.dynasty import (
     DYNASTY_FANTASY_POSITIONS,
 )
 from app.utils.age import calculate_age
+from app.crud.auth.user import get_draft_pick_projection_settings
+from app.crud.sleeper.draft import (
+    get_completed_draft_seasons_by_league_ids,
+    get_drafts_by_league_ids,
+)
+from app.crud.sleeper.league import get_sync_states
 from app.crud.sleeper.roster import get_all_rosters_by_league
 from app.crud.sleeper.user import get_user_names_by_id
+from app.infrastructure.redis.client import RedisClient
+from app.models.db.auth import SiteUser
+from app.services.draft.picks import (
+    build_slot_by_roster_id,
+    get_first_future_pick_season,
+    get_league_draft_for_season,
+)
+from app.services.draft.projection import (
+    build_cached_projected_pick_slots_by_roster_id,
+    build_redraft_value_by_roster_id,
+    redraft_projection_basis_for_method,
+    redraft_value_system_active,
+    resolve_draft_pick_projection_method,
+)
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
     get_visible_owned_league_rows_by_username,
@@ -325,6 +345,8 @@ async def get_bulk_trade_availability(
     send_picks: list[BulkTradePickRequest],
     receive_player_ids: list[str],
     receive_picks: list[BulkTradePickRequest],
+    redis: RedisClient | None = None,
+    site_user: SiteUser | None = None,
 ) -> BulkTradeAvailabilityResponse:
     if (
         len(send_player_ids) + len(send_picks) == 0
@@ -394,6 +416,95 @@ async def get_bulk_trade_availability(
         )
     )
 
+    has_picks = bool(send_picks or receive_picks)
+    slots_by_league_id: dict[str, dict[tuple[str, int], int]] = {}
+    projected_slots_by_league_id: dict[str, dict[tuple[str, int], int]] = {}
+
+    if has_picks and league_ids:
+        try:
+            draft_pick_projection_settings = get_draft_pick_projection_settings(site_user)
+            drafts_by_league_id = await get_drafts_by_league_ids(db, league_ids)
+            completed_seasons_by_league_id = await get_completed_draft_seasons_by_league_ids(db, league_ids)
+            sync_states_by_league_id = await get_sync_states(db, league_ids)
+
+            requested_pick_seasons = {
+                pick.season for pick in [*send_picks, *receive_picks]
+            }
+
+            for row in owned_rows:
+                league = row.league
+                league_id = league.league_id
+                league_rosters = rosters_by_league.get(league_id, [])
+                drafts = drafts_by_league_id.get(league_id, [])
+                completed_seasons = completed_seasons_by_league_id.get(league_id, set())
+
+                league_slots: dict[tuple[str, int], int] = {}
+                for season in requested_pick_seasons:
+                    slot_map = build_slot_by_roster_id(
+                        draft=get_league_draft_for_season(drafts=drafts, season=season),
+                        rosters=league_rosters,
+                    )
+                    for roster_id, slot in slot_map.items():
+                        league_slots[(season, roster_id)] = slot
+                if league_slots:
+                    slots_by_league_id[league_id] = league_slots
+
+                next_pick_season = get_first_future_pick_season(
+                    league,
+                    drafts=drafts,
+                    completed_draft_seasons=completed_seasons,
+                )
+
+                if next_pick_season in requested_pick_seasons:
+                    current_week = (
+                        sync_states_by_league_id[league_id].last_synced_week
+                        if league_id in sync_states_by_league_id
+                        else int(
+                            (league.settings or {}).get("last_scored_leg")
+                            or (league.settings or {}).get("leg")
+                            or 0
+                        )
+                    )
+
+                    redraft_value_by_roster_id = None
+                    if redraft_value_system_active(
+                        current_week=current_week,
+                        settings=draft_pick_projection_settings,
+                    ):
+                        redraft_value_by_roster_id = await build_redraft_value_by_roster_id(
+                            db,
+                            league_rosters,
+                            basis=(
+                                redraft_projection_basis_for_method(
+                                    resolve_draft_pick_projection_method(
+                                        current_week=current_week,
+                                        settings=draft_pick_projection_settings,
+                                    )
+                                )
+                                or "sleeper_projection"
+                            ),
+                        )
+
+                    proj_result = await build_cached_projected_pick_slots_by_roster_id(
+                        redis=redis,
+                        league=league,
+                        rosters=league_rosters,
+                        current_week=current_week,
+                        redraft_value_by_roster_id=redraft_value_by_roster_id,
+                        settings=draft_pick_projection_settings,
+                    )
+
+                    if proj_result.slots_by_roster_id:
+                        projected_slots_by_league_id[league_id] = {
+                            (next_pick_season, roster_id): slot
+                            for roster_id, slot in proj_result.slots_by_roster_id.items()
+                        }
+        except Exception as err:
+            logger.warning(
+                "Failed to calculate pick slot projections for bulk trades error=%s",
+                err,
+            )
+
     pick_assets_by_league_id = (
         await get_current_pick_assets_by_league(
             sleeper=sleeper,
@@ -417,6 +528,8 @@ async def get_bulk_trade_availability(
             roster_names_by_league_id=(
                 roster_names_by_league_id
             ),
+            slots_by_league=slots_by_league_id,
+            projected_slots_by_league=projected_slots_by_league_id,
         )
     )
 

@@ -1319,6 +1319,8 @@ export interface TradeDraftPickAsset {
   og_roster_id: number;
   current_owner_roster_id: number;
   original_owner_name: string | null;
+  slot?: number | null;
+  projected_slot?: number | null;
   label: string;
 }
 

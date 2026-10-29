@@ -301,3 +301,87 @@ def test_validate_and_build_trade_variables_receive_faab_exceeded(monkeypatch):
     assert exc_info.value.status_code == 400
     assert "The counterparty does not have enough FAAB available" in exc_info.value.detail
 
+
+def test_build_pick_label_with_projected_slot():
+    from app.services.trades.picks import build_pick_label
+
+    # Next-year pick with projected slot - original owner
+    label_orig = build_pick_label(
+        season="2027",
+        round_number=1,
+        og_roster_id=2,
+        current_owner_roster_id=2,
+        roster_name_by_id={2: "browntown333"},
+        projected_slot=4,
+        is_projected=True,
+    )
+    assert label_orig == "2027 Pick 1.04 (proj.) (browntown333's original)"
+
+    # Next-year pick with projected slot - acquired pick
+    label_acquired = build_pick_label(
+        season="2027",
+        round_number=1,
+        og_roster_id=3,
+        current_owner_roster_id=2,
+        roster_name_by_id={3: "Darven"},
+        projected_slot=9,
+        is_projected=True,
+    )
+    assert label_acquired == "2027 Pick 1.09 (proj.) (from Darven)"
+
+    # Future pick beyond next year (no projection)
+    label_future = build_pick_label(
+        season="2028",
+        round_number=2,
+        og_roster_id=2,
+        current_owner_roster_id=2,
+        roster_name_by_id={2: "browntown333"},
+    )
+    assert label_future == "2028 Round 2 (browntown333's original)"
+
+    # Fixed slot (e.g. current year draft order set)
+    label_fixed = build_pick_label(
+        season="2026",
+        round_number=1,
+        og_roster_id=2,
+        current_owner_roster_id=2,
+        roster_name_by_id={2: "browntown333"},
+        slot=3,
+    )
+    assert label_fixed == "2026 Pick 1.03 (browntown333's original)"
+
+
+def test_get_current_pick_assets_by_league_with_projected_slots():
+    from app.services.trades.picks import get_current_pick_assets_by_league
+
+    sleeper = MagicMock()
+    sleeper.read.get_traded_picks = AsyncMock(return_value=[])
+
+    roster1 = SimpleNamespace(roster_id=1, owner_id="user1")
+    roster2 = SimpleNamespace(roster_id=2, owner_id="user2")
+
+    res = asyncio.run(
+        get_current_pick_assets_by_league(
+            sleeper=sleeper,
+            rosters_by_league_id={"league_1": [roster1, roster2]},
+            requested_picks=[("2027", 1)],
+            roster_names_by_league_id={"league_1": {1: "Team 1", 2: "Team 2"}},
+            projected_slots_by_league={
+                "league_1": {
+                    ("2027", 1): 2,
+                    ("2027", 2): 7,
+                }
+            },
+        )
+    )
+
+    picks = res["league_1"]
+    assert len(picks) == 2
+    assert picks[0].og_roster_id == 1
+    assert picks[0].projected_slot == 2
+    assert picks[0].label == "2027 Pick 1.02 (proj.) (Team 1's original)"
+    assert picks[1].og_roster_id == 2
+    assert picks[1].projected_slot == 7
+    assert picks[1].label == "2027 Pick 1.07 (proj.) (Team 2's original)"
+
+
