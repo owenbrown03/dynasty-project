@@ -577,6 +577,9 @@ export const BulkOffersTab = ({
           receivePickLabels: selectedReceivePicks.map(
             pick => pick.label,
           ),
+          dropCandidates: league.drop_candidates,
+          neededDrops: league.needed_drops,
+          openRosterSpots: league.open_roster_spots,
         },
       ];
     });

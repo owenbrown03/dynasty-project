@@ -1,5 +1,6 @@
 import {
   Check,
+  Info,
   LoaderCircle,
   Send,
   X,
@@ -7,6 +8,7 @@ import {
 import { useState } from 'react';
 
 import type {
+  BulkTradeDropCandidate,
   BulkTradeOfferRequest,
   BulkTradePlayerSearchResult,
   BulkTradeProposalResult,
@@ -31,6 +33,9 @@ interface ReviewOffer {
   counterpartyName: string;
   sendPickLabels: string[];
   receivePickLabels: string[];
+  dropCandidates?: BulkTradeDropCandidate[];
+  neededDrops?: number;
+  openRosterSpots?: number | null;
 }
 
 
@@ -250,6 +255,20 @@ export const BulkTradeReviewModal = ({
                             )
                           }
                         </strong>
+
+                        {item.dropCandidates && item.dropCandidates.length > 0 && (
+                          <div className="bulk-trade-review-drop-note">
+                            <Info size={12} />
+                            <span>
+                              {item.neededDrops && item.neededDrops > 0
+                                ? 'Roster full: inevitably dropping '
+                                : `Roster note (${item.openRosterSpots ?? 0} open spots): inevitable drop `}
+                              <strong>
+                                {item.dropCandidates.map(c => `${c.name} (${c.position ? `${c.position} · ` : ''}${Math.round(c.value ?? 0)} value)`).join(', ')}
+                              </strong>
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </article>
                   ))

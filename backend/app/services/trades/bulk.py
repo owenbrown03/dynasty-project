@@ -14,10 +14,12 @@ from app.models.db.sleeper.connection import (
 )
 from app.integrations.sleeper.client import SleeperClient
 from app.integrations.sleeper.exceptions import SleeperGraphQLError
+from app.models.db.ktc.models import KTCValue
 from app.models.db.sleeper import api as model
 from app.schemas.trades import (
     BulkTradeAvailabilityResponse,
     BulkTradeCounterparty,
+    BulkTradeDropCandidate,
     BulkTradeLeagueAvailability,
     BulkTradeOfferRequest,
     BulkTradePickChoice,
@@ -533,11 +535,83 @@ async def get_bulk_trade_availability(
         )
     )
 
+    net_players = len(receive_player_ids) - len(send_player_ids)
+    all_candidate_pids: set[str] = set()
+    if net_players > 0:
+        for row in owned_rows:
+            all_candidate_pids.update(row.roster.players or [])
+
+    drop_player_by_id: dict[str, model.Player] = {}
+    drop_ktc_by_id: dict[str, KTCValue] = {}
+    if all_candidate_pids:
+        p_rows = (
+            await db.execute(
+                select(model.Player).where(
+                    model.Player.player_id.in_(all_candidate_pids)
+                )
+            )
+        ).scalars().all()
+        drop_player_by_id = {p.player_id: p for p in p_rows}
+
+        k_rows = (
+            await db.execute(
+                select(KTCValue).where(
+                    KTCValue.player_id.in_(all_candidate_pids)
+                )
+            )
+        ).scalars().all()
+        drop_ktc_by_id = {k.player_id: k for k in k_rows}
+
     availability_rows = []
 
     for row in owned_rows:
         your_roster = row.roster
         league = row.league
+
+        league_drop_candidates: list[BulkTradeDropCandidate] = []
+        open_spots = your_roster.open_roster_spots(league)
+        needed_drops = max(0, net_players - open_spots) if net_players > 0 else 0
+
+        if net_players > 0 and your_roster.players:
+            is_sf = "SUPER_FLEX" in (league.roster_positions or []) or (league.roster_positions or []).count("QB") >= 2
+            parked_ids = set((your_roster.reserve or []) + (your_roster.taxi or [])) if not league.is_best_ball else set()
+            eligible_pids = [
+                pid for pid in your_roster.players
+                if pid not in send_player_ids and pid not in parked_ids
+            ]
+            if not eligible_pids:
+                eligible_pids = [
+                    pid for pid in your_roster.players
+                    if pid not in send_player_ids
+                ]
+
+            def _get_player_val(pid: str) -> float:
+                k = drop_ktc_by_id.get(pid)
+                if not k:
+                    return 0.0
+                val = k.sf_value if is_sf and k.sf_value is not None else k.value
+                return float(val or 0.0)
+
+            sorted_pids = sorted(
+                eligible_pids,
+                key=lambda pid: (
+                    _get_player_val(pid),
+                    drop_player_by_id.get(pid).full_name if drop_player_by_id.get(pid) else pid,
+                ),
+            )
+            cut_pids = sorted_pids[:net_players]
+
+            for pid in cut_pids:
+                p = drop_player_by_id.get(pid)
+                league_drop_candidates.append(
+                    BulkTradeDropCandidate(
+                        player_id=pid,
+                        name=p.full_name if p else f"Player {pid}",
+                        position=p.position if p else None,
+                        team=p.team if p else None,
+                        value=_get_player_val(pid),
+                    )
+                )
         league_rosters = rosters_by_league.get(
             league.league_id,
             [],
@@ -631,6 +705,9 @@ async def get_bulk_trade_availability(
                     league_avatar=league.avatar,
                     your_roster_id=your_roster.roster_id,
                     your_faab_available=your_roster.faab_remaining(league),
+                    open_roster_spots=open_spots,
+                    needed_drops=needed_drops,
+                    drop_candidates=league_drop_candidates,
                     is_eligible=False,
                     ineligibility_reason=(
                         "No single opposing roster can satisfy every selected receive asset in this league."
@@ -646,6 +723,9 @@ async def get_bulk_trade_availability(
                 league_avatar=league.avatar,
                 your_roster_id=your_roster.roster_id,
                 your_faab_available=your_roster.faab_remaining(league),
+                open_roster_spots=open_spots,
+                needed_drops=needed_drops,
+                drop_candidates=league_drop_candidates,
                 is_eligible=True,
                 counterparty_options=counterparty_options,
             )
