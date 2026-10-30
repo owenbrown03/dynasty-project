@@ -340,6 +340,7 @@ export function useBulkWaiverAvailability(
       canRead
       && !!playerId
     ),
+    staleTime: 60_000,
   });
 
   return {

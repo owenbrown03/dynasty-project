@@ -24,6 +24,12 @@ import type {
 import { BulkClaimLeagueRow } from './BulkClaimLeagueRow';
 import { BulkClaimReviewModal } from './BulkClaimReviewModal';
 import { BulkPlayerSearch } from './BulkPlayerSearch';
+import {
+  clearBulkWaiverDraft,
+  loadBulkWaiverDraft,
+  reconcileBulkWaiverClaims,
+  saveBulkWaiverDraft,
+} from './bulkWaiverDraft';
 
 
 interface BulkClaimsTabProps {
@@ -72,19 +78,65 @@ export const BulkClaimsTab = ({
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const initialDraft = useMemo(() => loadBulkWaiverDraft(), []);
+
   const [selectedPlayer, setSelectedPlayer] = useState<
     BulkWaiverPlayerSearchResult | undefined
-  >();
+  >(() => initialDraft?.selectedPlayer);
 
   const [claimsByLeagueId, setClaimsByLeagueId] = useState<
     Record<string, WaiverClaimRequest>
-  >({});
+  >(() => initialDraft?.claimsByLeagueId ?? {});
 
   const [showReview, setShowReview] = useState(false);
 
   const {
     canWrite,
   } = useSleeperConnection();
+
+  const search = useBulkWaiverPlayerSearch(
+    searchQuery,
+  );
+
+  const availability = useBulkWaiverAvailability(
+    selectedPlayer?.player_id,
+    valueBasis,
+  );
+
+  const bulkSubmit = useSubmitBulkWaiverClaims();
+
+  useEffect(() => {
+    if (!selectedPlayer) {
+      clearBulkWaiverDraft();
+      return;
+    }
+
+    saveBulkWaiverDraft({
+      selectedPlayer,
+      claimsByLeagueId,
+      updatedAt: Date.now(),
+    });
+  }, [claimsByLeagueId, selectedPlayer]);
+
+  useEffect(() => {
+    if (!availability.data?.leagues || !selectedPlayer?.player_id) {
+      return;
+    }
+
+    setClaimsByLeagueId((current) =>
+      reconcileBulkWaiverClaims(
+        availability.data!.leagues,
+        current,
+        selectedPlayer.player_id,
+      ),
+    );
+  }, [availability.data, selectedPlayer?.player_id]);
+
+  useEffect(() => {
+    if (bulkSubmit.data?.results.some((r) => r.success)) {
+      clearBulkWaiverDraft();
+    }
+  }, [bulkSubmit.data]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -97,17 +149,6 @@ export const BulkClaimsTab = ({
   }, [
     searchInput,
   ]);
-
-  const search = useBulkWaiverPlayerSearch(
-    searchQuery,
-  );
-
-  const availability = useBulkWaiverAvailability(
-    selectedPlayer?.player_id,
-    valueBasis,
-  );
-
-  const bulkSubmit = useSubmitBulkWaiverClaims();
 
   const selectedClaims = useMemo(
     () => Object.values(claimsByLeagueId),
@@ -122,7 +163,7 @@ export const BulkClaimsTab = ({
       ])
       ?? [],
     ),
-    [availability.data],
+    [availability],
   );
 
   const handlePlayerSelect = (
@@ -369,6 +410,7 @@ export const BulkClaimsTab = ({
 
                 if (bulkSubmit.data) {
                   setClaimsByLeagueId({});
+                  clearBulkWaiverDraft();
                   bulkSubmit.reset();
                 }
               }}

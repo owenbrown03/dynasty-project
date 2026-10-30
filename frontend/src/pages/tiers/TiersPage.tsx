@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useCallback, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { PlayerAvatar } from '@/components/players/PlayerAvatar';
 import { TeamBadge } from '@/components/players/TeamBadge';
@@ -24,6 +24,10 @@ import {
   TIER_SOURCE_OPTIONS,
 } from './tier.constants';
 import './TiersPage.css';
+
+function isTierSource(value: string | null): value is TierBoardSource {
+  return TIER_SOURCE_OPTIONS.some((opt) => opt.value === value);
+}
 
 function TierBoardSkeleton() {
   return (
@@ -132,12 +136,52 @@ function getExposureTone(
 
 export const TiersPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const valuePreference = useValuePreference();
   const initialSource = valuePreference.preference;
-  const [source, setSource] = useState<TierBoardSource>(
-    initialSource,
+
+  const sourceParam = searchParams.get('source');
+  const source: TierBoardSource = (
+    isTierSource(sourceParam) ? sourceParam : initialSource
   );
-  const [leagueId, setLeagueId] = useState('');
+
+  const setSource = useCallback(
+    (nextSource: TierBoardSource) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (nextSource === initialSource) {
+            next.delete('source');
+          } else {
+            next.set('source', nextSource);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [initialSource, setSearchParams],
+  );
+
+  const leagueId = searchParams.get('league_id') ?? '';
+  const setLeagueId = useCallback(
+    (nextLeagueId: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (!nextLeagueId) {
+            next.delete('league_id');
+          } else {
+            next.set('league_id', nextLeagueId);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const debouncedLeagueId = useDebouncedValue(
     leagueId,
     250,
