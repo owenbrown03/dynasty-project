@@ -48,6 +48,8 @@ class TradeDraftPickAsset(Base):
     current_owner_roster_id: int
 
     original_owner_name: str | None = None
+    slot: int | None = None
+    projected_slot: int | None = None
     label: str
 
 
@@ -65,6 +67,14 @@ class BulkTradeCounterparty(Base):
     )
 
 
+class BulkTradeDropCandidate(Base):
+    player_id: str
+    name: str
+    position: str | None = None
+    team: str | None = None
+    value: float | None = None
+
+
 class BulkTradeLeagueAvailability(Base):
     league_id: str
     league_name: str
@@ -75,6 +85,13 @@ class BulkTradeLeagueAvailability(Base):
 
     is_eligible: bool
     ineligibility_reason: str | None = None
+
+    open_roster_spots: int | None = None
+    needed_drops: int = 0
+    drop_candidates: list[BulkTradeDropCandidate] = Field(
+        default_factory=list,
+    )
+
     counterparty_options: list[BulkTradeCounterparty] = Field(
         default_factory=list,
     )

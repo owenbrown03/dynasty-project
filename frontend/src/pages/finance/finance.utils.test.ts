@@ -210,14 +210,18 @@ describe('finance utils', () => {
       {
         label: '2025',
         subLabel: '1 league',
+        buyInAmount: 25,
         winningsAmount: 200,
+        actualWinningsAmount: 200,
         netAmount: 175,
         isProjected: false,
       },
       {
         label: '2026',
         subLabel: '1 league · projected',
+        buyInAmount: 25,
         winningsAmount: 40,
+        actualWinningsAmount: null,
         netAmount: 15,
         isProjected: true,
       },

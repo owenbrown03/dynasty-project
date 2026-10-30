@@ -34,6 +34,7 @@ from app.schemas.finance import (
     FinanceSeasonReset,
     FinanceLeagueSeasonUpdate,
     FinanceSummaryResponse,
+    FinanceTimelineResponse,
 )
 from app.schemas.reminders import (
     ReminderCreate,
@@ -72,6 +73,7 @@ from app.services.commissioner.general_settings import (
 from app.services.commissioner.polls import broadcast_commissioner_poll
 from app.services.finance import (
     get_finance_summary,
+    get_finance_timeline,
     reset_finance_entry,
     save_finance_defaults,
     save_finance_entry,
@@ -217,6 +219,20 @@ async def get_finance_summary_endpoint(
 ):
     return await get_finance_summary(
         ctx,
+    )
+
+
+@router.get(
+    "/finance/timeline",
+    response_model=FinanceTimelineResponse,
+)
+async def get_finance_timeline_endpoint(
+    ctx: ContextDep,
+    season: str | None = None,
+):
+    return await get_finance_timeline(
+        ctx,
+        season=season,
     )
 
 

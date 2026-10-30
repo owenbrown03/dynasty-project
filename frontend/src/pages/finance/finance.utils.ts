@@ -22,7 +22,9 @@ export type FinanceChartEntry = {
   key: string;
   label: string;
   subLabel: string;
+  buyInAmount?: number;
   winningsAmount: number;
+  actualWinningsAmount?: number | null;
   projectedWinningsAmount: number;
   netAmount: number;
   isProjected: boolean;
@@ -287,24 +289,35 @@ export function buildSeasonChartEntries(
   const bySeason = new Map<
     string,
     {
+      buyInAmount: number;
       winningsAmount: number;
+      actualWinningsAmount: number;
       projectedWinningsAmount: number;
       netAmount: number;
       leagueCount: number;
       projectedCount: number;
+      completedCount: number;
     }
   >();
 
   for (const entry of entries) {
     const current = bySeason.get(entry.season) ?? {
+      buyInAmount: 0,
       winningsAmount: 0,
+      actualWinningsAmount: 0,
       projectedWinningsAmount: 0,
       netAmount: 0,
       leagueCount: 0,
       projectedCount: 0,
+      completedCount: 0,
     };
 
+    current.buyInAmount += entry.buy_in_amount;
     current.winningsAmount += effectiveFinanceWinnings(entry);
+    if (isFinanceSeasonComplete(entry)) {
+      current.actualWinningsAmount += entry.winnings_amount;
+      current.completedCount += 1;
+    }
     current.projectedWinningsAmount += entry.projected_winnings_amount;
     current.netAmount += effectiveFinanceNet(entry);
     current.leagueCount += 1;
@@ -322,7 +335,9 @@ export function buildSeasonChartEntries(
       subLabel: `${totals.leagueCount} ${
         totals.leagueCount === 1 ? 'league' : 'leagues'
       }${totals.projectedCount > 0 ? ' · projected' : ''}`,
+      buyInAmount: totals.buyInAmount,
       winningsAmount: totals.winningsAmount,
+      actualWinningsAmount: totals.completedCount > 0 ? totals.actualWinningsAmount : null,
       projectedWinningsAmount: totals.projectedWinningsAmount,
       netAmount: totals.netAmount,
       isProjected: totals.projectedCount > 0,
@@ -333,21 +348,31 @@ export function buildSeasonChartEntries(
 }
 
 export function buildCurrentFinanceTimeline(
-  entries: FinanceLeagueSeasonEntry[],
+  entries: FinanceLeagueSeasonEntry[] | FinanceTimelinePoint[],
 ): FinanceTimelinePoint[] {
   if (!entries.length) {
     return [];
+  }
+
+  // If already timeline points
+  if ('week' in entries[0] && 'label' in entries[0] && ('actualAmount' in entries[0] || 'projectedAmount' in entries[0])) {
+    return (entries as FinanceTimelinePoint[]).map((point) => ({
+      week: point.week,
+      label: point.label,
+      actualAmount: point.actualAmount ?? null,
+      projectedAmount: point.projectedAmount,
+    }));
   }
 
   return [
     {
       week: 1,
       label: 'Week 1',
-      actualAmount: entries.reduce(
+      actualAmount: (entries as FinanceLeagueSeasonEntry[]).reduce(
         (sum, entry) => sum + effectiveFinanceWinnings(entry),
         0,
       ),
-      projectedAmount: entries.reduce(
+      projectedAmount: (entries as FinanceLeagueSeasonEntry[]).reduce(
         (sum, entry) => sum + entry.projected_winnings_amount,
         0,
       ),

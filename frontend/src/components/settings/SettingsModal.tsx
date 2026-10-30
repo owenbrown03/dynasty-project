@@ -41,6 +41,11 @@ const DRAFT_PICK_PROJECTION_METHOD_OPTIONS: Array<{
     description: 'Ranks rosters by total FantasyCalc redraft value, then points for and projected points as tiebreakers.',
   },
   {
+    value: 'points_for',
+    label: 'Points for',
+    description: 'Uses cumulative points for first, then projected points as tiebreakers.',
+  },
+  {
     value: 'max_pf',
     label: 'Max PF',
     description: 'Uses cumulative potential points first, then points for and projected points as tiebreakers.',

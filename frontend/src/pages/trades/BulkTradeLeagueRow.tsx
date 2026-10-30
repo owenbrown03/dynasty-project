@@ -1,4 +1,6 @@
 
+import { Info } from 'lucide-react';
+
 import { LeagueAvatar } from '@/components/leagues/LeagueAvatar';
 import type {
   BulkTradeCounterparty,
@@ -201,6 +203,20 @@ export const BulkTradeLeagueRow = ({
                   ? 'Sending to 1 manager'
                   : 'No managers selected'}
             </span>
+
+            {league.drop_candidates && league.drop_candidates.length > 0 && (
+              <div className="bulk-trade-drop-note">
+                <Info size={12} />
+                <span>
+                  {league.needed_drops && league.needed_drops > 0
+                    ? 'Roster full: inevitably dropping '
+                    : `Roster note (${league.open_roster_spots ?? 0} open spots): inevitable drop `}
+                  <strong>
+                    {league.drop_candidates.map(c => `${c.name} (${c.position ? `${c.position} · ` : ''}${Math.round(c.value ?? 0)} value)`).join(', ')}
+                  </strong>
+                </span>
+              </div>
+            )}
           </div>
         </label>
       </div>

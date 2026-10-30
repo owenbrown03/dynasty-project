@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 from typing import Dict, List
 
 from pydantic import TypeAdapter
@@ -17,6 +19,13 @@ from app.crud.sleeper.leaguemate import get_leaguemate_ids
 from app.crud.sleeper.personal import get_hidden_league_ids
 from app.crud.sleeper.player import get_player_map, get_player_map_for_ids
 from app.crud.sleeper.user import get_userid_by_username
+
+# Track in-flight calculations to prevent duplicate work
+# Thread pool for CPU-heavy trade signal calculations
+trade_signals_thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="trade-signals")
+
+# Track in-flight calculations to prevent duplicate work
+_trade_signals_inflight = {}
 from app.integrations.sleeper.schemas import display
 from app.models.db.sleeper import api as model
 from app.models.db.sleeper.connection import SleeperConnection
@@ -184,6 +193,28 @@ async def get_trade_signals(
     redis: RedisClient | None = None,
     cheap: bool = False,
 ) -> List[display.Transaction]:
+    # Deduplicate concurrent requests for the same user
+    dedup_key = f"{username}:{str(site_user_id) if site_user_id else None}:{cheap}"
+    if dedup_key in _trade_signals_inflight:
+        logger.info(f"Trade signals deduplicating request for user={username}")
+        return await _trade_signals_inflight[dedup_key]
+    
+    task = asyncio.create_task(_get_trade_signals_impl(db, sleeper, username, site_user_id, redis, cheap))
+    _trade_signals_inflight[dedup_key] = task
+    try:
+        return await task
+    finally:
+        _trade_signals_inflight.pop(dedup_key, None)
+
+
+async def _get_trade_signals_impl(
+    db: AsyncSession,
+    sleeper: SleeperClient,
+    username: str,
+    site_user_id: UUID | None = None,
+    redis: RedisClient | None = None,
+    cheap: bool = False,
+) -> List[display.Transaction]:
     """
     Evaluates historical trade records to find high-value cross-league strategies.
     Uses structured milestone logging for stateless engine auditing.
@@ -328,10 +359,10 @@ async def get_trade_signals(
         else:
             player_map = await get_player_map(db)
         
+        logger.info("Starting processing loop execution blocks...")
+        
         final_trades = []
         log_milestone = max(1, total_trades // 10)
-        
-        logger.info("Starting processing loop execution blocks...")
         
         for idx, (tx_id, tx) in enumerate(lm_trades_data.items(), start=1):
             trade_obj = tx['trade']
@@ -354,129 +385,120 @@ async def get_trade_signals(
                 signal_text = ""
 
                 if cheap:
-                    if m.action == "DROP":
+                    if m.action == "DROP" and user_id:
                         users_dict[user_id]["drops"].append(display.Movement(name=asset_name, signal=""))
-                    elif m.action == "ADD":
+                    elif m.action == "ADD" and user_id:
                         users_dict[user_id]["adds"].append(display.Movement(name=asset_name, signal=""))
                 else:
                     if m.action == "DROP":
-                        # A drop/sell in league_id can never be a buy opportunity in that same league
-                        shared_with_this_lm = (
-                            player_to_leagues[user_id][m.player_id]
-                            .intersection(shared_leagues[user_id])
-                            - {league_id}
-                        )
-                        if shared_with_this_lm and user_id != main_user_id:
-                            signals = list(dict.fromkeys(
-                                league_map[lid] for lid in shared_with_this_lm if lid in league_map
-                            ))
-                            if signals:
-                                signal_text = f"Buy opportunity ({', '.join(signals)})"
-                                has_signal = True
-                        player_to_leagues[user_id][m.player_id].discard(league_id)
-                        users_dict[user_id]["drops"].append(display.Movement(name=asset_name, signal=signal_text))
+                        if user_id and m.player_id:
+                            shared_with_this_lm = (
+                                player_to_leagues[user_id][m.player_id]
+                                .intersection(shared_leagues[user_id])
+                                - {league_id}
+                            )
+                            if shared_with_this_lm and user_id != main_user_id:
+                                signals_list = list(dict.fromkeys(
+                                    league_map[lid] for lid in shared_with_this_lm if lid in league_map
+                                ))
+                                if signals_list:
+                                    signal_text = f"Buy opportunity ({', '.join(signals_list)})"
+                                    has_signal = True
+                            player_to_leagues[user_id][m.player_id].discard(league_id)
+                        if user_id:
+                            users_dict[user_id]["drops"].append(display.Movement(name=asset_name, signal=signal_text))
 
                     elif m.action == "ADD":
-                        # A manager acquiring a player in league_id is not a sell target in that same league
-                        my_ownership = (
-                            player_to_leagues[main_user_id][m.player_id]
-                            .intersection(shared_leagues[user_id])
-                            - {league_id}
-                        )
-                        if my_ownership and user_id != main_user_id:
-                            signals = list(dict.fromkeys(
-                                league_map[lid] for lid in my_ownership if lid in league_map
-                            ))
-                            if signals:
-                                signal_text = f"Sell opportunity ({', '.join(signals)})"
-                                has_signal = True
-                        player_to_leagues[user_id][m.player_id].add(league_id)
-                        users_dict[user_id]["adds"].append(display.Movement(name=asset_name, signal=signal_text))
+                        if user_id and m.player_id and main_user_id:
+                            my_ownership = (
+                                player_to_leagues[main_user_id][m.player_id]
+                                .intersection(shared_leagues[user_id])
+                                - {league_id}
+                            )
+                            if my_ownership and user_id != main_user_id:
+                                signals_list = list(dict.fromkeys(
+                                    league_map[lid] for lid in my_ownership if lid in league_map
+                                ))
+                                if signals_list:
+                                    signal_text = f"Sell opportunity ({', '.join(signals_list)})"
+                                    has_signal = True
+                        if user_id and m.player_id:
+                            player_to_leagues[user_id][m.player_id].add(league_id)
+                        if user_id:
+                            users_dict[user_id]["adds"].append(display.Movement(name=asset_name, signal=signal_text))
 
             for p in tx['picks']:
                 signal_text = ""
-                year = p.season
-                round_num = p.round
+                year = getattr(p, 'season', '')
+                round_num = getattr(p, 'round', '')
                 draft_id = getattr(p, 'draft_id', None)
+                asset = f"{year} Round {round_num} Pick"
+                user_id = roster_owner_map[league_id].get(getattr(p, 'new_roster_id', None))
+                old_user_id = roster_owner_map[league_id].get(getattr(p, 'old_roster_id', None))
                 
-                user_id = roster_owner_map[league_id].get(p.new_roster_id)
-                old_user_id = roster_owner_map[league_id].get(p.old_roster_id)
-                og_user_id = roster_owner_map[league_id].get(p.og_roster_id)
+                if not cheap and user_id and old_user_id and user_id != main_user_id and old_user_id == main_user_id:
+                    if draft_id and draft_id in draft_orders:
+                        pick_order = draft_orders[draft_id]
+                        if isinstance(pick_order, dict) and old_user_id in pick_order:
+                            try:
+                                if str(getattr(p, 'pick_no', '')) in str(pick_order[old_user_id]):
+                                    signal_text = "Sell opportunity (high pick)"
+                                    has_signal = True
+                            except Exception:
+                                pass
                 
-                try:
-                    if cheap:
-                        asset = f"{year} Round {round_num}"
-                    else:
-                        draft_order = draft_orders[draft_id][year]
-                        pick_slot = draft_order[og_user_id]
-                        asset = f"{year} Pick {round_num}.{pick_slot:02d}"
-                except (
-                    KeyError,
-                    TypeError,
-                ):
-                    asset = f"{year} Round {round_num}"
-                    
-                if user_id not in users_dict:
-                    users_dict[user_id] = {"adds": [], "drops": []}
-                users_dict[user_id]["adds"].append(display.Movement(name=asset, signal=signal_text))
-                
-                if old_user_id not in users_dict:
-                    users_dict[old_user_id] = {"adds": [], "drops": []}
-                users_dict[old_user_id]["drops"].append(display.Movement(name=asset, signal=signal_text))
+                if user_id:
+                    if user_id not in users_dict:
+                        users_dict[user_id] = {"adds": [], "drops": []}
+                    users_dict[user_id]["adds"].append(display.Movement(name=asset, signal=signal_text))
+                if old_user_id:
+                    if old_user_id not in users_dict:
+                        users_dict[old_user_id] = {"adds": [], "drops": []}
+                    users_dict[old_user_id]["drops"].append(display.Movement(name=asset, signal=""))
 
             for w in tx['waivers']:
                 signal_text = ""
-                user_id = roster_owner_map[league_id].get(w.receiver)
-                old_user_id = roster_owner_map[league_id].get(w.sender)
-                asset = f"${w.amount}"
+                user_id = roster_owner_map[league_id].get(getattr(w, 'receiver', None))
+                old_user_id = roster_owner_map[league_id].get(getattr(w, 'sender', None))
+                asset = f"${getattr(w, 'amount', '')}"
                 
-                if user_id not in users_dict:
-                    users_dict[user_id] = {"adds": [], "drops": []}
-                users_dict[user_id]["adds"].append(display.Movement(name=asset, signal=signal_text))
-                
-                if old_user_id not in users_dict:
-                    users_dict[old_user_id] = {"adds": [], "drops": []}
-                users_dict[old_user_id]["drops"].append(display.Movement(name=asset, signal=signal_text))
+                if user_id:
+                    if user_id not in users_dict:
+                        users_dict[user_id] = {"adds": [], "drops": []}
+                    users_dict[user_id]["adds"].append(display.Movement(name=asset, signal=signal_text))
+                if old_user_id:
+                    if old_user_id not in users_dict:
+                        users_dict[old_user_id] = {"adds": [], "drops": []}
+                    users_dict[old_user_id]["drops"].append(display.Movement(name=asset, signal=signal_text))
 
             if has_signal:
                 ui_users = []
-                for u_id, data in users_dict.items():
+                for u_id, data_u in users_dict.items():
+                    if u_id is None:
+                        continue
                     meta = user_meta.get(u_id, {"name": "Unknown", "avatar": None, "is_placeholder": False})
                     ui_users.append(display.User(
                         display_name=meta["name"],
                         avatar=meta["avatar"],
                         is_placeholder=meta["is_placeholder"],
-                        adds=data["adds"],
-                        drops=data["drops"]
+                        adds=data_u["adds"],
+                        drops=data_u["drops"]
                     ))
                 
-                final_trades.append(display.Transaction(
-                    transaction_id=tx_id,
-                    time_ms=trade_obj.time_ms or 0,
-                    league_name=league_map.get(league_id, "Unknown League"),
-                    league_avatar=(
-                        league_meta.get(
-                            league_id,
-                            {},
-                        ).get(
-                            "avatar",
-                        )
-                    ),
-                    league_settings=(
-                        league_meta.get(
-                            league_id,
-                            {},
-                        ).get(
-                            "settings",
-                            [],
-                        )
-                    ),
-                    users=ui_users
-                ))
+                if ui_users:
+                    final_trades.append(display.Transaction(
+                        transaction_id=tx_id,
+                        time_ms=getattr(trade_obj, 'time_ms', 0) or 0,
+                        league_name=league_map.get(league_id, "Unknown League"),
+                        league_avatar=league_meta.get(league_id, {}).get("avatar") if isinstance(league_meta.get(league_id), dict) else None,
+                        league_settings=league_meta.get(league_id, {}).get("settings", []) if isinstance(league_meta.get(league_id), dict) else [],
+                        users=ui_users
+                    ))
 
             if idx % log_milestone == 0 or idx == total_trades:
                 logger.info(f"[Task Progress] Evaluated {idx}/{total_trades} records ({(idx / total_trades) * 100:.1f}%)")
-                
+
+        
         logger.info(f"Calculation complete. Identified {len(final_trades)} actionable trade cross-signals.")
         sorted_trades = sorted(
             final_trades,

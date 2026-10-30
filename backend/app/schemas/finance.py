@@ -94,3 +94,16 @@ class FinanceLeagueDefaultsUpdate(FinanceDefaultsUpdate):
     league_family_ids: list[str] = Field(
         default_factory=list,
     )
+
+
+class FinanceTimelinePoint(Base):
+    week: int
+    label: str
+    actual_amount: float = 0.0
+    projected_amount: float = 0.0
+
+
+class FinanceTimelineResponse(Base):
+    points: list[FinanceTimelinePoint] = Field(
+        default_factory=list,
+    )

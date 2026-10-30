@@ -107,6 +107,8 @@ async def bulk_trade_availability_endpoint(
         send_picks=body.send_picks,
         receive_player_ids=body.receive_player_ids,
         receive_picks=body.receive_picks,
+        redis=ctx.redis,
+        site_user=ctx.site_user,
     )
 
 

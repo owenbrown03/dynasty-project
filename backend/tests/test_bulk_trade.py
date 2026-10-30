@@ -301,3 +301,214 @@ def test_validate_and_build_trade_variables_receive_faab_exceeded(monkeypatch):
     assert exc_info.value.status_code == 400
     assert "The counterparty does not have enough FAAB available" in exc_info.value.detail
 
+
+def test_build_pick_label_with_projected_slot():
+    from app.services.trades.picks import build_pick_label
+
+    # Next-year pick with projected slot - original owner
+    label_orig = build_pick_label(
+        season="2027",
+        round_number=1,
+        og_roster_id=2,
+        current_owner_roster_id=2,
+        roster_name_by_id={2: "browntown333"},
+        projected_slot=4,
+        is_projected=True,
+    )
+    assert label_orig == "2027 Pick 1.04 (proj.) (browntown333's original)"
+
+    # Next-year pick with projected slot - acquired pick
+    label_acquired = build_pick_label(
+        season="2027",
+        round_number=1,
+        og_roster_id=3,
+        current_owner_roster_id=2,
+        roster_name_by_id={3: "Darven"},
+        projected_slot=9,
+        is_projected=True,
+    )
+    assert label_acquired == "2027 Pick 1.09 (proj.) (from Darven)"
+
+    # Future pick beyond next year (no projection)
+    label_future = build_pick_label(
+        season="2028",
+        round_number=2,
+        og_roster_id=2,
+        current_owner_roster_id=2,
+        roster_name_by_id={2: "browntown333"},
+    )
+    assert label_future == "2028 Round 2 (browntown333's original)"
+
+    # Fixed slot (e.g. current year draft order set)
+    label_fixed = build_pick_label(
+        season="2026",
+        round_number=1,
+        og_roster_id=2,
+        current_owner_roster_id=2,
+        roster_name_by_id={2: "browntown333"},
+        slot=3,
+    )
+    assert label_fixed == "2026 Pick 1.03 (browntown333's original)"
+
+
+def test_get_current_pick_assets_by_league_with_projected_slots():
+    from app.services.trades.picks import get_current_pick_assets_by_league
+
+    sleeper = MagicMock()
+    sleeper.read.get_traded_picks = AsyncMock(return_value=[])
+
+    roster1 = SimpleNamespace(roster_id=1, owner_id="user1")
+    roster2 = SimpleNamespace(roster_id=2, owner_id="user2")
+
+    res = asyncio.run(
+        get_current_pick_assets_by_league(
+            sleeper=sleeper,
+            rosters_by_league_id={"league_1": [roster1, roster2]},
+            requested_picks=[("2027", 1)],
+            roster_names_by_league_id={"league_1": {1: "Team 1", 2: "Team 2"}},
+            projected_slots_by_league={
+                "league_1": {
+                    ("2027", 1): 2,
+                    ("2027", 2): 7,
+                }
+            },
+        )
+    )
+
+    picks = res["league_1"]
+    assert len(picks) == 2
+    assert picks[0].og_roster_id == 1
+    assert picks[0].projected_slot == 2
+    assert picks[0].label == "2027 Pick 1.02 (proj.) (Team 1's original)"
+    assert picks[1].og_roster_id == 2
+    assert picks[1].projected_slot == 7
+    assert picks[1].label == "2027 Pick 1.07 (proj.) (Team 2's original)"
+
+
+def test_bulk_trade_drop_candidates_calculation(monkeypatch):
+    import app.services.trades.bulk as bulk_mod
+    from app.schemas.trades import BulkTradePickRequest
+
+    db = MagicMock()
+    sleeper = MagicMock()
+    sleeper.read.get_traded_picks = AsyncMock(return_value=[])
+
+    connection = SimpleNamespace(
+        sleeper_user_id="user_me",
+        sleeper_username="browntown",
+        site_user_id="site_1",
+    )
+
+    class FakeRoster:
+        def __init__(self):
+            self.roster_id = 1
+            self.owner_id = "user_me"
+            self.players = ["p1", "p2", "p3"]
+            self.reserve = []
+            self.taxi = []
+            self.settings = {"total_moves": 0}
+
+        def open_roster_spots(self, league):
+            return 0
+
+        def faab_remaining(self, league):
+            return 100
+
+    class FakeLeague:
+        def __init__(self):
+            self.league_id = "l1"
+            self.name = "Test League"
+            self.avatar = None
+            self.roster_positions = ["QB", "RB", "WR", "TE", "SUPER_FLEX"]
+            self.is_best_ball = False
+            self.status = "in_season"
+            self.season = "2026"
+
+    owned_row = SimpleNamespace(roster=FakeRoster(), league=FakeLeague())
+    roster2 = SimpleNamespace(
+        roster_id=2,
+        owner_id="user_other",
+        players=["p_target"],
+        reserve=[],
+        taxi=[],
+        faab_remaining=lambda league: 50,
+    )
+
+    p_target = SimpleNamespace(
+        player_id="p_target",
+        position="RB",
+        full_name="Target Player",
+        team="SF",
+        birth_date=None,
+    )
+    monkeypatch.setattr(bulk_mod, "get_bulk_trade_target_players", AsyncMock(return_value=[p_target]))
+    monkeypatch.setattr(bulk_mod, "get_visible_owned_league_rows_by_sleeper_user_id", AsyncMock(return_value=[owned_row]))
+    monkeypatch.setattr(bulk_mod, "get_all_rosters_by_league", AsyncMock(return_value={"l1": [owned_row.roster, roster2]}))
+    monkeypatch.setattr(bulk_mod, "get_user_names_by_id", AsyncMock(return_value={"user_other": "Other Manager"}))
+    monkeypatch.setattr(
+        bulk_mod,
+        "get_current_pick_assets_by_league",
+        AsyncMock(return_value={"l1": [
+            _pick(
+                season="2027",
+                round_number=1,
+                og_roster_id=1,
+                current_owner_roster_id=1,
+                label="2027 Pick 1.01",
+            )
+        ]}),
+    )
+
+    p1 = SimpleNamespace(player_id="p1", full_name="Player One", position="RB", team="NYG")
+    p2 = SimpleNamespace(player_id="p2", full_name="Player Two", position="WR", team="DAL")
+    p3 = SimpleNamespace(player_id="p3", full_name="Player Three", position="TE", team="KC")
+
+    k1 = SimpleNamespace(player_id="p1", sf_value=100.0, value=100.0)
+    k2 = SimpleNamespace(player_id="p2", sf_value=500.0, value=500.0)
+    k3 = SimpleNamespace(player_id="p3", sf_value=50.0, value=50.0)
+
+    result_p = MagicMock()
+    result_p.scalars.return_value.all.return_value = [p1, p2, p3]
+
+    result_k = MagicMock()
+    result_k.scalars.return_value.all.return_value = [k1, k2, k3]
+
+    def side_effect_exec(statement, *args, **kwargs):
+        stmt_str = str(statement).lower()
+        if "ktc" in stmt_str or "ktc_values" in stmt_str:
+            return result_k
+        if "players" in stmt_str or "player" in stmt_str:
+            return result_p
+        mock_empty = MagicMock()
+        mock_empty.scalars.return_value.all.return_value = []
+        mock_empty.all.return_value = []
+        return mock_empty
+
+    db.execute = AsyncMock(side_effect=side_effect_exec)
+
+    # Receiving 1 player (target), sending 0 players + 1 pick
+    resp = asyncio.run(
+        bulk_mod.get_bulk_trade_availability(
+            db=db,
+            connection=connection,
+            sleeper=sleeper,
+            send_player_ids=[],
+            send_picks=[BulkTradePickRequest(season="2027", round=1)],
+            receive_player_ids=["p_target"],
+            receive_picks=[],
+        )
+    )
+
+    assert len(resp.leagues) == 1
+    avail = resp.leagues[0]
+    assert avail.open_roster_spots == 0
+    assert avail.needed_drops == 1
+    assert len(avail.drop_candidates) == 1
+    # Lowest value was p3 (sf_value 50)
+    assert avail.drop_candidates[0].player_id == "p3"
+    assert avail.drop_candidates[0].name == "Player Three"
+    assert avail.drop_candidates[0].value == 50.0
+
+
+
+

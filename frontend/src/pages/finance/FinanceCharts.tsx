@@ -1,8 +1,9 @@
+import { useState } from 'react';
+import { Skeleton } from '@/components/feedback/Skeleton';
 import type {
   FinanceLeagueSeasonEntry,
 } from '@/types';
 import {
-  buildCurrentFinanceTimeline,
   effectiveFinanceNet,
   effectiveFinanceWinnings,
   financeResultLabel,
@@ -10,48 +11,510 @@ import {
   getDraftKey,
   isFinanceSeasonComplete,
   type FinanceChartEntry,
+  type FinanceTimelinePoint,
 } from './finance.utils';
 
-function buildLinePoints(
-  values: number[],
-  width: number,
-  height: number,
-) {
-  if (!values.length) {
-    return '';
+function formatCompactCurrency(val: number): string {
+  if (Math.abs(val) >= 1000) {
+    const k = val / 1000;
+    return `$${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}k`;
+  }
+  return `$${Math.round(val)}`;
+}
+
+interface FinanceLinePointData {
+  key: string | number;
+  label: string;
+  actual?: number | null;
+  projected: number;
+  buyIn?: number | null;
+}
+
+function getVisibleTickIndices(total: number): Set<number> {
+  const visible = new Set<number>();
+  if (total <= 7) {
+    for (let i = 0; i < total; i++) visible.add(i);
+    return visible;
+  }
+  const step = total > 13 ? 4 : 2;
+  visible.add(0);
+  for (let i = step; i < total - 1; i += step) {
+    visible.add(i);
+  }
+  const lastIndex = total - 1;
+  const currentTicks = Array.from(visible).sort((a, b) => a - b);
+  const prevTick = currentTicks[currentTicks.length - 1];
+  if (lastIndex - prevTick < 2) {
+    visible.delete(prevTick);
+  }
+  visible.add(lastIndex);
+  return visible;
+}
+
+function formatAxisLabel(label: string): string {
+  if (/^Week\s+(\d+)$/i.test(label)) {
+    return label.replace(/^Week\s+/i, 'W');
+  }
+  return label;
+}
+
+function getNiceTicks(
+  minVal: number,
+  maxVal: number,
+  anchorZero = true,
+): { niceMin: number; niceMax: number; ticks: number[] } {
+  const low = anchorZero ? Math.min(minVal, 0) : minVal;
+  let high = maxVal;
+  if (high <= low) {
+    high = low + 10;
   }
 
-  const minValue = Math.min(...values, 0);
-  const maxValue = Math.max(...values, 1);
-  const range = maxValue - minValue || 1;
+  const rawRange = high - low;
+  const targetCount = 3;
+  const roughStep = rawRange / targetCount;
+  const power = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const fraction = roughStep / power;
 
-  return values.map((value, index) => {
-    const x = values.length === 1
-      ? width / 2
-      : (index / (values.length - 1)) * width;
-    const y = height - (
-      ((value - minValue) / range) * height
-    );
+  let niceFraction: number;
+  if (fraction <= 1.2) {
+    niceFraction = 1;
+  } else if (fraction <= 2.5) {
+    niceFraction = 2;
+  } else if (fraction <= 3.5) {
+    niceFraction = 2.5;
+  } else if (fraction <= 7.5) {
+    niceFraction = 5;
+  } else {
+    niceFraction = 10;
+  }
 
-    return `${x},${y}`;
-  }).join(' ');
+  let step = niceFraction * power;
+  if (step < 1) {
+    step = 1;
+  }
+  if (step === 2.5) {
+    step = 5;
+  }
+
+  const niceMin = Math.floor(low / step) * step;
+  const niceMax = Math.ceil(high / step) * step;
+
+  const ticks: number[] = [];
+  for (let val = niceMin; val <= niceMax + step * 0.001; val += step) {
+    ticks.push(Math.round(val * 100) / 100);
+  }
+
+  return { niceMin, niceMax, ticks };
+}
+
+function FinanceInteractiveLineChart({
+  points,
+  showActual,
+  actualLabel,
+  projectedLabel,
+  showBuyIn = false,
+  buyInLabel = 'Buy-in',
+  anchorZero = true,
+  showStaticActualDots = true,
+  showStaticBuyInDots = true,
+}: {
+  points: FinanceLinePointData[];
+  showActual: boolean;
+  actualLabel: string;
+  projectedLabel: string;
+  showBuyIn?: boolean;
+  buyInLabel?: string;
+  anchorZero?: boolean;
+  showStaticActualDots?: boolean;
+  showStaticBuyInDots?: boolean;
+}) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  if (!points.length) {
+    return null;
+  }
+
+  const visibleTicks = getVisibleTickIndices(points.length);
+
+  const CHART_WIDTH = 380;
+  const CHART_HEIGHT = 160;
+  const PADDING_LEFT = 52;
+  const PADDING_RIGHT = 18;
+  const PADDING_TOP = 16;
+  const PADDING_BOTTOM = 26;
+
+  const plotWidth = CHART_WIDTH - PADDING_LEFT - PADDING_RIGHT;
+  const plotHeight = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
+
+  const allValues = [
+    ...points.map((p) => p.projected),
+    ...(showActual
+      ? points
+          .filter((p) => p.actual !== null && p.actual !== undefined)
+          .map((p) => p.actual as number)
+      : []),
+    ...(showBuyIn ? points.map((p) => p.buyIn ?? 0) : []),
+  ];
+
+  const rawMin = Math.min(...allValues);
+  const rawMax = Math.max(...allValues);
+
+  const { niceMin, niceMax, ticks: yTicks } = getNiceTicks(rawMin, rawMax, anchorZero);
+  const range = niceMax - niceMin || 1;
+
+  const toX = (index: number) => {
+    if (points.length <= 1) {
+      return PADDING_LEFT + plotWidth / 2;
+    }
+    return PADDING_LEFT + (index / (points.length - 1)) * plotWidth;
+  };
+
+  const toY = (val: number) => {
+    return PADDING_TOP + plotHeight - ((val - niceMin) / range) * plotHeight;
+  };
+
+  const projectedLinePoints = points
+    .map((p, i) => `${toX(i)},${toY(p.projected)}`)
+    .join(' ');
+
+  const pointsWithActual = points
+    .map((p, i) => ({
+      ...p,
+      x: toX(i),
+      y: p.actual !== null && p.actual !== undefined ? toY(p.actual) : 0,
+    }))
+    .filter((p) => p.actual !== null && p.actual !== undefined);
+
+  const actualLinePoints = showActual && pointsWithActual.length > 0
+    ? pointsWithActual.map((p) => `${p.x},${p.y}`).join(' ')
+    : '';
+
+  const buyInLinePoints = showBuyIn
+    ? points.map((p, i) => `${toX(i)},${toY(p.buyIn ?? 0)}`).join(' ')
+    : '';
+
+  const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
+  const hoveredX = hoveredIndex !== null ? toX(hoveredIndex) : null;
+
+  return (
+    <div className="finance-line-chart">
+      <svg
+        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+        aria-hidden="true"
+        onMouseLeave={() => setHoveredIndex(null)}
+      >
+        {/* Horizontal grid lines & Y-axis scale */}
+        {yTicks.map((tick, i) => {
+          const y = toY(tick);
+          return (
+            <g key={i}>
+              <line
+                x1={PADDING_LEFT}
+                y1={y}
+                x2={CHART_WIDTH - PADDING_RIGHT}
+                y2={y}
+                stroke="var(--color-border-subtle, rgba(255,255,255,0.08))"
+                strokeDasharray="3 3"
+              />
+              <text
+                x={PADDING_LEFT - 8}
+                y={y + 3.5}
+                textAnchor="end"
+                fill="var(--color-text-muted, #94a3b8)"
+                fontSize="10px"
+                fontFamily="inherit"
+              >
+                {formatCompactCurrency(tick)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* X-axis labels */}
+        {points.map((point, i) => {
+          if (!visibleTicks.has(i)) {
+            return null;
+          }
+          const displayLabel = formatAxisLabel(point.label);
+          return (
+            <text
+              key={point.key}
+              x={toX(i)}
+              y={CHART_HEIGHT - 8}
+              textAnchor="middle"
+              fill={
+                hoveredIndex === i
+                  ? 'var(--color-text-primary, #ffffff)'
+                  : 'var(--color-text-muted, #94a3b8)'
+              }
+              fontSize="11px"
+              fontWeight={hoveredIndex === i ? '600' : '400'}
+              fontFamily="inherit"
+            >
+              {displayLabel}
+            </text>
+          );
+        })}
+
+        {/* Buy-in Line */}
+        {showBuyIn && buyInLinePoints ? (
+          <>
+            <polyline
+              fill="none"
+              stroke="var(--finance-buy-in-color, #60a5fa)"
+              strokeWidth="2"
+              strokeDasharray="2 4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={buyInLinePoints}
+            />
+            {showStaticBuyInDots
+              ? points.map((point, i) => (
+                  <circle
+                    key={`buyin-dot-${point.key}`}
+                    cx={toX(i)}
+                    cy={toY(point.buyIn ?? 0)}
+                    r="3"
+                    fill="var(--finance-buy-in-color, #60a5fa)"
+                  />
+                ))
+              : null}
+          </>
+        ) : null}
+
+        {/* Actual Line */}
+        {showActual && actualLinePoints ? (
+          <>
+            {pointsWithActual.length > 1 ? (
+              <polyline
+                fill="none"
+                stroke="var(--finance-actual-color, #14b8a6)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={actualLinePoints}
+              />
+            ) : null}
+            {showStaticActualDots
+              ? pointsWithActual.map((point) => (
+                  <circle
+                    key={`act-dot-${point.key}`}
+                    cx={point.x}
+                    cy={point.y}
+                    r="3"
+                    fill="var(--finance-actual-color, #14b8a6)"
+                  />
+                ))
+              : null}
+          </>
+        ) : null}
+
+        {/* Projected Line */}
+        <polyline
+          fill="none"
+          stroke="var(--finance-projected-color, #a855f7)"
+          strokeWidth="2.5"
+          strokeDasharray="5 5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={projectedLinePoints}
+        />
+        {points.map((point, i) => (
+          <circle
+            key={`proj-dot-${point.key}`}
+            cx={toX(i)}
+            cy={toY(point.projected)}
+            r="3"
+            fill="var(--finance-projected-color, #a855f7)"
+          />
+        ))}
+
+        {/* Hover vertical guide line */}
+        {hoveredX !== null ? (
+          <line
+            x1={hoveredX}
+            y1={PADDING_TOP}
+            x2={hoveredX}
+            y2={PADDING_TOP + plotHeight}
+            stroke="var(--color-border-strong, rgba(255,255,255,0.25))"
+            strokeDasharray="2 2"
+            strokeWidth="1.5"
+            pointerEvents="none"
+          />
+        ) : null}
+
+        {/* Hovered point circles */}
+        {hoveredIndex !== null && hoveredPoint && hoveredX !== null ? (
+          <>
+            <circle
+              cx={hoveredX}
+              cy={toY(hoveredPoint.projected)}
+              r="5.5"
+              fill="var(--finance-projected-color, #a855f7)"
+              stroke="var(--color-surface, #0f172a)"
+              strokeWidth="2"
+              pointerEvents="none"
+            />
+            {showActual && hoveredPoint.actual !== null && hoveredPoint.actual !== undefined ? (
+              <circle
+                cx={hoveredX}
+                cy={toY(hoveredPoint.actual)}
+                r="5.5"
+                fill="var(--finance-actual-color, #14b8a6)"
+                stroke="var(--color-surface, #0f172a)"
+                strokeWidth="2"
+                pointerEvents="none"
+              />
+            ) : null}
+            {showBuyIn && hoveredPoint.buyIn !== undefined && hoveredPoint.buyIn !== null ? (
+              <circle
+                cx={hoveredX}
+                cy={toY(hoveredPoint.buyIn)}
+                r="5.5"
+                fill="var(--finance-buy-in-color, #60a5fa)"
+                stroke="var(--color-surface, #0f172a)"
+                strokeWidth="2"
+                pointerEvents="none"
+              />
+            ) : null}
+          </>
+        ) : null}
+
+        {/* Hover Tooltip */}
+        {hoveredIndex !== null && hoveredPoint && hoveredX !== null ? (() => {
+          const lines: { label: string; value: number; color: string }[] = [];
+          lines.push({
+            label: projectedLabel,
+            value: hoveredPoint.projected,
+            color: 'var(--finance-projected-color, #a855f7)',
+          });
+          if (showActual && hoveredPoint.actual !== null && hoveredPoint.actual !== undefined) {
+            lines.push({
+              label: actualLabel,
+              value: hoveredPoint.actual,
+              color: 'var(--finance-actual-color, #14b8a6)',
+            });
+          }
+          if (showBuyIn && hoveredPoint.buyIn !== undefined && hoveredPoint.buyIn !== null) {
+            lines.push({
+              label: buyInLabel,
+              value: hoveredPoint.buyIn,
+              color: 'var(--finance-buy-in-color, #60a5fa)',
+            });
+          }
+
+          const tooltipWidth = 152;
+          const tooltipHeight = 20 + lines.length * 16;
+          const tooltipX =
+            hoveredX > CHART_WIDTH / 2
+              ? hoveredX - tooltipWidth - 10
+              : hoveredX + 10;
+          const tooltipY = Math.min(
+            Math.max(toY(hoveredPoint.projected) - tooltipHeight / 2, PADDING_TOP),
+            CHART_HEIGHT - PADDING_BOTTOM - tooltipHeight
+          );
+
+          return (
+            <g
+              transform={`translate(${tooltipX}, ${tooltipY})`}
+              pointerEvents="none"
+            >
+              <rect
+                width={tooltipWidth}
+                height={tooltipHeight}
+                rx={6}
+                fill="var(--color-surface-raised, #1e293b)"
+                stroke="var(--color-border-subtle, rgba(255,255,255,0.15))"
+                strokeWidth="1"
+              />
+              <text
+                x={10}
+                y={14}
+                fill="var(--color-text-muted, #94a3b8)"
+                fontSize="11px"
+                fontWeight="600"
+                fontFamily="inherit"
+              >
+                {hoveredPoint.label}
+              </text>
+              {lines.map((line, idx) => (
+                <text
+                  key={line.label}
+                  x={10}
+                  y={28 + idx * 15}
+                  fill={line.color}
+                  fontSize="11px"
+                  fontWeight="500"
+                  fontFamily="inherit"
+                >
+                  {line.label}: {formatCurrency(line.value)}
+                </text>
+              ))}
+            </g>
+          );
+        })() : null}
+
+        {/* Interactive hover column slices */}
+        {points.map((point, i) => {
+          const sliceWidth =
+            points.length <= 1 ? plotWidth : plotWidth / (points.length - 1);
+          const sliceX =
+            points.length <= 1
+              ? PADDING_LEFT
+              : toX(i) - sliceWidth / 2;
+
+          return (
+            <rect
+              key={`slice-${point.key}`}
+              x={sliceX}
+              y={PADDING_TOP}
+              width={sliceWidth}
+              height={plotHeight}
+              fill="transparent"
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={() => setHoveredIndex(i)}
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 export function FinanceTrendChart({
   entries,
+  isLoading = false,
 }: {
   entries: FinanceChartEntry[];
+  isLoading?: boolean;
 }) {
-  const actualPoints = buildLinePoints(
-    entries.map((entry) => entry.winningsAmount),
-    320,
-    140,
+  if (isLoading) {
+    return (
+      <article className="finance-chart-card" aria-busy="true">
+        <div className="finance-chart-header">
+          <div>
+            <p className="finance-chart-kicker">Trend</p>
+            <h2>Results vs projected winnings</h2>
+          </div>
+        </div>
+        <div className="finance-skeleton-chart">
+          <Skeleton width="100%" height={160} />
+        </div>
+      </article>
+    );
+  }
+
+  const showBuyIn = entries.some((entry) => (entry.buyInAmount ?? 0) > 0);
+  const showActual = entries.some(
+    (entry) => entry.actualWinningsAmount !== null && entry.actualWinningsAmount !== undefined,
   );
-  const projectedPoints = buildLinePoints(
-    entries.map((entry) => entry.projectedWinningsAmount),
-    320,
-    140,
-  );
+  const points = entries.map((entry) => ({
+    key: entry.key,
+    label: entry.label,
+    actual: entry.actualWinningsAmount ?? null,
+    projected: entry.projectedWinningsAmount,
+    buyIn: entry.buyInAmount,
+  }));
 
   return (
     <article className="finance-chart-card">
@@ -63,43 +526,33 @@ export function FinanceTrendChart({
       </div>
 
       <div className="finance-chart-legend">
-        <span className="finance-legend-item">
-          <i className="finance-legend-line finance-legend-line-actual" />
-          Finish payout
-        </span>
+        {showActual ? (
+          <span className="finance-legend-item">
+            <i className="finance-legend-line finance-legend-line-actual" />
+            Finish payout
+          </span>
+        ) : null}
         <span className="finance-legend-item">
           <i className="finance-legend-line finance-legend-line-projected" />
           Projected payout
         </span>
+        {showBuyIn ? (
+          <span className="finance-legend-item">
+            <i className="finance-legend-line finance-legend-line-buyin" />
+            Buy-in
+          </span>
+        ) : null}
       </div>
 
-      <div className="finance-line-chart">
-        <svg viewBox="0 0 320 140" aria-hidden="true">
-          <polyline
-            fill="none"
-            stroke="var(--finance-actual-color)"
-            strokeWidth="3"
-            points={actualPoints}
-          />
-          <polyline
-            fill="none"
-            stroke="var(--finance-projected-color)"
-            strokeWidth="3"
-            strokeDasharray="6 6"
-            points={projectedPoints}
-          />
-        </svg>
-
-        <div className="finance-chart-label-row">
-          {
-            entries.map((entry) => (
-              <span key={entry.key}>
-                {entry.label}
-              </span>
-            ))
-          }
-        </div>
-      </div>
+      <FinanceInteractiveLineChart
+        points={points}
+        showActual={showActual}
+        actualLabel="Finish"
+        projectedLabel="Projected"
+        showBuyIn={showBuyIn}
+        buyInLabel="Buy-in"
+        anchorZero={true}
+      />
     </article>
   );
 }
@@ -107,21 +560,71 @@ export function FinanceTrendChart({
 export function FinanceProjectionTimeline({
   entries,
   season,
+  timeline,
+  isLoading = false,
 }: {
   entries: FinanceLeagueSeasonEntry[];
   season: string;
+  timeline?: FinanceTimelinePoint[];
+  isLoading?: boolean;
 }) {
-  const points = buildCurrentFinanceTimeline(entries);
-  const actualPoints = buildLinePoints(
-    points.map((point) => point.actualAmount ?? 0),
-    320,
-    140,
-  );
-  const projectedPoints = buildLinePoints(
-    points.map((point) => point.projectedAmount),
-    320,
-    140,
-  );
+  if (isLoading) {
+    return (
+      <article className="finance-chart-card" aria-busy="true">
+        <div className="finance-chart-header">
+          <div>
+            <p className="finance-chart-kicker">Weekly projection</p>
+            <h2>{season} payout trajectory</h2>
+          </div>
+        </div>
+        <div className="finance-skeleton-chart">
+          <Skeleton width="100%" height={160} />
+        </div>
+        <div className="finance-timeline-note">
+          <Skeleton width={120} height={24} />
+          <Skeleton width="80%" height={14} />
+        </div>
+      </article>
+    );
+  }
+
+  const timelinePoints = timeline && timeline.length ? timeline : [];
+  if (!timelinePoints.length) {
+    return (
+      <article className="finance-chart-card">
+        <div className="finance-chart-header">
+          <div>
+            <p className="finance-chart-kicker">Weekly projection</p>
+            <h2>{season} payout trajectory</h2>
+          </div>
+        </div>
+        <div
+          style={{
+            padding: '48px 16px',
+            textAlign: 'center',
+            color: 'var(--color-text-muted)',
+            fontSize: '13px',
+          }}
+        >
+          No weekly trajectory data available for {season}.
+        </div>
+      </article>
+    );
+  }
+
+  const isComplete = entries.length > 0 && entries.every(isFinanceSeasonComplete);
+  const showActualPayout = isComplete && timelinePoints.some((point) => point.actualAmount !== null && point.actualAmount !== undefined);
+  const totalBuyIn = entries.reduce((sum, e) => sum + (e.buy_in_amount || 0), 0);
+  const showBuyIn = totalBuyIn > 0;
+
+  const points = timelinePoints.map((point) => ({
+    key: point.week,
+    label: point.label,
+    actual: point.actualAmount,
+    projected: point.projectedAmount,
+    buyIn: showBuyIn ? totalBuyIn : undefined,
+  }));
+
   const latest = points[points.length - 1];
 
   return (
@@ -134,56 +637,47 @@ export function FinanceProjectionTimeline({
       </div>
 
       <div className="finance-chart-legend">
-        <span className="finance-legend-item">
-          <i className="finance-legend-line finance-legend-line-actual" />
-          Actual payout
-        </span>
+        {showActualPayout ? (
+          <span className="finance-legend-item">
+            <i className="finance-legend-line finance-legend-line-actual" />
+            Actual payout
+          </span>
+        ) : null}
         <span className="finance-legend-item">
           <i className="finance-legend-line finance-legend-line-projected" />
           Expected payout
         </span>
+        {showBuyIn ? (
+          <span className="finance-legend-item">
+            <i className="finance-legend-line finance-legend-line-buyin" />
+            Buy-in
+          </span>
+        ) : null}
       </div>
 
-      <div className="finance-line-chart">
-        <svg viewBox="0 0 320 140" aria-hidden="true">
-          <polyline
-            fill="none"
-            stroke="var(--finance-actual-color)"
-            strokeWidth="3"
-            points={actualPoints}
-          />
-          <polyline
-            fill="none"
-            stroke="var(--finance-projected-color)"
-            strokeWidth="3"
-            strokeDasharray="6 6"
-            points={projectedPoints}
-          />
-        </svg>
-
-        <div className="finance-chart-label-row">
-          {
-            points.map((point) => (
-              <span key={point.week}>
-                {point.label}
-              </span>
-            ))
-          }
-        </div>
-      </div>
+      <FinanceInteractiveLineChart
+        points={points}
+        showActual={showActualPayout}
+        actualLabel="Actual"
+        projectedLabel="Expected"
+        showBuyIn={showBuyIn}
+        buyInLabel="Buy-in"
+        anchorZero={showActualPayout || showBuyIn}
+        showStaticActualDots={false}
+        showStaticBuyInDots={false}
+      />
 
       <div className="finance-timeline-note">
         <strong>
           {
             latest
-              ? formatCurrency(latest.projectedAmount)
+              ? formatCurrency(latest.projected)
               : formatCurrency(0)
           }
         </strong>
         <span>
-          Current expected payout snapshot. Weekly snapshots are not
-          persisted yet, so this will grow once the sync stores weekly
-          finance history.
+          Weekly payout trajectory computed from current standings and
+          projected finish probabilities
         </span>
       </div>
     </article>

@@ -15,6 +15,7 @@ DRAFT_PICK_PROJECTION_CACHE_VERSION = "v2"
 
 DRAFT_PICK_PROJECTION_METHODS = {
     "standings_proxy",
+    "points_for",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
@@ -43,6 +44,7 @@ MAX_DRAFT_PICK_PROJECTION_WEEK = 18
 
 DraftPickProjectionMethod = Literal[
     "standings_proxy",
+    "points_for",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
@@ -53,6 +55,7 @@ DraftPickProjectionMethod = Literal[
 DraftPickProjectionPhaseMethod = Literal[
     "none",
     "reverse_standings",
+    "points_for",
     "max_pf",
     "redraft_starter_war",
     "redraft_roster_war",
@@ -232,6 +235,8 @@ def should_project_future_pick_slots(
 def _format_method_label(
     method: DraftPickProjectionMethod,
 ) -> str:
+    if method == "points_for":
+        return "points for"
     if method == "max_pf":
         return "reverse max PF"
     if method == "redraft_starter_war":
@@ -402,6 +407,24 @@ def _sort_rosters_by_standings_proxy(
     )
 
 
+def _sort_rosters_by_points_for(
+    *,
+    rosters: list[Roster],
+    projected_points_by_roster_id: dict[int, float],
+) -> list[Roster]:
+    return sorted(
+        rosters,
+        key=lambda roster: (
+            roster.fpts,
+            projected_points_by_roster_id.get(
+                roster.roster_id,
+                0.0,
+            ),
+            roster.roster_id,
+        ),
+    )
+
+
 def _sort_rosters_by_max_pf(
     *,
     rosters: list[Roster],
@@ -545,6 +568,16 @@ def build_projected_pick_slots_by_roster_id(
     fallback_from_method: DraftPickProjectionMethod | None = None
 
     if (
+        requested_method == "points_for"
+    ):
+        ordered_rosters = _sort_rosters_by_points_for(
+            rosters=rosters,
+            projected_points_by_roster_id=(
+                projected_points_by_roster_id
+            ),
+        )
+        method_used = "points_for"
+    elif (
         requested_method == "max_pf"
         and _can_use_max_pf(rosters)
     ):
@@ -740,6 +773,47 @@ async def build_redraft_value_by_roster_id(
 
     if not player_ids:
         return {}
+
+    league_ids = {roster.league_id for roster in rosters if roster.league_id}
+    if len(league_ids) == 1:
+        league_id = next(iter(league_ids))
+        try:
+            from app.crud.sleeper.weekly_metrics import get_league_weekly_metrics
+
+            metrics = await get_league_weekly_metrics(db, [league_id])
+            if metrics:
+                latest_week = max(m.week for m in metrics)
+                latest_metrics = [m for m in metrics if m.week == latest_week]
+                metric_by_roster = {m.roster_id: m for m in latest_metrics}
+
+                if all(r.roster_id in metric_by_roster for r in rosters):
+                    result: dict[int, float] = {}
+                    has_values = False
+                    for r in rosters:
+                        m = metric_by_roster[r.roster_id]
+                        if basis in {"fantasycalc", "fantasycalc_redraft"}:
+                            val = m.fantasycalc_redraft
+                        elif basis == "sleeper_projection":
+                            val = m.sleeper_projection
+                        elif basis == "redraft_roster_war":
+                            val = m.roster_war
+                        elif basis == "redraft_starter_war":
+                            val = m.starter_war
+                        elif basis in {"ktc", "ktc_redraft"}:
+                            val = m.ktc_redraft
+                        else:
+                            val = None
+
+                        if val is not None and val > 0:
+                            has_values = True
+                            result[r.roster_id] = round(val, 2)
+                        elif val is not None:
+                            result[r.roster_id] = round(val, 2)
+
+                    if has_values and len(result) == len(rosters):
+                        return result
+        except Exception:
+            pass
 
     values = await get_player_values(
         db,

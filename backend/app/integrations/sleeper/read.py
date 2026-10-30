@@ -4,6 +4,7 @@ from app.integrations.sleeper.schemas.api import (
     League,
     Roster,
     Matchup,
+    WeeklyMatchup,
     Transaction,
     TradedPicks,
     Draft,
@@ -84,11 +85,11 @@ class SleeperRead:
         self,
         league_id: str,
         week: int,
-    ) -> list[Matchup]:
+    ) -> list[WeeklyMatchup]:
         data = await self.transport.get(
             f"league/{league_id}/matchups/{week}"
         )
-        return [Matchup.model_validate(x) for x in data]
+        return [WeeklyMatchup.model_validate(x) for x in (data or [])]
 
     async def get_winners_bracket(
         self,

@@ -79,6 +79,14 @@ export const userEndpoints = (client: AxiosInstance, prefix: string) => ({
       `${prefix}/finance/summary`,
       { signal },
     ),
+  getFinanceTimeline: (season?: string, signal?: AbortSignal) =>
+    client.get<{ points: Array<{ week: number; label: string; actual_amount: number | null; projected_amount: number }> }>(
+      `${prefix}/finance/timeline`,
+      {
+        params: season ? { season } : undefined,
+        signal,
+      },
+    ),
   saveFinanceDefaults: (
     body: FinanceDefaultsUpdate,
   ) => client.post<FinanceSummaryResponse>(

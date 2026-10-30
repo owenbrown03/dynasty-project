@@ -16,14 +16,34 @@ def build_pick_label(
     og_roster_id: int,
     current_owner_roster_id: int,
     roster_name_by_id: dict[int, str],
+    slot: int | None = None,
+    projected_slot: int | None = None,
+    is_projected: bool = False,
 ) -> str:
     """
     Build a human-readable label for one specific original draft pick.
 
     Example:
-        2027 Round 2 (browntown333's original)
-        2027 Round 2 (from Darven)
+        2027 Pick 1.04 (proj.) (browntown333's original)
+        2027 Pick 1.09 (proj.) (from Darven)
+        2028 Round 1 (browntown333's original)
     """
+
+    resolved_slot = (
+        slot
+        if slot is not None
+        else projected_slot
+    )
+
+    suffix = " (proj.)" if is_projected else ""
+
+    if resolved_slot is not None:
+        base = (
+            f"{season} Pick {round_number}.{resolved_slot:02d}"
+            f"{suffix}"
+        )
+    else:
+        base = f"{season} Round {round_number}"
 
     original_owner_name = roster_name_by_id.get(
         og_roster_id,
@@ -32,12 +52,12 @@ def build_pick_label(
 
     if og_roster_id == current_owner_roster_id:
         return (
-            f"{season} Round {round_number} "
+            f"{base} "
             f"({original_owner_name}'s original)"
         )
 
     return (
-        f"{season} Round {round_number} "
+        f"{base} "
         f"(from {original_owner_name})"
     )
 
@@ -48,6 +68,8 @@ async def get_current_pick_assets_by_league(
     rosters_by_league_id: dict[str, list],
     requested_picks: list[tuple[str, int]],
     roster_names_by_league_id: dict[str, dict[int, str]],
+    slots_by_league: dict[str, dict[tuple[str, int], int]] | None = None,
+    projected_slots_by_league: dict[str, dict[tuple[str, int], int]] | None = None,
 ) -> dict[str, list[TradeDraftPickAsset]]:
     """
     Resolve current ownership of one or more pick year/round pairs across leagues.
@@ -204,6 +226,9 @@ async def get_current_pick_assets_by_league(
 
         assets: list[TradeDraftPickAsset] = []
 
+        league_slots = (slots_by_league or {}).get(league_id, {})
+        league_projected_slots = (projected_slots_by_league or {}).get(league_id, {})
+
         for (
             og_roster_id,
             season,
@@ -211,6 +236,12 @@ async def get_current_pick_assets_by_league(
         ), current_owner_roster_id in (
             pick_owner_by_key.items()
         ):
+            slot = league_slots.get((season, og_roster_id))
+            projected_slot = None
+            if slot is None:
+                projected_slot = league_projected_slots.get((season, og_roster_id))
+            is_projected = slot is None and projected_slot is not None
+
             assets.append(
                 TradeDraftPickAsset(
                     season=season,
@@ -224,6 +255,8 @@ async def get_current_pick_assets_by_league(
                             og_roster_id,
                         )
                     ),
+                    slot=slot,
+                    projected_slot=projected_slot,
                     label=build_pick_label(
                         season=season,
                         round_number=round_number,
@@ -234,6 +267,9 @@ async def get_current_pick_assets_by_league(
                         roster_name_by_id=(
                             roster_name_by_id
                         ),
+                        slot=slot,
+                        projected_slot=projected_slot,
+                        is_projected=is_projected,
                     ),
                 )
             )
@@ -242,6 +278,7 @@ async def get_current_pick_assets_by_league(
             assets,
             key=lambda asset: (
                 asset.current_owner_roster_id,
+                asset.slot or asset.projected_slot or 999,
                 asset.og_roster_id,
             ),
         )

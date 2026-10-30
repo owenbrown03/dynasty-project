@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from sqlmodel import SQLModel, Field
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import JSON, UniqueConstraint
+from sqlalchemy import JSON, UniqueConstraint, DateTime
 from typing import Optional
 
 class PlayerValue(SQLModel, table=True):
@@ -349,7 +349,10 @@ class AdvisorFeedback(SQLModel, table=True):
     )
     action_taken: str | None = None
     resolved: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_type=DateTime(timezone=False),
+    )
 
 
 class AdvisorReport(SQLModel, table=True):

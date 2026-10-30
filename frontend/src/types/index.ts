@@ -149,6 +149,7 @@ export interface WarValueSettings {
 
 export type DraftPickProjectionMethod =
   | 'standings_proxy'
+  | 'points_for'
   | 'max_pf'
   | 'redraft_starter_war'
   | 'redraft_roster_war'
@@ -1318,6 +1319,8 @@ export interface TradeDraftPickAsset {
   og_roster_id: number;
   current_owner_roster_id: number;
   original_owner_name: string | null;
+  slot?: number | null;
+  projected_slot?: number | null;
   label: string;
 }
 
@@ -1330,6 +1333,14 @@ export interface BulkTradeCounterparty {
   receive_pick_choices: BulkTradePickChoice[];
 }
 
+export interface BulkTradeDropCandidate {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  value: number | null;
+}
+
 export interface BulkTradeLeagueAvailability {
   league_id: string;
   league_name: string;
@@ -1340,6 +1351,10 @@ export interface BulkTradeLeagueAvailability {
 
   is_eligible: boolean;
   ineligibility_reason: string | null;
+
+  open_roster_spots?: number | null;
+  needed_drops?: number;
+  drop_candidates?: BulkTradeDropCandidate[];
 
   counterparty_options: BulkTradeCounterparty[];
 }
