@@ -1,6 +1,7 @@
 import './LeaguesPage.css';
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -28,18 +29,34 @@ export const LeaguesPage = () => {
   const initialLeagueId =
     location.state?.leagueId;
   const bootstrap = useBootstrap();
-  const [
-    selectedLeague,
-    setSelectedLeague
-  ] = useState<string | undefined>(
-    initialLeagueId
-  );
+  const [searchParams, setSearchParams] =
+    useSearchParams();
   const [
     includeHidden,
     setIncludeHidden
   ] = useState(false);
-  const [searchParams, setSearchParams] =
-    useSearchParams();
+
+  const urlLeagueId = searchParams.get('league_id');
+  const selectedLeague = urlLeagueId ?? initialLeagueId;
+
+  const setSelectedLeague = useCallback(
+    (leagueId: string | undefined) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (leagueId) {
+            next.set('league_id', leagueId);
+          } else {
+            next.delete('league_id');
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const debouncedSelectedLeague = useDebouncedValue(
     selectedLeague,
     250,
@@ -118,6 +135,7 @@ export const LeaguesPage = () => {
   }, [
     selector.data,
     selectedLeague,
+    setSelectedLeague,
   ]);
 
   const handleVisibilityChange =

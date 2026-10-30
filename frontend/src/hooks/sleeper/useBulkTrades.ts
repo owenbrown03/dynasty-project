@@ -95,6 +95,7 @@ export function useBulkTradeAvailability(
         > 0
       )
     ),
+    staleTime: 60_000,
   });
 
   return {

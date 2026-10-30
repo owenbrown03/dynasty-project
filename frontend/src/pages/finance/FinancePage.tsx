@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { AlertTriangle, Wallet } from 'lucide-react';
 
 import { Skeleton } from '@/components/feedback/Skeleton';
@@ -127,9 +128,70 @@ export function FinancePage() {
   const resetFinanceMutation = useResetFinanceSeason();
   const saveDefaultsMutation = useSaveFinanceDefaults();
   const saveLeagueDefaultsMutation = useSaveFinanceLeagueDefaults();
-  const [activeTab, setActiveTab] = useState<FinanceTab>('charts');
-  const [selectedTrackerSeason, setSelectedTrackerSeason] = useState('current');
-  const [chartSeason, setChartSeason] = useState('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tabParam = searchParams.get('tab');
+  const activeTab: FinanceTab = (
+    tabParam === 'settings' || tabParam === 'overrides'
+      ? tabParam
+      : 'charts'
+  );
+
+  const setActiveTab = useCallback(
+    (tab: FinanceTab) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (tab === 'charts') {
+            next.delete('tab');
+          } else {
+            next.set('tab', tab);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const selectedTrackerSeason = searchParams.get('tracker_season') ?? 'current';
+  const setSelectedTrackerSeason = useCallback(
+    (season: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (season === 'current') {
+            next.delete('tracker_season');
+          } else {
+            next.set('tracker_season', season);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const chartSeason = searchParams.get('season') ?? 'all';
+  const setChartSeason = useCallback(
+    (season: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (season === 'all') {
+            next.delete('season');
+          } else {
+            next.set('season', season);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
   const financeTimeline = useFinanceTimeline(
     Boolean(connection.linked && finance.data),
     chartSeason === 'all' ? undefined : chartSeason,
@@ -191,7 +253,7 @@ export function FinancePage() {
     ) {
       setChartSeason('all');
     }
-  }, [availableChartSeasons, chartSeason]);
+  }, [availableChartSeasons, chartSeason, setChartSeason]);
 
   const trackerEntries = useMemo(
     () => (

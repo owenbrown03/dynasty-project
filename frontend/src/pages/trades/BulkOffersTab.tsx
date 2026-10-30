@@ -33,6 +33,12 @@ import {
   createLeagueSelection,
   type BulkTradeLeagueSelection,
 } from './BulkTradeLeagueRow';
+import {
+  clearBulkTradeDraft,
+  loadBulkTradeDraft,
+  reconcileLeagueSelections,
+  saveBulkTradeDraft,
+} from './bulkTradeDraft';
 import { BulkTradeReviewModal } from './BulkTradeReviewModal';
 import { TradeSideCard, type TradeSideAsset } from '@/components/trades/TradeSideCard';
 import { TradeWinningBar } from '@/components/trades/TradeWinningBar';
@@ -230,13 +236,43 @@ export const BulkOffersTab = ({
     [],
   );
 
-  const [sendPlayers, setSendPlayers] = useState<BulkTradePlayerSearchResult[]>([]);
-  const [sendPicks, setSendPicks] = useState<BulkTradePickRequest[]>([]);
-  const [receivePlayers, setReceivePlayers] = useState<BulkTradePlayerSearchResult[]>([]);
-  const [receivePicks, setReceivePicks] = useState<BulkTradePickRequest[]>([]);
-  const [defaultSendFaab, setDefaultSendFaab] = useState<number>(0);
-  const [defaultReceiveFaab, setDefaultReceiveFaab] = useState<number>(0);
-  const [selectionsByLeagueId, setSelectionsByLeagueId] = useState<Record<string, BulkTradeLeagueSelection>>({});
+  const initialDraft = useMemo(() => {
+    if (seed) {
+      return {
+        sendPlayers: dedupePlayers(seed.sendPlayers),
+        sendPicks: dedupePicks(seed.sendPicks),
+        receivePlayers: dedupePlayers(seed.receivePlayers),
+        receivePicks: dedupePicks(seed.receivePicks),
+        defaultSendFaab: 0,
+        defaultReceiveFaab: 0,
+        selectionsByLeagueId: {},
+        updatedAt: 0,
+      };
+    }
+    return loadBulkTradeDraft();
+  }, [seed]);
+
+  const [sendPlayers, setSendPlayers] = useState<BulkTradePlayerSearchResult[]>(
+    () => initialDraft?.sendPlayers ?? [],
+  );
+  const [sendPicks, setSendPicks] = useState<BulkTradePickRequest[]>(
+    () => initialDraft?.sendPicks ?? [],
+  );
+  const [receivePlayers, setReceivePlayers] = useState<BulkTradePlayerSearchResult[]>(
+    () => initialDraft?.receivePlayers ?? [],
+  );
+  const [receivePicks, setReceivePicks] = useState<BulkTradePickRequest[]>(
+    () => initialDraft?.receivePicks ?? [],
+  );
+  const [defaultSendFaab, setDefaultSendFaab] = useState<number>(
+    () => initialDraft?.defaultSendFaab ?? 0,
+  );
+  const [defaultReceiveFaab, setDefaultReceiveFaab] = useState<number>(
+    () => initialDraft?.defaultReceiveFaab ?? 0,
+  );
+  const [selectionsByLeagueId, setSelectionsByLeagueId] = useState<Record<string, BulkTradeLeagueSelection>>(
+    () => initialDraft?.selectionsByLeagueId ?? {},
+  );
   const [isReviewOpen, setIsReviewOpen] = useState(false);
 
   const handleDefaultSendFaabChange = (amount: number) => {
@@ -390,27 +426,56 @@ export const BulkOffersTab = ({
     const data = availability.data;
 
     if (!data) {
-      setSelectionsByLeagueId({});
       return;
     }
 
-    setSelectionsByLeagueId(
-      Object.fromEntries(
-        data.leagues.map((league: BulkTradeLeagueAvailability) => [
-          league.league_id,
-          createLeagueSelection(
-            league,
-            defaultSendFaab,
-            defaultReceiveFaab,
-          ),
-        ]),
+    setSelectionsByLeagueId(current =>
+      reconcileLeagueSelections(
+        data.leagues,
+        current,
+        defaultSendFaab,
+        defaultReceiveFaab,
       ),
     );
+  }, [availability.data, defaultReceiveFaab, defaultSendFaab]);
+
+  useEffect(() => {
+    const hasAssets =
+      sendPlayers.length > 0
+      || sendPicks.length > 0
+      || receivePlayers.length > 0
+      || receivePicks.length > 0;
+
+    if (!hasAssets) {
+      clearBulkTradeDraft();
+      return;
+    }
+
+    saveBulkTradeDraft({
+      sendPlayers,
+      sendPicks,
+      receivePlayers,
+      receivePicks,
+      defaultSendFaab,
+      defaultReceiveFaab,
+      selectionsByLeagueId,
+      updatedAt: Date.now(),
+    });
   }, [
-    availability.data,
     defaultReceiveFaab,
     defaultSendFaab,
+    receivePicks,
+    receivePlayers,
+    selectionsByLeagueId,
+    sendPicks,
+    sendPlayers,
   ]);
+
+  useEffect(() => {
+    if (results.length > 0 && results.some(r => r.success)) {
+      clearBulkTradeDraft();
+    }
+  }, [results]);
 
   useEffect(() => {
     if (!seed) {
@@ -615,6 +680,7 @@ export const BulkOffersTab = ({
     setDefaultReceiveFaab(0);
     setSelectionsByLeagueId({});
     setIsReviewOpen(false);
+    clearBulkTradeDraft();
     reset();
   };
 
@@ -990,6 +1056,9 @@ export const BulkOffersTab = ({
               error={submitError}
               onClose={() => {
                 setIsReviewOpen(false);
+                if (results.length > 0 && results.some(r => r.success)) {
+                  handleReset();
+                }
               }}
               onSubmit={handleSubmit}
             />

@@ -1,8 +1,9 @@
 import {
+  useCallback,
   useEffect,
   useState,
 } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 
 import { TradeBuilderTab } from './BulkOffersTab';
 import { TradeSignalsTab } from './TradeSignalsTab';
@@ -18,10 +19,24 @@ type TradesTab =
 
 export const TradesPage = () => {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const locationSeed = (location.state as { seed?: TradeCalculatorBulkOfferSeed } | null)?.seed ?? null;
-  const [activeTab, setActiveTab] = useState<TradesTab>(
-    'trade-builder',
-  );
+
+  const urlTab = searchParams.get('tab');
+  const activeTab: TradesTab = urlTab === 'signals' ? 'signals' : 'trade-builder';
+
+  const setActiveTab = useCallback((tab: TradesTab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (tab === 'trade-builder') {
+        next.delete('tab');
+      } else {
+        next.set('tab', tab);
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   const [bulkOfferSeed, setBulkOfferSeed] = useState<TradeCalculatorBulkOfferSeed | null>(
     locationSeed,
   );
@@ -32,7 +47,7 @@ export const TradesPage = () => {
       setBulkOfferSeed(nextSeed);
       setActiveTab('trade-builder');
     }
-  }, [location.state]);
+  }, [location.state, setActiveTab]);
 
   return (
     <main className="trades-page">
