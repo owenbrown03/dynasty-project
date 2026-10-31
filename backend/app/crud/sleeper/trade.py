@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
@@ -124,14 +125,20 @@ async def read_trades(
     lms: list,
     exclude_league_ids: set[str] | list[str] | None = None,
     include_completed: bool = False,
+    days_back: int = 90,
+    limit: int = 500,
 ) -> Dict[str, dict]:
     """
     Fetches raw database rows and groups them safely by transaction_id.
     Leverages lazy-loaded models and composite database indexes for sub-second data extraction.
     Only queries active/current leagues by default to avoid stale past-season trades.
+    Binds recency and batch limits to prevent memory exhaustion on accounts with hundreds of leaguemates.
     """
+    if not lms:
+        return {}
+
     trade_ids_stmt = (
-        select(model.Transaction.transaction_id)
+        select(model.Transaction.transaction_id, model.Transaction.time_ms)
         .join(model.Movement, model.Movement.transaction_id == model.Transaction.transaction_id)
         .join(
             model.Roster, 
@@ -148,21 +155,27 @@ async def read_trades(
         trade_ids_stmt = trade_ids_stmt.where(model.League.status != "complete")
     if exclude_league_ids:
         trade_ids_stmt = trade_ids_stmt.where(model.Transaction.league_id.notin_(exclude_league_ids))
-    trade_ids_stmt = trade_ids_stmt.distinct()
+    if days_back:
+        cutoff_ms = int((time.time() - (days_back * 86400)) * 1000)
+        trade_ids_stmt = trade_ids_stmt.where(model.Transaction.time_ms >= cutoff_ms)
+
+    trade_ids_stmt = (
+        trade_ids_stmt
+        .group_by(model.Transaction.transaction_id, model.Transaction.time_ms)
+        .order_by(model.Transaction.time_ms.desc())
+        .limit(limit)
+    )
+
     result = await db.execute(trade_ids_stmt)
-    trade_ids = list(result.scalars().all())
+    trade_ids = [row[0] for row in result.all()]
 
     if not trade_ids:
         return {}
 
-    tasks = [
-        db.execute(select(model.Transaction).where(model.Transaction.transaction_id.in_(trade_ids))),
-        db.execute(select(model.Movement).where(model.Movement.transaction_id.in_(trade_ids))),
-        db.execute(select(model.TradedPick).where(model.TradedPick.transaction_id.in_(trade_ids))),
-        db.execute(select(model.WaiverBudget).where(model.WaiverBudget.transaction_id.in_(trade_ids)))
-    ]
-    
-    t_res, m_res, p_res, w_res = await asyncio.gather(*tasks)
+    t_res = await db.execute(select(model.Transaction).where(model.Transaction.transaction_id.in_(trade_ids)))
+    m_res = await db.execute(select(model.Movement).where(model.Movement.transaction_id.in_(trade_ids)))
+    p_res = await db.execute(select(model.TradedPick).where(model.TradedPick.transaction_id.in_(trade_ids)))
+    w_res = await db.execute(select(model.WaiverBudget).where(model.WaiverBudget.transaction_id.in_(trade_ids)))
 
     trades_rows = t_res.scalars().unique().all()
     movements_rows = m_res.scalars().unique().all()
@@ -344,20 +357,27 @@ async def _get_trade_signals_impl(
 
         draft_orders = defaultdict(dict)
         if not cheap:
-            d_res = await db.execute(select(model.Draft.draft_id, model.Draft.season, model.Draft.draft_order))
-            raw_drafts = d_res.all()
-            for d_id, season, d_order in raw_drafts:
-                draft_orders[d_id][season] = d_order or {}
+            trade_draft_ids = {
+                getattr(p, 'draft_id', None)
+                for tx in lm_trades_data.values()
+                for p in tx['picks']
+                if getattr(p, 'draft_id', None)
+            }
+            if trade_draft_ids:
+                d_res = await db.execute(
+                    select(model.Draft.draft_id, model.Draft.season, model.Draft.draft_order)
+                    .where(model.Draft.draft_id.in_(trade_draft_ids))
+                )
+                raw_drafts = d_res.all()
+                for d_id, season, d_order in raw_drafts:
+                    draft_orders[d_id][season] = d_order or {}
 
-        if cheap:
-            p_ids = set()
-            for tx in lm_trades_data.values():
-                for m in tx['movements']:
-                    if m.player_id:
-                        p_ids.add(m.player_id)
-            player_map = await get_player_map_for_ids(db, list(p_ids))
-        else:
-            player_map = await get_player_map(db)
+        p_ids = set()
+        for tx in lm_trades_data.values():
+            for m in tx['movements']:
+                if m.player_id:
+                    p_ids.add(m.player_id)
+        player_map = await get_player_map_for_ids(db, list(p_ids))
         
         logger.info("Starting processing loop execution blocks...")
         

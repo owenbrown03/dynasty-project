@@ -127,11 +127,12 @@ async def dashboard_endpoint(
             site_user_id=site_user_id,
             cheap=cheap,
         )
-        background_tasks.add_task(
-            _prefetch_trade_signals,
-            username,
-            site_user_id,
-        )
+        if not cheap:
+            background_tasks.add_task(
+                _prefetch_trade_signals,
+                username,
+                site_user_id,
+            )
         return result
 
 

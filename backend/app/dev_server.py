@@ -5,6 +5,9 @@ import errno
 import logging
 import uvicorn
 
+import os
+from pathlib import Path
+
 logger = logging.getLogger("uvicorn.error")
 
 try:
@@ -23,6 +26,26 @@ try:
             raise
 
     def _safe_should_restart(self):
+        # 1. Process liveness check: if the worker process terminated (OOM, crash, signal),
+        # trigger an immediate restart so the server never hangs.
+        if getattr(self, "process", None) is not None and not self.process.is_alive():
+            logger.error(
+                "Uvicorn worker process [%s] exited unexpectedly with exitcode %s. Restarting worker...",
+                getattr(self.process, "pid", "unknown"),
+                getattr(self.process, "exitcode", "unknown"),
+            )
+            return [Path("worker_process_died")]
+
+        # 2. As PID 1 in container, reap any reparented zombie child processes.
+        try:
+            while True:
+                pid, _ = os.waitpid(-1, os.WNOHANG)
+                if pid <= 0:
+                    break
+        except (ChildProcessError, OSError):
+            pass
+
+        # 3. Safe file change detection with memory error protection.
         try:
             return _orig_should_restart(self)
         except OSError as exc:
