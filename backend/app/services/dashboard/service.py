@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import json
 import logging
 import time
@@ -36,11 +37,15 @@ from .cards import (
 from .crud import (
     get_all_league_rosters,
 )
-from app.crud.sleeper.personal import get_focused_league_ids
+from app.crud.sleeper.personal import (
+    get_focused_league_ids,
+    get_league_sort_orders,
+    get_personal_projections_for_site_user,
+    get_personal_projection_outcomes,
+)
 from app.services.leagues.selection import (
     get_visible_owned_league_rows_by_sleeper_user_id,
 )
-from app.crud.sleeper.personal import get_league_sort_orders
 from app.crud.sleeper.user import get_userid_by_username
 from app.core.database import AsyncSessionLocal
 
@@ -288,6 +293,9 @@ async def _build_single_league_player_map(
     league,
     league_war_players,
     league_rosters,
+    saved_projections=None,
+    outcomes_by_projection_id=None,
+    curve_cache=None,
 ):
     """Build player map for a single league (extracted for parallelization)."""
 
@@ -319,6 +327,9 @@ async def _build_single_league_player_map(
         league=league,
         player_values=league_player_values,
         redis=redis,
+        saved_projections=saved_projections,
+        outcomes_by_projection_id=outcomes_by_projection_id,
+        curve_cache=curve_cache,
     )
 
     player_map = {
@@ -360,6 +371,26 @@ async def build_player_maps_by_league(
     - redraft WAR for that exact league
     - dynasty WAR projected from that exact league's redraft WAR
     """
+    saved_projections = None
+    outcomes_by_projection_id = None
+    curve_cache: dict = {}
+    if site_user_id is not None:
+        try:
+            saved_projections = await get_personal_projections_for_site_user(
+                db=db,
+                site_user_id=site_user_id,
+            )
+            if saved_projections:
+                outcomes_by_projection_id = await get_personal_projection_outcomes(
+                    db=db,
+                    projection_ids=[
+                        p.id for p in saved_projections if p.id is not None
+                    ],
+                )
+        except Exception as exc:
+            logger.warning("Failed prefetching user projections for site_user_id=%s: %s", site_user_id, exc)
+            saved_projections = None
+            outcomes_by_projection_id = None
 
     sem = asyncio.Semaphore(2)
 
@@ -374,6 +405,9 @@ async def build_player_maps_by_league(
                     league=leagues[league_id]["league"],
                     league_war_players=war_results_by_league_id[league_id],
                     league_rosters=all_rosters.get(league_id, []),
+                    saved_projections=saved_projections,
+                    outcomes_by_projection_id=outcomes_by_projection_id,
+                    curve_cache=curve_cache,
                 )
 
     tasks = [_task(league_id) for league_id in leagues]
@@ -645,14 +679,16 @@ async def get_user_dashboard(
             ],
         )
 
-        player_maps_by_league_id, roster_construction_targets_by_league_id, finance_metrics_by_league_id = (
-            await asyncio.gather(
-                player_maps_by_league_id_coro,
-                _build_roster_construction(),
-                finance_coro,
-            )
-        )
-        logger.info("Dashboard parallel phase took %.2fs", time.monotonic() - t_parallel)
+        player_maps_by_league_id = await player_maps_by_league_id_coro
+        gc.collect()
+
+        roster_construction_targets_by_league_id = await _build_roster_construction()
+        gc.collect()
+
+        finance_metrics_by_league_id = await finance_coro
+        gc.collect()
+
+        logger.info("Dashboard heavy phase took %.2fs", time.monotonic() - t_parallel)
 
     t_cards = time.monotonic()
     league_cards = build_league_cards(

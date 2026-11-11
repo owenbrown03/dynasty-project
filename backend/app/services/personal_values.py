@@ -549,12 +549,16 @@ async def _ensure_personal_rank_curve(
     *,
     db: AsyncSession,
     league,
+    curve_cache: dict | None = None,
 ) -> dict[str, list[PersonalRankCurve]]:
     settings_fingerprint = _build_settings_fingerprint(
         total_rosters=league.total_rosters,
         scoring_settings=league.scoring_settings,
         roster_positions=league.roster_positions,
     )
+    if curve_cache is not None and settings_fingerprint in curve_cache:
+        return curve_cache[settings_fingerprint]
+
     existing = await get_personal_rank_curve_rows(
         db=db,
         settings_fingerprint=settings_fingerprint,
@@ -562,7 +566,10 @@ async def _ensure_personal_rank_curve(
     )
 
     if existing:
-        return _build_curve_lookup(existing)
+        res = _build_curve_lookup(existing)
+        if curve_cache is not None:
+            curve_cache[settings_fingerprint] = res
+        return res
 
     season_end = int(league.season) - 1
     season_start = max(
@@ -690,7 +697,6 @@ async def _ensure_personal_rank_curve(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Not enough historical data to build a personal value curve for this league context.",
         )
-
     await replace_personal_rank_curve_rows(
         db=db,
         settings_fingerprint=settings_fingerprint,
@@ -698,7 +704,10 @@ async def _ensure_personal_rank_curve(
         rows=curve_rows,
     )
 
-    return _build_curve_lookup(curve_rows)
+    lookup = _build_curve_lookup(curve_rows)
+    if curve_cache is not None:
+        curve_cache[settings_fingerprint] = lookup
+    return lookup
 
 
 async def _load_market_values_by_player_id(
@@ -857,6 +866,9 @@ async def hydrate_personal_player_values(
     league: League,
     player_values: list[PlayerValue],
     redis: RedisClient | None = None,
+    saved_projections: list | None = None,
+    outcomes_by_projection_id: dict[int, list] | None = None,
+    curve_cache: dict | None = None,
 ) -> list[PlayerValue]:
     if site_user_id is None or not player_values:
         return player_values
@@ -871,11 +883,18 @@ async def hydrate_personal_player_values(
     if not supported_player_ids:
         return player_values
 
-    saved_projections = await get_personal_projections_for_site_user(
-        db=db,
-        site_user_id=site_user_id,
-        player_ids=supported_player_ids,
-    )
+    if saved_projections is None:
+        saved_projections = await get_personal_projections_for_site_user(
+            db=db,
+            site_user_id=site_user_id,
+            player_ids=supported_player_ids,
+        )
+    else:
+        supported_set = set(supported_player_ids)
+        saved_projections = [
+            p for p in saved_projections
+            if p.player_id in supported_set
+        ]
     cache_key = None
 
     if redis is not None:
@@ -910,6 +929,7 @@ async def hydrate_personal_player_values(
     curve_rows_by_position = await _ensure_personal_rank_curve(
         db=db,
         league=league,
+        curve_cache=curve_cache,
     )
     optimized_curve_lookup = {}
     for pos, pos_rows in curve_rows_by_position.items():
@@ -923,14 +943,15 @@ async def hydrate_personal_player_values(
             )
         optimized_curve_lookup[pos] = (lookup, pos_rows, [r.rank_value for r in pos_rows])
 
-    outcomes_by_projection_id = await get_personal_projection_outcomes(
-        db=db,
-        projection_ids=[
-            projection.id
-            for projection in saved_projections
-            if projection.id is not None
-        ],
-    )
+    if outcomes_by_projection_id is None:
+        outcomes_by_projection_id = await get_personal_projection_outcomes(
+            db=db,
+            projection_ids=[
+                projection.id
+                for projection in saved_projections
+                if projection.id is not None
+            ],
+        )
     saved_by_player_id: dict[str, list] = defaultdict(list)
 
     for projection in saved_projections:
