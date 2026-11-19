@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     GEMINI_DAILY_LIMIT: int = 250
     GEMINI_CACHE_TTL_SECONDS: int = 604800
 
+    LEAGUEMATE_SYNC_TIMEZONE: str = "America/Denver"
+    LEAGUEMATE_SYNC_START_HOUR: int = 3
+    LEAGUEMATE_SYNC_END_HOUR: int = 5
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
