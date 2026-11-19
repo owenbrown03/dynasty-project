@@ -210,10 +210,21 @@ async def run_daily_external_syncs(
                     is_dynasty=False,
                 )
             )
-            underdog_result = await sync_underdog_adp(
-                db=db,
-                underdog=underdog,
-            )
+            try:
+                underdog_result = await sync_underdog_adp(
+                    db=db,
+                    underdog=underdog,
+                )
+            except Exception as e:
+                logger.error(
+                    "Unexpected error during Underdog ADP sync: %s",
+                    e,
+                    exc_info=True,
+                )
+                underdog_result = {
+                    "status": "error",
+                    "reason": str(e),
+                }
             adp_result = await run_adp_maintenance(
                 db,
                 sleeper,

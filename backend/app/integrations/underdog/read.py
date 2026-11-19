@@ -1,3 +1,6 @@
+import asyncio
+import logging
+
 from .transport import UnderdogTransport
 from .schemas import (
     UnderdogSlate,
@@ -7,6 +10,8 @@ from .schemas import (
     UnderdogAppearance,
     UnderdogProjection,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class UnderdogRead:
@@ -112,30 +117,44 @@ class UnderdogRead:
         """
         Convenience method: fetches ADP for the current active NFL best ball slate.
         Set superflex=True for the SF slate.
+        Returns an empty list if no active slates or matching contest styles exist.
         """
         slates = await self.get_active_nfl_best_ball_slates()
         if not slates:
-            raise RuntimeError("No active NFL best ball slates found.")
+            logger.info("No active NFL best ball slates found on Underdog.")
+            return []
 
         # Pick SF or standard slate by title
-        target_title = "Superflex" if superflex else "2026 Season"
         slate = next(
             (s for s in slates if ("Superflex" in s.title) == superflex and not s.lobby_hidden),
-            slates[0],
+            None,
         )
+        if slate is None:
+            if not superflex and slates:
+                slate = slates[0]
+            else:
+                logger.info(
+                    "No matching %s NFL best ball slate found on Underdog.",
+                    "Superflex" if superflex else "standard",
+                )
+                return []
 
         # Get the scoring_type_id from the contest style
         styles = await self.get_nfl_best_ball_contest_styles()
         style_ids = set(slate.contest_style_ids)
         style = next((cs for cs in styles if cs.id in style_ids), None)
         if not style:
-            raise RuntimeError(f"No matching contest style found for slate {slate.id}")
+            logger.warning(
+                "No matching contest style found for Underdog slate %s (%s).",
+                slate.id,
+                slate.title,
+            )
+            return []
 
         return await self.get_enriched_appearances(slate.id, style.scoring_type_id)
 
 
 # asyncio.gather helper to run coroutines concurrently
-import asyncio
-
 async def _gather_all(*coros):
     return await asyncio.gather(*coros)
+

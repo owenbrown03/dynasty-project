@@ -25,7 +25,52 @@ async def sync_underdog_adp(
     logger.info(f"Starting Underdog ADP sync (superflex={superflex})")
 
     # --------------------------------------------------
-    # 1. Build the Sleeper name index from our own DB
+    # 1. Pull enriched appearances from Underdog
+    # --------------------------------------------------
+    try:
+        appearances = await underdog.read.get_nfl_adp(superflex=superflex)
+    except Exception as e:
+        logger.warning(
+            "Failed to fetch Underdog NFL ADP (superflex=%s): %s",
+            superflex,
+            e,
+            exc_info=True,
+        )
+        return {
+            "status": "skipped",
+            "reason": str(e),
+            "fetched": 0,
+            "matched": 0,
+            "unmatched": 0,
+            "unmatched_names": [],
+            "new_maps_created": 0,
+        }
+
+    # Filter out zero-ADP noise (inactive/practice squad players)
+    appearances = [
+        a for a in appearances
+        if a.projection and _safe_float(a.projection.adp) > 0
+    ]
+
+    if not appearances:
+        logger.info(
+            "No active Underdog NFL appearances found (superflex=%s). Skipping ADP sync.",
+            superflex,
+        )
+        return {
+            "status": "skipped",
+            "reason": "no_active_slates",
+            "fetched": 0,
+            "matched": 0,
+            "unmatched": 0,
+            "unmatched_names": [],
+            "new_maps_created": 0,
+        }
+
+    logger.info(f"Fetched {len(appearances)} Underdog appearances with ADP > 0")
+
+    # --------------------------------------------------
+    # 2. Build the Sleeper name index from our own DB
     #    (avoids re-hitting the Sleeper API every sync)
     # --------------------------------------------------
     result = await db.execute(select(Player))
@@ -38,19 +83,6 @@ async def sync_underdog_adp(
         for p in db_players
     }
     name_index = SleeperNameIndex(sleeper_lookup)
-
-    # --------------------------------------------------
-    # 2. Pull enriched appearances from Underdog
-    # --------------------------------------------------
-    appearances = await underdog.read.get_nfl_adp(superflex=superflex)
-
-    # Filter out zero-ADP noise (inactive/practice squad players)
-    appearances = [
-        a for a in appearances
-        if a.projection and _safe_float(a.projection.adp) > 0
-    ]
-
-    logger.info(f"Fetched {len(appearances)} Underdog appearances with ADP > 0")
 
     # --------------------------------------------------
     # 3. Load existing maps so we don't re-fuzzy-match every run
@@ -138,6 +170,7 @@ async def sync_underdog_adp(
     await db.commit()
 
     return {
+        "status": "complete",
         "fetched": len(appearances),
         "matched": matched,
         "unmatched": len(unmatched),
