@@ -198,29 +198,38 @@ async def sync_user_current_season_data(
     }
 
 
-async def get_active_sleeper_usernames(db: AsyncSession) -> list[str]:
+async def get_active_sleeper_usernames(
+    db: AsyncSession,
+    *,
+    accounts_only: bool = False,
+) -> list[str]:
     """
     Returns list of distinct active sleeper usernames from linked connections and active sessions.
+    If accounts_only=True, only returns usernames associated with registered site accounts.
     """
     from app.models.db.sleeper.connection import SleeperConnection
     from app.models.db.auth import UserSession
 
     usernames: set[str] = set()
 
-    conn_result = await db.execute(
-        select(SleeperConnection.sleeper_username).where(
-            SleeperConnection.sleeper_username.is_not(None)
-        )
+    conn_stmt = select(SleeperConnection.sleeper_username).where(
+        SleeperConnection.sleeper_username.is_not(None)
     )
+    if accounts_only:
+        conn_stmt = conn_stmt.where(SleeperConnection.site_user_id.is_not(None))
+
+    conn_result = await db.execute(conn_stmt)
     for u in conn_result.scalars():
         if u and u.strip():
             usernames.add(u.strip())
 
-    session_result = await db.execute(
-        select(UserSession.sleeper_username).where(
-            UserSession.sleeper_username.is_not(None)
-        )
+    session_stmt = select(UserSession.sleeper_username).where(
+        UserSession.sleeper_username.is_not(None)
     )
+    if accounts_only:
+        session_stmt = session_stmt.where(UserSession.site_user_id.is_not(None))
+
+    session_result = await db.execute(session_stmt)
     for u in session_result.scalars():
         if u and u.strip():
             usernames.add(u.strip())
